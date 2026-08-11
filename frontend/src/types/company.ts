@@ -1,3 +1,5 @@
+import type { Address, AddressInput } from "./user";
+
 export interface Company {
   id: string;
   name: string;
@@ -12,6 +14,8 @@ export interface Company {
   timezone: string;
   isActive: boolean;
   createdAt: string;
+  registeredAddressId: string | null;
+  registeredAddress: Address | null;
 }
 
 export interface CompanyPayload {
@@ -25,4 +29,5 @@ export interface CompanyPayload {
   currency?: string;
   timezone?: string;
   isActive?: boolean;
+  registeredAddress?: AddressInput;
 }

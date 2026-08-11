@@ -43,7 +43,7 @@ const EditUser = () => {
             <Breadcrumb title="Edit User" text="Edit User" />
 
             <LazyWrapper>
-                <Card className="card rounded-lg border-0 max-w-4xl">
+                <Card className="card rounded-lg border-0">
                     <CardContent>
                         {isLoading ? (
                             <div className="flex items-center justify-center py-16">

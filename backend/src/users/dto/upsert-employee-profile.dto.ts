@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { MaritalStatus } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsEmail,
@@ -7,13 +8,27 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateNested,
 } from 'class-validator';
+import { AddressInputDto } from '../../common/dto/address-input.dto';
 
 export class UpsertEmployeeProfileDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
   reportingManagerId?: string;
+
+  @ApiPropertyOptional({ type: AddressInputDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AddressInputDto)
+  currentAddress?: AddressInputDto;
+
+  @ApiPropertyOptional({ type: AddressInputDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AddressInputDto)
+  permanentAddress?: AddressInputDto;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -1,6 +1,5 @@
 import {
   House,
-  Settings,
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
@@ -21,33 +20,9 @@ export const data = {
       icon: UsersRound,
     },
     {
-      label: "Pages",
-    },
-    {
-      title: "Authentication",
-      url: "#",
+      title: "Roles & Permissions",
+      url: "/roles-list",
       icon: ShieldCheck,
-      isActive: true,
-      items: [
-        {
-          title: "Sign In",
-          url: "/auth/login",
-          circleColor: "bg-primary",
-        },
-      ],
-    },
-    {
-      title: "Setting",
-      url: "#",
-      icon: Settings,
-      isActive: true,
-      items: [
-        {
-          title: "Company",
-          url: "/company",
-          circleColor: "bg-primary",
-        },
-      ],
     },
   ],
 };

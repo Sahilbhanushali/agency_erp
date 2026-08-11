@@ -1,5 +1,6 @@
 import Login from "@/pages/auth/login/Login";
 import Dashboard from "@/pages/dashboards/Dashboard";
+import RolesList from "@/pages/roles/RolesList";
 import Company from "@/pages/setting/company/Company";
 import CreateUser from "@/pages/users/create/CreateUser";
 import EditUser from "@/pages/users/edit/EditUser";
@@ -50,6 +51,12 @@ export const router = createBrowserRouter([
           },
           {
             path: "users-list/:id/edit", element: <EditUser />
+          },
+          {
+            path: "view-profile", element: <ViewProfile />
+          },
+          {
+            path: "roles-list", element: <RolesList />
           },
           {
             path: "company", element: <Company />

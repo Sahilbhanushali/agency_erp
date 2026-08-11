@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { AddressInputDto } from '../../common/dto/address-input.dto';
 
 export class CreateCompanyDto {
   @ApiProperty({ example: 'Acme Marketing' })
@@ -46,4 +54,10 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @ApiPropertyOptional({ type: AddressInputDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AddressInputDto)
+  registeredAddress?: AddressInputDto;
 }

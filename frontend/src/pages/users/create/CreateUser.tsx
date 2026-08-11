@@ -34,7 +34,7 @@ const CreateUser = () => {
             <Breadcrumb title="Add New User" text="Create User" />
 
             <LazyWrapper>
-                <Card className="card rounded-lg border-0 max-w-4xl">
+                <Card className="card rounded-lg border-0">
                     <CardContent>
                         <UserForm mode="create" onSubmit={handleSubmit} isSubmitting={isSubmitting} />
                     </CardContent>

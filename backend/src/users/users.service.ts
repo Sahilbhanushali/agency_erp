@@ -11,6 +11,7 @@ import {
 } from '../common/utils/tenant-scope.util';
 import { FilesService } from '../files/files.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AddressInputDto } from '../common/dto/address-input.dto';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -22,7 +23,14 @@ const USER_INCLUDE = {
   omit: { passwordHash: true },
   include: {
     role: true,
-    employeeProfile: { include: { bankDetail: true, skills: true } },
+    employeeProfile: {
+      include: {
+        bankDetail: true,
+        skills: true,
+        currentAddress: true,
+        permanentAddress: true,
+      },
+    },
   },
 } as const;
 
@@ -132,14 +140,57 @@ export class UsersService {
     dto: UpsertEmployeeProfileDto,
     actor: CurrentUserPayload,
   ) {
-    await this.findOne(userId, actor);
+    const user = await this.findOne(userId, actor);
+    const { currentAddress, permanentAddress, ...profileFields } = dto;
+
+    const currentAddressId = currentAddress
+      ? await this.upsertAddress(
+          user.employeeProfile?.currentAddressId,
+          currentAddress,
+        )
+      : undefined;
+    const permanentAddressId = permanentAddress
+      ? await this.upsertAddress(
+          user.employeeProfile?.permanentAddressId,
+          permanentAddress,
+        )
+      : undefined;
 
     return this.prisma.employeeProfile.upsert({
       where: { userId },
-      create: { userId, ...dto },
-      update: dto,
-      include: { bankDetail: true, skills: true },
+      create: {
+        userId,
+        ...profileFields,
+        currentAddressId,
+        permanentAddressId,
+      },
+      update: {
+        ...profileFields,
+        ...(currentAddressId && { currentAddressId }),
+        ...(permanentAddressId && { permanentAddressId }),
+      },
+      include: {
+        bankDetail: true,
+        skills: true,
+        currentAddress: true,
+        permanentAddress: true,
+      },
     });
+  }
+
+  private async upsertAddress(
+    existingAddressId: string | null | undefined,
+    data: AddressInputDto,
+  ) {
+    if (existingAddressId) {
+      const updated = await this.prisma.address.update({
+        where: { id: existingAddressId },
+        data,
+      });
+      return updated.id;
+    }
+    const created = await this.prisma.address.create({ data });
+    return created.id;
   }
 
   async upsertBankDetail(

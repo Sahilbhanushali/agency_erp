@@ -1,6 +1,8 @@
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/context/AuthContext";
 import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type { User } from "@/types/user";
@@ -24,6 +26,9 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import BankDetailForm from "../components/BankDetailForm";
+import EmployeeProfileForm from "../components/EmployeeProfileForm";
+import SkillsPanel from "../components/SkillsPanel";
 
 const STATUS_STYLES: Record<User["status"], string> = {
     ACTIVE: "bg-green-600/15 text-green-600 border-green-600",
@@ -45,7 +50,10 @@ const InfoTile = ({ icon: Icon, label, value }: { icon: typeof Phone; label: str
 );
 
 const ViewProfile = () => {
-    const { id } = useParams<{ id: string }>();
+    const { id: routeId } = useParams<{ id: string }>();
+    const { user: actor } = useAuth();
+    const isOwnProfile = !routeId;
+    const id = routeId ?? actor?.id;
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -88,20 +96,22 @@ const ViewProfile = () => {
 
     return (
         <>
-            <Breadcrumb title="User Profile" text={`${user.firstName} ${user.lastName}`} />
+            <Breadcrumb title={isOwnProfile ? "My Profile" : "User Profile"} text={`${user.firstName} ${user.lastName}`} />
 
-            <Link
-                to="/users-list"
-                className="inline-flex items-center gap-2 text-sm font-medium text-neutral-600 hover:text-primary dark:text-neutral-300 dark:hover:text-primary mb-4"
-            >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Users
-            </Link>
+            {!isOwnProfile && (
+                <Link
+                    to="/users-list"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-neutral-600 hover:text-primary dark:text-neutral-300 dark:hover:text-primary mb-4"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Users
+                </Link>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 <div className="col-span-12 lg:col-span-4">
-                    <Card className="card !p-0 !gap-0">
-                        <div className="h-[100px] rounded-t-xl bg-gradient-to-r from-primary to-primary/40" />
+                    <Card className="card !p-0 !gap-0 overflow-hidden">
+                        <div className="h-[100px] shrink-0 bg-gradient-to-r from-primary to-primary/40" />
                         <CardContent className="text-center px-6 pb-6">
                             <span className="flex items-center justify-center w-24 h-24 mx-auto -mt-12 rounded-full bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-800 shadow-sm text-primary text-3xl font-semibold relative z-[1]">
                                 {user.firstName[0]?.toUpperCase()}
@@ -117,53 +127,90 @@ const ViewProfile = () => {
                                 <InfoTile icon={Phone} label="Phone" value={user.phone ?? ""} />
                             </div>
 
-                            <div className="flex items-center justify-center gap-3 mt-6">
-                                <Button className="w-full h-11" onClick={() => navigate(`/users-list/${user.id}/edit`)}>
-                                    <Edit className="w-4 h-4" />
-                                    Edit
+                            <div className="flex items-center gap-3 mt-6">
+                                <Button className="flex-1 h-11 min-w-0" onClick={() => navigate(`/users-list/${user.id}/edit`)}>
+                                    <Edit className="w-4 h-4 shrink-0" />
+                                    <span className="truncate">Edit</span>
                                 </Button>
-                                <Button variant="destructive" className="w-full h-11" onClick={() => setConfirmDelete(true)}>
-                                    <Trash2 className="w-4 h-4" />
-                                    Delete
-                                </Button>
+                                {!isOwnProfile && (
+                                    <Button variant="destructive" className="flex-1 h-11 min-w-0" onClick={() => setConfirmDelete(true)}>
+                                        <Trash2 className="w-4 h-4 shrink-0" />
+                                        <span className="truncate">Delete</span>
+                                    </Button>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                <div className="col-span-12 lg:col-span-8 space-y-6">
-                    <Card className="card">
-                        <CardHeader>
-                            <CardTitle className="text-base">Employment Information</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
-                                <InfoTile icon={Shield} label="Role" value={user.role.displayName} />
-                                <InfoTile icon={Building2} label="Department" value={user.department ?? ""} />
-                                <InfoTile icon={Briefcase} label="Designation" value={user.designation ?? ""} />
-                                <InfoTile icon={Clock} label="Employment Type" value={user.employmentType?.replace("_", " ") ?? ""} />
-                                <InfoTile icon={CalendarCheck} label="Joining Date" value={user.joiningDate?.slice(0, 10) ?? ""} />
-                                <InfoTile icon={MapPin} label="Work Mode" value={user.isRemote ? "Remote" : "On-site"} />
-                                <InfoTile
-                                    icon={History}
-                                    label="Last Login"
-                                    value={user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "Never"}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
+                <div className="col-span-12 lg:col-span-8">
+                    <Tabs defaultValue="overview">
+                        <TabsList>
+                            <TabsTrigger value="overview">Overview</TabsTrigger>
+                            <TabsTrigger value="profile">Employee Profile</TabsTrigger>
+                            <TabsTrigger value="bank">Bank Details</TabsTrigger>
+                            <TabsTrigger value="skills">Skills</TabsTrigger>
+                        </TabsList>
 
-                    <Card className="card">
-                        <CardHeader>
-                            <CardTitle className="text-base">Personal Information</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
-                                <InfoTile icon={UserIcon} label="Gender" value={user.gender ?? ""} />
-                                <InfoTile icon={Cake} label="Date of Birth" value={user.dateOfBirth?.slice(0, 10) ?? ""} />
-                            </div>
-                        </CardContent>
-                    </Card>
+                        <TabsContent value="overview" className="space-y-6 mt-4">
+                            <Card className="card">
+                                <CardHeader>
+                                    <CardTitle className="text-base">Employment Information</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
+                                        <InfoTile icon={Shield} label="Role" value={user.role.displayName} />
+                                        <InfoTile icon={Building2} label="Department" value={user.department ?? ""} />
+                                        <InfoTile icon={Briefcase} label="Designation" value={user.designation ?? ""} />
+                                        <InfoTile icon={Clock} label="Employment Type" value={user.employmentType?.replace("_", " ") ?? ""} />
+                                        <InfoTile icon={CalendarCheck} label="Joining Date" value={user.joiningDate?.slice(0, 10) ?? ""} />
+                                        <InfoTile icon={MapPin} label="Work Mode" value={user.isRemote ? "Remote" : "On-site"} />
+                                        <InfoTile
+                                            icon={History}
+                                            label="Last Login"
+                                            value={user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "Never"}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="card">
+                                <CardHeader>
+                                    <CardTitle className="text-base">Personal Information</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
+                                        <InfoTile icon={UserIcon} label="Gender" value={user.gender?.replace(/_/g, " ") ?? ""} />
+                                        <InfoTile icon={Cake} label="Date of Birth" value={user.dateOfBirth?.slice(0, 10) ?? ""} />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="profile" className="mt-4">
+                            <Card className="card">
+                                <CardContent>
+                                    <EmployeeProfileForm user={user} onSaved={setUser} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="bank" className="mt-4">
+                            <Card className="card">
+                                <CardContent>
+                                    <BankDetailForm user={user} onSaved={setUser} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="skills" className="mt-4">
+                            <Card className="card">
+                                <CardContent>
+                                    <SkillsPanel user={user} onSaved={setUser} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </div>
 

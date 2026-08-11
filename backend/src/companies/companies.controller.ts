@@ -12,7 +12,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CurrentUser, type CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -27,7 +30,9 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
-  @ApiOperation({ summary: 'Create a new company (platform SUPER_ADMIN only).' })
+  @ApiOperation({
+    summary: 'Create a new company (platform SUPER_ADMIN only).',
+  })
   @Roles('SUPER_ADMIN')
   @Post()
   create(@Body() dto: CreateCompanyDto) {
@@ -41,23 +46,41 @@ export class CompaniesController {
     return this.companiesService.findAll();
   }
 
-  @ApiOperation({ summary: 'Get a company by id. SUPER_ADMIN can view any company; other users only their own.' })
+  @ApiOperation({
+    summary:
+      'Get a company by id. SUPER_ADMIN can view any company; other users only their own.',
+  })
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
     if (user.roleName !== 'SUPER_ADMIN' && user.companyId !== id) {
-      throw new ForbiddenException('You do not have permission to view this company');
+      throw new ForbiddenException(
+        'You do not have permission to view this company',
+      );
     }
     return this.companiesService.findOne(id);
   }
 
-  @ApiOperation({ summary: 'Update a company (platform SUPER_ADMIN only).' })
-  @Roles('SUPER_ADMIN')
+  @ApiOperation({
+    summary:
+      'Update a company. SUPER_ADMIN can update any company; other users only their own.',
+  })
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateCompanyDto) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateCompanyDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    if (user.roleName !== 'SUPER_ADMIN' && user.companyId !== id) {
+      throw new ForbiddenException(
+        'You do not have permission to update this company',
+      );
+    }
     return this.companiesService.update(id, dto);
   }
 
-  @ApiOperation({ summary: 'Soft-delete a company (platform SUPER_ADMIN only).' })
+  @ApiOperation({
+    summary: 'Soft-delete a company (platform SUPER_ADMIN only).',
+  })
   @Roles('SUPER_ADMIN')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
