@@ -9,10 +9,14 @@ import CompanyDetails from "@/pages/companies/details/CompanyDetails";
 import EditCompany from "@/pages/companies/edit/EditCompany";
 import CompaniesList from "@/pages/companies/CompaniesList";
 import Dashboard from "@/pages/dashboards/Dashboard";
+import InvoiceBuilder from "@/pages/invoices/builder/InvoiceBuilder";
+import InvoicesList from "@/pages/invoices/InvoicesList";
 import CreateProject from "@/pages/projects/create/CreateProject";
 import ProjectDetails from "@/pages/projects/details/ProjectDetails";
 import EditProject from "@/pages/projects/edit/EditProject";
 import ProjectsList from "@/pages/projects/ProjectsList";
+import QuotationBuilder from "@/pages/quotations/builder/QuotationBuilder";
+import QuotationsList from "@/pages/quotations/QuotationsList";
 import RolesList from "@/pages/roles/RolesList";
 import Company from "@/pages/setting/company/Company";
 import CreateUser from "@/pages/users/create/CreateUser";
@@ -129,6 +133,24 @@ export const router = createBrowserRouter([
           },
           {
             path: "companies-list/:id", element: <CompanyDetails />
+          },
+          {
+            path: "quotations-list", element: <QuotationsList />
+          },
+          {
+            path: "quotations-list/create", element: <QuotationBuilder />
+          },
+          {
+            path: "quotations-list/:id", element: <QuotationBuilder />
+          },
+          {
+            path: "invoices-list", element: <InvoicesList />
+          },
+          {
+            path: "invoices-list/create", element: <InvoiceBuilder />
+          },
+          {
+            path: "invoices-list/:id", element: <InvoiceBuilder />
           },
         ],
       },

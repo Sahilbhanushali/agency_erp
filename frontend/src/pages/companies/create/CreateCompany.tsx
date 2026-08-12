@@ -14,9 +14,14 @@ const CreateCompany = () => {
 
     const handleSubmit = async (values: CompanyFormValues) => {
         setIsSubmitting(true);
-        const { name, legalName, email, phone, website, gstNumber, panNumber, currency, timezone, line1, line2, city, state, postalCode, country } = values;
+        const {
+            name, legalName, logoUrl, email, phone, website, gstNumber, panNumber,
+            bankName, bankAccountName, bankAccountNumber, bankIfsc,
+            currency, timezone, line1, line2, city, state, postalCode, country,
+        } = values;
         const payload: CompanyPayload = {
-            name, legalName, phone, website, gstNumber, panNumber, currency, timezone,
+            name, legalName, logoUrl, phone, website, gstNumber, panNumber,
+            bankName, bankAccountName, bankAccountNumber, bankIfsc, currency, timezone,
             email: email || undefined,
             registeredAddress: line1 && city ? { line1, line2, city, state, postalCode, country } : undefined,
         };

@@ -5,8 +5,10 @@ import {
   FolderKanban,
   House,
   LayoutGrid,
+  Receipt,
   ShieldCheck,
   UsersRound,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -53,6 +55,18 @@ const NAV_ITEMS: SidebarNavItem[] = [
     url: "/workspaces-list",
     icon: LayoutGrid,
     permission: "workspaces:read",
+  },
+  {
+    title: "Quotations",
+    url: "/quotations-list",
+    icon: Receipt,
+    permission: "quotations:read",
+  },
+  {
+    title: "Billing",
+    url: "/invoices-list",
+    icon: Wallet,
+    permission: "invoices:read",
   },
   {
     title: "Users",

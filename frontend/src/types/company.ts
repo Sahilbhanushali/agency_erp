@@ -10,6 +10,10 @@ export interface Company {
   website: string | null;
   gstNumber: string | null;
   panNumber: string | null;
+  bankName: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankIfsc: string | null;
   currency: string;
   timezone: string;
   isActive: boolean;
@@ -21,11 +25,16 @@ export interface Company {
 export interface CompanyPayload {
   name: string;
   legalName?: string;
+  logoUrl?: string;
   email?: string;
   phone?: string;
   website?: string;
   gstNumber?: string;
   panNumber?: string;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankIfsc?: string;
   currency?: string;
   timezone?: string;
   isActive?: boolean;

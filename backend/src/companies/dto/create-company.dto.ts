@@ -20,6 +20,11 @@ export class CreateCompanyDto {
   @IsString()
   legalName?: string;
 
+  @ApiPropertyOptional({ description: 'Logo image as a base64 data URL.' })
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
+
   @ApiPropertyOptional({ example: 'contact@acme.com' })
   @IsOptional()
   @IsEmail()
@@ -44,6 +49,26 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsString()
   panNumber?: string;
+
+  @ApiPropertyOptional({ example: 'TJSB Bank' })
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @ApiPropertyOptional({ example: 'Acme Marketing Pvt Ltd' })
+  @IsOptional()
+  @IsString()
+  bankAccountName?: string;
+
+  @ApiPropertyOptional({ example: '155120100000086' })
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @ApiPropertyOptional({ example: 'TJSB0000155' })
+  @IsOptional()
+  @IsString()
+  bankIfsc?: string;
 
   @ApiPropertyOptional({ example: 'INR', default: 'INR' })
   @IsOptional()

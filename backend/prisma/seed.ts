@@ -12,6 +12,8 @@ const PERMISSION_MODULES = [
   'clients',
   'projects',
   'workspaces',
+  'quotations',
+  'invoices',
 ] as const;
 const PERMISSION_ACTIONS = ['create', 'read', 'update', 'delete'] as const;
 

@@ -1,22 +1,29 @@
 import FormActions from "@/components/shared/FormActions";
+import ImageUploadButton from "@/components/shared/ImageUploadButton";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import type { Company } from "@/types/company";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Image as ImageIcon } from "lucide-react";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import * as z from "zod";
 
 const schema = z.object({
     name: z.string().min(1, "Company name is required"),
     legalName: z.string().optional(),
+    logoUrl: z.string().optional(),
     email: z.string().email("Enter a valid email address.").optional().or(z.literal("")),
     phone: z.string().optional(),
     website: z.string().optional(),
     gstNumber: z.string().optional(),
     panNumber: z.string().optional(),
+    bankName: z.string().optional(),
+    bankAccountName: z.string().optional(),
+    bankAccountNumber: z.string().optional(),
+    bankIfsc: z.string().optional(),
     currency: z.string().optional(),
     timezone: z.string().optional(),
     isActive: z.boolean().optional(),
@@ -46,11 +53,16 @@ const CompanyForm = ({ mode, initialValues, onSubmit, isSubmitting }: CompanyFor
         defaultValues: {
             name: initialValues?.name ?? "",
             legalName: initialValues?.legalName ?? "",
+            logoUrl: initialValues?.logoUrl ?? undefined,
             email: initialValues?.email ?? "",
             phone: initialValues?.phone ?? "",
             website: initialValues?.website ?? "",
             gstNumber: initialValues?.gstNumber ?? "",
             panNumber: initialValues?.panNumber ?? "",
+            bankName: initialValues?.bankName ?? "",
+            bankAccountName: initialValues?.bankAccountName ?? "",
+            bankAccountNumber: initialValues?.bankAccountNumber ?? "",
+            bankIfsc: initialValues?.bankIfsc ?? "",
             currency: initialValues?.currency ?? "INR",
             timezone: initialValues?.timezone ?? "Asia/Kolkata",
             isActive: initialValues?.isActive ?? true,
@@ -83,6 +95,17 @@ const CompanyForm = ({ mode, initialValues, onSubmit, isSubmitting }: CompanyFor
                 <Field>
                     <FieldLabel htmlFor="legalName">Legal Name</FieldLabel>
                     <Input id="legalName" className={inputClass} {...form.register("legalName")} />
+                </Field>
+
+                <Field>
+                    <FieldLabel>Logo</FieldLabel>
+                    <Controller
+                        name="logoUrl"
+                        control={form.control}
+                        render={({ field }) => (
+                            <ImageUploadButton label="Upload Logo" icon={ImageIcon} value={field.value} onChange={field.onChange} />
+                        )}
+                    />
                 </Field>
 
                 <Field data-invalid={!!form.formState.errors.email}>
@@ -138,6 +161,32 @@ const CompanyForm = ({ mode, initialValues, onSubmit, isSubmitting }: CompanyFor
                         </Select>
                     </Field>
                 )}
+            </div>
+
+            <div>
+                <h6 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-4">Bank Details</h6>
+                <p className="text-xs text-neutral-500 mb-4">Shown in the "Bank Info" section of quotations and invoices.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
+                    <Field>
+                        <FieldLabel htmlFor="bankName">Bank Name</FieldLabel>
+                        <Input id="bankName" className={inputClass} {...form.register("bankName")} />
+                    </Field>
+
+                    <Field>
+                        <FieldLabel htmlFor="bankAccountName">Account Name</FieldLabel>
+                        <Input id="bankAccountName" className={inputClass} {...form.register("bankAccountName")} />
+                    </Field>
+
+                    <Field>
+                        <FieldLabel htmlFor="bankAccountNumber">Account Number</FieldLabel>
+                        <Input id="bankAccountNumber" className={inputClass} {...form.register("bankAccountNumber")} />
+                    </Field>
+
+                    <Field>
+                        <FieldLabel htmlFor="bankIfsc">IFSC Code</FieldLabel>
+                        <Input id="bankIfsc" className={inputClass} {...form.register("bankIfsc")} />
+                    </Field>
+                </div>
             </div>
 
             <div>

@@ -442,12 +442,16 @@ model Company {
   registeredAddressId String?
   name                String
   legalName           String?
-  logoUrl             String?
+  logoUrl             String?   @db.LongText
   email               String?
   phone               String?
   website             String?
   gstNumber           String?
   panNumber           String?
+  bankName            String?
+  bankAccountName     String?
+  bankAccountNumber   String?
+  bankIfsc            String?
   currency            String    @default("INR")
   timezone            String    @default("Asia/Kolkata")
   isActive            Boolean   @default(true)
@@ -782,7 +786,7 @@ model Client {
   name             String
   industry         String?
   website          String?
-  logoUrl          String?
+  logoUrl          String?   @db.LongText
   email            String
   phone            String?
   gstNumber        String?
@@ -1732,6 +1736,7 @@ model Quotation {
   note            String?         @db.Text
   portalVisible   Boolean         @default(false)
   pdfFileKey      String?
+  signatureUrl    String?         @db.LongText
   sentAt          DateTime?
   convertedAt     DateTime?
   createdAt       DateTime        @default(now())
@@ -1802,6 +1807,7 @@ model Invoice {
   note            String?       @db.Text
   portalVisible   Boolean       @default(true)
   pdfFileKey      String?
+  signatureUrl    String?       @db.LongText
   sentAt          DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
