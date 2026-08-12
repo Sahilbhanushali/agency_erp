@@ -5,7 +5,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     return (
         <SidebarProvider>
             <AppSidebar />
-            <main className="grow">
+            <main className="grow min-w-0">
                 {children}
             </main>
         </SidebarProvider>

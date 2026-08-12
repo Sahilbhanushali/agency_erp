@@ -1,6 +1,4 @@
 import { ModeToggle } from "@/components/ModeToggle";
-import LanguageSelect from "@/components/shared/LanguageSelect";
-import MessageDropdown from "@/components/shared/MessageDropdown";
 import NotificationDropdown from "@/components/shared/NotificationDropdown";
 import ProfileDropdown from "@/components/shared/ProfileDropdown";
 import SearchBox from "@/components/shared/SearchBox";
@@ -25,14 +23,6 @@ const Header = () => {
 
                     {/* Light & Dark Mode */}
                     <ModeToggle />
-
-                    {/* Language Dropdown Start   */}
-                    <LanguageSelect />
-                    {/* Language Dropdown End   */}
-
-                    {/* Message Dropdown Start   */}
-                    <MessageDropdown />
-                    {/* Message Dropdown End   */}
 
                     {/* Notification Start   */}
                     <NotificationDropdown />

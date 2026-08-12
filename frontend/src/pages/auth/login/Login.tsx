@@ -3,13 +3,13 @@ import ThemeLogo from "@/components/shared/ThemeLogo";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/AuthContext";
 import { useIsSubmitting } from "@/context/isSubmittingContext";
-import { loginWithEmailAndPassword } from "@/firebase";
+import { ApiError } from "@/lib/api";
 import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
-import SocialLogin from "../components/SocialLogin";
 
 import {
     Field,
@@ -33,6 +33,7 @@ const formSchema = z.object({
 
 const Login = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const { isSubmitting, setIsSubmitting } = useIsSubmitting();
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -50,19 +51,14 @@ const Login = () => {
         setIsLoading(true);
 
         try {
-            const user = await loginWithEmailAndPassword(data.email, data.password);
-
-            if (!user) return;
-            toast.success(`Login in successful.`);
-            if (user) {
-                navigate("/dashboard");
-            };
+            await login(data.email, data.password);
+            toast.success("Login successful.");
+            navigate("/dashboard");
         } catch (error) {
-            toast.error(`${error}`);
+            toast.error(error instanceof ApiError ? error.message : "Something went wrong. Please try again.");
         } finally {
             setIsSubmitting(false);
             setIsLoading(false);
-            form.reset();
         }
     }
 
@@ -148,23 +144,15 @@ const Login = () => {
                             />
                         </FieldGroup>
 
-                        {/* Remember Me & Forgot Password */}
-                        <div className="mt-2 flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <Checkbox
-                                    id="remember"
-                                    className="border border-neutral-400 w-4.5 h-4.5"
-                                />
-                                <label htmlFor="remember" className="text-sm">
-                                    Remember me
-                                </label>
-                            </div>
-                            <Link
-                                to="/auth/forgot-password"
-                                className="text-primary font-medium hover:underline text-sm"
-                            >
-                                Forgot Password?
-                            </Link>
+                        {/* Remember Me */}
+                        <div className="mt-2 flex items-center gap-2">
+                            <Checkbox
+                                id="remember"
+                                className="border border-neutral-400 w-4.5 h-4.5"
+                            />
+                            <label htmlFor="remember" className="text-sm">
+                                Remember me
+                            </label>
                         </div>
 
                         <Button
@@ -175,30 +163,6 @@ const Login = () => {
                             {isLoading && <Loader2 className="animate-spin h-4.5 w-4.5 mr-2" />}
                             {isLoading ? "Signing in..." : "Sign In"}
                         </Button>
-
-                        <div className="mt-8 center-border-horizontal text-center relative before:absolute before:w-full before:h-[1px] before:top-1/2 before:-translate-y-1/2 before:bg-neutral-300 before:start-0">
-                            <span className="bg-white dark:bg-slate-900 z-[2] relative px-4">Or sign in with</span>
-                        </div>
-                        <SocialLogin />
-
-                        <Button
-                            className="font-semibold text-neutral-600 hover:text-neutral-600 dark:text-neutral-200 py-6 px-2 w-1/2 border border-neutral-600/50 rounded-xl text-sm flex items-center justify-center gap-3 line-height-1 hover:border-blue-400 hover:bg-primary/10 disabled:opacity-60 mt-4 w-full"
-                            variant="outline"
-                            type="button"
-                            name="action"
-                            value="google"
-                            onClick={() => {
-                                form.setValue("email", "wowdash@gmail.com");
-                                form.setValue("password", "123456");
-                            }}
-                        >
-                            Use Demo Credentials
-                        </Button>
-
-
-                        <div className="mt-8 text-center text-sm">
-                            <p className="mb-0">Don't have an account? <Link to="/auth/register" className="text-primary font-semibold hover:underline">Sign Up</Link></p>
-                        </div>
                     </form>
                 </div>
             </div>
