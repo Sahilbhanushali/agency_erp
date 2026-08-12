@@ -1,3 +1,6 @@
+import ClientFormDialog from "@/components/shared/ClientFormDialog";
+import Combobox from "@/components/shared/Combobox";
+import DatePicker from "@/components/shared/DatePicker";
 import FormActions from "@/components/shared/FormActions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -51,7 +54,7 @@ const inputClass = "h-11 rounded-lg";
 const selectTriggerClass = "h-11 rounded-lg !w-full";
 
 const FormSection = ({ title, description, children }: { title: string; description?: string; children: ReactNode }) => (
-    <section className="border-b border-neutral-100 dark:border-slate-700 last:border-0 pb-8 last:pb-0">
+    <section className="border-b border-border last:border-0 pb-8 last:pb-0">
         <div className="mb-5">
             <h6 className="text-base font-semibold text-neutral-900 dark:text-white">{title}</h6>
             {description && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{description}</p>}
@@ -66,6 +69,8 @@ const ProjectForm = ({ mode, initialValues, onSubmit, isSubmitting }: ProjectFor
     const [companies, setCompanies] = useState<Company[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [managers, setManagers] = useState<MinimalUser[]>([]);
+    const [clientDialogOpen, setClientDialogOpen] = useState(false);
+    const [clientDialogQuery, setClientDialogQuery] = useState("");
 
     const form = useForm<ProjectFormValues>({
         resolver: zodResolver(schema),
@@ -131,18 +136,18 @@ const ProjectForm = ({ mode, initialValues, onSubmit, isSubmitting }: ProjectFor
                             name="companyId"
                             control={form.control}
                             render={({ field }) => (
-                                <Select value={field.value} onValueChange={field.onChange} disabled={mode === "edit"}>
-                                    <SelectTrigger id="companyId" className={selectTriggerClass}>
-                                        <SelectValue placeholder="Select company" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {companies.map((company) => (
-                                            <SelectItem key={company.id} value={company.id}>
-                                                {company.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Combobox
+                                    id="companyId"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    disabled={mode === "edit"}
+                                    options={companies.map((company) => ({ value: company.id, label: company.name }))}
+                                    placeholder="Select company"
+                                    searchPlaceholder="Search companies..."
+                                    emptyText="No companies found."
+                                    createLabel="Add new company"
+                                    createHref="/companies-list/create"
+                                />
                             )}
                         />
                     </Field>
@@ -154,18 +159,18 @@ const ProjectForm = ({ mode, initialValues, onSubmit, isSubmitting }: ProjectFor
                         name="clientId"
                         control={form.control}
                         render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange} disabled={!targetCompanyId}>
-                                <SelectTrigger id="clientId" className={selectTriggerClass}>
-                                    <SelectValue placeholder={targetCompanyId ? "Select client" : "Select a company first"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {clients.map((client) => (
-                                        <SelectItem key={client.id} value={client.id}>
-                                            {client.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                id="clientId"
+                                value={field.value}
+                                onChange={field.onChange}
+                                disabled={!targetCompanyId}
+                                options={clients.map((client) => ({ value: client.id, label: client.name }))}
+                                placeholder={targetCompanyId ? "Select client" : "Select a company first"}
+                                searchPlaceholder="Search clients..."
+                                emptyText="No clients found."
+                                createLabel="Add new client"
+                                onCreateNew={(query) => { setClientDialogQuery(query); setClientDialogOpen(true); }}
+                            />
                         )}
                     />
                     {form.formState.errors.clientId && <FieldError errors={[form.formState.errors.clientId]} />}
@@ -177,18 +182,18 @@ const ProjectForm = ({ mode, initialValues, onSubmit, isSubmitting }: ProjectFor
                         name="managerId"
                         control={form.control}
                         render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange} disabled={!targetCompanyId}>
-                                <SelectTrigger id="managerId" className={selectTriggerClass}>
-                                    <SelectValue placeholder={targetCompanyId ? "Select manager" : "Select a company first"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {managers.map((manager) => (
-                                        <SelectItem key={manager.id} value={manager.id}>
-                                            {manager.firstName} {manager.lastName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                id="managerId"
+                                value={field.value}
+                                onChange={field.onChange}
+                                disabled={!targetCompanyId}
+                                options={managers.map((manager) => ({ value: manager.id, label: `${manager.firstName} ${manager.lastName}` }))}
+                                placeholder={targetCompanyId ? "Select manager" : "Select a company first"}
+                                searchPlaceholder="Search users..."
+                                emptyText="No users found."
+                                createLabel="Go invite a user"
+                                createHref="/users-list/create"
+                            />
                         )}
                     />
                     {form.formState.errors.managerId && <FieldError errors={[form.formState.errors.managerId]} />}
@@ -220,12 +225,20 @@ const ProjectForm = ({ mode, initialValues, onSubmit, isSubmitting }: ProjectFor
             <FormSection title="Schedule & Budget" description="Timeline and financials.">
                 <Field>
                     <FieldLabel htmlFor="startDate">Start Date</FieldLabel>
-                    <Input id="startDate" type="date" className={inputClass} {...form.register("startDate")} />
+                    <Controller
+                        name="startDate"
+                        control={form.control}
+                        render={({ field }) => <DatePicker id="startDate" value={field.value} onChange={field.onChange} />}
+                    />
                 </Field>
 
                 <Field>
                     <FieldLabel htmlFor="deadline">Deadline</FieldLabel>
-                    <Input id="deadline" type="date" className={inputClass} {...form.register("deadline")} />
+                    <Controller
+                        name="deadline"
+                        control={form.control}
+                        render={({ field }) => <DatePicker id="deadline" value={field.value} onChange={field.onChange} />}
+                    />
                 </Field>
 
                 <Field>
@@ -265,6 +278,19 @@ const ProjectForm = ({ mode, initialValues, onSubmit, isSubmitting }: ProjectFor
             </FormSection>
 
             <FormActions isSubmitting={isSubmitting} submitLabel={mode === "create" ? "Create Project" : "Save Changes"} />
+
+            {targetCompanyId && (
+                <ClientFormDialog
+                    open={clientDialogOpen}
+                    onOpenChange={setClientDialogOpen}
+                    companyId={targetCompanyId}
+                    initialName={clientDialogQuery}
+                    onCreated={(client) => {
+                        setClients((current) => [...current, client]);
+                        form.setValue("clientId", client.id, { shouldValidate: true });
+                    }}
+                />
+            )}
         </form>
     );
 };

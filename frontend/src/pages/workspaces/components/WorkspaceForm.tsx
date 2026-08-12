@@ -1,3 +1,4 @@
+import Combobox from "@/components/shared/Combobox";
 import FormActions from "@/components/shared/FormActions";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -7,12 +8,13 @@ import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import type { Company } from "@/types/company";
 import type { Project } from "@/types/project";
-import type { Workspace } from "@/types/workspace";
+import type { AddMemberPayload, Workspace, WorkspaceMember } from "@/types/workspace";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState, type ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import * as z from "zod";
+import WorkspaceMemberPicker, { type PickedMember } from "./WorkspaceMemberPicker";
 
 const schema = z.object({
     projectId: z.string().min(1, "Project is required"),
@@ -28,15 +30,21 @@ export type WorkspaceFormValues = z.infer<typeof schema>;
 interface WorkspaceFormProps {
     mode: "create" | "edit";
     initialValues?: Workspace;
-    onSubmit: (values: WorkspaceFormValues) => Promise<void>;
+    onSubmit: (values: WorkspaceFormValues, pendingMembers?: PickedMember[]) => Promise<void>;
     isSubmitting: boolean;
 }
+
+const toPickedMember = (member: WorkspaceMember): PickedMember => ({
+    userId: member.userId,
+    label: `${member.user.firstName} ${member.user.lastName}`,
+    memberRole: member.memberRole ?? undefined,
+});
 
 const inputClass = "h-11 rounded-lg";
 const selectTriggerClass = "h-11 rounded-lg !w-full";
 
 const FormSection = ({ title, description, children }: { title: string; description?: string; children: ReactNode }) => (
-    <section className="border-b border-neutral-100 dark:border-slate-700 last:border-0 pb-8 last:pb-0">
+    <section className="border-b border-border last:border-0 pb-8 last:pb-0">
         <div className="mb-5">
             <h6 className="text-base font-semibold text-neutral-900 dark:text-white">{title}</h6>
             {description && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{description}</p>}
@@ -50,6 +58,8 @@ const WorkspaceForm = ({ mode, initialValues, onSubmit, isSubmitting }: Workspac
     const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
     const [companies, setCompanies] = useState<Company[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
+    const [members, setMembers] = useState<PickedMember[]>(initialValues?.members.map(toPickedMember) ?? []);
+    const [isMemberBusy, setIsMemberBusy] = useState(false);
 
     const form = useForm<WorkspaceFormValues>({
         resolver: zodResolver(schema),
@@ -85,9 +95,44 @@ const WorkspaceForm = ({ mode, initialValues, onSubmit, isSubmitting }: Workspac
             Object.entries(values).map(([key, value]) => [key, value === "" ? undefined : value]),
         ) as WorkspaceFormValues;
         try {
-            await onSubmit(cleaned);
+            await onSubmit(cleaned, mode === "create" ? members : undefined);
         } catch (error) {
             toast.error(error instanceof ApiError ? error.message : "Something went wrong. Please try again.");
+        }
+    };
+
+    const handleAddMember = async (picked: PickedMember) => {
+        if (mode === "create" || !initialValues) {
+            setMembers((current) => [...current, picked]);
+            return;
+        }
+        setIsMemberBusy(true);
+        try {
+            const payload: AddMemberPayload = { userId: picked.userId, memberRole: picked.memberRole };
+            const member = await api.post<WorkspaceMember>(`/workspaces/${initialValues.id}/members`, payload);
+            setMembers((current) => [...current, toPickedMember(member)]);
+            toast.success("Member added.");
+        } catch (error) {
+            toast.error(error instanceof ApiError ? error.message : "Failed to add member.");
+        } finally {
+            setIsMemberBusy(false);
+        }
+    };
+
+    const handleRemoveMember = async (userId: string) => {
+        if (mode === "create" || !initialValues) {
+            setMembers((current) => current.filter((member) => member.userId !== userId));
+            return;
+        }
+        setIsMemberBusy(true);
+        try {
+            await api.delete(`/workspaces/${initialValues.id}/members/${userId}`);
+            setMembers((current) => current.filter((member) => member.userId !== userId));
+            toast.success("Member removed.");
+        } catch (error) {
+            toast.error(error instanceof ApiError ? error.message : "Failed to remove member.");
+        } finally {
+            setIsMemberBusy(false);
         }
     };
 
@@ -107,18 +152,18 @@ const WorkspaceForm = ({ mode, initialValues, onSubmit, isSubmitting }: Workspac
                             name="companyId"
                             control={form.control}
                             render={({ field }) => (
-                                <Select value={field.value} onValueChange={field.onChange} disabled={mode === "edit"}>
-                                    <SelectTrigger id="companyId" className={selectTriggerClass}>
-                                        <SelectValue placeholder="Select company" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {companies.map((company) => (
-                                            <SelectItem key={company.id} value={company.id}>
-                                                {company.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Combobox
+                                    id="companyId"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    disabled={mode === "edit"}
+                                    options={companies.map((company) => ({ value: company.id, label: company.name }))}
+                                    placeholder="Select company"
+                                    searchPlaceholder="Search companies..."
+                                    emptyText="No companies found."
+                                    createLabel="Add new company"
+                                    createHref="/companies-list/create"
+                                />
                             )}
                         />
                     </Field>
@@ -130,18 +175,18 @@ const WorkspaceForm = ({ mode, initialValues, onSubmit, isSubmitting }: Workspac
                         name="projectId"
                         control={form.control}
                         render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange} disabled={!targetCompanyId || mode === "edit"}>
-                                <SelectTrigger id="projectId" className={selectTriggerClass}>
-                                    <SelectValue placeholder={targetCompanyId ? "Select project" : "Select a company first"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {projects.map((project) => (
-                                        <SelectItem key={project.id} value={project.id}>
-                                            {project.title}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                id="projectId"
+                                value={field.value}
+                                onChange={field.onChange}
+                                disabled={!targetCompanyId || mode === "edit"}
+                                options={projects.map((project) => ({ value: project.id, label: project.title }))}
+                                placeholder={targetCompanyId ? "Select project" : "Select a company first"}
+                                searchPlaceholder="Search projects..."
+                                emptyText="No projects found."
+                                createLabel="Go create a project"
+                                createHref="/projects-list/create"
+                            />
                         )}
                     />
                     {form.formState.errors.projectId && <FieldError errors={[form.formState.errors.projectId]} />}
@@ -180,6 +225,19 @@ const WorkspaceForm = ({ mode, initialValues, onSubmit, isSubmitting }: Workspac
                         <FieldLabel htmlFor="description">Description</FieldLabel>
                         <Textarea id="description" rows={3} {...form.register("description")} />
                     </Field>
+                </div>
+            </FormSection>
+
+            <FormSection title="Team Members" description="Who works in this workspace.">
+                <div className="sm:col-span-2 lg:col-span-3">
+                    <WorkspaceMemberPicker
+                        companyId={targetCompanyId ?? undefined}
+                        excludeUserIds={members.map((member) => member.userId)}
+                        members={members}
+                        onAdd={handleAddMember}
+                        onRemove={handleRemoveMember}
+                        isBusy={isMemberBusy}
+                    />
                 </div>
             </FormSection>
 

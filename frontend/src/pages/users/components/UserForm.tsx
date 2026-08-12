@@ -1,3 +1,5 @@
+import Combobox from "@/components/shared/Combobox";
+import DatePicker from "@/components/shared/DatePicker";
 import FormActions from "@/components/shared/FormActions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -51,7 +53,7 @@ const inputClass = "h-11 rounded-lg";
 const selectTriggerClass = "h-11 rounded-lg !w-full";
 
 const FormSection = ({ title, description, children }: { title: string; description?: string; children: ReactNode }) => (
-    <section className="border-b border-neutral-100 dark:border-slate-700 last:border-0 pb-8 last:pb-0">
+    <section className="border-b border-border last:border-0 pb-8 last:pb-0">
         <div className="mb-5">
             <h6 className="text-base font-semibold text-neutral-900 dark:text-white">{title}</h6>
             {description && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{description}</p>}
@@ -159,18 +161,18 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
                             name="companyId"
                             control={form.control}
                             render={({ field }) => (
-                                <Select value={field.value} onValueChange={field.onChange} disabled={mode === "edit"}>
-                                    <SelectTrigger id="companyId" className={selectTriggerClass}>
-                                        <SelectValue placeholder="Select company" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {companies.map((company) => (
-                                            <SelectItem key={company.id} value={company.id}>
-                                                {company.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Combobox
+                                    id="companyId"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    disabled={mode === "edit"}
+                                    options={companies.map((company) => ({ value: company.id, label: company.name }))}
+                                    placeholder="Select company"
+                                    searchPlaceholder="Search companies..."
+                                    emptyText="No companies found."
+                                    createLabel="Add new company"
+                                    createHref="/companies-list/create"
+                                />
                             )}
                         />
                     </Field>
@@ -182,18 +184,18 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
                         name="roleId"
                         control={form.control}
                         render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange} disabled={!targetCompanyId}>
-                                <SelectTrigger id="roleId" className={selectTriggerClass}>
-                                    <SelectValue placeholder={targetCompanyId ? "Select role" : "Select a company first"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {roles.map((role) => (
-                                        <SelectItem key={role.id} value={role.id}>
-                                            {role.displayName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                id="roleId"
+                                value={field.value}
+                                onChange={field.onChange}
+                                disabled={!targetCompanyId}
+                                options={roles.map((role) => ({ value: role.id, label: role.displayName }))}
+                                placeholder={targetCompanyId ? "Select role" : "Select a company first"}
+                                searchPlaceholder="Search roles..."
+                                emptyText="No roles found."
+                                createLabel="Go create a role"
+                                createHref="/roles-list"
+                            />
                         )}
                     />
                     {form.formState.errors.roleId && <FieldError errors={[form.formState.errors.roleId]} />}
@@ -259,7 +261,11 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
 
                 <Field>
                     <FieldLabel htmlFor="joiningDate">Joining Date</FieldLabel>
-                    <Input id="joiningDate" type="date" className={inputClass} {...form.register("joiningDate")} />
+                    <Controller
+                        name="joiningDate"
+                        control={form.control}
+                        render={({ field }) => <DatePicker id="joiningDate" value={field.value} onChange={field.onChange} />}
+                    />
                 </Field>
 
                 <Field orientation="horizontal" className="items-center self-end pb-2.5">
@@ -299,7 +305,13 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
 
                 <Field>
                     <FieldLabel htmlFor="dateOfBirth">Date of Birth</FieldLabel>
-                    <Input id="dateOfBirth" type="date" className={inputClass} {...form.register("dateOfBirth")} />
+                    <Controller
+                        name="dateOfBirth"
+                        control={form.control}
+                        render={({ field }) => (
+                            <DatePicker id="dateOfBirth" value={field.value} onChange={field.onChange} toYear={new Date().getFullYear()} />
+                        )}
+                    />
                 </Field>
             </FormSection>
 

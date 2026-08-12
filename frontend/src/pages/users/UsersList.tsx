@@ -79,7 +79,7 @@ const UsersList = () => {
             <Breadcrumb title="Users" text="Users List" />
 
             <Card className="card h-full !p-0 !block border-0 overflow-hidden mb-6">
-                <CardHeader className="border-b border-neutral-200 dark:border-slate-600 !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
+                <CardHeader className="border-b border-border !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
                     <div className="flex items-center flex-wrap gap-3">
                         <div className="relative">
                             <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
@@ -87,12 +87,12 @@ const UsersList = () => {
                                 placeholder="Search name or email..."
                                 value={search}
                                 onChange={(event) => setSearch(event.target.value)}
-                                className="ps-9 h-11 w-[220px] border border-neutral-300 dark:border-slate-500"
+                                className="ps-9 h-11 w-[220px]"
                             />
                         </div>
 
                         <Select value={status} onValueChange={(value) => setStatus(value as UserStatus | "ALL")}>
-                            <SelectTrigger className="min-w-[130px] h-11 dark:bg-slate-700 border border-slate-300 dark:border-slate-500">
+                            <SelectTrigger className="min-w-[130px] h-11">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -106,7 +106,7 @@ const UsersList = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center border border-neutral-300 dark:border-slate-500 rounded-lg overflow-hidden">
+                        <div className="flex items-center rounded-lg overflow-hidden">
                             <Button
                                 type="button"
                                 variant="ghost"

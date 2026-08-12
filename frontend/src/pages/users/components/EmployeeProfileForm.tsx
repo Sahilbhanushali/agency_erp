@@ -1,3 +1,4 @@
+import DatePicker from "@/components/shared/DatePicker";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -281,12 +282,20 @@ const EmployeeProfileForm = ({ user, onSaved }: EmployeeProfileFormProps) => {
 
                 <Field>
                     <FieldLabel htmlFor="probationEndDate">Probation End Date</FieldLabel>
-                    <Input id="probationEndDate" type="date" className={inputClass} {...form.register("probationEndDate")} />
+                    <Controller
+                        name="probationEndDate"
+                        control={form.control}
+                        render={({ field }) => <DatePicker id="probationEndDate" value={field.value} onChange={field.onChange} />}
+                    />
                 </Field>
 
                 <Field>
                     <FieldLabel htmlFor="confirmationDate">Confirmation Date</FieldLabel>
-                    <Input id="confirmationDate" type="date" className={inputClass} {...form.register("confirmationDate")} />
+                    <Controller
+                        name="confirmationDate"
+                        control={form.control}
+                        render={({ field }) => <DatePicker id="confirmationDate" value={field.value} onChange={field.onChange} />}
+                    />
                 </Field>
 
                 <Field className="col-span-full">
@@ -298,7 +307,7 @@ const EmployeeProfileForm = ({ user, onSaved }: EmployeeProfileFormProps) => {
             <AddressFields prefix="currentAddress" label="Current Address" form={form} />
             <AddressFields prefix="permanentAddress" label="Permanent Address" form={form} />
 
-            <div className="flex items-center justify-end border-t border-neutral-100 dark:border-slate-700 pt-6">
+            <div className="flex items-center justify-end border-t border-border pt-6">
                 <Button type="submit" className="h-11 px-8 rounded-lg" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="animate-spin h-4.5 w-4.5 mr-2" />}
                     Save Profile

@@ -1,3 +1,5 @@
+import Combobox from "@/components/shared/Combobox";
+import DatePicker from "@/components/shared/DatePicker";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -9,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api";
 import type { CreateProjectPayload, Project } from "@/types/project";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -96,18 +97,17 @@ const ProjectFormDialog = ({ open, onOpenChange, clientId, companyId, onCreated 
                             name="managerId"
                             control={form.control}
                             render={({ field }) => (
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                    <SelectTrigger id="proj-manager" className="h-11 rounded-lg !w-full">
-                                        <SelectValue placeholder="Select manager" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {managers.map((manager) => (
-                                            <SelectItem key={manager.id} value={manager.id}>
-                                                {manager.firstName} {manager.lastName}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Combobox
+                                    id="proj-manager"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    options={managers.map((manager) => ({ value: manager.id, label: `${manager.firstName} ${manager.lastName}` }))}
+                                    placeholder="Select manager"
+                                    searchPlaceholder="Search users..."
+                                    emptyText="No users found."
+                                    createLabel="Go invite a user"
+                                    createHref="/users-list/create"
+                                />
                             )}
                         />
                         {form.formState.errors.managerId && <FieldError errors={[form.formState.errors.managerId]} />}
@@ -115,7 +115,11 @@ const ProjectFormDialog = ({ open, onOpenChange, clientId, companyId, onCreated 
 
                     <Field>
                         <FieldLabel htmlFor="proj-deadline">Deadline</FieldLabel>
-                        <Input id="proj-deadline" type="date" className="h-11 rounded-lg" {...form.register("deadline")} />
+                        <Controller
+                            name="deadline"
+                            control={form.control}
+                            render={({ field }) => <DatePicker id="proj-deadline" value={field.value} onChange={field.onChange} />}
+                        />
                     </Field>
 
                     <Field>

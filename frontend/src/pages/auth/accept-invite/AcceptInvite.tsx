@@ -58,7 +58,7 @@ const AcceptInvite = () => {
     };
 
     return (
-        <section className="bg-white dark:bg-slate-900 lg:flex flex-wrap min-h-[100vh]">
+        <section className="bg-background lg:flex flex-wrap min-h-[100vh]">
             <div className="lg:w-1/2 lg:block hidden">
                 <div className="flex items-center flex-col h-full justify-center">
                     <img src={AuthImage} alt="Image" />
@@ -93,7 +93,7 @@ const AcceptInvite = () => {
                                                     disabled={isSubmitting}
                                                     placeholder="New password"
                                                     autoComplete="new-password"
-                                                    className="ps-13 pe-12 h-14 rounded-xl bg-neutral-100 dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 focus:border-primary dark:focus:border-primary focus-visible:border-primary !shadow-none !ring-0"
+                                                    className="ps-13 pe-12 h-14 rounded-xl bg-muted border border-input focus:border-primary dark:focus:border-primary focus-visible:border-primary !shadow-none !ring-0"
                                                 />
                                                 <Button
                                                     type="button"
@@ -124,7 +124,7 @@ const AcceptInvite = () => {
                                                     disabled={isSubmitting}
                                                     placeholder="Confirm password"
                                                     autoComplete="new-password"
-                                                    className="ps-13 pe-12 h-14 rounded-xl bg-neutral-100 dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 focus:border-primary dark:focus:border-primary focus-visible:border-primary !shadow-none !ring-0"
+                                                    className="ps-13 pe-12 h-14 rounded-xl bg-muted border border-input focus:border-primary dark:focus:border-primary focus-visible:border-primary !shadow-none !ring-0"
                                                 />
                                             </div>
                                             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

@@ -21,7 +21,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import ClientFormDialog from "../components/ClientFormDialog";
+import ClientFormDialog from "@/components/shared/ClientFormDialog";
 
 const CompanyDetails = () => {
     const { id } = useParams<{ id: string }>();
@@ -151,7 +151,7 @@ const CompanyDetails = () => {
                                 <span>{[address.line1, address.city, address.state, address.country].filter(Boolean).join(", ")}</span>
                             </div>
                         )}
-                        <div className="pt-3 border-t border-neutral-100 dark:border-slate-700 mt-3 flex items-center justify-between text-neutral-500 dark:text-neutral-400">
+                        <div className="pt-3 border-t border-border mt-3 flex items-center justify-between text-neutral-500 dark:text-neutral-400">
                             <span>Currency</span>
                             <span className="font-medium text-neutral-800 dark:text-neutral-100">{company.currency}</span>
                         </div>
@@ -163,7 +163,7 @@ const CompanyDetails = () => {
                 </Card>
 
                 <Card className="lg:col-span-2 !p-0 !block border-0 overflow-hidden">
-                    <CardHeader className="border-b border-neutral-200 dark:border-slate-600 !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
+                    <CardHeader className="border-b border-border !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
                         <div className="flex items-center flex-wrap gap-3">
                             <h6 className="text-base font-semibold text-neutral-900 dark:text-white shrink-0">Clients</h6>
                             <div className="relative">
@@ -172,7 +172,7 @@ const CompanyDetails = () => {
                                     placeholder="Search clients..."
                                     value={search}
                                     onChange={(event) => setSearch(event.target.value)}
-                                    className="ps-9 h-10 w-[200px] border border-neutral-300 dark:border-slate-500"
+                                    className="ps-9 h-10 w-[200px]"
                                 />
                             </div>
                         </div>

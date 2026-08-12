@@ -161,7 +161,7 @@ const RoleFormDialog = ({ open, onOpenChange, role, permissions, companyId, onSa
                                         const moduleIds = modulePermissions.map((p) => p.id);
                                         const allChecked = moduleIds.every((id) => selectedIds.includes(id));
                                         return (
-                                            <div key={module} className="rounded-lg border border-neutral-200 dark:border-slate-600 p-4">
+                                            <div key={module} className="rounded-lg border border-border p-4">
                                                 <div className="flex items-center gap-2 mb-3">
                                                     <Checkbox
                                                         id={`module-${module}`}
@@ -203,7 +203,7 @@ const RoleFormDialog = ({ open, onOpenChange, role, permissions, companyId, onSa
                         )}
                     />
 
-                    <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 bg-background/95 backdrop-blur-sm px-6 py-4 border-t border-neutral-100 dark:border-slate-700">
+                    <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 bg-background/95 backdrop-blur-sm px-6 py-4 border-t border-border">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={form.formState.isSubmitting}>
                             Cancel
                         </Button>

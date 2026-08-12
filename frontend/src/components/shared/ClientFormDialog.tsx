@@ -32,16 +32,17 @@ interface ClientFormDialogProps {
     onOpenChange: (open: boolean) => void;
     companyId: string;
     onCreated: (client: Client) => void;
+    initialName?: string;
 }
 
-const ClientFormDialog = ({ open, onOpenChange, companyId, onCreated }: ClientFormDialogProps) => {
+const ClientFormDialog = ({ open, onOpenChange, companyId, onCreated, initialName }: ClientFormDialogProps) => {
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
         defaultValues: { name: "", email: "", industry: "", phone: "" },
     });
 
     useEffect(() => {
-        if (open) form.reset({ name: "", email: "", industry: "", phone: "" });
+        if (open) form.reset({ name: initialName ?? "", email: "", industry: "", phone: "" });
     }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSubmit = async (values: FormValues) => {

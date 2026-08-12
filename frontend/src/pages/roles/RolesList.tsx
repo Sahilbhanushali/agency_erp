@@ -77,11 +77,11 @@ const RolesList = () => {
             <Breadcrumb title="Roles & Permissions" text="Roles" />
 
             <Card className="card h-full !p-0 !block border-0 overflow-hidden mb-6">
-                <CardHeader className="border-b border-neutral-200 dark:border-slate-600 !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
+                <CardHeader className="border-b border-border !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
                     <div className="flex items-center flex-wrap gap-3">
                         {isSuperAdmin && (
                             <Select value={companyId} onValueChange={setCompanyId}>
-                                <SelectTrigger className="min-w-[200px] h-11 dark:bg-slate-700 border border-slate-300 dark:border-slate-500">
+                                <SelectTrigger className="min-w-[200px] h-11">
                                     <SelectValue placeholder="All companies" />
                                 </SelectTrigger>
                                 <SelectContent>

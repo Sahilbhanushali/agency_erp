@@ -17,7 +17,7 @@ const NotificationDropdown = () => {
         <Button
           size="icon"
           className={cn(
-            "rounded-[50%] sm:w-10 sm:h-10 w-8 h-8 text-neutral-900 dark:text-white bg-gray-200/75 hover:bg-gray-200 focus-visible:ring-0 dark:bg-slate-600 dark:hover:bg-slate-500 border-0 cursor-pointer data-[state=open]:bg-gray-300 dark:data-[state=open]:bg-slate-500"
+            "rounded-[50%] sm:w-10 sm:h-10 w-8 h-8 text-neutral-900 dark:text-white bg-muted hover:bg-accent focus-visible:ring-0 border-0 cursor-pointer data-[state=open]:bg-accent"
           )}
         >
           <Bell className="h-[5.2rem] w-[5.2rem]" />
@@ -29,7 +29,7 @@ const NotificationDropdown = () => {
             <h6 className="text-lg text-neutral-900 dark:text-white font-semibold mb-0">
               Notification
             </h6>
-            <span className="sm:w-10 sm:h-10 w-8 h-8 bg-white dark:bg-slate-800 text-primary dark:text-primary font-bold flex justify-center items-center rounded-full">
+            <span className="sm:w-10 sm:h-10 w-8 h-8 bg-card text-primary font-bold flex justify-center items-center rounded-full">
               05
             </span>
           </div>

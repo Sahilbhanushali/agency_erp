@@ -26,7 +26,7 @@ const SearchBox = () => {
     return (
         <Dialog>
             <DialogTrigger className=" md:flex hidden">
-                <InputGroup className="border border-neutral-300 dark:border dark:border-slate-600 !bg-transparent shadow-none">
+                <InputGroup className="border border-input !bg-transparent shadow-none">
                     <InputGroupInput placeholder="Search..." readOnly />
                     <InputGroupAddon>
                         <Search />

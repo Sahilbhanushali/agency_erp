@@ -34,7 +34,7 @@ const ProfileDropdown = () => {
           variant="outline"
           size="icon"
           className={cn(
-            "rounded-full sm:w-10 sm:h-10 w-8 h-8 bg-gray-200/75 hover:bg-slate-200 focus-visible:ring-0 dark:bg-slate-700 dark:hover:bg-slate-600 border-0 cursor-pointer data-[state=open]:bg-gray-300 data-[state=open]:ring-4 data-[state=open]:ring-slate-300 dark:data-[state=open]:ring-slate-500 dark:data-[state=open]:bg-slate-600 text-primary font-bold hover:text-primary"
+            "rounded-full sm:w-10 sm:h-10 w-8 h-8 bg-muted hover:bg-accent focus-visible:ring-0 border-0 cursor-pointer data-[state=open]:bg-accent data-[state=open]:ring-4 data-[state=open]:ring-primary/20 text-primary font-bold hover:text-primary"
           )}
         >
           {user?.email?.[0]?.toUpperCase() || "U"}

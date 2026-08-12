@@ -117,7 +117,7 @@ const SkillsPanel = ({ user, onSaved }: SkillsPanelProps) => {
                         <button
                             type="button"
                             aria-label={`Remove ${skill.name}`}
-                            className="ml-1 rounded-full p-0.5 hover:bg-neutral-200 dark:hover:bg-slate-700 cursor-pointer"
+                            className="ml-1 rounded-full p-0.5 hover:bg-accent cursor-pointer"
                             onClick={() => setPendingDeleteId(skill.id)}
                         >
                             <X className="h-3.5 w-3.5" />

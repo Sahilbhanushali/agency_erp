@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { hashToken } from '../common/utils/token.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
@@ -182,10 +183,15 @@ export class AuthService {
     const refreshExpiresIn = this.configService.getOrThrow<string>(
       'JWT_REFRESH_EXPIRES_IN',
     );
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      expiresIn: refreshExpiresIn as JwtSignOptions['expiresIn'],
-    });
+    // jti makes every issued refresh token unique — without it, two tokens signed for the
+    // same user within the same second are byte-identical and collide on the DB unique index.
+    const refreshToken = await this.jwtService.signAsync(
+      { ...payload, jti: randomUUID() },
+      {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        expiresIn: refreshExpiresIn as JwtSignOptions['expiresIn'],
+      },
+    );
 
     await this.prisma.refreshToken.create({
       data: {

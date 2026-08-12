@@ -38,7 +38,7 @@ const Pagination = ({
             <div className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-300">
                 <span>Show</span>
                 <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
-                    <SelectTrigger className="min-w-[72px] h-9 focus-visible:shadow-none focus-visible:ring-0 dark:bg-slate-700 border border-slate-300 dark:border-slate-500">
+                    <SelectTrigger className="min-w-[72px] h-9 focus-visible:shadow-none focus-visible:ring-0">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

@@ -67,20 +67,35 @@ async function rawRequest(path: string, options: RequestOptions) {
   return fetch(`${API_URL}${path}`, { method: options.method ?? "GET", headers, body });
 }
 
+// Shared by every caller that hits a 401 at once, so a page firing several parallel requests
+// triggers exactly one /auth/refresh instead of a duplicate-token race against the single-use
+// refresh token (the backend revokes-then-reissues, so concurrent refreshes fail each other).
+let refreshInFlight: Promise<boolean> | null = null;
+
 async function refreshAccessToken(): Promise<boolean> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
+  if (refreshInFlight) return refreshInFlight;
 
-  const response = await rawRequest("/auth/refresh", {
-    method: "POST",
-    body: { refreshToken },
-    skipAuth: true,
-  });
-  if (!response.ok) return false;
+  refreshInFlight = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
 
-  const data = await response.json();
-  setTokens(data.accessToken, data.refreshToken);
-  return true;
+    const response = await rawRequest("/auth/refresh", {
+      method: "POST",
+      body: { refreshToken },
+      skipAuth: true,
+    });
+    if (!response.ok) return false;
+
+    const data = await response.json();
+    setTokens(data.accessToken, data.refreshToken);
+    return true;
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {

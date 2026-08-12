@@ -122,7 +122,7 @@ const ViewProfile = () => {
                             <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_50%)]" />
                         </div>
                         <CardContent className="text-center px-6 pb-6">
-                            <span className="flex items-center justify-center w-24 h-24 mx-auto -mt-12 rounded-full bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-800 shadow-lg shadow-black/10 text-primary text-3xl font-semibold relative z-[1]">
+                            <span className="flex items-center justify-center w-24 h-24 mx-auto -mt-12 rounded-full bg-white bg-card border-4 border-card shadow-lg shadow-black/10 text-primary text-3xl font-semibold relative z-[1]">
                                 {user.firstName[0]?.toUpperCase()}
                             </span>
                             <h5 className="mt-4 mb-1 truncate">{user.firstName} {user.lastName}</h5>
@@ -136,7 +136,7 @@ const ViewProfile = () => {
                                 <InfoTile icon={Phone} label="Phone" value={user.phone ?? ""} />
                             </div>
 
-                            <div className="flex items-center gap-3 mt-6 pt-6 border-t border-neutral-100 dark:border-slate-700">
+                            <div className="flex items-center gap-3 mt-6 pt-6 border-t border-border">
                                 <Button className="flex-1 h-11 min-w-0 rounded-lg" onClick={() => navigate(`/users-list/${user.id}/edit`)}>
                                     <Edit className="w-4 h-4 shrink-0" />
                                     <span className="truncate">Edit</span>

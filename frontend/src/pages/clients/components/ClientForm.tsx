@@ -1,3 +1,4 @@
+import Combobox from "@/components/shared/Combobox";
 import FormActions from "@/components/shared/FormActions";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,7 @@ const inputClass = "h-11 rounded-lg";
 const selectTriggerClass = "h-11 rounded-lg !w-full";
 
 const FormSection = ({ title, description, children }: { title: string; description?: string; children: ReactNode }) => (
-    <section className="border-b border-neutral-100 dark:border-slate-700 last:border-0 pb-8 last:pb-0">
+    <section className="border-b border-border last:border-0 pb-8 last:pb-0">
         <div className="mb-5">
             <h6 className="text-base font-semibold text-neutral-900 dark:text-white">{title}</h6>
             {description && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{description}</p>}
@@ -146,18 +147,18 @@ const ClientForm = ({ mode, initialValues, onSubmit, isSubmitting }: ClientFormP
                             name="companyId"
                             control={form.control}
                             render={({ field }) => (
-                                <Select value={field.value} onValueChange={field.onChange} disabled={mode === "edit"}>
-                                    <SelectTrigger id="companyId" className={selectTriggerClass}>
-                                        <SelectValue placeholder="Select company" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {companies.map((company) => (
-                                            <SelectItem key={company.id} value={company.id}>
-                                                {company.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Combobox
+                                    id="companyId"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    disabled={mode === "edit"}
+                                    options={companies.map((company) => ({ value: company.id, label: company.name }))}
+                                    placeholder="Select company"
+                                    searchPlaceholder="Search companies..."
+                                    emptyText="No companies found."
+                                    createLabel="Add new company"
+                                    createHref="/companies-list/create"
+                                />
                             )}
                         />
                     </Field>
@@ -181,18 +182,18 @@ const ClientForm = ({ mode, initialValues, onSubmit, isSubmitting }: ClientFormP
                         name="accountManagerId"
                         control={form.control}
                         render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange} disabled={!targetCompanyId}>
-                                <SelectTrigger id="accountManagerId" className={selectTriggerClass}>
-                                    <SelectValue placeholder={targetCompanyId ? "Select manager" : "Select a company first"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {managers.map((manager) => (
-                                        <SelectItem key={manager.id} value={manager.id}>
-                                            {manager.firstName} {manager.lastName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                id="accountManagerId"
+                                value={field.value}
+                                onChange={field.onChange}
+                                disabled={!targetCompanyId}
+                                options={managers.map((manager) => ({ value: manager.id, label: `${manager.firstName} ${manager.lastName}` }))}
+                                placeholder={targetCompanyId ? "Select manager" : "Select a company first"}
+                                searchPlaceholder="Search users..."
+                                emptyText="No users found."
+                                createLabel="Go invite a user"
+                                createHref="/users-list/create"
+                            />
                         )}
                     />
                 </Field>

@@ -101,7 +101,7 @@ const BankDetailForm = ({ user, onSaved }: BankDetailFormProps) => {
                 </Field>
             </div>
 
-            <div className="flex items-center justify-end border-t border-neutral-100 dark:border-slate-700 pt-6">
+            <div className="flex items-center justify-end border-t border-border pt-6">
                 <Button type="submit" className="h-11 px-8 rounded-lg" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="animate-spin h-4.5 w-4.5 mr-2" />}
                     Save Bank Details

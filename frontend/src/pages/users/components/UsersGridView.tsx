@@ -37,7 +37,7 @@ const UsersGridView = ({ users, onView, onEdit, onDelete }: UsersGridViewProps) 
                     </div>
 
                     <div className="px-6 pb-4 text-center -mt-[40px] relative z-[1]">
-                        <span className="flex items-center justify-center w-20 h-20 mx-auto rounded-full bg-primary text-white text-2xl font-semibold border-4 border-white dark:border-slate-800">
+                        <span className="flex items-center justify-center w-20 h-20 mx-auto rounded-full bg-primary text-white text-2xl font-semibold border-4 border-card">
                             {user.firstName[0]?.toUpperCase()}
                         </span>
                         <h6 className="text-lg mb-0 mt-2">{user.firstName} {user.lastName}</h6>

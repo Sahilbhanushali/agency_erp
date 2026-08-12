@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
+import type { AddMemberPayload } from "@/types/workspace";
 import type { Project } from "@/types/project";
 import type { Workspace, WorkspaceMember } from "@/types/workspace";
-import { FolderKanban, Loader2, Pencil, Search, UserPlus } from "lucide-react";
+import { FolderKanban, Loader2, Pencil, Search, UserPlus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import AddMemberDialog from "../components/AddMemberDialog";
+import WorkspaceMemberPicker, { type PickedMember } from "../components/WorkspaceMemberPicker";
 
 const WorkspaceDetails = () => {
     const { id } = useParams<{ id: string }>();
@@ -21,7 +22,8 @@ const WorkspaceDetails = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     const [search, setSearch] = useState("");
-    const [formOpen, setFormOpen] = useState(false);
+    const [showAddPanel, setShowAddPanel] = useState(false);
+    const [isAddingMember, setIsAddingMember] = useState(false);
     const [removingId, setRemovingId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -46,6 +48,21 @@ const WorkspaceDetails = () => {
                 member.user.email.toLowerCase().includes(query),
         );
     }, [workspace, search]);
+
+    const handleAddMember = async (picked: PickedMember) => {
+        if (!workspace) return;
+        setIsAddingMember(true);
+        try {
+            const payload: AddMemberPayload = { userId: picked.userId, memberRole: picked.memberRole };
+            const member = await api.post<WorkspaceMember>(`/workspaces/${workspace.id}/members`, payload);
+            toast.success("Member added.");
+            setWorkspace((current) => (current ? { ...current, members: [...current.members, member] } : current));
+        } catch (error) {
+            toast.error(error instanceof ApiError ? error.message : "Failed to add member.");
+        } finally {
+            setIsAddingMember(false);
+        }
+    };
 
     const handleRemoveMember = async (member: WorkspaceMember) => {
         if (!workspace) return;
@@ -104,7 +121,7 @@ const WorkspaceDetails = () => {
                             </Link>
                         )}
                         {workspace.description && (
-                            <p className="text-neutral-500 dark:text-neutral-400 pt-1 border-t border-neutral-100 dark:border-slate-700 mt-3">
+                            <p className="text-neutral-500 dark:text-neutral-400 pt-1 border-t border-border mt-3">
                                 {workspace.description}
                             </p>
                         )}
@@ -112,7 +129,7 @@ const WorkspaceDetails = () => {
                 </Card>
 
                 <Card className="lg:col-span-2 !p-0 !block border-0 overflow-hidden">
-                    <CardHeader className="border-b border-neutral-200 dark:border-slate-600 !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
+                    <CardHeader className="border-b border-border !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
                         <div className="flex items-center flex-wrap gap-3">
                             <h6 className="text-base font-semibold text-neutral-900 dark:text-white shrink-0">
                                 Members ({workspace.members.length})
@@ -123,18 +140,31 @@ const WorkspaceDetails = () => {
                                     placeholder="Search members..."
                                     value={search}
                                     onChange={(event) => setSearch(event.target.value)}
-                                    className="ps-9 h-10 w-[200px] border border-neutral-300 dark:border-slate-500"
+                                    className="ps-9 h-10 w-[200px]"
                                 />
                             </div>
                         </div>
 
-                        <Button className="w-auto h-10" onClick={() => setFormOpen(true)}>
-                            <UserPlus className="w-4 h-4" />
-                            Add Member
+                        <Button className="w-auto h-10" variant={showAddPanel ? "outline" : "default"} onClick={() => setShowAddPanel((current) => !current)}>
+                            {showAddPanel ? <X className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                            {showAddPanel ? "Close" : "Add Member"}
                         </Button>
                     </CardHeader>
 
                     <CardContent className="p-6">
+                        {showAddPanel && (
+                            <div className="mb-6 pb-6 border-b border-border">
+                                <WorkspaceMemberPicker
+                                    companyId={workspace.companyId}
+                                    excludeUserIds={workspace.members.map((member) => member.userId)}
+                                    members={[]}
+                                    onAdd={handleAddMember}
+                                    onRemove={() => undefined}
+                                    isBusy={isAddingMember}
+                                    showList={false}
+                                />
+                            </div>
+                        )}
                         {filteredMembers.length === 0 ? (
                             <p className="text-center text-neutral-500 dark:text-neutral-300 py-16">
                                 {workspace.members.length === 0 ? "No members yet. Add the first one." : "No members match your search."}
@@ -154,15 +184,6 @@ const WorkspaceDetails = () => {
                     </CardContent>
                 </Card>
             </div>
-
-            <AddMemberDialog
-                open={formOpen}
-                onOpenChange={setFormOpen}
-                workspaceId={workspace.id}
-                companyId={workspace.companyId}
-                existingMemberIds={workspace.members.map((m) => m.userId)}
-                onAdded={(member) => setWorkspace((current) => (current ? { ...current, members: [...current.members, member] } : current))}
-            />
         </>
     );
 };

@@ -196,7 +196,7 @@ const Company = () => {
                                     </div>
                                 </div>
 
-                                <div className="sticky bottom-0 -mx-6 flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-slate-700 bg-card/95 backdrop-blur-sm px-6 py-4 mt-8">
+                                <div className="sticky bottom-0 -mx-6 flex items-center justify-end gap-3 border-t border-border bg-card/95 backdrop-blur-sm px-6 py-4 mt-8">
                                     <Button type="button" variant="outline" className="h-11 px-8 rounded-lg" onClick={() => form.reset()} disabled={isSubmitting}>
                                         Reset
                                     </Button>
