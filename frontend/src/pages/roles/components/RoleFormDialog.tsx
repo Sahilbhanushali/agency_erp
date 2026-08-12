@@ -203,7 +203,7 @@ const RoleFormDialog = ({ open, onOpenChange, role, permissions, companyId, onSa
                         )}
                     />
 
-                    <DialogFooter>
+                    <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 bg-background/95 backdrop-blur-sm px-6 py-4 border-t border-neutral-100 dark:border-slate-700">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={form.formState.isSubmitting}>
                             Cancel
                         </Button>

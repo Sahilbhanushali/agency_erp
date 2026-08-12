@@ -1,4 +1,5 @@
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import { cellClass, headClass, rowClass } from "@/components/tables/table-styles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -123,50 +124,55 @@ const RolesList = () => {
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Role</TableHead>
-                                        <TableHead>Description</TableHead>
-                                        <TableHead>Permissions</TableHead>
-                                        <TableHead>Users</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className={`${headClass} rounded-tl-xl`}>Role</TableHead>
+                                        <TableHead className={headClass}>Description</TableHead>
+                                        <TableHead className={headClass}>Permissions</TableHead>
+                                        <TableHead className={headClass}>Users</TableHead>
+                                        <TableHead className={`${headClass} text-center rounded-tr-xl`}>Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {roles.map((role) => (
-                                        <TableRow key={role.id}>
-                                            <TableCell className="font-medium">
+                                        <TableRow key={role.id} className={rowClass}>
+                                            <TableCell className={`${cellClass} font-medium text-neutral-900 dark:text-white`}>
                                                 {role.displayName}
                                                 {role.isSystem && <Badge variant="outline" className="ml-2 h-6 px-2 text-xs">System</Badge>}
                                             </TableCell>
-                                            <TableCell className="text-neutral-500 dark:text-neutral-400 max-w-[280px] truncate">
+                                            <TableCell className={`${cellClass} max-w-[280px] truncate`}>
                                                 {role.description || "—"}
                                             </TableCell>
-                                            <TableCell>{role.permissions?.length ?? 0}</TableCell>
-                                            <TableCell>{role._count?.users ?? 0}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        aria-label={`Edit ${role.displayName}`}
-                                                        disabled={role.isSystem}
-                                                        onClick={() => {
-                                                            setEditingRole(role);
-                                                            setFormOpen(true);
-                                                        }}
-                                                    >
-                                                        <Pencil className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        aria-label={`Delete ${role.displayName}`}
-                                                        disabled={role.isSystem || (role._count?.users ?? 0) > 0}
-                                                        onClick={() => setRoleToDelete(role)}
-                                                    >
-                                                        <Trash2 className="w-4 h-4 text-destructive" />
-                                                    </Button>
-                                                </div>
+                                            <TableCell className={cellClass}>{role.permissions?.length ?? 0}</TableCell>
+                                            <TableCell className={cellClass}>{role._count?.users ?? 0}</TableCell>
+                                            <TableCell className={cellClass}>
+                                                {role.isSystem ? (
+                                                    <p className="text-center text-xs text-neutral-400">System role</p>
+                                                ) : (
+                                                    <div className="flex justify-center gap-2">
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            aria-label={`Edit ${role.displayName}`}
+                                                            className="rounded-full transition-transform duration-150 hover:scale-110 active:scale-95 text-green-600 bg-green-600/10 hover:bg-green-600/15"
+                                                            onClick={() => {
+                                                                setEditingRole(role);
+                                                                setFormOpen(true);
+                                                            }}
+                                                        >
+                                                            <Pencil className="w-4.5 h-4.5" />
+                                                        </Button>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            aria-label={`Delete ${role.displayName}`}
+                                                            disabled={(role._count?.users ?? 0) > 0}
+                                                            className="rounded-full transition-transform duration-150 hover:scale-110 active:scale-95 text-red-500 bg-red-500/10 hover:bg-red-500/15 disabled:opacity-40 disabled:hover:scale-100"
+                                                            onClick={() => setRoleToDelete(role)}
+                                                        >
+                                                            <Trash2 className="w-4.5 h-4.5" />
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}

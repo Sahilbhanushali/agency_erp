@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import FormActions from "@/components/shared/FormActions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -7,10 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import type { Role, User } from "@/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import * as z from "zod";
 
@@ -37,7 +35,6 @@ const baseFields = {
 
 const schema = z.object({
     ...baseFields,
-    password: z.string().optional(),
     status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED", "INVITED"]).optional(),
 });
 
@@ -64,7 +61,6 @@ const FormSection = ({ title, description, children }: { title: string; descript
 );
 
 const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps) => {
-    const navigate = useNavigate();
     const { user: actor } = useAuth();
     const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -77,7 +73,6 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
             lastName: initialValues?.lastName ?? "",
             email: initialValues?.email ?? "",
             phone: initialValues?.phone ?? "",
-            password: "",
             roleId: initialValues?.roleId ?? "",
             companyId: initialValues?.companyId ?? undefined,
             gender: initialValues?.gender ?? undefined,
@@ -112,10 +107,6 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
     }, [targetCompanyId]);
 
     const handleSubmit = async (values: UserFormValues) => {
-        if (mode === "create" && (!values.password || values.password.length < 6)) {
-            form.setError("password", { message: "Password must be at least 6 characters." });
-            return;
-        }
         // Optional text/date fields default to "" in the form; the backend rejects "" for @IsDateString and prefers omitted keys.
         const cleaned = Object.fromEntries(
             Object.entries(values).map(([key, value]) => [key, value === "" ? undefined : value]),
@@ -152,15 +143,13 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
                     <FieldLabel htmlFor="phone">Phone</FieldLabel>
                     <Input id="phone" className={inputClass} {...form.register("phone")} />
                 </Field>
-
-                {mode === "create" && (
-                    <Field data-invalid={!!form.formState.errors.password}>
-                        <FieldLabel htmlFor="password">Password *</FieldLabel>
-                        <Input id="password" type="password" className={inputClass} {...form.register("password")} />
-                        {form.formState.errors.password && <FieldError errors={[form.formState.errors.password]} />}
-                    </Field>
-                )}
             </FormSection>
+
+            {mode === "create" && (
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 -mt-4">
+                    An invite email will be sent to this address with a link to set their password.
+                </p>
+            )}
 
             <FormSection title="Account & Role" description="Which company and role this user belongs to.">
                 {isSuperAdmin && (
@@ -314,15 +303,7 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
                 </Field>
             </FormSection>
 
-            <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-slate-700 pt-6">
-                <Button type="button" variant="outline" className="h-11 px-8 rounded-lg" onClick={() => navigate(-1)} disabled={isSubmitting}>
-                    Cancel
-                </Button>
-                <Button type="submit" className="h-11 px-8 rounded-lg" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="animate-spin h-4.5 w-4.5 mr-2" />}
-                    {mode === "create" ? "Create User" : "Save Changes"}
-                </Button>
-            </div>
+            <FormActions isSubmitting={isSubmitting} submitLabel={mode === "create" ? "Create User" : "Save Changes"} />
         </form>
     );
 };

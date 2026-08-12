@@ -16,13 +16,13 @@ const CreateUser = () => {
     const handleSubmit = async (values: UserFormValues) => {
         setIsSubmitting(true);
         try {
-            const { firstName, lastName, email, phone, password, roleId, gender, dateOfBirth, employmentType, department, designation, joiningDate, isRemote } = values;
+            const { firstName, lastName, email, phone, roleId, gender, dateOfBirth, employmentType, department, designation, joiningDate, isRemote } = values;
             await api.post("/users", {
-                firstName, lastName, email, phone, password, roleId, gender, dateOfBirth,
+                firstName, lastName, email, phone, roleId, gender, dateOfBirth,
                 employmentType, department, designation, joiningDate, isRemote,
                 companyId: actor?.roleName === "SUPER_ADMIN" ? values.companyId : undefined,
             });
-            toast.success("User created successfully.");
+            toast.success("Invite sent — the user will receive an email to set their password.");
             navigate("/users-list");
         } finally {
             setIsSubmitting(false);

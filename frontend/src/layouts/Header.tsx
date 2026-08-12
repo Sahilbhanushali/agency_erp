@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const Header = () => {
     return (
-        <div className="bg-sidebar border-b border-neutral-200 dark:border-slate-700 flex items-center justify-between sm:h-18 h-13 shrink-0 gap-2 md:px-6 px-4 py-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-18 sticky top-0 z-[2]">
+        <div className="bg-background/80 backdrop-blur-md border-b border-black/5 dark:border-white/5 shadow-[0_1px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_12px_rgba(0,0,0,0.2)] flex items-center justify-between sm:h-18 h-13 shrink-0 gap-2 md:px-6 px-4 py-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-18 sticky top-0 z-[2]">
             <div className="col-auto">
                 <div className="flex flex-wrap items-center gap-[16px]">
 

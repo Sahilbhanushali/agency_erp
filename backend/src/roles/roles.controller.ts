@@ -34,6 +34,7 @@ export class RolesController {
     summary:
       'List roles. SUPER_ADMIN may pass ?companyId; others are scoped to their own company.',
   })
+  @RequirePermissions('roles:read')
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
@@ -43,6 +44,7 @@ export class RolesController {
   }
 
   @ApiOperation({ summary: 'Get a role with its assigned permissions.' })
+  @RequirePermissions('roles:read')
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() actor: CurrentUserPayload) {
     return this.rolesService.findOne(id, actor);

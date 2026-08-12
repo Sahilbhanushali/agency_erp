@@ -2,7 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { hashToken } from '../common/utils/token.util';
 import { PrismaService } from '../prisma/prisma.service';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { LoginDto } from './dto/login.dto';
 
 interface RequestMeta {
@@ -44,6 +46,54 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
+    });
+
+    const tokens = await this.issueTokenPair(
+      user.id,
+      user.companyId,
+      user.roleId,
+      meta,
+    );
+
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        companyId: user.companyId,
+        roleId: user.roleId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      },
+    };
+  }
+
+  async acceptInvite(dto: AcceptInviteDto, meta: RequestMeta) {
+    const tokenHash = hashToken(dto.token);
+    const user = await this.prisma.user.findUnique({
+      where: { inviteTokenHash: tokenHash },
+    });
+
+    if (
+      !user ||
+      user.deletedAt ||
+      !user.inviteTokenExpiresAt ||
+      user.inviteTokenExpiresAt < new Date()
+    ) {
+      throw new UnauthorizedException('Invite link is invalid or expired');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        status: 'ACTIVE',
+        emailVerifiedAt: new Date(),
+        inviteTokenHash: null,
+        inviteTokenExpiresAt: null,
+        lastLoginAt: new Date(),
+      },
     });
 
     const tokens = await this.issueTokenPair(

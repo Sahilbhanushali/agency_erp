@@ -579,6 +579,8 @@ model User {
   passwordHash    String
   avatarUrl       String?
   status          UserStatus      @default(INVITED)
+  inviteTokenHash String?         @unique
+  inviteTokenExpiresAt DateTime?
   gender          Gender?
   dateOfBirth     DateTime?       @db.Date
   employmentType  EmploymentType?

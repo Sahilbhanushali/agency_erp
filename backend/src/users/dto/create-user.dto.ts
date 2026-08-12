@@ -9,7 +9,6 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  MinLength,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -31,11 +30,6 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   phone?: string;
-
-  @ApiProperty({ example: 'Jane@12345', minLength: 6 })
-  @IsNotEmpty()
-  @MinLength(6)
-  password: string;
 
   @ApiProperty({
     description:

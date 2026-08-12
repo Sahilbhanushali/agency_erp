@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
     Table,
     TableBody,
@@ -8,17 +7,15 @@ import {
     TableRow
 } from "@/components/ui/table";
 import type { User } from "@/types/user";
-import { Edit, Eye, Trash2 } from "lucide-react";
+import RowActions from "./RowActions";
+import { cellClass, headClass, rowClass } from "./table-styles";
 
 const STATUS_STYLES: Record<User["status"], string> = {
-    ACTIVE: "bg-green-600/15 text-green-600 border-green-600",
-    INACTIVE: "bg-gray-600/15 text-gray-600 dark:text-white border-gray-400",
-    SUSPENDED: "bg-red-600/15 text-red-600 border-red-600",
-    INVITED: "bg-yellow-500/15 text-yellow-600 border-yellow-500",
+    ACTIVE: "bg-success/15 text-success border-success/30",
+    INACTIVE: "bg-neutral-500/15 text-neutral-500 dark:text-neutral-300 border-neutral-400/30",
+    SUSPENDED: "bg-destructive/15 text-destructive border-destructive/30",
+    INVITED: "bg-warning/20 text-warning-foreground dark:text-warning border-warning/40",
 };
-
-const cellClass = "py-4 px-4 border-b text-center first:border-s last:border-e border-neutral-200 dark:border-slate-600";
-const headClass = "px-4 h-12 text-center bg-neutral-100 dark:bg-slate-700 border-t border-neutral-200 first:border-s last:border-e dark:border-slate-600";
 
 interface UsersListTableProps {
     users: User[];
@@ -31,57 +28,48 @@ export default function UsersListTable({ users, onView, onEdit, onDelete }: User
     return (
         <Table>
             <TableHeader>
-                <TableRow>
-                    <TableHead className={`${headClass} rounded-tl-lg w-[80px]`}>S.L</TableHead>
-                    <TableHead className={`${headClass} text-start`}>Name</TableHead>
+                <TableRow className="hover:bg-transparent">
+                    <TableHead className={`${headClass} rounded-tl-xl w-[64px]`}>#</TableHead>
+                    <TableHead className={headClass}>Name</TableHead>
                     <TableHead className={headClass}>Email</TableHead>
                     <TableHead className={headClass}>Department</TableHead>
                     <TableHead className={headClass}>Designation</TableHead>
                     <TableHead className={headClass}>Role</TableHead>
                     <TableHead className={headClass}>Status</TableHead>
-                    <TableHead className={`${headClass} rounded-tr-lg`}>Action</TableHead>
+                    <TableHead className={`${headClass} text-center rounded-tr-xl`}>Action</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {users.map((user, index) => {
-                    const isLast = index === users.length - 1;
-                    const rowCellClass = `${cellClass} ${isLast ? "rounded-bl-lg" : ""}`;
-                    return (
-                        <TableRow key={user.id} className="cursor-pointer" onClick={() => onView(user)}>
-                            <TableCell className={rowCellClass}>{String(index + 1).padStart(2, "0")}</TableCell>
-                            <TableCell className={`${rowCellClass} text-start`}>
-                                <div className="flex items-center gap-2">
-                                    <span className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary font-semibold shrink-0">
-                                        {user.firstName[0]?.toUpperCase()}
-                                    </span>
-                                    <span>{user.firstName} {user.lastName}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell className={rowCellClass}>{user.email}</TableCell>
-                            <TableCell className={rowCellClass}>{user.department || "—"}</TableCell>
-                            <TableCell className={rowCellClass}>{user.designation || "—"}</TableCell>
-                            <TableCell className={rowCellClass}>{user.role.displayName}</TableCell>
-                            <TableCell className={rowCellClass}>
-                                <span className={`px-3 py-1.5 rounded text-sm font-medium border ${STATUS_STYLES[user.status]}`}>
-                                    {user.status}
+                {users.map((user, index) => (
+                    <TableRow key={user.id} className={`cursor-pointer ${rowClass}`} onClick={() => onView(user)}>
+                        <TableCell className={`${cellClass} text-neutral-400`}>{String(index + 1).padStart(2, "0")}</TableCell>
+                        <TableCell className={cellClass}>
+                            <div className="flex items-center gap-3">
+                                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 text-primary font-semibold shrink-0">
+                                    {user.firstName[0]?.toUpperCase()}
                                 </span>
-                            </TableCell>
-                            <TableCell className={rowCellClass}>
-                                <div className="flex justify-center gap-2" onClick={(event) => event.stopPropagation()}>
-                                    <Button size="icon" variant="ghost" aria-label={`View ${user.firstName} ${user.lastName}`} className="rounded-[50%] text-blue-500 bg-primary/10" onClick={() => onView(user)}>
-                                        <Eye className="w-5 h-5" />
-                                    </Button>
-                                    <Button size="icon" variant="ghost" aria-label={`Edit ${user.firstName} ${user.lastName}`} className="rounded-[50%] text-green-600 bg-green-600/10" onClick={() => onEdit(user)}>
-                                        <Edit className="w-5 h-5" />
-                                    </Button>
-                                    <Button size="icon" variant="ghost" aria-label={`Delete ${user.firstName} ${user.lastName}`} className="rounded-[50%] text-red-500 bg-red-500/10" onClick={() => onDelete(user)}>
-                                        <Trash2 className="w-5 h-5" />
-                                    </Button>
-                                </div>
-                            </TableCell>
-                        </TableRow>
-                    );
-                })}
+                                <span className="font-medium text-neutral-900 dark:text-white">{user.firstName} {user.lastName}</span>
+                            </div>
+                        </TableCell>
+                        <TableCell className={cellClass}>{user.email}</TableCell>
+                        <TableCell className={cellClass}>{user.department || "—"}</TableCell>
+                        <TableCell className={cellClass}>{user.designation || "—"}</TableCell>
+                        <TableCell className={cellClass}>{user.role.displayName}</TableCell>
+                        <TableCell className={cellClass}>
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${STATUS_STYLES[user.status]}`}>
+                                {user.status}
+                            </span>
+                        </TableCell>
+                        <TableCell className={cellClass}>
+                            <RowActions
+                                label={`${user.firstName} ${user.lastName}`}
+                                onView={() => onView(user)}
+                                onEdit={() => onEdit(user)}
+                                onDelete={() => onDelete(user)}
+                            />
+                        </TableCell>
+                    </TableRow>
+                ))}
             </TableBody>
         </Table>
     );

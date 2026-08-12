@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { toDateOrUndefined } from '../common/utils/date.util';
 import {
   assertCompanyAccess,
   resolveTargetCompanyId,
@@ -36,8 +37,8 @@ export class ProjectsService {
         title: dto.title,
         description: dto.description,
         status: dto.status,
-        startDate: dto.startDate,
-        deadline: dto.deadline,
+        startDate: toDateOrUndefined(dto.startDate),
+        deadline: toDateOrUndefined(dto.deadline),
         budget: dto.budget,
         currency: dto.currency,
         clientApprovalEnabled: dto.clientApprovalEnabled,
@@ -86,8 +87,8 @@ export class ProjectsService {
         title: dto.title,
         description: dto.description,
         status: dto.status,
-        startDate: dto.startDate,
-        deadline: dto.deadline,
+        startDate: toDateOrUndefined(dto.startDate),
+        deadline: toDateOrUndefined(dto.deadline),
         budget: dto.budget,
         currency: dto.currency,
         clientApprovalEnabled: dto.clientApprovalEnabled,

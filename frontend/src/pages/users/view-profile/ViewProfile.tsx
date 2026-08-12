@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type { User } from "@/types/user";
+import { motion } from "framer-motion";
 import {
     ArrowLeft,
     Briefcase,
@@ -27,19 +28,20 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import BankDetailForm from "../components/BankDetailForm";
+import DocumentsPanel from "../components/DocumentsPanel";
 import EmployeeProfileForm from "../components/EmployeeProfileForm";
 import SkillsPanel from "../components/SkillsPanel";
 
 const STATUS_STYLES: Record<User["status"], string> = {
-    ACTIVE: "bg-green-600/15 text-green-600 border-green-600",
-    INACTIVE: "bg-gray-600/15 text-gray-600 dark:text-white border-gray-400",
-    SUSPENDED: "bg-red-600/15 text-red-600 border-red-600",
-    INVITED: "bg-yellow-500/15 text-yellow-600 border-yellow-500",
+    ACTIVE: "bg-success/15 text-success border-success/30",
+    INACTIVE: "bg-neutral-500/15 text-neutral-500 dark:text-neutral-300 border-neutral-400/30",
+    SUSPENDED: "bg-destructive/15 text-destructive border-destructive/30",
+    INVITED: "bg-warning/20 text-warning-foreground dark:text-warning border-warning/40",
 };
 
 const InfoTile = ({ icon: Icon, label, value }: { icon: typeof Phone; label: string; value: string }) => (
-    <div className="flex items-start gap-3 min-w-0">
-        <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
+    <div className="flex items-start gap-3 min-w-0 p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors">
+        <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary shrink-0">
             <Icon className="w-5 h-5" />
         </span>
         <div className="min-w-0">
@@ -109,31 +111,38 @@ const ViewProfile = () => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <div className="col-span-12 lg:col-span-4">
-                    <Card className="card !p-0 !gap-0 overflow-hidden">
-                        <div className="h-[100px] shrink-0 bg-gradient-to-r from-primary to-primary/40" />
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    className="col-span-12 lg:col-span-4 lg:sticky lg:top-24"
+                >
+                    <Card className="!p-0 !gap-0 overflow-hidden">
+                        <div className="h-24 shrink-0 bg-gradient-to-r from-primary to-[oklch(0.65_0.22_300)] relative">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_50%)]" />
+                        </div>
                         <CardContent className="text-center px-6 pb-6">
-                            <span className="flex items-center justify-center w-24 h-24 mx-auto -mt-12 rounded-full bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-800 shadow-sm text-primary text-3xl font-semibold relative z-[1]">
+                            <span className="flex items-center justify-center w-24 h-24 mx-auto -mt-12 rounded-full bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-800 shadow-lg shadow-black/10 text-primary text-3xl font-semibold relative z-[1]">
                                 {user.firstName[0]?.toUpperCase()}
                             </span>
                             <h5 className="mt-4 mb-1 truncate">{user.firstName} {user.lastName}</h5>
                             <p className="text-neutral-500 dark:text-neutral-300 mb-3 truncate">{user.role.displayName}</p>
-                            <span className={`inline-block px-3 py-1.5 rounded text-sm font-medium border ${STATUS_STYLES[user.status]}`}>
+                            <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-medium border ${STATUS_STYLES[user.status]}`}>
                                 {user.status}
                             </span>
 
-                            <div className="text-left mt-6 space-y-4">
+                            <div className="text-left mt-6 divide-y divide-neutral-100 dark:divide-slate-700">
                                 <InfoTile icon={Mail} label="Email" value={user.email} />
                                 <InfoTile icon={Phone} label="Phone" value={user.phone ?? ""} />
                             </div>
 
-                            <div className="flex items-center gap-3 mt-6">
-                                <Button className="flex-1 h-11 min-w-0" onClick={() => navigate(`/users-list/${user.id}/edit`)}>
+                            <div className="flex items-center gap-3 mt-6 pt-6 border-t border-neutral-100 dark:border-slate-700">
+                                <Button className="flex-1 h-11 min-w-0 rounded-lg" onClick={() => navigate(`/users-list/${user.id}/edit`)}>
                                     <Edit className="w-4 h-4 shrink-0" />
                                     <span className="truncate">Edit</span>
                                 </Button>
                                 {!isOwnProfile && (
-                                    <Button variant="destructive" className="flex-1 h-11 min-w-0" onClick={() => setConfirmDelete(true)}>
+                                    <Button variant="destructive" className="flex-1 h-11 min-w-0 rounded-lg" onClick={() => setConfirmDelete(true)}>
                                         <Trash2 className="w-4 h-4 shrink-0" />
                                         <span className="truncate">Delete</span>
                                     </Button>
@@ -141,24 +150,30 @@ const ViewProfile = () => {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
+                </motion.div>
 
-                <div className="col-span-12 lg:col-span-8">
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: 0.08, ease: "easeOut" }}
+                    className="col-span-12 lg:col-span-8"
+                >
                     <Tabs defaultValue="overview">
-                        <TabsList>
-                            <TabsTrigger value="overview">Overview</TabsTrigger>
-                            <TabsTrigger value="profile">Employee Profile</TabsTrigger>
-                            <TabsTrigger value="bank">Bank Details</TabsTrigger>
-                            <TabsTrigger value="skills">Skills</TabsTrigger>
+                        <TabsList className="h-11 p-1">
+                            <TabsTrigger value="overview" className="h-full px-4">Overview</TabsTrigger>
+                            <TabsTrigger value="profile" className="h-full px-4">Employee Profile</TabsTrigger>
+                            <TabsTrigger value="bank" className="h-full px-4">Bank Details</TabsTrigger>
+                            <TabsTrigger value="skills" className="h-full px-4">Skills</TabsTrigger>
+                            <TabsTrigger value="documents" className="h-full px-4">Documents</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="overview" className="space-y-6 mt-4">
-                            <Card className="card">
+                            <Card>
                                 <CardHeader>
                                     <CardTitle className="text-base">Employment Information</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
+                                    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
                                         <InfoTile icon={Shield} label="Role" value={user.role.displayName} />
                                         <InfoTile icon={Building2} label="Department" value={user.department ?? ""} />
                                         <InfoTile icon={Briefcase} label="Designation" value={user.designation ?? ""} />
@@ -174,12 +189,12 @@ const ViewProfile = () => {
                                 </CardContent>
                             </Card>
 
-                            <Card className="card">
+                            <Card>
                                 <CardHeader>
                                     <CardTitle className="text-base">Personal Information</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
+                                    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
                                         <InfoTile icon={UserIcon} label="Gender" value={user.gender?.replace(/_/g, " ") ?? ""} />
                                         <InfoTile icon={Cake} label="Date of Birth" value={user.dateOfBirth?.slice(0, 10) ?? ""} />
                                     </div>
@@ -188,7 +203,7 @@ const ViewProfile = () => {
                         </TabsContent>
 
                         <TabsContent value="profile" className="mt-4">
-                            <Card className="card">
+                            <Card>
                                 <CardContent>
                                     <EmployeeProfileForm user={user} onSaved={setUser} />
                                 </CardContent>
@@ -196,7 +211,7 @@ const ViewProfile = () => {
                         </TabsContent>
 
                         <TabsContent value="bank" className="mt-4">
-                            <Card className="card">
+                            <Card>
                                 <CardContent>
                                     <BankDetailForm user={user} onSaved={setUser} />
                                 </CardContent>
@@ -204,14 +219,22 @@ const ViewProfile = () => {
                         </TabsContent>
 
                         <TabsContent value="skills" className="mt-4">
-                            <Card className="card">
+                            <Card>
                                 <CardContent>
                                     <SkillsPanel user={user} onSaved={setUser} />
                                 </CardContent>
                             </Card>
                         </TabsContent>
+
+                        <TabsContent value="documents" className="mt-4">
+                            <Card className="!p-0 !block border-0 overflow-hidden">
+                                <CardContent className="p-6">
+                                    <DocumentsPanel userId={user.id} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
                     </Tabs>
-                </div>
+                </motion.div>
             </div>
 
             <ConfirmDialog

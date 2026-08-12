@@ -14,6 +14,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
@@ -69,10 +70,8 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
                         tooltip={item.title}
                         onClick={() => handleToggleGroup(item.title)}
                         className={cn(
-                          "flex items-center py-5.5 px-3 text-base text-[#4b5563] dark:text-white hover:bg-primary/10 dark:hover:bg-slate-700",
-                          isOpen
-                            ? "bg-primary text-white dark:bg-primary"
-                            : ""
+                          "flex items-center py-3 px-3 text-base text-sidebar-foreground/70 rounded-lg transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                          isOpen ? "bg-primary text-white hover:bg-primary" : ""
                         )}
                       >
                         {item.icon && (
@@ -101,10 +100,8 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
                               <SidebarMenuSubButton
                                 asChild
                                 className={cn(
-                                  "py-5.5 px-3 text-base text-[#4b5563] dark:text-white hover:bg-primary/10 active:bg-primary/10 dark:hover:bg-slate-700",
-                                  isSubActive
-                                    ? "bg-primary/10 font-bold dark:bg-slate-600"
-                                    : ""
+                                  "py-3 px-3 text-base text-sidebar-foreground/70 rounded-lg transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground active:bg-sidebar-accent",
+                                  isSubActive ? "bg-sidebar-accent font-semibold text-sidebar-foreground" : ""
                                 )}
                               >
                                 <NavLink
@@ -134,7 +131,10 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
           // Label
           if (item.label) {
             return (
-              <SidebarGroupLabel key={`label-${item.label}`}>
+              <SidebarGroupLabel
+                key={`label-${item.label}`}
+                className="text-[11px] font-semibold tracking-wider uppercase text-sidebar-foreground/40 mt-3 mb-1 px-3"
+              >
                 {item.label}
               </SidebarGroupLabel>
             );
@@ -151,14 +151,21 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
                   asChild
                   tooltip={item.title}
                   className={cn(
-                    "flex items-center py-5.5 px-3 text-base text-[#4b5563] dark:text-white hover:bg-primary/10 dark:hover:bg-slate-700",
-                    isMenuActive ? "bg-primary text-white dark:hover:bg-primary" : ""
+                    "relative flex items-center py-3 px-3 rounded-lg text-base text-sidebar-foreground/70 transition-colors duration-150",
+                    isMenuActive ? "text-white" : "hover:bg-sidebar-accent hover:text-sidebar-foreground"
                   )}
                   onClick={() => setOpenGroup(null)} // Close all dropdowns
                 >
                   <Link to={item.url} className="flex items-center gap-2">
+                    {isMenuActive && (
+                      <motion.span
+                        layoutId="sidebar-active-pill"
+                        className="absolute inset-0 rounded-lg bg-primary -z-10"
+                        transition={{ type: "spring", stiffness: 500, damping: 36 }}
+                      />
+                    )}
                     {item.icon && (
-                      <item.icon className="!w-4.5 !h-4.5" />
+                      <item.icon className="!w-4.5 !h-4.5 shrink-0" />
                     )}
                     <span>{item.title}</span>
                   </Link>

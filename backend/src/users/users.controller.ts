@@ -9,11 +9,13 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -183,6 +185,23 @@ export class UsersController {
     @CurrentUser() actor: CurrentUserPayload,
   ) {
     return this.usersService.listDocuments(id, actor);
+  }
+
+  @ApiOperation({ summary: "Download an employee's document file." })
+  @RequirePermissions('users:read')
+  @Get(':id/documents/:documentId/download')
+  async downloadDocument(
+    @Param('id') id: string,
+    @Param('documentId') documentId: string,
+    @CurrentUser() actor: CurrentUserPayload,
+    @Res() res: Response,
+  ) {
+    const file = await this.usersService.getDocumentFile(
+      id,
+      documentId,
+      actor,
+    );
+    res.download(file.absolutePath, file.originalName);
   }
 
   @ApiOperation({
