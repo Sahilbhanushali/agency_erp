@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
+import { gstNumberField, panNumberField, phoneField, websiteField } from "@/lib/zod";
 import type { Company as CompanyType, CompanyPayload } from "@/types/company";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -18,10 +19,10 @@ const schema = z.object({
     name: z.string().min(1, "Company name is required"),
     legalName: z.string().optional(),
     email: z.string().email("Enter a valid email address.").optional().or(z.literal("")),
-    phone: z.string().optional(),
-    website: z.string().optional(),
-    gstNumber: z.string().optional(),
-    panNumber: z.string().optional(),
+    phone: phoneField,
+    website: websiteField,
+    gstNumber: gstNumberField,
+    panNumber: panNumberField,
     line1: z.string().optional(),
     line2: z.string().optional(),
     city: z.string().optional(),
@@ -140,24 +141,28 @@ const Company = () => {
                                         {form.formState.errors.email && <FieldError errors={[form.formState.errors.email]} />}
                                     </Field>
 
-                                    <Field>
+                                    <Field data-invalid={!!form.formState.errors.phone}>
                                         <FieldLabel htmlFor="phone">Phone</FieldLabel>
-                                        <Input id="phone" className={inputClass} {...form.register("phone")} />
+                                        <Input id="phone" maxLength={10} inputMode="numeric" className={inputClass} {...form.register("phone")} />
+                                        {form.formState.errors.phone && <FieldError errors={[form.formState.errors.phone]} />}
                                     </Field>
 
-                                    <Field>
+                                    <Field data-invalid={!!form.formState.errors.website}>
                                         <FieldLabel htmlFor="website">Website</FieldLabel>
                                         <Input id="website" type="url" className={inputClass} {...form.register("website")} />
+                                        {form.formState.errors.website && <FieldError errors={[form.formState.errors.website]} />}
                                     </Field>
 
-                                    <Field>
+                                    <Field data-invalid={!!form.formState.errors.gstNumber}>
                                         <FieldLabel htmlFor="gstNumber">GST Number</FieldLabel>
                                         <Input id="gstNumber" className={inputClass} {...form.register("gstNumber")} />
+                                        {form.formState.errors.gstNumber && <FieldError errors={[form.formState.errors.gstNumber]} />}
                                     </Field>
 
-                                    <Field>
+                                    <Field data-invalid={!!form.formState.errors.panNumber}>
                                         <FieldLabel htmlFor="panNumber">PAN Number</FieldLabel>
                                         <Input id="panNumber" className={inputClass} {...form.register("panNumber")} />
+                                        {form.formState.errors.panNumber && <FieldError errors={[form.formState.errors.panNumber]} />}
                                     </Field>
                                 </div>
 

@@ -453,6 +453,7 @@ model Company {
   website             String?
   gstNumber           String?
   panNumber           String?
+  hsnNumber           String?
   bankName            String?
   bankAccountName     String?
   bankAccountNumber   String?

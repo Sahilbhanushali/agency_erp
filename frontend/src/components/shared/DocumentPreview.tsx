@@ -7,7 +7,6 @@ interface DocumentPreviewProps {
     kind: "Quotation" | "Invoice";
     documentNumber: string;
     documentDate?: string;
-    status: string;
     companyName: string;
     companyLogoUrl?: string;
     companyAddress?: string;
@@ -15,6 +14,8 @@ interface DocumentPreviewProps {
     companyPhone?: string;
     companyWebsite?: string;
     companyGstNumber?: string;
+    companyPanNumber?: string;
+    companyHsnNumber?: string;
     bankName?: string;
     bankAccountName?: string;
     bankAccountNumber?: string;
@@ -42,7 +43,6 @@ const DocumentPreview = ({
     kind,
     documentNumber,
     documentDate,
-    status,
     companyName,
     companyLogoUrl,
     companyAddress,
@@ -50,6 +50,8 @@ const DocumentPreview = ({
     companyPhone,
     companyWebsite,
     companyGstNumber,
+    companyPanNumber,
+    companyHsnNumber,
     bankName,
     bankAccountName,
     bankAccountNumber,
@@ -102,19 +104,18 @@ const DocumentPreview = ({
                                 <span className="ml-4 font-bold text-neutral-900">{dateValue}</span>
                             </p>
                         )}
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-neutral-300 text-neutral-500">
-                            {status}
-                        </span>
                     </div>
 
                     {hasBankInfo && (
-                        <div className="text-xs text-neutral-600 space-y-1 shrink-0 max-w-[220px]">
-                            <p className="font-semibold text-neutral-900 uppercase tracking-wide mb-1.5">Bank Info</p>
-                            {bankAccountName && <p><span className="font-semibold">Acc Name /</span> {bankAccountName}</p>}
-                            {bankName && <p><span className="font-semibold">Bank /</span> {bankName}</p>}
-                            {bankAccountNumber && <p><span className="font-semibold">Acc No /</span> {bankAccountNumber}</p>}
-                            {bankIfsc && <p><span className="font-semibold">IFSC /</span> {bankIfsc}</p>}
-                            {companyGstNumber && <p className="pt-1"><span className="font-semibold">GST No.:</span> {companyGstNumber}</p>}
+                        <div className="text-xs text-neutral-900 space-y-1 shrink-0 max-w-[240px] font-bold uppercase">
+                            <p className="tracking-wide mb-1.5">Bank Info</p>
+                            {bankAccountName && <p>Acc Name / {bankAccountName}</p>}
+                            {bankName && <p>Bank / {bankName}</p>}
+                            {bankAccountNumber && <p>Acc No / {bankAccountNumber}</p>}
+                            {bankIfsc && <p>IFSC / {bankIfsc}</p>}
+                            {companyPanNumber && <p>PAN No. {companyPanNumber}</p>}
+                            {companyGstNumber && <p className="pt-1">GST No.: {companyGstNumber}</p>}
+                            {companyHsnNumber && <p>HSN No.: {companyHsnNumber}</p>}
                         </div>
                     )}
                 </div>
@@ -164,8 +165,8 @@ const DocumentPreview = ({
                     </tbody>
                 </table>
 
-                <div className="flex justify-between items-start gap-6 mb-8 border-t border-neutral-800 pt-3">
-                    <p className="text-xs font-semibold text-neutral-700 max-w-[380px] pt-1.5 uppercase">
+                <div className="flex justify-between items-end gap-6 mb-8 border-t border-neutral-800 pt-3">
+                    <p className="text-xs font-semibold text-neutral-700 max-w-[380px] uppercase">
                         {amountInWords}
                     </p>
                     <div className="w-64 space-y-1.5 text-sm shrink-0">

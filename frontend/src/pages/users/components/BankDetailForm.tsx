@@ -11,10 +11,18 @@ import { toast } from "react-toastify";
 import * as z from "zod";
 
 const schema = z.object({
-    accountHolderName: z.string().min(1, "Account holder name is required"),
-    accountNumber: z.string().min(1, "Account number is required"),
-    bankName: z.string().min(1, "Bank name is required"),
-    ifscCode: z.string().min(1, "IFSC code is required"),
+    accountHolderName: z.string().trim().min(1, "Account holder name is required"),
+    accountNumber: z
+        .string()
+        .trim()
+        .min(1, "Account number is required")
+        .regex(/^[0-9]{6,20}$/, "Account number must be 6-20 digits"),
+    bankName: z.string().trim().min(1, "Bank name is required"),
+    ifscCode: z
+        .string()
+        .trim()
+        .min(1, "IFSC code is required")
+        .regex(/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/, "Enter a valid 11-character IFSC code"),
     branchName: z.string().optional(),
 });
 

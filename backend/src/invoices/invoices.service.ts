@@ -204,6 +204,11 @@ export class InvoicesService {
     actor: CurrentUserPayload,
   ) {
     const invoice = await this.findOne(invoiceId, actor);
+    if (dto.amount > invoice.balanceDue) {
+      throw new BadRequestException(
+        `Amount cannot exceed the balance due (${invoice.balanceDue.toFixed(2)})`,
+      );
+    }
 
     await this.prisma.payment.create({
       data: {

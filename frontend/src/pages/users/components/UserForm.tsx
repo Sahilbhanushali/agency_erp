@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
+import { phoneField } from "@/lib/zod";
 import type { Role, User } from "@/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState, type ReactNode } from "react";
@@ -23,7 +24,7 @@ const baseFields = {
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Enter a valid email address."),
-    phone: z.string().optional(),
+    phone: phoneField,
     roleId: z.string().min(1, "Role is required"),
     companyId: z.string().optional(),
     gender: z.enum(["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"]).optional(),
@@ -141,9 +142,10 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
                     {form.formState.errors.email && <FieldError errors={[form.formState.errors.email]} />}
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.phone}>
                     <FieldLabel htmlFor="phone">Phone</FieldLabel>
-                    <Input id="phone" className={inputClass} {...form.register("phone")} />
+                    <Input id="phone" maxLength={10} inputMode="numeric" className={inputClass} {...form.register("phone")} />
+                    {form.formState.errors.phone && <FieldError errors={[form.formState.errors.phone]} />}
                 </Field>
             </FormSection>
 

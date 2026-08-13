@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
+import { gstNumberField, panNumberField, phoneField, websiteField } from "@/lib/zod";
 import type { Client } from "@/types/client";
 import type { Company } from "@/types/company";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,10 +26,10 @@ const schema = z.object({
     email: z.string().email("Enter a valid email address."),
     companyId: z.string().optional(),
     industry: z.string().optional(),
-    website: z.string().optional(),
-    phone: z.string().optional(),
-    gstNumber: z.string().optional(),
-    panNumber: z.string().optional(),
+    website: websiteField,
+    phone: phoneField,
+    gstNumber: gstNumberField,
+    panNumber: panNumberField,
     accountManagerId: z.string().optional(),
     note: z.string().optional(),
     isActive: z.boolean().optional(),
@@ -125,9 +126,10 @@ const ClientForm = ({ mode, initialValues, onSubmit, isSubmitting }: ClientFormP
                     {form.formState.errors.email && <FieldError errors={[form.formState.errors.email]} />}
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.phone}>
                     <FieldLabel htmlFor="phone">Phone</FieldLabel>
-                    <Input id="phone" className={inputClass} {...form.register("phone")} />
+                    <Input id="phone" maxLength={10} inputMode="numeric" className={inputClass} {...form.register("phone")} />
+                    {form.formState.errors.phone && <FieldError errors={[form.formState.errors.phone]} />}
                 </Field>
 
                 <Field>
@@ -135,9 +137,10 @@ const ClientForm = ({ mode, initialValues, onSubmit, isSubmitting }: ClientFormP
                     <Input id="industry" className={inputClass} {...form.register("industry")} />
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.website}>
                     <FieldLabel htmlFor="website">Website</FieldLabel>
                     <Input id="website" className={inputClass} {...form.register("website")} />
+                    {form.formState.errors.website && <FieldError errors={[form.formState.errors.website]} />}
                 </Field>
 
                 {isSuperAdmin && (
@@ -166,14 +169,16 @@ const ClientForm = ({ mode, initialValues, onSubmit, isSubmitting }: ClientFormP
             </FormSection>
 
             <FormSection title="Account Details" description="Compliance and internal ownership.">
-                <Field>
+                <Field data-invalid={!!form.formState.errors.gstNumber}>
                     <FieldLabel htmlFor="gstNumber">GST Number</FieldLabel>
                     <Input id="gstNumber" className={inputClass} {...form.register("gstNumber")} />
+                    {form.formState.errors.gstNumber && <FieldError errors={[form.formState.errors.gstNumber]} />}
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.panNumber}>
                     <FieldLabel htmlFor="panNumber">PAN Number</FieldLabel>
                     <Input id="panNumber" className={inputClass} {...form.register("panNumber")} />
+                    {form.formState.errors.panNumber && <FieldError errors={[form.formState.errors.panNumber]} />}
                 </Field>
 
                 <Field>

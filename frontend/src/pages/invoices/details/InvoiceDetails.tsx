@@ -164,13 +164,14 @@ const InvoiceDetails = () => {
                         kind="Invoice"
                         documentNumber={invoice.invoiceNumber}
                         documentDate={invoice.issueDate.slice(0, 10)}
-                        status={invoice.status}
                         companyName={companyDetails?.name ?? ""}
                         companyLogoUrl={companyDetails?.logoUrl ?? undefined}
                         companyEmail={companyDetails?.email ?? undefined}
                         companyPhone={companyDetails?.phone ?? undefined}
                         companyWebsite={companyDetails?.website ?? undefined}
                         companyGstNumber={companyDetails?.gstNumber ?? undefined}
+                        companyPanNumber={companyDetails?.panNumber ?? undefined}
+                        companyHsnNumber={companyDetails?.hsnNumber ?? undefined}
                         bankName={companyDetails?.bankName ?? undefined}
                         bankAccountName={companyDetails?.bankAccountName ?? undefined}
                         bankAccountNumber={companyDetails?.bankAccountNumber ?? undefined}
