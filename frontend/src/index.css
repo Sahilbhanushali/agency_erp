@@ -408,23 +408,3 @@
     rgba(253, 164, 58, 0.15) 100%
   );
 }
-
-/* Quotation/Invoice "Print / Save as PDF" — isolates #doc-print-area, hiding the rest of the app chrome. */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #doc-print-area,
-  #doc-print-area * {
-    visibility: visible;
-  }
-  #doc-print-area {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    box-shadow: none;
-    border: none;
-  }
-}

@@ -12,9 +12,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
+import { exportElementToPdf } from "@/lib/exportPdf";
 import type { Client } from "@/types/client";
 import type { Company } from "@/types/company";
-import type { CreateInvoicePayload, Invoice, InvoiceStatus, UpdateInvoicePayload } from "@/types/invoice";
+import type { CreateInvoicePayload, Invoice, InvoiceStatus, TaxType, UpdateInvoicePayload } from "@/types/invoice";
 import type { Project } from "@/types/project";
 import { ArrowLeft, Download, Loader2, PenLine, Save } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -34,6 +35,7 @@ const InvoiceBuilder = () => {
 
     const [isLoading, setIsLoading] = useState(isEdit);
     const [isSaving, setIsSaving] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const [invoice, setInvoice] = useState<Invoice | null>(null);
 
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -47,6 +49,7 @@ const InvoiceBuilder = () => {
     const [currency, setCurrency] = useState("INR");
     const [discountPercent, setDiscountPercent] = useState(0);
     const [taxPercent, setTaxPercent] = useState(18);
+    const [taxType, setTaxType] = useState<TaxType>("CGST_SGST");
     const [issueDate, setIssueDate] = useState<string | undefined>(new Date().toISOString().slice(0, 10));
     const [dueDate, setDueDate] = useState<string | undefined>(undefined);
     const [terms, setTerms] = useState("");
@@ -106,6 +109,7 @@ const InvoiceBuilder = () => {
                 setCurrency(data.currency);
                 setDiscountPercent(Number(data.discountPercent));
                 setTaxPercent(Number(data.taxPercent));
+                setTaxType(data.taxType);
                 setIssueDate(data.issueDate.slice(0, 10));
                 setDueDate(data.dueDate.slice(0, 10));
                 setTerms(data.terms ?? "");
@@ -131,6 +135,17 @@ const InvoiceBuilder = () => {
 
     const selectedClient = clients.find((client) => client.id === clientId);
 
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            await exportElementToPdf("doc-print-area", invoiceNumber || "invoice");
+        } catch {
+            toast.error("Failed to export PDF.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const handleSave = async () => {
         if (!clientId || !title.trim() || !issueDate || !dueDate) {
             toast.error("Client, title, issue date and due date are required.");
@@ -148,7 +163,7 @@ const InvoiceBuilder = () => {
 
             if (isEdit && id) {
                 const payload: UpdateInvoicePayload = {
-                    projectId, title, currency, discountPercent, taxPercent, issueDate, dueDate,
+                    projectId, title, currency, discountPercent, taxPercent, taxType, issueDate, dueDate,
                     terms: terms || undefined, note: note || undefined, portalVisible, signatureUrl, status, lineItems,
                 };
                 await api.patch(`/invoices/${id}`, payload);
@@ -156,7 +171,7 @@ const InvoiceBuilder = () => {
             } else {
                 const payload: CreateInvoicePayload = {
                     clientId, projectId, companyId: targetCompanyId, title, currency, discountPercent,
-                    taxPercent, issueDate, dueDate, terms: terms || undefined, note: note || undefined,
+                    taxPercent, taxType, issueDate, dueDate, terms: terms || undefined, note: note || undefined,
                     portalVisible, signatureUrl, lineItems,
                 };
                 const created = await api.post<Invoice>("/invoices", payload);
@@ -195,8 +210,8 @@ const InvoiceBuilder = () => {
                     </h4>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button type="button" variant="outline" className="h-11 rounded-lg" onClick={() => window.print()}>
-                        <Download className="w-4 h-4" />
+                    <Button type="button" variant="outline" className="h-11 rounded-lg" onClick={handleExport} disabled={isExporting}>
+                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                         Export PDF
                     </Button>
                     <Button type="button" className="h-11 rounded-lg" onClick={handleSave} disabled={isSaving}>
@@ -277,6 +292,19 @@ const InvoiceBuilder = () => {
                                     <Input id="taxPercent" type="number" min={0} max={100} className="h-11 rounded-lg" value={taxPercent} onChange={(event) => setTaxPercent(Number(event.target.value))} />
                                 </Field>
                             </div>
+
+                            <Field>
+                                <FieldLabel>GST Type</FieldLabel>
+                                <Select value={taxType} onValueChange={(value) => setTaxType(value as TaxType)}>
+                                    <SelectTrigger className="h-11 rounded-lg !w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="CGST_SGST">CGST + SGST (Intra-state)</SelectItem>
+                                        <SelectItem value="IGST">IGST (Inter-state)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </Field>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <Field>
@@ -389,6 +417,7 @@ const InvoiceBuilder = () => {
                             currency={currency}
                             discountPercent={discountPercent}
                             taxPercent={taxPercent}
+                            taxType={taxType}
                             terms={terms}
                             note={note}
                             signatureUrl={signatureUrl}

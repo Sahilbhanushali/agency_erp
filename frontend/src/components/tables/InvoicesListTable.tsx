@@ -24,11 +24,12 @@ const STATUS_STYLES: Record<InvoiceStatus, string> = {
 
 interface InvoicesListTableProps {
     invoices: Invoice[];
+    onView: (invoice: Invoice) => void;
     onEdit: (invoice: Invoice) => void;
     onDelete: (invoice: Invoice) => void;
 }
 
-export default function InvoicesListTable({ invoices, onEdit, onDelete }: InvoicesListTableProps) {
+export default function InvoicesListTable({ invoices, onView, onEdit, onDelete }: InvoicesListTableProps) {
     return (
         <Table>
             <TableHeader>
@@ -45,7 +46,7 @@ export default function InvoicesListTable({ invoices, onEdit, onDelete }: Invoic
             </TableHeader>
             <TableBody>
                 {invoices.map((invoice) => (
-                    <TableRow key={invoice.id} className={`cursor-pointer ${rowClass}`} onClick={() => onEdit(invoice)}>
+                    <TableRow key={invoice.id} className={`cursor-pointer ${rowClass}`} onClick={() => onView(invoice)}>
                         <TableCell className={`${cellClass} font-medium text-neutral-900 dark:text-white`}>{invoice.invoiceNumber}</TableCell>
                         <TableCell className={cellClass}>{invoice.title}</TableCell>
                         <TableCell className={cellClass}>{invoice.client.name}</TableCell>

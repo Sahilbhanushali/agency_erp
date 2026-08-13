@@ -151,7 +151,8 @@ const QuotationsList = () => {
                         <>
                             <QuotationsListTable
                                 quotations={paginatedQuotations}
-                                onEdit={(quotation) => navigate(`/quotations-list/${quotation.id}`)}
+                                onView={(quotation) => navigate(`/quotations-list/${quotation.id}`)}
+                                onEdit={(quotation) => navigate(`/quotations-list/${quotation.id}/edit`)}
                                 onDelete={setQuotationToDelete}
                             />
 

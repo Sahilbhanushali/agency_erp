@@ -302,7 +302,8 @@ const ClientDetails = () => {
                                     ) : (
                                         <QuotationsListTable
                                             quotations={quotations}
-                                            onEdit={(quotation) => navigate(`/quotations-list/${quotation.id}`)}
+                                            onView={(quotation) => navigate(`/quotations-list/${quotation.id}`)}
+                                            onEdit={(quotation) => navigate(`/quotations-list/${quotation.id}/edit`)}
                                             onDelete={setQuotationToDelete}
                                         />
                                     )}
@@ -331,7 +332,8 @@ const ClientDetails = () => {
                                     ) : (
                                         <InvoicesListTable
                                             invoices={invoices}
-                                            onEdit={(invoice) => navigate(`/invoices-list/${invoice.id}`)}
+                                            onView={(invoice) => navigate(`/invoices-list/${invoice.id}`)}
+                                            onEdit={(invoice) => navigate(`/invoices-list/${invoice.id}/edit`)}
                                             onDelete={setInvoiceToDelete}
                                         />
                                     )}

@@ -151,7 +151,8 @@ const InvoicesList = () => {
                         <>
                             <InvoicesListTable
                                 invoices={paginatedInvoices}
-                                onEdit={(invoice) => navigate(`/invoices-list/${invoice.id}`)}
+                                onView={(invoice) => navigate(`/invoices-list/${invoice.id}`)}
+                                onEdit={(invoice) => navigate(`/invoices-list/${invoice.id}/edit`)}
                                 onDelete={setInvoiceToDelete}
                             />
 

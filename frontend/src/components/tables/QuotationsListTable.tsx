@@ -22,11 +22,12 @@ const STATUS_STYLES: Record<QuotationStatus, string> = {
 
 interface QuotationsListTableProps {
     quotations: Quotation[];
+    onView: (quotation: Quotation) => void;
     onEdit: (quotation: Quotation) => void;
     onDelete: (quotation: Quotation) => void;
 }
 
-export default function QuotationsListTable({ quotations, onEdit, onDelete }: QuotationsListTableProps) {
+export default function QuotationsListTable({ quotations, onView, onEdit, onDelete }: QuotationsListTableProps) {
     return (
         <Table>
             <TableHeader>
@@ -42,7 +43,7 @@ export default function QuotationsListTable({ quotations, onEdit, onDelete }: Qu
             </TableHeader>
             <TableBody>
                 {quotations.map((quotation) => (
-                    <TableRow key={quotation.id} className={`cursor-pointer ${rowClass}`} onClick={() => onEdit(quotation)}>
+                    <TableRow key={quotation.id} className={`cursor-pointer ${rowClass}`} onClick={() => onView(quotation)}>
                         <TableCell className={`${cellClass} font-medium text-neutral-900 dark:text-white`}>{quotation.quotationNumber}</TableCell>
                         <TableCell className={cellClass}>{quotation.title}</TableCell>
                         <TableCell className={cellClass}>{quotation.client.name}</TableCell>

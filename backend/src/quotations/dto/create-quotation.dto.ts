@@ -1,10 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { TaxType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -62,6 +64,11 @@ export class CreateQuotationDto {
   @Min(0)
   @Max(100)
   taxPercent?: number;
+
+  @ApiPropertyOptional({ enum: TaxType, default: TaxType.CGST_SGST, description: 'CGST_SGST for intra-state, IGST for inter-state.' })
+  @IsOptional()
+  @IsEnum(TaxType)
+  taxType?: TaxType;
 
   @ApiProperty({ example: '2026-03-01' })
   @IsDateString()

@@ -1,6 +1,8 @@
 import { numberToIndianWords } from "@/lib/numberToWords";
 import type { EditableLine } from "./LineItemsEditor";
 
+export type DocumentTaxType = "CGST_SGST" | "IGST";
+
 interface DocumentPreviewProps {
     kind: "Quotation" | "Invoice";
     documentNumber: string;
@@ -27,6 +29,7 @@ interface DocumentPreviewProps {
     currency: string;
     discountPercent: number;
     taxPercent: number;
+    taxType: DocumentTaxType;
     terms?: string;
     note?: string;
     signatureUrl?: string;
@@ -61,6 +64,7 @@ const DocumentPreview = ({
     currency,
     discountPercent,
     taxPercent,
+    taxType,
     terms,
     note,
     signatureUrl,
@@ -71,7 +75,8 @@ const DocumentPreview = ({
     const halfTaxPercent = taxPercent / 2;
     const sgstAmount = taxableAmount * (halfTaxPercent / 100);
     const cgstAmount = taxableAmount * (halfTaxPercent / 100);
-    const total = taxableAmount + sgstAmount + cgstAmount;
+    const igstAmount = taxableAmount * (taxPercent / 100);
+    const total = taxType === "IGST" ? taxableAmount + igstAmount : taxableAmount + sgstAmount + cgstAmount;
     const currencySymbol = currency === "INR" ? "₹." : `${currency} `;
     const hasBankInfo = bankName || bankAccountName || bankAccountNumber || bankIfsc;
     const amountInWords = numberToIndianWords(total, "").replace(/\s+/g, " ").trim();
@@ -175,16 +180,23 @@ const DocumentPreview = ({
                             </div>
                         )}
                         {taxPercent > 0 && (
-                            <>
+                            taxType === "IGST" ? (
                                 <div className="flex justify-between">
-                                    <span className="text-neutral-600">{halfTaxPercent}% SGST {currencySymbol}</span>
-                                    <span className="font-medium">{formatAmount(sgstAmount)}/-</span>
+                                    <span className="text-neutral-600">{taxPercent}% IGST {currencySymbol}</span>
+                                    <span className="font-medium">{formatAmount(igstAmount)}/-</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-neutral-600">{halfTaxPercent}% CGST {currencySymbol}</span>
-                                    <span className="font-medium">{formatAmount(cgstAmount)}/-</span>
-                                </div>
-                            </>
+                            ) : (
+                                <>
+                                    <div className="flex justify-between">
+                                        <span className="text-neutral-600">{halfTaxPercent}% SGST {currencySymbol}</span>
+                                        <span className="font-medium">{formatAmount(sgstAmount)}/-</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-neutral-600">{halfTaxPercent}% CGST {currencySymbol}</span>
+                                        <span className="font-medium">{formatAmount(cgstAmount)}/-</span>
+                                    </div>
+                                </>
+                            )
                         )}
                         <div className="flex justify-between text-base font-bold text-neutral-900 pt-1.5 border-t border-neutral-300">
                             <span>G. Total {currencySymbol}</span>

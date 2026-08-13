@@ -12,10 +12,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
+import { exportElementToPdf } from "@/lib/exportPdf";
 import type { Client } from "@/types/client";
 import type { Company } from "@/types/company";
 import type { Project } from "@/types/project";
-import type { CreateQuotationPayload, Quotation, QuotationStatus, UpdateQuotationPayload } from "@/types/quotation";
+import type { CreateQuotationPayload, Quotation, QuotationStatus, TaxType, UpdateQuotationPayload } from "@/types/quotation";
 import { ArrowLeft, Download, Loader2, PenLine, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -33,6 +34,7 @@ const QuotationBuilder = () => {
 
     const [isLoading, setIsLoading] = useState(isEdit);
     const [isSaving, setIsSaving] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const [companies, setCompanies] = useState<Company[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
@@ -46,6 +48,7 @@ const QuotationBuilder = () => {
     const [currency, setCurrency] = useState("INR");
     const [discountPercent, setDiscountPercent] = useState(0);
     const [taxPercent, setTaxPercent] = useState(18);
+    const [taxType, setTaxType] = useState<TaxType>("CGST_SGST");
     const [validUntil, setValidUntil] = useState<string | undefined>(undefined);
     const [terms, setTerms] = useState("");
     const [note, setNote] = useState("");
@@ -105,6 +108,7 @@ const QuotationBuilder = () => {
                 setCurrency(quotation.currency);
                 setDiscountPercent(Number(quotation.discountPercent));
                 setTaxPercent(Number(quotation.taxPercent));
+                setTaxType(quotation.taxType);
                 setValidUntil(quotation.validUntil.slice(0, 10));
                 setTerms(quotation.terms ?? "");
                 setNote(quotation.note ?? "");
@@ -130,6 +134,17 @@ const QuotationBuilder = () => {
 
     const selectedClient = clients.find((client) => client.id === clientId);
 
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            await exportElementToPdf("doc-print-area", quotationNumber || "quotation");
+        } catch {
+            toast.error("Failed to export PDF.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const handleSave = async () => {
         if (!clientId || !title.trim() || !validUntil) {
             toast.error("Client, title and valid-until date are required.");
@@ -148,7 +163,7 @@ const QuotationBuilder = () => {
             if (isEdit && id) {
                 const payload: UpdateQuotationPayload = {
                     projectId, title, description: description || undefined, currency,
-                    discountPercent, taxPercent, validUntil, terms: terms || undefined,
+                    discountPercent, taxPercent, taxType, validUntil, terms: terms || undefined,
                     note: note || undefined, portalVisible, signatureUrl, status, lineItems,
                 };
                 await api.patch(`/quotations/${id}`, payload);
@@ -157,7 +172,7 @@ const QuotationBuilder = () => {
                 const payload: CreateQuotationPayload = {
                     clientId, projectId, companyId: targetCompanyId, title,
                     description: description || undefined, currency, discountPercent,
-                    taxPercent, validUntil, terms: terms || undefined, note: note || undefined,
+                    taxPercent, taxType, validUntil, terms: terms || undefined, note: note || undefined,
                     portalVisible, signatureUrl, lineItems,
                 };
                 const created = await api.post<Quotation>("/quotations", payload);
@@ -196,8 +211,8 @@ const QuotationBuilder = () => {
                     </h4>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button type="button" variant="outline" className="h-11 rounded-lg" onClick={() => window.print()}>
-                        <Download className="w-4 h-4" />
+                    <Button type="button" variant="outline" className="h-11 rounded-lg" onClick={handleExport} disabled={isExporting}>
+                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                         Export PDF
                     </Button>
                     <Button type="button" className="h-11 rounded-lg" onClick={handleSave} disabled={isSaving}>
@@ -283,6 +298,19 @@ const QuotationBuilder = () => {
                                     <Input id="taxPercent" type="number" min={0} max={100} className="h-11 rounded-lg" value={taxPercent} onChange={(event) => setTaxPercent(Number(event.target.value))} />
                                 </Field>
                             </div>
+
+                            <Field>
+                                <FieldLabel>GST Type</FieldLabel>
+                                <Select value={taxType} onValueChange={(value) => setTaxType(value as TaxType)}>
+                                    <SelectTrigger className="h-11 rounded-lg !w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="CGST_SGST">CGST + SGST (Intra-state)</SelectItem>
+                                        <SelectItem value="IGST">IGST (Inter-state)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </Field>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <Field>
@@ -379,6 +407,7 @@ const QuotationBuilder = () => {
                             currency={currency}
                             discountPercent={discountPercent}
                             taxPercent={taxPercent}
+                            taxType={taxType}
                             terms={terms}
                             note={note}
                             signatureUrl={signatureUrl}
