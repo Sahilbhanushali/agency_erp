@@ -188,6 +188,11 @@ enum LeaveStatus {
 }
 
 // ── Finance ──
+enum TaxType {
+  CGST_SGST
+  IGST
+}
+
 enum QuotationStatus {
   DRAFT
   SENT
@@ -448,6 +453,7 @@ model Company {
   website             String?
   gstNumber           String?
   panNumber           String?
+  hsnNumber           String?
   bankName            String?
   bankAccountName     String?
   bankAccountNumber   String?
@@ -1730,6 +1736,7 @@ model Quotation {
   subTotal        Decimal         @db.Decimal(14, 2)
   discountPercent Decimal         @default(0) @db.Decimal(5, 2)
   taxPercent      Decimal         @default(18) @db.Decimal(5, 2)
+  taxType         TaxType         @default(CGST_SGST)
   totalAmount     Decimal         @db.Decimal(14, 2)
   validUntil      DateTime        @db.Date
   terms           String?         @db.Text
@@ -1802,6 +1809,7 @@ model Invoice {
   subTotal        Decimal       @db.Decimal(14, 2)
   discountPercent Decimal       @default(0) @db.Decimal(5, 2)
   taxPercent      Decimal       @default(18) @db.Decimal(5, 2)
+  taxType         TaxType       @default(CGST_SGST)
   totalAmount     Decimal       @db.Decimal(14, 2)
   issueDate       DateTime      @db.Date
   dueDate         DateTime      @db.Date

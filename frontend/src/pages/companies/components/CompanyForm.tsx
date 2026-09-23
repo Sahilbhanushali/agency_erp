@@ -4,6 +4,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
+import { bankAccountNumberField, gstNumberField, ifscField, panNumberField, phoneField, websiteField } from "@/lib/zod";
 import type { Company } from "@/types/company";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Image as ImageIcon } from "lucide-react";
@@ -16,14 +17,15 @@ const schema = z.object({
     legalName: z.string().optional(),
     logoUrl: z.string().optional(),
     email: z.string().email("Enter a valid email address.").optional().or(z.literal("")),
-    phone: z.string().optional(),
-    website: z.string().optional(),
-    gstNumber: z.string().optional(),
-    panNumber: z.string().optional(),
+    phone: phoneField,
+    website: websiteField,
+    gstNumber: gstNumberField,
+    panNumber: panNumberField,
+    hsnNumber: z.string().optional(),
     bankName: z.string().optional(),
     bankAccountName: z.string().optional(),
-    bankAccountNumber: z.string().optional(),
-    bankIfsc: z.string().optional(),
+    bankAccountNumber: bankAccountNumberField,
+    bankIfsc: ifscField,
     currency: z.string().optional(),
     timezone: z.string().optional(),
     isActive: z.boolean().optional(),
@@ -59,6 +61,7 @@ const CompanyForm = ({ mode, initialValues, onSubmit, isSubmitting }: CompanyFor
             website: initialValues?.website ?? "",
             gstNumber: initialValues?.gstNumber ?? "",
             panNumber: initialValues?.panNumber ?? "",
+            hsnNumber: initialValues?.hsnNumber ?? "",
             bankName: initialValues?.bankName ?? "",
             bankAccountName: initialValues?.bankAccountName ?? "",
             bankAccountNumber: initialValues?.bankAccountNumber ?? "",
@@ -114,24 +117,33 @@ const CompanyForm = ({ mode, initialValues, onSubmit, isSubmitting }: CompanyFor
                     {form.formState.errors.email && <FieldError errors={[form.formState.errors.email]} />}
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.phone}>
                     <FieldLabel htmlFor="phone">Phone</FieldLabel>
-                    <Input id="phone" className={inputClass} {...form.register("phone")} />
+                    <Input id="phone" maxLength={10} inputMode="numeric" className={inputClass} {...form.register("phone")} />
+                    {form.formState.errors.phone && <FieldError errors={[form.formState.errors.phone]} />}
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.website}>
                     <FieldLabel htmlFor="website">Website</FieldLabel>
                     <Input id="website" type="url" className={inputClass} {...form.register("website")} />
+                    {form.formState.errors.website && <FieldError errors={[form.formState.errors.website]} />}
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.gstNumber}>
                     <FieldLabel htmlFor="gstNumber">GST Number</FieldLabel>
                     <Input id="gstNumber" className={inputClass} {...form.register("gstNumber")} />
+                    {form.formState.errors.gstNumber && <FieldError errors={[form.formState.errors.gstNumber]} />}
+                </Field>
+
+                <Field data-invalid={!!form.formState.errors.panNumber}>
+                    <FieldLabel htmlFor="panNumber">PAN Number</FieldLabel>
+                    <Input id="panNumber" className={inputClass} {...form.register("panNumber")} />
+                    {form.formState.errors.panNumber && <FieldError errors={[form.formState.errors.panNumber]} />}
                 </Field>
 
                 <Field>
-                    <FieldLabel htmlFor="panNumber">PAN Number</FieldLabel>
-                    <Input id="panNumber" className={inputClass} {...form.register("panNumber")} />
+                    <FieldLabel htmlFor="hsnNumber">HSN/SAC Number</FieldLabel>
+                    <Input id="hsnNumber" placeholder="998314 | 998391" className={inputClass} {...form.register("hsnNumber")} />
                 </Field>
 
                 <Field>

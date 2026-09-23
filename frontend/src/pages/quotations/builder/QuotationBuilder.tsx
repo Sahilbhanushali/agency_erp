@@ -5,23 +5,48 @@ import ImageUploadButton from "@/components/shared/ImageUploadButton";
 import LineItemsEditor, { emptyLine, type EditableLine } from "@/components/shared/LineItemsEditor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
+import { exportElementToPdf } from "@/lib/exportPdf";
 import type { Client } from "@/types/client";
 import type { Company } from "@/types/company";
 import type { Project } from "@/types/project";
-import type { CreateQuotationPayload, Quotation, QuotationStatus, UpdateQuotationPayload } from "@/types/quotation";
+import type { CreateQuotationPayload, Quotation, QuotationStatus, TaxType, UpdateQuotationPayload } from "@/types/quotation";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Download, Loader2, PenLine, Save } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import * as z from "zod";
 
-const STATUS_OPTIONS: QuotationStatus[] = ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED", "CONVERTED"];
+const STATUS_OPTIONS = ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED", "CONVERTED"] as const;
+
+const quotationSchema = z.object({
+    companyId: z.string().optional(),
+    clientId: z.string().min(1, "Client is required"),
+    projectId: z.string().optional(),
+    title: z.string().trim().min(1, "Title is required").max(200, "Title must be under 200 characters"),
+    description: z.string().optional(),
+    currency: z
+        .string()
+        .trim()
+        .min(1, "Currency is required")
+        .regex(/^[A-Za-z]{3}$/, "Use a 3-letter currency code (e.g. INR)"),
+    discountPercent: z.number().min(0, "Cannot be negative").max(100, "Cannot exceed 100"),
+    taxPercent: z.number().min(0, "Cannot be negative").max(100, "Cannot exceed 100"),
+    taxType: z.enum(["CGST_SGST", "IGST"]),
+    validUntil: z.string().min(1, "Valid-until date is required"),
+    portalVisible: z.boolean(),
+    status: z.enum(STATUS_OPTIONS),
+});
+
+type QuotationFormValues = z.infer<typeof quotationSchema>;
 
 const QuotationBuilder = () => {
     const { id } = useParams<{ id: string }>();
@@ -33,30 +58,48 @@ const QuotationBuilder = () => {
 
     const [isLoading, setIsLoading] = useState(isEdit);
     const [isSaving, setIsSaving] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const [companies, setCompanies] = useState<Company[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
 
-    const [companyId, setCompanyId] = useState<string | undefined>(actor?.companyId ?? undefined);
-    const [clientId, setClientId] = useState(searchParams.get("clientId") ?? "");
-    const [projectId, setProjectId] = useState<string | undefined>(undefined);
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [currency, setCurrency] = useState("INR");
-    const [discountPercent, setDiscountPercent] = useState(0);
-    const [taxPercent, setTaxPercent] = useState(18);
-    const [validUntil, setValidUntil] = useState<string | undefined>(undefined);
     const [terms, setTerms] = useState("");
     const [note, setNote] = useState("");
-    const [portalVisible, setPortalVisible] = useState(false);
-    const [status, setStatus] = useState<QuotationStatus>("DRAFT");
     const [lines, setLines] = useState<EditableLine[]>([emptyLine()]);
+    const [linesError, setLinesError] = useState<string | undefined>(undefined);
     const [quotationNumber, setQuotationNumber] = useState("");
     const [signatureUrl, setSignatureUrl] = useState<string | undefined>(undefined);
     const [createdAt, setCreatedAt] = useState<string | undefined>(undefined);
 
     const [companyDetails, setCompanyDetails] = useState<Company | null>(null);
+
+    const form = useForm<QuotationFormValues>({
+        resolver: zodResolver(quotationSchema),
+        defaultValues: {
+            companyId: actor?.companyId ?? undefined,
+            clientId: searchParams.get("clientId") ?? "",
+            projectId: undefined,
+            title: "",
+            description: "",
+            currency: "INR",
+            discountPercent: 0,
+            taxPercent: 18,
+            taxType: "CGST_SGST",
+            validUntil: "",
+            portalVisible: false,
+            status: "DRAFT",
+        },
+    });
+
+    const companyId = form.watch("companyId");
+    const clientId = form.watch("clientId");
+    const currency = form.watch("currency");
+    const discountPercent = form.watch("discountPercent");
+    const taxPercent = form.watch("taxPercent");
+    const taxType = form.watch("taxType");
+    const validUntil = form.watch("validUntil");
+    const title = form.watch("title");
     const targetCompanyId = isSuperAdmin ? companyId : (actor?.companyId ?? undefined);
 
     useEffect(() => {
@@ -97,19 +140,22 @@ const QuotationBuilder = () => {
         api
             .get<Quotation>(`/quotations/${id}`)
             .then((quotation) => {
-                setCompanyId(quotation.companyId);
-                setClientId(quotation.clientId);
-                setProjectId(quotation.projectId ?? undefined);
-                setTitle(quotation.title);
-                setDescription(quotation.description ?? "");
-                setCurrency(quotation.currency);
-                setDiscountPercent(Number(quotation.discountPercent));
-                setTaxPercent(Number(quotation.taxPercent));
-                setValidUntil(quotation.validUntil.slice(0, 10));
+                form.reset({
+                    companyId: quotation.companyId,
+                    clientId: quotation.clientId,
+                    projectId: quotation.projectId ?? undefined,
+                    title: quotation.title,
+                    description: quotation.description ?? "",
+                    currency: quotation.currency,
+                    discountPercent: Number(quotation.discountPercent),
+                    taxPercent: Number(quotation.taxPercent),
+                    taxType: quotation.taxType,
+                    validUntil: quotation.validUntil.slice(0, 10),
+                    portalVisible: quotation.portalVisible,
+                    status: quotation.status,
+                });
                 setTerms(quotation.terms ?? "");
                 setNote(quotation.note ?? "");
-                setPortalVisible(quotation.portalVisible);
-                setStatus(quotation.status);
                 setQuotationNumber(quotation.quotationNumber);
                 setSignatureUrl(quotation.signatureUrl ?? undefined);
                 setCreatedAt(quotation.createdAt.slice(0, 10));
@@ -126,39 +172,63 @@ const QuotationBuilder = () => {
             })
             .catch((error) => toast.error(error instanceof ApiError ? error.message : "Failed to load quotation."))
             .finally(() => setIsLoading(false));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const selectedClient = clients.find((client) => client.id === clientId);
 
-    const handleSave = async () => {
-        if (!clientId || !title.trim() || !validUntil) {
-            toast.error("Client, title and valid-until date are required.");
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            await exportElementToPdf("doc-print-area", quotationNumber || "quotation");
+        } catch {
+            toast.error("Failed to export PDF.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const onSubmit = async (values: QuotationFormValues) => {
+        if (isSuperAdmin && !isEdit && !values.companyId) {
+            toast.error("Company is required.");
             return;
         }
+
+        const includedLines = lines.filter((line) => line.description.trim());
+        if (includedLines.length === 0) {
+            setLinesError("Add at least one line item with a description.");
+            return;
+        }
+        if (includedLines.some((line) => line.quantity <= 0)) {
+            setLinesError("Each line item must have a quantity greater than 0.");
+            return;
+        }
+        if (includedLines.some((line) => line.unitPrice < 0)) {
+            setLinesError("Unit price cannot be negative.");
+            return;
+        }
+        setLinesError(undefined);
+
         setIsSaving(true);
         try {
-            const lineItems = lines
-                .filter((line) => line.description.trim())
-                .map((line) => ({ ...line, unit: line.unit || undefined }));
-            if (lineItems.length === 0) {
-                toast.error("Add at least one line item.");
-                return;
-            }
+            const lineItems = includedLines.map((line) => ({ ...line, unit: line.unit || undefined }));
+            const currency = values.currency.toUpperCase();
 
             if (isEdit && id) {
                 const payload: UpdateQuotationPayload = {
-                    projectId, title, description: description || undefined, currency,
-                    discountPercent, taxPercent, validUntil, terms: terms || undefined,
-                    note: note || undefined, portalVisible, signatureUrl, status, lineItems,
+                    projectId: values.projectId, title: values.title, description: values.description || undefined, currency,
+                    discountPercent: values.discountPercent, taxPercent: values.taxPercent, taxType: values.taxType,
+                    validUntil: values.validUntil, terms: terms || undefined, note: note || undefined,
+                    portalVisible: values.portalVisible, signatureUrl, status: values.status, lineItems,
                 };
                 await api.patch(`/quotations/${id}`, payload);
                 toast.success("Quotation updated.");
             } else {
                 const payload: CreateQuotationPayload = {
-                    clientId, projectId, companyId: targetCompanyId, title,
-                    description: description || undefined, currency, discountPercent,
-                    taxPercent, validUntil, terms: terms || undefined, note: note || undefined,
-                    portalVisible, signatureUrl, lineItems,
+                    clientId: values.clientId, projectId: values.projectId, companyId: targetCompanyId, title: values.title,
+                    description: values.description || undefined, currency, discountPercent: values.discountPercent,
+                    taxPercent: values.taxPercent, taxType: values.taxType, validUntil: values.validUntil,
+                    terms: terms || undefined, note: note || undefined, portalVisible: values.portalVisible, signatureUrl, lineItems,
                 };
                 const created = await api.post<Quotation>("/quotations", payload);
                 toast.success("Quotation created.");
@@ -181,7 +251,7 @@ const QuotationBuilder = () => {
     }
 
     return (
-        <div className="space-y-6 pb-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-4">
             <div className="flex items-center justify-between flex-wrap gap-3 sticky top-0 z-10 bg-background/95 backdrop-blur-sm -mx-1 px-1 py-2">
                 <div>
                     <Link
@@ -196,11 +266,11 @@ const QuotationBuilder = () => {
                     </h4>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button type="button" variant="outline" className="h-11 rounded-lg" onClick={() => window.print()}>
-                        <Download className="w-4 h-4" />
+                    <Button type="button" variant="outline" className="h-11 rounded-lg" onClick={handleExport} disabled={isExporting}>
+                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                         Export PDF
                     </Button>
-                    <Button type="button" className="h-11 rounded-lg" onClick={handleSave} disabled={isSaving}>
+                    <Button type="submit" className="h-11 rounded-lg" disabled={isSaving}>
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {isEdit ? "Save Changes" : "Create Quotation"}
                     </Button>
@@ -217,98 +287,155 @@ const QuotationBuilder = () => {
                             {isSuperAdmin && (
                                 <Field>
                                     <FieldLabel>Company *</FieldLabel>
-                                    <Combobox
-                                        value={companyId}
-                                        onChange={(value) => { setCompanyId(value); setClientId(""); }}
-                                        disabled={isEdit}
-                                        options={companies.map((company) => ({ value: company.id, label: company.name }))}
-                                        placeholder="Select company"
-                                        searchPlaceholder="Search companies..."
-                                        emptyText="No companies found."
+                                    <Controller
+                                        name="companyId"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <Combobox
+                                                value={field.value}
+                                                onChange={(value) => { field.onChange(value); form.setValue("clientId", ""); }}
+                                                disabled={isEdit}
+                                                options={companies.map((company) => ({ value: company.id, label: company.name }))}
+                                                placeholder="Select company"
+                                                searchPlaceholder="Search companies..."
+                                                emptyText="No companies found."
+                                            />
+                                        )}
                                     />
                                 </Field>
                             )}
 
                             <div className="grid grid-cols-2 gap-4">
-                                <Field>
+                                <Field data-invalid={!!form.formState.errors.clientId}>
                                     <FieldLabel>Client *</FieldLabel>
-                                    <Combobox
-                                        value={clientId}
-                                        onChange={(value) => { setClientId(value); setProjectId(undefined); }}
-                                        disabled={isEdit || !targetCompanyId}
-                                        options={clients.map((client) => ({ value: client.id, label: client.name }))}
-                                        placeholder={targetCompanyId ? "Select client" : "Select a company first"}
-                                        searchPlaceholder="Search clients..."
-                                        emptyText="No clients found."
-                                        createHref="/clients-list/create"
-                                        createLabel="Add new client"
+                                    <Controller
+                                        name="clientId"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <Combobox
+                                                value={field.value}
+                                                onChange={(value) => { field.onChange(value); form.setValue("projectId", undefined); }}
+                                                disabled={isEdit || !targetCompanyId}
+                                                options={clients.map((client) => ({ value: client.id, label: client.name }))}
+                                                placeholder={targetCompanyId ? "Select client" : "Select a company first"}
+                                                searchPlaceholder="Search clients..."
+                                                emptyText="No clients found."
+                                                createHref="/clients-list/create"
+                                                createLabel="Add new client"
+                                            />
+                                        )}
                                     />
+                                    {form.formState.errors.clientId && <FieldError errors={[form.formState.errors.clientId]} />}
                                 </Field>
 
                                 <Field>
                                     <FieldLabel>Project</FieldLabel>
-                                    <Combobox
-                                        value={projectId}
-                                        onChange={setProjectId}
-                                        disabled={!clientId}
-                                        options={projects.map((project) => ({ value: project.id, label: project.title }))}
-                                        placeholder={clientId ? "Optional" : "Select a client first"}
-                                        searchPlaceholder="Search projects..."
-                                        emptyText="No projects found."
+                                    <Controller
+                                        name="projectId"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <Combobox
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                disabled={!clientId}
+                                                options={projects.map((project) => ({ value: project.id, label: project.title }))}
+                                                placeholder={clientId ? "Optional" : "Select a client first"}
+                                                searchPlaceholder="Search projects..."
+                                                emptyText="No projects found."
+                                            />
+                                        )}
                                     />
                                 </Field>
                             </div>
 
-                            <Field>
+                            <Field data-invalid={!!form.formState.errors.title}>
                                 <FieldLabel htmlFor="title">Title *</FieldLabel>
-                                <Input id="title" className="h-11 rounded-lg" value={title} onChange={(event) => setTitle(event.target.value)} />
+                                <Input id="title" className="h-11 rounded-lg" {...form.register("title")} />
+                                {form.formState.errors.title && <FieldError errors={[form.formState.errors.title]} />}
                             </Field>
 
                             <Field>
                                 <FieldLabel htmlFor="description">Description</FieldLabel>
-                                <Textarea id="description" rows={2} value={description} onChange={(event) => setDescription(event.target.value)} />
+                                <Textarea id="description" rows={2} {...form.register("description")} />
                             </Field>
 
                             <div className="grid grid-cols-3 gap-4">
-                                <Field>
+                                <Field data-invalid={!!form.formState.errors.currency}>
                                     <FieldLabel htmlFor="currency">Currency</FieldLabel>
-                                    <Input id="currency" className="h-11 rounded-lg" value={currency} onChange={(event) => setCurrency(event.target.value)} />
+                                    <Input id="currency" className="h-11 rounded-lg" {...form.register("currency")} />
+                                    {form.formState.errors.currency && <FieldError errors={[form.formState.errors.currency]} />}
                                 </Field>
-                                <Field>
+                                <Field data-invalid={!!form.formState.errors.discountPercent}>
                                     <FieldLabel htmlFor="discountPercent">Discount %</FieldLabel>
-                                    <Input id="discountPercent" type="number" min={0} max={100} className="h-11 rounded-lg" value={discountPercent} onChange={(event) => setDiscountPercent(Number(event.target.value))} />
+                                    <Input id="discountPercent" type="number" min={0} max={100} step="0.01" className="h-11 rounded-lg" {...form.register("discountPercent", { valueAsNumber: true })} />
+                                    {form.formState.errors.discountPercent && <FieldError errors={[form.formState.errors.discountPercent]} />}
                                 </Field>
-                                <Field>
+                                <Field data-invalid={!!form.formState.errors.taxPercent}>
                                     <FieldLabel htmlFor="taxPercent">Tax %</FieldLabel>
-                                    <Input id="taxPercent" type="number" min={0} max={100} className="h-11 rounded-lg" value={taxPercent} onChange={(event) => setTaxPercent(Number(event.target.value))} />
+                                    <Input id="taxPercent" type="number" min={0} max={100} step="0.01" className="h-11 rounded-lg" {...form.register("taxPercent", { valueAsNumber: true })} />
+                                    {form.formState.errors.taxPercent && <FieldError errors={[form.formState.errors.taxPercent]} />}
                                 </Field>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <Field>
-                                    <FieldLabel>Valid Until *</FieldLabel>
-                                    <DatePicker value={validUntil} onChange={setValidUntil} />
-                                </Field>
-                                {isEdit && (
-                                    <Field>
-                                        <FieldLabel>Status</FieldLabel>
-                                        <Select value={status} onValueChange={(value) => setStatus(value as QuotationStatus)}>
+                            <Field>
+                                <FieldLabel>GST Type</FieldLabel>
+                                <Controller
+                                    name="taxType"
+                                    control={form.control}
+                                    render={({ field }) => (
+                                        <Select value={field.value} onValueChange={(value) => field.onChange(value as TaxType)}>
                                             <SelectTrigger className="h-11 rounded-lg !w-full">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {STATUS_OPTIONS.map((option) => (
-                                                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                                                ))}
+                                                <SelectItem value="CGST_SGST">CGST + SGST (Intra-state)</SelectItem>
+                                                <SelectItem value="IGST">IGST (Inter-state)</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                    )}
+                                />
+                            </Field>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field data-invalid={!!form.formState.errors.validUntil}>
+                                    <FieldLabel>Valid Until *</FieldLabel>
+                                    <Controller
+                                        name="validUntil"
+                                        control={form.control}
+                                        render={({ field }) => <DatePicker value={field.value} onChange={field.onChange} />}
+                                    />
+                                    {form.formState.errors.validUntil && <FieldError errors={[form.formState.errors.validUntil]} />}
+                                </Field>
+                                {isEdit && (
+                                    <Field>
+                                        <FieldLabel>Status</FieldLabel>
+                                        <Controller
+                                            name="status"
+                                            control={form.control}
+                                            render={({ field }) => (
+                                                <Select value={field.value} onValueChange={(value) => field.onChange(value as QuotationStatus)}>
+                                                    <SelectTrigger className="h-11 rounded-lg !w-full">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {STATUS_OPTIONS.map((option) => (
+                                                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
                                     </Field>
                                 )}
                             </div>
 
                             <Field orientation="horizontal" className="items-center justify-between">
                                 <FieldLabel className="mb-0">Visible to client on portal</FieldLabel>
-                                <Switch checked={portalVisible} onCheckedChange={setPortalVisible} />
+                                <Controller
+                                    name="portalVisible"
+                                    control={form.control}
+                                    render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                                />
                             </Field>
                         </CardContent>
                     </Card>
@@ -342,7 +469,14 @@ const QuotationBuilder = () => {
                             <h6 className="text-sm font-semibold text-neutral-900 dark:text-white">Line Items</h6>
                         </CardHeader>
                         <CardContent className="pt-5">
-                            <LineItemsEditor lines={lines} onChange={setLines} currency={currency} discountPercent={discountPercent} taxPercent={taxPercent} />
+                            <LineItemsEditor
+                                lines={lines}
+                                onChange={(next) => { setLines(next); setLinesError(undefined); }}
+                                currency={currency}
+                                discountPercent={discountPercent}
+                                taxPercent={taxPercent}
+                            />
+                            {linesError && <p className="text-sm text-destructive mt-2">{linesError}</p>}
                         </CardContent>
                     </Card>
 
@@ -351,13 +485,14 @@ const QuotationBuilder = () => {
                             kind="Quotation"
                             documentNumber={quotationNumber || "DRAFT"}
                             documentDate={createdAt ?? new Date().toISOString().slice(0, 10)}
-                            status={status}
                             companyName={companyDetails?.name ?? ""}
                             companyLogoUrl={companyDetails?.logoUrl ?? undefined}
                             companyEmail={companyDetails?.email ?? undefined}
                             companyPhone={companyDetails?.phone ?? undefined}
                             companyWebsite={companyDetails?.website ?? undefined}
                             companyGstNumber={companyDetails?.gstNumber ?? undefined}
+                            companyPanNumber={companyDetails?.panNumber ?? undefined}
+                            companyHsnNumber={companyDetails?.hsnNumber ?? undefined}
                             bankName={companyDetails?.bankName ?? undefined}
                             bankAccountName={companyDetails?.bankAccountName ?? undefined}
                             bankAccountNumber={companyDetails?.bankAccountNumber ?? undefined}
@@ -379,6 +514,7 @@ const QuotationBuilder = () => {
                             currency={currency}
                             discountPercent={discountPercent}
                             taxPercent={taxPercent}
+                            taxType={taxType}
                             terms={terms}
                             note={note}
                             signatureUrl={signatureUrl}
@@ -386,7 +522,7 @@ const QuotationBuilder = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </form>
     );
 };
 

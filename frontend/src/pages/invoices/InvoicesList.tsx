@@ -214,7 +214,8 @@ export default function InvoicesList() {
       >
         <InvoicesListTable
           invoices={paginatedInvoices}
-          onEdit={(inv) => navigate(`/invoices-list/${inv.id}`)}
+          onView={(inv) => navigate(`/invoices-list/${inv.id}`)}
+          onEdit={(inv) => navigate(`/invoices-list/${inv.id}/edit`)}
           onDelete={setInvoiceToDelete}
         />
       </DataTableShell>

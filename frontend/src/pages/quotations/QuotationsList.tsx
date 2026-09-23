@@ -214,7 +214,8 @@ export default function QuotationsList() {
       >
         <QuotationsListTable
           quotations={paginatedQuotations}
-          onEdit={(q) => navigate(`/quotations-list/${q.id}`)}
+          onView={(q) => navigate(`/quotations-list/${q.id}`)}
+          onEdit={(q) => navigate(`/quotations-list/${q.id}/edit`)}
           onDelete={setQuotationToDelete}
         />
       </DataTableShell>

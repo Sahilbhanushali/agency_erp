@@ -1,5 +1,6 @@
 export type InvoiceStatus = "DRAFT" | "SENT" | "VIEWED" | "PARTIAL" | "PAID" | "OVERDUE" | "CANCELLED" | "REFUNDED";
 export type PaymentMethod = "BANK_TRANSFER" | "CASH" | "CHEQUE" | "STRIPE" | "RAZORPAY" | "UPI" | "OTHER";
+export type TaxType = "CGST_SGST" | "IGST";
 
 export interface InvoiceLine {
     id: string;
@@ -37,6 +38,7 @@ export interface Invoice {
     subTotal: string;
     discountPercent: string;
     taxPercent: string;
+    taxType: TaxType;
     totalAmount: string;
     issueDate: string;
     dueDate: string;
@@ -72,6 +74,7 @@ export interface CreateInvoicePayload {
     currency?: string;
     discountPercent?: number;
     taxPercent?: number;
+    taxType?: TaxType;
     issueDate: string;
     dueDate: string;
     terms?: string;

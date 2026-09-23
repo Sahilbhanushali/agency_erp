@@ -9,6 +9,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -26,9 +27,10 @@ export class CreateUserDto {
   @IsEmail()
   email: string;
 
-  @ApiPropertyOptional({ example: '+91 9876543210' })
+  @ApiPropertyOptional({ example: '9876543210' })
   @IsOptional()
   @IsString()
+  @Matches(/^[0-9]{10}$/, { message: 'phone must be a valid 10-digit number' })
   phone?: string;
 
   @ApiProperty({

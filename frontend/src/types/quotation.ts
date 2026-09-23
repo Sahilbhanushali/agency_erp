@@ -1,4 +1,5 @@
 export type QuotationStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CONVERTED";
+export type TaxType = "CGST_SGST" | "IGST";
 
 export interface QuotationLine {
     id: string;
@@ -23,6 +24,7 @@ export interface Quotation {
     subTotal: string;
     discountPercent: string;
     taxPercent: string;
+    taxType: TaxType;
     totalAmount: string;
     validUntil: string;
     terms: string | null;
@@ -55,6 +57,7 @@ export interface CreateQuotationPayload {
     currency?: string;
     discountPercent?: number;
     taxPercent?: number;
+    taxType?: TaxType;
     validUntil: string;
     terms?: string;
     note?: string;

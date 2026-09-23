@@ -10,6 +10,7 @@ export interface Company {
   website: string | null;
   gstNumber: string | null;
   panNumber: string | null;
+  hsnNumber: string | null;
   bankName: string | null;
   bankAccountName: string | null;
   bankAccountNumber: string | null;
@@ -31,6 +32,7 @@ export interface CompanyPayload {
   website?: string;
   gstNumber?: string;
   panNumber?: string;
+  hsnNumber?: string;
   bankName?: string;
   bankAccountName?: string;
   bankAccountNumber?: string;

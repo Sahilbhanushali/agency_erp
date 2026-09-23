@@ -25,13 +25,23 @@ const PaymentsPanel = ({ invoice, onChange }: PaymentsPanelProps) => {
     const [isRecording, setIsRecording] = useState(false);
     const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [formError, setFormError] = useState<string | undefined>(undefined);
 
     const handleRecord = async () => {
         const numericAmount = Number(amount);
-        if (!numericAmount || numericAmount <= 0 || !paidAt) {
-            toast.error("Enter a valid amount and date.");
+        if (!amount.trim() || Number.isNaN(numericAmount) || numericAmount <= 0) {
+            setFormError("Enter an amount greater than 0.");
             return;
         }
+        if (numericAmount > invoice.balanceDue) {
+            setFormError(`Amount cannot exceed the balance due (${invoice.currency} ${invoice.balanceDue.toFixed(2)}).`);
+            return;
+        }
+        if (!paidAt) {
+            setFormError("Select the date the payment was made.");
+            return;
+        }
+        setFormError(undefined);
         setIsRecording(true);
         try {
             const payload: RecordPaymentPayload = {
@@ -106,7 +116,15 @@ const PaymentsPanel = ({ invoice, onChange }: PaymentsPanelProps) => {
             )}
 
             <div className="grid grid-cols-2 gap-2">
-                <Input type="number" min={0} step="0.01" placeholder="Amount" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-10" />
+                <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="Amount"
+                    value={amount}
+                    onChange={(event) => { setAmount(event.target.value); setFormError(undefined); }}
+                    className="h-10"
+                />
                 <Select value={method} onValueChange={(value) => setMethod(value as PaymentMethod)}>
                     <SelectTrigger className="h-10 !w-full">
                         <SelectValue />
@@ -123,6 +141,7 @@ const PaymentsPanel = ({ invoice, onChange }: PaymentsPanelProps) => {
                     <Input placeholder="Note (optional)" value={note} onChange={(event) => setNote(event.target.value)} className="h-10" />
                 </div>
             </div>
+            {formError && <p className="text-sm text-destructive">{formError}</p>}
             <Button type="button" className="h-10 rounded-lg w-full" onClick={handleRecord} disabled={isRecording}>
                 {isRecording ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Record Payment

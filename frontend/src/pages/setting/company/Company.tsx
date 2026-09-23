@@ -5,6 +5,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
+import { gstNumberField, panNumberField, phoneField, websiteField } from "@/lib/zod";
 import type { Company as CompanyType, CompanyPayload } from "@/types/company";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2, FileText, Loader2, MapPin } from "lucide-react";
@@ -17,10 +18,11 @@ const schema = z.object({
     name: z.string().min(1, "Company name is required"),
     legalName: z.string().optional(),
     email: z.string().email("Enter a valid email address.").optional().or(z.literal("")),
-    phone: z.string().optional(),
-    website: z.string().optional(),
-    gstNumber: z.string().optional(),
-    panNumber: z.string().optional(),
+    phone: phoneField,
+    website: websiteField,
+    gstNumber: gstNumberField,
+    panNumber: panNumberField,
+    hsnNumber: z.string().optional(),
     line1: z.string().optional(),
     line2: z.string().optional(),
     city: z.string().optional(),
@@ -48,6 +50,7 @@ const Company = () => {
             website: "",
             gstNumber: "",
             panNumber: "",
+            hsnNumber: "",
             line1: "",
             line2: "",
             city: "",
@@ -73,6 +76,7 @@ const Company = () => {
                     website: data.website ?? "",
                     gstNumber: data.gstNumber ?? "",
                     panNumber: data.panNumber ?? "",
+                    hsnNumber: data.hsnNumber ?? "",
                     line1: data.registeredAddress?.line1 ?? "",
                     line2: data.registeredAddress?.line2 ?? "",
                     city: data.registeredAddress?.city ?? "",
@@ -162,14 +166,16 @@ const Company = () => {
                                     {form.formState.errors.email && <FieldError errors={[form.formState.errors.email]} />}
                                 </Field>
 
-                                <Field>
+                                <Field data-invalid={!!form.formState.errors.phone}>
                                     <FieldLabel htmlFor="phone" className="text-xs font-medium">Phone</FieldLabel>
-                                    <Input id="phone" placeholder="+91 98765 43210" className={inputClass} {...form.register("phone")} />
+                                    <Input id="phone" maxLength={10} inputMode="numeric" placeholder="+91 98765 43210" className={inputClass} {...form.register("phone")} />
+                                    {form.formState.errors.phone && <FieldError errors={[form.formState.errors.phone]} />}
                                 </Field>
 
-                                <Field>
+                                <Field data-invalid={!!form.formState.errors.website}>
                                     <FieldLabel htmlFor="website" className="text-xs font-medium">Website</FieldLabel>
                                     <Input id="website" type="url" placeholder="https://acme.com" className={inputClass} {...form.register("website")} />
+                                    {form.formState.errors.website && <FieldError errors={[form.formState.errors.website]} />}
                                 </Field>
                             </div>
                         </CardContent>
@@ -191,15 +197,22 @@ const Company = () => {
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
-                                <Field>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                <Field data-invalid={!!form.formState.errors.gstNumber}>
                                     <FieldLabel htmlFor="gstNumber" className="text-xs font-medium">GST Number (GSTIN)</FieldLabel>
                                     <Input id="gstNumber" placeholder="27AAPCA1234F1Z5" className={inputClass} {...form.register("gstNumber")} />
+                                    {form.formState.errors.gstNumber && <FieldError errors={[form.formState.errors.gstNumber]} />}
+                                </Field>
+
+                                <Field data-invalid={!!form.formState.errors.panNumber}>
+                                    <FieldLabel htmlFor="panNumber" className="text-xs font-medium">PAN Number</FieldLabel>
+                                    <Input id="panNumber" placeholder="ABCDE1234F" className={inputClass} {...form.register("panNumber")} />
+                                    {form.formState.errors.panNumber && <FieldError errors={[form.formState.errors.panNumber]} />}
                                 </Field>
 
                                 <Field>
-                                    <FieldLabel htmlFor="panNumber" className="text-xs font-medium">PAN Number</FieldLabel>
-                                    <Input id="panNumber" placeholder="ABCDE1234F" className={inputClass} {...form.register("panNumber")} />
+                                    <FieldLabel htmlFor="hsnNumber" className="text-xs font-medium">HSN/SAC Number</FieldLabel>
+                                    <Input id="hsnNumber" placeholder="998314 | 998391" className={inputClass} {...form.register("hsnNumber")} />
                                 </Field>
                             </div>
                         </CardContent>

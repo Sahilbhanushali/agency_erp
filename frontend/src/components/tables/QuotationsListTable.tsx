@@ -13,12 +13,14 @@ import { cellClass, headClass, rowClass } from "./table-styles";
 
 interface QuotationsListTableProps {
   quotations: Quotation[];
+  onView?: (quotation: Quotation) => void;
   onEdit: (quotation: Quotation) => void;
   onDelete: (quotation: Quotation) => void;
 }
 
 export default function QuotationsListTable({
   quotations,
+  onView,
   onEdit,
   onDelete,
 }: QuotationsListTableProps) {
@@ -47,7 +49,7 @@ export default function QuotationsListTable({
             <TableRow
               key={quotation.id}
               className={`cursor-pointer ${rowClass}`}
-              onClick={() => onEdit(quotation)}
+              onClick={() => (onView ? onView(quotation) : onEdit(quotation))}
             >
               <TableCell className={`${cellClass} font-mono font-semibold text-xs text-foreground group-hover:text-primary transition-colors`}>
                 {quotation.quotationNumber}
@@ -76,6 +78,7 @@ export default function QuotationsListTable({
               <TableCell className={`${cellClass} text-end pe-6`}>
                 <RowActions
                   label={quotation.quotationNumber}
+                  onView={onView ? () => onView(quotation) : undefined}
                   onEdit={() => onEdit(quotation)}
                   onDelete={() => onDelete(quotation)}
                 />

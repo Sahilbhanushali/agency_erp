@@ -10,12 +10,14 @@ import EditCompany from "@/pages/companies/edit/EditCompany";
 import CompaniesList from "@/pages/companies/CompaniesList";
 import Dashboard from "@/pages/dashboards/Dashboard";
 import InvoiceBuilder from "@/pages/invoices/builder/InvoiceBuilder";
+import InvoiceDetails from "@/pages/invoices/details/InvoiceDetails";
 import InvoicesList from "@/pages/invoices/InvoicesList";
 import CreateProject from "@/pages/projects/create/CreateProject";
 import ProjectDetails from "@/pages/projects/details/ProjectDetails";
 import EditProject from "@/pages/projects/edit/EditProject";
 import ProjectsList from "@/pages/projects/ProjectsList";
 import QuotationBuilder from "@/pages/quotations/builder/QuotationBuilder";
+import QuotationDetails from "@/pages/quotations/details/QuotationDetails";
 import QuotationsList from "@/pages/quotations/QuotationsList";
 import RolesList from "@/pages/roles/RolesList";
 import MyTasks from "@/pages/tasks/MyTasks";
@@ -145,7 +147,10 @@ export const router = createBrowserRouter([
             path: "quotations-list/create", element: <QuotationBuilder />
           },
           {
-            path: "quotations-list/:id", element: <QuotationBuilder />
+            path: "quotations-list/:id/edit", element: <QuotationBuilder />
+          },
+          {
+            path: "quotations-list/:id", element: <QuotationDetails />
           },
           {
             path: "invoices-list", element: <InvoicesList />
@@ -154,7 +159,10 @@ export const router = createBrowserRouter([
             path: "invoices-list/create", element: <InvoiceBuilder />
           },
           {
-            path: "invoices-list/:id", element: <InvoiceBuilder />
+            path: "invoices-list/:id/edit", element: <InvoiceBuilder />
+          },
+          {
+            path: "invoices-list/:id", element: <InvoiceDetails />
           },
         ],
       },

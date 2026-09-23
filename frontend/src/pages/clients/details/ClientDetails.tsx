@@ -390,7 +390,8 @@ export default function ClientDetails() {
               >
                 <QuotationsListTable
                   quotations={quotations}
-                  onEdit={(q) => navigate(`/quotations-list/${q.id}`)}
+                  onView={(q) => navigate(`/quotations-list/${q.id}`)}
+                  onEdit={(q) => navigate(`/quotations-list/${q.id}/edit`)}
                   onDelete={setQuotationToDelete}
                 />
               </DataTableShell>
@@ -421,7 +422,8 @@ export default function ClientDetails() {
               >
                 <InvoicesListTable
                   invoices={invoices}
-                  onEdit={(inv) => navigate(`/invoices-list/${inv.id}`)}
+                  onView={(inv) => navigate(`/invoices-list/${inv.id}`)}
+                  onEdit={(inv) => navigate(`/invoices-list/${inv.id}/edit`)}
                   onDelete={setInvoiceToDelete}
                 />
               </DataTableShell>

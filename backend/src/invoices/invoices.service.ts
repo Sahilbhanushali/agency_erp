@@ -81,6 +81,7 @@ export class InvoicesService {
             currency: dto.currency ?? 'INR',
             discountPercent,
             taxPercent,
+            taxType: dto.taxType,
             subTotal,
             totalAmount,
             issueDate: new Date(dto.issueDate),
@@ -179,6 +180,7 @@ export class InvoicesService {
           currency: dto.currency,
           discountPercent,
           taxPercent,
+          taxType: dto.taxType,
           subTotal,
           totalAmount,
           issueDate: toDateOrUndefined(dto.issueDate),
@@ -210,6 +212,11 @@ export class InvoicesService {
     actor: CurrentUserPayload,
   ) {
     const invoice = await this.findOne(invoiceId, actor);
+    if (dto.amount > invoice.balanceDue) {
+      throw new BadRequestException(
+        `Amount cannot exceed the balance due (${invoice.balanceDue.toFixed(2)})`,
+      );
+    }
 
     await this.prisma.payment.create({
       data: {

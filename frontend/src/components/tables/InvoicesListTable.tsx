@@ -13,12 +13,14 @@ import { cellClass, headClass, rowClass } from "./table-styles";
 
 interface InvoicesListTableProps {
   invoices: Invoice[];
+  onView?: (invoice: Invoice) => void;
   onEdit: (invoice: Invoice) => void;
   onDelete: (invoice: Invoice) => void;
 }
 
 export default function InvoicesListTable({
   invoices,
+  onView,
   onEdit,
   onDelete,
 }: InvoicesListTableProps) {
@@ -49,7 +51,7 @@ export default function InvoicesListTable({
             <TableRow
               key={invoice.id}
               className={`cursor-pointer ${rowClass}`}
-              onClick={() => onEdit(invoice)}
+              onClick={() => (onView ? onView(invoice) : onEdit(invoice))}
             >
               <TableCell className={`${cellClass} font-mono font-semibold text-xs text-foreground group-hover:text-primary transition-colors`}>
                 {invoice.invoiceNumber}
@@ -98,6 +100,7 @@ export default function InvoicesListTable({
               <TableCell className={`${cellClass} text-end pe-6`}>
                 <RowActions
                   label={invoice.invoiceNumber}
+                  onView={onView ? () => onView(invoice) : undefined}
                   onEdit={() => onEdit(invoice)}
                   onDelete={() => onDelete(invoice)}
                 />

@@ -26,20 +26,25 @@ interface MinimalUser {
 
 const STATUS_OPTIONS: ProjectStatus[] = ["DRAFT", "ACTIVE", "ON_HOLD", "IN_REVIEW", "COMPLETED", "ARCHIVED", "CANCELLED"];
 
-const schema = z.object({
-    title: z.string().min(1, "Title is required"),
-    description: z.string().optional(),
-    clientId: z.string().min(1, "Client is required"),
-    managerId: z.string().min(1, "Manager is required"),
-    companyId: z.string().optional(),
-    status: z.enum(["DRAFT", "ACTIVE", "ON_HOLD", "IN_REVIEW", "COMPLETED", "ARCHIVED", "CANCELLED"]).optional(),
-    startDate: z.string().optional(),
-    deadline: z.string().optional(),
-    budget: z.union([z.number(), z.nan()]).optional(),
-    currency: z.string().optional(),
-    clientApprovalEnabled: z.boolean(),
-    colorHex: z.string().optional(),
-});
+const schema = z
+    .object({
+        title: z.string().min(1, "Title is required"),
+        description: z.string().optional(),
+        clientId: z.string().min(1, "Client is required"),
+        managerId: z.string().min(1, "Manager is required"),
+        companyId: z.string().optional(),
+        status: z.enum(["DRAFT", "ACTIVE", "ON_HOLD", "IN_REVIEW", "COMPLETED", "ARCHIVED", "CANCELLED"]).optional(),
+        startDate: z.string().optional(),
+        deadline: z.string().optional(),
+        budget: z.union([z.number().min(0, "Budget cannot be negative"), z.nan()]).optional(),
+        currency: z.string().optional(),
+        clientApprovalEnabled: z.boolean(),
+        colorHex: z.string().optional(),
+    })
+    .refine((data) => !data.startDate || !data.deadline || data.deadline >= data.startDate, {
+        message: "Deadline cannot be before the start date",
+        path: ["deadline"],
+    });
 
 export type ProjectFormValues = z.infer<typeof schema>;
 
@@ -232,18 +237,20 @@ const ProjectForm = ({ mode, initialValues, onSubmit, isSubmitting }: ProjectFor
                     />
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.deadline}>
                     <FieldLabel htmlFor="deadline">Deadline</FieldLabel>
                     <Controller
                         name="deadline"
                         control={form.control}
                         render={({ field }) => <DatePicker id="deadline" value={field.value} onChange={field.onChange} />}
                     />
+                    {form.formState.errors.deadline && <FieldError errors={[form.formState.errors.deadline]} />}
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.budget}>
                     <FieldLabel htmlFor="budget">Budget</FieldLabel>
-                    <Input id="budget" type="number" step="0.01" className={inputClass} {...form.register("budget", { valueAsNumber: true })} />
+                    <Input id="budget" type="number" min={0} step="0.01" className={inputClass} {...form.register("budget", { valueAsNumber: true })} />
+                    {form.formState.errors.budget && <FieldError errors={[form.formState.errors.budget]} />}
                 </Field>
 
                 <Field>

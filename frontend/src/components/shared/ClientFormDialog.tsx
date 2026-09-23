@@ -10,6 +10,7 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api, ApiError } from "@/lib/api";
+import { phoneField } from "@/lib/zod";
 import type { Client, CreateClientPayload } from "@/types/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -22,7 +23,7 @@ const schema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Enter a valid email address."),
     industry: z.string().optional(),
-    phone: z.string().optional(),
+    phone: phoneField,
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -83,9 +84,10 @@ const ClientFormDialog = ({ open, onOpenChange, companyId, onCreated, initialNam
                         <Input id="client-industry" className="h-11 rounded-lg" {...form.register("industry")} />
                     </Field>
 
-                    <Field>
+                    <Field data-invalid={!!form.formState.errors.phone}>
                         <FieldLabel htmlFor="client-phone">Phone</FieldLabel>
-                        <Input id="client-phone" className="h-11 rounded-lg" {...form.register("phone")} />
+                        <Input id="client-phone" maxLength={10} inputMode="numeric" className="h-11 rounded-lg" {...form.register("phone")} />
+                        {form.formState.errors.phone && <FieldError errors={[form.formState.errors.phone]} />}
                     </Field>
 
                     <DialogFooter>
