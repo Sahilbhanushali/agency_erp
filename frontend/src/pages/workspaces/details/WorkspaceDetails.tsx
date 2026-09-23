@@ -11,6 +11,7 @@ import { FolderKanban, Loader2, Pencil, Search, UserPlus, X } from "lucide-react
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import TasksPanel from "@/pages/tasks/components/TasksPanel";
 import WorkspaceMemberPicker, { type PickedMember } from "../components/WorkspaceMemberPicker";
 
 const WorkspaceDetails = () => {
@@ -183,6 +184,14 @@ const WorkspaceDetails = () => {
                         )}
                     </CardContent>
                 </Card>
+            </div>
+
+            <div className="mt-6">
+                <TasksPanel
+                    projectId={workspace.projectId}
+                    workspaceId={workspace.id}
+                    emptyText="No tasks on this board yet."
+                />
             </div>
         </>
     );

@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import TasksPanel from "@/pages/tasks/components/TasksPanel";
 import WorkspaceFormDialog from "../components/WorkspaceFormDialog";
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
@@ -211,6 +212,12 @@ const ProjectDetails = () => {
                     </CardContent>
                 </Card>
             </div>
+
+            {id && (
+                <div className="mt-6">
+                    <TasksPanel projectId={id} emptyText="No tasks in this project yet." />
+                </div>
+            )}
 
             <ConfirmDialog
                 open={!!workspaceToDelete}

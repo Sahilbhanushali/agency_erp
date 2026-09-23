@@ -45,6 +45,10 @@ async function bootstrap() {
       'Agency admin app: workspaces nested under a project, with member management',
     )
     .addTag(
+      'Admin - Tasks',
+      'Agency admin app: project tasks, sub-tasks and comments',
+    )
+    .addTag(
       'Admin - Roles',
       'Agency admin app: read-only role lookup for assigning users',
     )

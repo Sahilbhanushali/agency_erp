@@ -15,6 +15,16 @@ export function resolveTargetCompanyId(
   return actor.companyId;
 }
 
+/** Mirrors PermissionsGuard, for services that grant access by permission OR by ownership. */
+export function hasPermission(
+  actor: CurrentUserPayload,
+  permission: string,
+): boolean {
+  return (
+    actor.roleName === 'SUPER_ADMIN' || actor.permissions.includes(permission)
+  );
+}
+
 export function assertCompanyAccess(
   companyId: string | null,
   actor: CurrentUserPayload,

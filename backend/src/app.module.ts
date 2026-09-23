@@ -11,6 +11,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { QuotationsModule } from './quotations/quotations.module';
 import { RolesModule } from './roles/roles.module';
+import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 
@@ -28,6 +29,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module';
     PermissionsModule,
     QuotationsModule,
     InvoicesModule,
+    TasksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

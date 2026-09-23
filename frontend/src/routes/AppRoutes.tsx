@@ -18,6 +18,7 @@ import ProjectsList from "@/pages/projects/ProjectsList";
 import QuotationBuilder from "@/pages/quotations/builder/QuotationBuilder";
 import QuotationsList from "@/pages/quotations/QuotationsList";
 import RolesList from "@/pages/roles/RolesList";
+import MyTasks from "@/pages/tasks/MyTasks";
 import Company from "@/pages/setting/company/Company";
 import CreateUser from "@/pages/users/create/CreateUser";
 import EditUser from "@/pages/users/edit/EditUser";
@@ -64,6 +65,9 @@ export const router = createBrowserRouter([
           },
           {
             path: "/dashboard", element: <Dashboard />
+          },
+          {
+            path: "tasks", element: <MyTasks />
           },
           {
             path: "users-list", element: <UsersList />

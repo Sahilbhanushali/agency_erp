@@ -5,6 +5,7 @@ import {
   FolderKanban,
   House,
   LayoutGrid,
+  ListTodo,
   Receipt,
   ShieldCheck,
   UsersRound,
@@ -28,6 +29,11 @@ const NAV_ITEMS: SidebarNavItem[] = [
     title: "Dashboard",
     url: "/dashboard",
     icon: House,
+  },
+  {
+    title: "My Tasks",
+    url: "/tasks",
+    icon: ListTodo,
   },
   {
     label: "Application",

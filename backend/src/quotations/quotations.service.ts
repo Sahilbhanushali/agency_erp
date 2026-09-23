@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { toDateOrUndefined } from '../common/utils/date.util';
+import { createWithDocumentNumber } from '../common/utils/document-number.util';
 import { computeLineTotals } from '../common/utils/pricing.util';
 import {
   assertCompanyAccess,
@@ -25,12 +26,14 @@ const QUOTATION_INCLUDE = {
 export class QuotationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async generateQuotationNumber(companyId: string) {
-    const year = new Date().getFullYear();
-    const count = await this.prisma.quotation.count({
-      where: { companyId, quotationNumber: { startsWith: `Q-${year}-` } },
-    });
-    return `Q-${year}-${String(count + 1).padStart(4, '0')}`;
+  private latestQuotationNumber(companyId: string, prefix: string) {
+    return this.prisma.quotation
+      .findFirst({
+        where: { companyId, quotationNumber: { startsWith: prefix } },
+        orderBy: { quotationNumber: 'desc' },
+        select: { quotationNumber: true },
+      })
+      .then((latest) => latest?.quotationNumber ?? null);
   }
 
   async create(dto: CreateQuotationDto, actor: CurrentUserPayload) {
@@ -46,38 +49,42 @@ export class QuotationsService {
       discountPercent,
       taxPercent,
     );
-    const quotationNumber = await this.generateQuotationNumber(companyId);
-
-    return this.prisma.quotation.create({
-      data: {
-        companyId,
-        clientId: dto.clientId,
-        projectId: dto.projectId,
-        createdById: actor.id,
-        quotationNumber,
-        title: dto.title,
-        description: dto.description,
-        currency: dto.currency ?? 'INR',
-        discountPercent,
-        taxPercent,
-        subTotal,
-        totalAmount,
-        validUntil: new Date(dto.validUntil),
-        terms: dto.terms,
-        note: dto.note,
-        portalVisible: dto.portalVisible ?? false,
-        signatureUrl: dto.signatureUrl,
-        lineItems: {
-          create: dto.lineItems.map((line, index) => ({
-            description: line.description,
-            quantity: line.quantity,
-            unit: line.unit,
-            unitPrice: line.unitPrice,
-            position: index,
-          })),
-        },
-      },
-      include: QUOTATION_INCLUDE,
+    const prefix = `Q-${new Date().getFullYear()}-`;
+    return createWithDocumentNumber({
+      prefix,
+      findLatestNumber: () => this.latestQuotationNumber(companyId, prefix),
+      create: (quotationNumber) =>
+        this.prisma.quotation.create({
+          data: {
+            companyId,
+            clientId: dto.clientId,
+            projectId: dto.projectId,
+            createdById: actor.id,
+            quotationNumber,
+            title: dto.title,
+            description: dto.description,
+            currency: dto.currency ?? 'INR',
+            discountPercent,
+            taxPercent,
+            subTotal,
+            totalAmount,
+            validUntil: new Date(dto.validUntil),
+            terms: dto.terms,
+            note: dto.note,
+            portalVisible: dto.portalVisible ?? false,
+            signatureUrl: dto.signatureUrl,
+            lineItems: {
+              create: dto.lineItems.map((line, index) => ({
+                description: line.description,
+                quantity: line.quantity,
+                unit: line.unit,
+                unitPrice: line.unitPrice,
+                position: index,
+              })),
+            },
+          },
+          include: QUOTATION_INCLUDE,
+        }),
     });
   }
 
@@ -116,7 +123,8 @@ export class QuotationsService {
     if (dto.projectId)
       await this.assertProjectInCompany(dto.projectId, quotation.companyId);
 
-    const discountPercent = dto.discountPercent ?? Number(quotation.discountPercent);
+    const discountPercent =
+      dto.discountPercent ?? Number(quotation.discountPercent);
     const taxPercent = dto.taxPercent ?? Number(quotation.taxPercent);
     const lineItems =
       dto.lineItems ??

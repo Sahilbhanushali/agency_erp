@@ -1722,7 +1722,7 @@ model Quotation {
   clientId        String
   projectId       String?
   createdById     String
-  quotationNumber String          @unique
+  quotationNumber String
   title           String
   description     String?         @db.Text
   status          QuotationStatus @default(DRAFT)
@@ -1754,6 +1754,8 @@ model Quotation {
   invoice   Invoice?
   campaign  Campaign?       @relation("CampaignQuotation")
 
+  // Document numbers are per tenant: two companies may both hold Q-2026-0001.
+  @@unique([companyId, quotationNumber])
   @@index([companyId])
   @@index([clientId])
   @@index([projectId])
@@ -1793,7 +1795,7 @@ model Invoice {
   projectId       String?
   quotationId     String?       @unique
   createdById     String
-  invoiceNumber   String        @unique
+  invoiceNumber   String
   title           String
   status          InvoiceStatus @default(DRAFT)
   currency        String        @default("INR")
@@ -1825,6 +1827,8 @@ model Invoice {
   lineItems InvoiceLine[]
   payments  Payment[]
 
+  // Document numbers are per tenant: two companies may both hold INV-2026-0001.
+  @@unique([companyId, invoiceNumber])
   @@index([companyId])
   @@index([clientId])
   @@index([projectId])

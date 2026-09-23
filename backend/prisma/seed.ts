@@ -1,40 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { seedPermissions } from './permissions';
 
 const prisma = new PrismaClient();
 
 const SUPER_ADMIN_EMAIL = 'admin@agencyos.local';
 const SUPER_ADMIN_PASSWORD = 'Admin@12345';
 
-const PERMISSION_MODULES = [
-  'roles',
-  'users',
-  'clients',
-  'projects',
-  'workspaces',
-  'quotations',
-  'invoices',
-] as const;
-const PERMISSION_ACTIONS = ['create', 'read', 'update', 'delete'] as const;
-
-async function seedPermissions() {
-  for (const module of PERMISSION_MODULES) {
-    for (const action of PERMISSION_ACTIONS) {
-      await prisma.permission.upsert({
-        where: { module_action: { module, action } },
-        update: {},
-        create: {
-          code: `${module}:${action}`,
-          module,
-          action,
-        },
-      });
-    }
-  }
-}
-
 async function main() {
-  await seedPermissions();
+  await seedPermissions(prisma);
 
   let role = await prisma.role.findFirst({
     where: { companyId: null, name: 'SUPER_ADMIN' },

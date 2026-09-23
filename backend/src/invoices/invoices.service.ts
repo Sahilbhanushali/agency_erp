@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { toDateOrUndefined } from '../common/utils/date.util';
+import { createWithDocumentNumber } from '../common/utils/document-number.util';
 import { computeLineTotals } from '../common/utils/pricing.util';
 import {
   assertCompanyAccess,
@@ -23,9 +24,9 @@ const INVOICE_INCLUDE = {
   createdBy: { select: { id: true, firstName: true, lastName: true } },
 } as const;
 
-function withBalance<T extends { totalAmount: unknown; payments: { amount: unknown }[] }>(
-  invoice: T,
-) {
+function withBalance<
+  T extends { totalAmount: unknown; payments: { amount: unknown }[] },
+>(invoice: T) {
   const amountPaid = invoice.payments.reduce(
     (sum, payment) => sum + Number(payment.amount),
     0,
@@ -38,12 +39,14 @@ function withBalance<T extends { totalAmount: unknown; payments: { amount: unkno
 export class InvoicesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async generateInvoiceNumber(companyId: string) {
-    const year = new Date().getFullYear();
-    const count = await this.prisma.invoice.count({
-      where: { companyId, invoiceNumber: { startsWith: `INV-${year}-` } },
-    });
-    return `INV-${year}-${String(count + 1).padStart(4, '0')}`;
+  private latestInvoiceNumber(companyId: string, prefix: string) {
+    return this.prisma.invoice
+      .findFirst({
+        where: { companyId, invoiceNumber: { startsWith: prefix } },
+        orderBy: { invoiceNumber: 'desc' },
+        select: { invoiceNumber: true },
+      })
+      .then((latest) => latest?.invoiceNumber ?? null);
   }
 
   async create(dto: CreateInvoiceDto, actor: CurrentUserPayload) {
@@ -61,39 +64,43 @@ export class InvoicesService {
       discountPercent,
       taxPercent,
     );
-    const invoiceNumber = await this.generateInvoiceNumber(companyId);
-
-    const invoice = await this.prisma.invoice.create({
-      data: {
-        companyId,
-        clientId: dto.clientId,
-        projectId: dto.projectId,
-        quotationId: dto.quotationId,
-        createdById: actor.id,
-        invoiceNumber,
-        title: dto.title,
-        currency: dto.currency ?? 'INR',
-        discountPercent,
-        taxPercent,
-        subTotal,
-        totalAmount,
-        issueDate: new Date(dto.issueDate),
-        dueDate: new Date(dto.dueDate),
-        terms: dto.terms,
-        note: dto.note,
-        portalVisible: dto.portalVisible ?? true,
-        signatureUrl: dto.signatureUrl,
-        lineItems: {
-          create: dto.lineItems.map((line, index) => ({
-            description: line.description,
-            quantity: line.quantity,
-            unit: line.unit,
-            unitPrice: line.unitPrice,
-            position: index,
-          })),
-        },
-      },
-      include: INVOICE_INCLUDE,
+    const prefix = `INV-${new Date().getFullYear()}-`;
+    const invoice = await createWithDocumentNumber({
+      prefix,
+      findLatestNumber: () => this.latestInvoiceNumber(companyId, prefix),
+      create: (invoiceNumber) =>
+        this.prisma.invoice.create({
+          data: {
+            companyId,
+            clientId: dto.clientId,
+            projectId: dto.projectId,
+            quotationId: dto.quotationId,
+            createdById: actor.id,
+            invoiceNumber,
+            title: dto.title,
+            currency: dto.currency ?? 'INR',
+            discountPercent,
+            taxPercent,
+            subTotal,
+            totalAmount,
+            issueDate: new Date(dto.issueDate),
+            dueDate: new Date(dto.dueDate),
+            terms: dto.terms,
+            note: dto.note,
+            portalVisible: dto.portalVisible ?? true,
+            signatureUrl: dto.signatureUrl,
+            lineItems: {
+              create: dto.lineItems.map((line, index) => ({
+                description: line.description,
+                quantity: line.quantity,
+                unit: line.unit,
+                unitPrice: line.unitPrice,
+                position: index,
+              })),
+            },
+          },
+          include: INVOICE_INCLUDE,
+        }),
     });
     return withBalance(invoice);
   }
@@ -134,7 +141,8 @@ export class InvoicesService {
     if (dto.projectId)
       await this.assertProjectInCompany(dto.projectId, invoice.companyId);
 
-    const discountPercent = dto.discountPercent ?? Number(invoice.discountPercent);
+    const discountPercent =
+      dto.discountPercent ?? Number(invoice.discountPercent);
     const taxPercent = dto.taxPercent ?? Number(invoice.taxPercent);
     const lineItems =
       dto.lineItems ??
