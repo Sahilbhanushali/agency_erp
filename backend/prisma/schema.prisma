@@ -188,6 +188,11 @@ enum LeaveStatus {
 }
 
 // ── Finance ──
+enum TaxType {
+  CGST_SGST
+  IGST
+}
+
 enum QuotationStatus {
   DRAFT
   SENT
@@ -442,12 +447,17 @@ model Company {
   registeredAddressId String?
   name                String
   legalName           String?
-  logoUrl             String?
+  logoUrl             String?   @db.LongText
   email               String?
   phone               String?
   website             String?
   gstNumber           String?
   panNumber           String?
+  hsnNumber           String?
+  bankName            String?
+  bankAccountName     String?
+  bankAccountNumber   String?
+  bankIfsc            String?
   currency            String    @default("INR")
   timezone            String    @default("Asia/Kolkata")
   isActive            Boolean   @default(true)
@@ -579,6 +589,8 @@ model User {
   passwordHash    String
   avatarUrl       String?
   status          UserStatus      @default(INVITED)
+  inviteTokenHash String?         @unique
+  inviteTokenExpiresAt DateTime?
   gender          Gender?
   dateOfBirth     DateTime?       @db.Date
   employmentType  EmploymentType?
@@ -780,7 +792,7 @@ model Client {
   name             String
   industry         String?
   website          String?
-  logoUrl          String?
+  logoUrl          String?   @db.LongText
   email            String
   phone            String?
   gstNumber        String?
@@ -1716,7 +1728,7 @@ model Quotation {
   clientId        String
   projectId       String?
   createdById     String
-  quotationNumber String          @unique
+  quotationNumber String
   title           String
   description     String?         @db.Text
   status          QuotationStatus @default(DRAFT)
@@ -1724,12 +1736,14 @@ model Quotation {
   subTotal        Decimal         @db.Decimal(14, 2)
   discountPercent Decimal         @default(0) @db.Decimal(5, 2)
   taxPercent      Decimal         @default(18) @db.Decimal(5, 2)
+  taxType         TaxType         @default(CGST_SGST)
   totalAmount     Decimal         @db.Decimal(14, 2)
   validUntil      DateTime        @db.Date
   terms           String?         @db.Text
   note            String?         @db.Text
   portalVisible   Boolean         @default(false)
   pdfFileKey      String?
+  signatureUrl    String?         @db.LongText
   sentAt          DateTime?
   convertedAt     DateTime?
   createdAt       DateTime        @default(now())
@@ -1747,6 +1761,8 @@ model Quotation {
   invoice   Invoice?
   campaign  Campaign?       @relation("CampaignQuotation")
 
+  // Document numbers are per tenant: two companies may both hold Q-2026-0001.
+  @@unique([companyId, quotationNumber])
   @@index([companyId])
   @@index([clientId])
   @@index([projectId])
@@ -1786,13 +1802,14 @@ model Invoice {
   projectId       String?
   quotationId     String?       @unique
   createdById     String
-  invoiceNumber   String        @unique
+  invoiceNumber   String
   title           String
   status          InvoiceStatus @default(DRAFT)
   currency        String        @default("INR")
   subTotal        Decimal       @db.Decimal(14, 2)
   discountPercent Decimal       @default(0) @db.Decimal(5, 2)
   taxPercent      Decimal       @default(18) @db.Decimal(5, 2)
+  taxType         TaxType       @default(CGST_SGST)
   totalAmount     Decimal       @db.Decimal(14, 2)
   issueDate       DateTime      @db.Date
   dueDate         DateTime      @db.Date
@@ -1800,6 +1817,7 @@ model Invoice {
   note            String?       @db.Text
   portalVisible   Boolean       @default(true)
   pdfFileKey      String?
+  signatureUrl    String?       @db.LongText
   sentAt          DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -1817,6 +1835,8 @@ model Invoice {
   lineItems InvoiceLine[]
   payments  Payment[]
 
+  // Document numbers are per tenant: two companies may both hold INV-2026-0001.
+  @@unique([companyId, invoiceNumber])
   @@index([companyId])
   @@index([clientId])
   @@index([projectId])

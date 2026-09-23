@@ -38,6 +38,15 @@ export class FilesService {
     });
   }
 
+  async getAbsolutePath(fileId: string) {
+    const file = await this.prisma.file.findFirst({
+      where: { id: fileId, deletedAt: null },
+    });
+    if (!file) throw new NotFoundException('File not found');
+
+    return { ...file, absolutePath: join(STORAGE_ROOT, file.storageKey) };
+  }
+
   async remove(fileId: string, deletedBy: string) {
     const file = await this.prisma.file.findFirst({
       where: { id: fileId, deletedAt: null },

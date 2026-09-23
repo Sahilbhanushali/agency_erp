@@ -4,7 +4,7 @@ import { IsEnum, IsOptional } from 'class-validator';
 import { CreateUserDto } from './create-user.dto';
 
 export class UpdateUserDto extends PartialType(
-  OmitType(CreateUserDto, ['password', 'companyId'] as const),
+  OmitType(CreateUserDto, ['companyId'] as const),
 ) {
   @ApiPropertyOptional({ enum: UserStatus })
   @IsOptional()

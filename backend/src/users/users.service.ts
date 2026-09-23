@@ -3,13 +3,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import {
   assertCompanyAccess,
   resolveTargetCompanyId,
 } from '../common/utils/tenant-scope.util';
+import { toDateOrUndefined } from '../common/utils/date.util';
+import { generateToken } from '../common/utils/token.util';
 import { FilesService } from '../files/files.service';
+import { MailerService } from '../mailer/mailer.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddressInputDto } from '../common/dto/address-input.dto';
 import { CreateSkillDto } from './dto/create-skill.dto';
@@ -18,6 +23,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpsertBankDetailDto } from './dto/upsert-bank-detail.dto';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
+
+const INVITE_TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
 
 const USER_INCLUDE = {
   omit: { passwordHash: true },
@@ -39,6 +46,8 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly filesService: FilesService,
+    private readonly mailerService: MailerService,
+    private readonly configService: ConfigService,
   ) {}
 
   async create(dto: CreateUserDto, actor: CurrentUserPayload) {
@@ -49,9 +58,11 @@ export class UsersService {
     });
     if (!role) throw new BadRequestException('Role not found in this company');
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    // Unusable placeholder — the account is unlocked via the invite link, which sets a real password.
+    const passwordHash = await bcrypt.hash(randomBytes(24).toString('hex'), 10);
+    const { token, tokenHash } = generateToken();
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         companyId,
         roleId: dto.roleId,
@@ -60,16 +71,29 @@ export class UsersService {
         email: dto.email,
         phone: dto.phone,
         passwordHash,
+        inviteTokenHash: tokenHash,
+        inviteTokenExpiresAt: new Date(Date.now() + INVITE_TOKEN_TTL_MS),
         gender: dto.gender,
-        dateOfBirth: dto.dateOfBirth,
+        dateOfBirth: toDateOrUndefined(dto.dateOfBirth),
         employmentType: dto.employmentType,
         department: dto.department,
         designation: dto.designation,
-        joiningDate: dto.joiningDate,
+        joiningDate: toDateOrUndefined(dto.joiningDate),
         isRemote: dto.isRemote,
       },
       ...USER_INCLUDE,
     });
+
+    const frontendOrigin = this.configService
+      .getOrThrow<string>('FRONTEND_ORIGIN')
+      .split(',')[0];
+    await this.mailerService.sendInviteEmail(
+      user.email,
+      user.firstName,
+      `${frontendOrigin}/auth/accept-invite?token=${token}`,
+    );
+
+    return user;
   }
 
   findAll(actor: CurrentUserPayload, companyId?: string) {
@@ -115,11 +139,11 @@ export class UsersService {
         email: dto.email,
         phone: dto.phone,
         gender: dto.gender,
-        dateOfBirth: dto.dateOfBirth,
+        dateOfBirth: toDateOrUndefined(dto.dateOfBirth),
         employmentType: dto.employmentType,
         department: dto.department,
         designation: dto.designation,
-        joiningDate: dto.joiningDate,
+        joiningDate: toDateOrUndefined(dto.joiningDate),
         isRemote: dto.isRemote,
         status: dto.status,
       },
@@ -276,6 +300,20 @@ export class UsersService {
       include: { file: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getDocumentFile(
+    userId: string,
+    documentId: string,
+    actor: CurrentUserPayload,
+  ) {
+    await this.findOne(userId, actor);
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, employeeUserId: userId, deletedAt: null },
+    });
+    if (!document) throw new NotFoundException('Document not found');
+
+    return this.filesService.getAbsolutePath(document.fileId);
   }
 
   async removeDocument(

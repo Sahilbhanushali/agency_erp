@@ -1,16 +1,17 @@
-import { Button } from "@/components/ui/button";
+import Combobox from "@/components/shared/Combobox";
+import DatePicker from "@/components/shared/DatePicker";
+import FormActions from "@/components/shared/FormActions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
+import { phoneField } from "@/lib/zod";
 import type { Role, User } from "@/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import * as z from "zod";
 
@@ -23,7 +24,7 @@ const baseFields = {
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Enter a valid email address."),
-    phone: z.string().optional(),
+    phone: phoneField,
     roleId: z.string().min(1, "Role is required"),
     companyId: z.string().optional(),
     gender: z.enum(["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"]).optional(),
@@ -37,7 +38,6 @@ const baseFields = {
 
 const schema = z.object({
     ...baseFields,
-    password: z.string().optional(),
     status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED", "INVITED"]).optional(),
 });
 
@@ -50,11 +50,11 @@ interface UserFormProps {
     isSubmitting: boolean;
 }
 
-const inputClass = "h-11 rounded-lg";
-const selectTriggerClass = "h-11 rounded-lg !w-full";
+const inputClass = "h-9 text-xs rounded-lg";
+const selectTriggerClass = "h-9 text-xs rounded-lg !w-full";
 
 const FormSection = ({ title, description, children }: { title: string; description?: string; children: ReactNode }) => (
-    <section className="border-b border-neutral-100 dark:border-slate-700 last:border-0 pb-8 last:pb-0">
+    <section className="border-b border-border last:border-0 pb-8 last:pb-0">
         <div className="mb-5">
             <h6 className="text-base font-semibold text-neutral-900 dark:text-white">{title}</h6>
             {description && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{description}</p>}
@@ -64,7 +64,6 @@ const FormSection = ({ title, description, children }: { title: string; descript
 );
 
 const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps) => {
-    const navigate = useNavigate();
     const { user: actor } = useAuth();
     const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -77,7 +76,6 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
             lastName: initialValues?.lastName ?? "",
             email: initialValues?.email ?? "",
             phone: initialValues?.phone ?? "",
-            password: "",
             roleId: initialValues?.roleId ?? "",
             companyId: initialValues?.companyId ?? undefined,
             gender: initialValues?.gender ?? undefined,
@@ -112,10 +110,6 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
     }, [targetCompanyId]);
 
     const handleSubmit = async (values: UserFormValues) => {
-        if (mode === "create" && (!values.password || values.password.length < 6)) {
-            form.setError("password", { message: "Password must be at least 6 characters." });
-            return;
-        }
         // Optional text/date fields default to "" in the form; the backend rejects "" for @IsDateString and prefers omitted keys.
         const cleaned = Object.fromEntries(
             Object.entries(values).map(([key, value]) => [key, value === "" ? undefined : value]),
@@ -148,19 +142,18 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
                     {form.formState.errors.email && <FieldError errors={[form.formState.errors.email]} />}
                 </Field>
 
-                <Field>
+                <Field data-invalid={!!form.formState.errors.phone}>
                     <FieldLabel htmlFor="phone">Phone</FieldLabel>
-                    <Input id="phone" className={inputClass} {...form.register("phone")} />
+                    <Input id="phone" maxLength={10} inputMode="numeric" className={inputClass} {...form.register("phone")} />
+                    {form.formState.errors.phone && <FieldError errors={[form.formState.errors.phone]} />}
                 </Field>
-
-                {mode === "create" && (
-                    <Field data-invalid={!!form.formState.errors.password}>
-                        <FieldLabel htmlFor="password">Password *</FieldLabel>
-                        <Input id="password" type="password" className={inputClass} {...form.register("password")} />
-                        {form.formState.errors.password && <FieldError errors={[form.formState.errors.password]} />}
-                    </Field>
-                )}
             </FormSection>
+
+            {mode === "create" && (
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 -mt-4">
+                    An invite email will be sent to this address with a link to set their password.
+                </p>
+            )}
 
             <FormSection title="Account & Role" description="Which company and role this user belongs to.">
                 {isSuperAdmin && (
@@ -170,18 +163,18 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
                             name="companyId"
                             control={form.control}
                             render={({ field }) => (
-                                <Select value={field.value} onValueChange={field.onChange} disabled={mode === "edit"}>
-                                    <SelectTrigger id="companyId" className={selectTriggerClass}>
-                                        <SelectValue placeholder="Select company" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {companies.map((company) => (
-                                            <SelectItem key={company.id} value={company.id}>
-                                                {company.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Combobox
+                                    id="companyId"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    disabled={mode === "edit"}
+                                    options={companies.map((company) => ({ value: company.id, label: company.name }))}
+                                    placeholder="Select company"
+                                    searchPlaceholder="Search companies..."
+                                    emptyText="No companies found."
+                                    createLabel="Add new company"
+                                    createHref="/companies-list/create"
+                                />
                             )}
                         />
                     </Field>
@@ -193,18 +186,18 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
                         name="roleId"
                         control={form.control}
                         render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange} disabled={!targetCompanyId}>
-                                <SelectTrigger id="roleId" className={selectTriggerClass}>
-                                    <SelectValue placeholder={targetCompanyId ? "Select role" : "Select a company first"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {roles.map((role) => (
-                                        <SelectItem key={role.id} value={role.id}>
-                                            {role.displayName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                id="roleId"
+                                value={field.value}
+                                onChange={field.onChange}
+                                disabled={!targetCompanyId}
+                                options={roles.map((role) => ({ value: role.id, label: role.displayName }))}
+                                placeholder={targetCompanyId ? "Select role" : "Select a company first"}
+                                searchPlaceholder="Search roles..."
+                                emptyText="No roles found."
+                                createLabel="Go create a role"
+                                createHref="/roles-list"
+                            />
                         )}
                     />
                     {form.formState.errors.roleId && <FieldError errors={[form.formState.errors.roleId]} />}
@@ -270,7 +263,11 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
 
                 <Field>
                     <FieldLabel htmlFor="joiningDate">Joining Date</FieldLabel>
-                    <Input id="joiningDate" type="date" className={inputClass} {...form.register("joiningDate")} />
+                    <Controller
+                        name="joiningDate"
+                        control={form.control}
+                        render={({ field }) => <DatePicker id="joiningDate" value={field.value} onChange={field.onChange} />}
+                    />
                 </Field>
 
                 <Field orientation="horizontal" className="items-center self-end pb-2.5">
@@ -310,19 +307,17 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
 
                 <Field>
                     <FieldLabel htmlFor="dateOfBirth">Date of Birth</FieldLabel>
-                    <Input id="dateOfBirth" type="date" className={inputClass} {...form.register("dateOfBirth")} />
+                    <Controller
+                        name="dateOfBirth"
+                        control={form.control}
+                        render={({ field }) => (
+                            <DatePicker id="dateOfBirth" value={field.value} onChange={field.onChange} toYear={new Date().getFullYear()} />
+                        )}
+                    />
                 </Field>
             </FormSection>
 
-            <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-slate-700 pt-6">
-                <Button type="button" variant="outline" className="h-11 px-8 rounded-lg" onClick={() => navigate(-1)} disabled={isSubmitting}>
-                    Cancel
-                </Button>
-                <Button type="submit" className="h-11 px-8 rounded-lg" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="animate-spin h-4.5 w-4.5 mr-2" />}
-                    {mode === "create" ? "Create User" : "Save Changes"}
-                </Button>
-            </div>
+            <FormActions isSubmitting={isSubmitting} submitLabel={mode === "create" ? "Create User" : "Save Changes"} />
         </form>
     );
 };

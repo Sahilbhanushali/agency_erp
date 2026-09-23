@@ -126,6 +126,35 @@ export interface EmployeeProfilePayload {
   permanentAddress?: AddressInput;
 }
 
+export type DocumentCategory =
+  | "CONTRACT"
+  | "PROPOSAL"
+  | "CREATIVE_ASSET"
+  | "REPORT"
+  | "BRAND_GUIDELINE"
+  | "ID_PROOF"
+  | "RESUME"
+  | "OFFER_LETTER"
+  | "EXPERIENCE_LETTER"
+  | "CERTIFICATE"
+  | "BANK_DETAIL"
+  | "OTHER";
+
+export interface EmployeeDocument {
+  id: string;
+  name: string;
+  description: string | null;
+  category: DocumentCategory;
+  isClientVisible: boolean;
+  createdAt: string;
+  file: {
+    id: string;
+    originalName: string;
+    mimeType: string;
+    sizeBytes: number;
+  };
+}
+
 export interface User {
   id: string;
   companyId: string | null;
@@ -156,7 +185,6 @@ export interface CreateUserPayload {
   lastName: string;
   email: string;
   phone?: string;
-  password: string;
   roleId: string;
   companyId?: string;
   gender?: Gender;
@@ -168,6 +196,6 @@ export interface CreateUserPayload {
   isRemote?: boolean;
 }
 
-export type UpdateUserPayload = Partial<Omit<CreateUserPayload, "password" | "companyId">> & {
+export type UpdateUserPayload = Partial<Omit<CreateUserPayload, "companyId">> & {
   status?: UserStatus;
 };

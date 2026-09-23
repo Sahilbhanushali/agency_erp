@@ -5,6 +5,7 @@ export interface CurrentUserPayload {
   companyId: string | null;
   roleId: string;
   roleName: string;
+  firstName: string;
   email: string;
   permissions: string[];
 }

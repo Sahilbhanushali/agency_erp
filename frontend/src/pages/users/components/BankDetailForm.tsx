@@ -11,10 +11,18 @@ import { toast } from "react-toastify";
 import * as z from "zod";
 
 const schema = z.object({
-    accountHolderName: z.string().min(1, "Account holder name is required"),
-    accountNumber: z.string().min(1, "Account number is required"),
-    bankName: z.string().min(1, "Bank name is required"),
-    ifscCode: z.string().min(1, "IFSC code is required"),
+    accountHolderName: z.string().trim().min(1, "Account holder name is required"),
+    accountNumber: z
+        .string()
+        .trim()
+        .min(1, "Account number is required")
+        .regex(/^[0-9]{6,20}$/, "Account number must be 6-20 digits"),
+    bankName: z.string().trim().min(1, "Bank name is required"),
+    ifscCode: z
+        .string()
+        .trim()
+        .min(1, "IFSC code is required")
+        .regex(/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/, "Enter a valid 11-character IFSC code"),
     branchName: z.string().optional(),
 });
 
@@ -101,7 +109,7 @@ const BankDetailForm = ({ user, onSaved }: BankDetailFormProps) => {
                 </Field>
             </div>
 
-            <div className="flex items-center justify-end border-t border-neutral-100 dark:border-slate-700 pt-6">
+            <div className="flex items-center justify-end border-t border-border pt-6">
                 <Button type="submit" className="h-11 px-8 rounded-lg" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="animate-spin h-4.5 w-4.5 mr-2" />}
                     Save Bank Details

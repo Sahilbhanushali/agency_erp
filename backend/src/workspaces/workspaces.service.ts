@@ -10,14 +10,16 @@ import { AddMemberDto } from './dto/add-member.dto';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 
+const MEMBER_INCLUDE = {
+  user: {
+    select: { id: true, firstName: true, lastName: true, email: true },
+  },
+} as const;
+
 const WORKSPACE_INCLUDE = {
   members: {
     where: { deletedAt: null },
-    include: {
-      user: {
-        select: { id: true, firstName: true, lastName: true, email: true },
-      },
-    },
+    include: MEMBER_INCLUDE,
   },
 } as const;
 
@@ -125,6 +127,7 @@ export class WorkspacesService {
           deletedAt: null,
           deletedBy: null,
         },
+        include: MEMBER_INCLUDE,
       });
     }
 
@@ -135,6 +138,7 @@ export class WorkspacesService {
         addedById: actor.id,
         memberRole: dto.memberRole,
       },
+      include: MEMBER_INCLUDE,
     });
   }
 

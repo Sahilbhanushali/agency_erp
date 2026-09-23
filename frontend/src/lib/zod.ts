@@ -70,6 +70,53 @@ export const createPasswordSchema = z
   });
 
 /* =======================
+   Reusable Field Validators
+   (India-centric formats used across client/company/HR forms —
+   all optional-friendly: empty string passes, but a non-empty value must be well-formed.)
+======================= */
+export const phoneField = z
+  .string()
+  .trim()
+  .regex(/^[0-9]{10}$/, "Enter a valid 10-digit phone number")
+  .optional()
+  .or(z.literal(""));
+
+export const websiteField = z
+  .string()
+  .trim()
+  .regex(/^(https?:\/\/)?([\w-]+\.)+[a-z]{2,}([/?#]\S*)?$/i, "Enter a valid website URL")
+  .optional()
+  .or(z.literal(""));
+
+export const gstNumberField = z
+  .string()
+  .trim()
+  .regex(/^[0-9]{2}[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z]Z[0-9A-Za-z]$/, "Enter a valid 15-character GSTIN")
+  .optional()
+  .or(z.literal(""));
+
+export const panNumberField = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/, "Enter a valid 10-character PAN")
+  .optional()
+  .or(z.literal(""));
+
+export const ifscField = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/, "Enter a valid 11-character IFSC code")
+  .optional()
+  .or(z.literal(""));
+
+export const bankAccountNumberField = z
+  .string()
+  .trim()
+  .regex(/^[0-9]{6,20}$/, "Account number must be 6-20 digits")
+  .optional()
+  .or(z.literal(""));
+
+/* =======================
    Generic Form Schema
 ======================= */
 export const formSchema = z.object({

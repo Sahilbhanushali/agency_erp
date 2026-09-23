@@ -1,25 +1,19 @@
-
-const Footer = () => {
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
+export default function Footer() {
+  const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="d-footer bg-white dark:bg-[#273142] py-6 px-[22px] mt-[auto]">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="mb-0 text-neutral-600 dark:text-white">
-          &copy; {currentYear} WowDash. All Rights Reserved.
+    <footer className="border-t border-border/60 bg-card/40 py-3.5 px-4 sm:px-6 mt-auto">
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground flex-wrap">
+        <p className="font-mono text-[11px]">
+          &copy; {currentYear} AgencyOS. Enterprise Edition.
         </p>
-        <p className="mb-0 dark:text-white">
-          Made by {" "}
-          <span
-            className="font-medium text-primary dark:text-primary"
-          >
-            wowtheme7
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-[11px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span>API Online</span>
           </span>
-        </p>
+        </div>
       </div>
     </footer>
   );
-};
-
-export default Footer;
+}

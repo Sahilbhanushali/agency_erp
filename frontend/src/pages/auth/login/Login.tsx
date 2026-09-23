@@ -1,35 +1,28 @@
-import AuthImage from "@/assets/images/auth/auth-img.png";
-import ThemeLogo from "@/components/shared/ThemeLogo";
+import { ModeToggle } from "@/components/ModeToggle";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldError, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useIsSubmitting } from "@/context/isSubmittingContext";
 import { ApiError } from "@/lib/api";
-import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from 'react-toastify';
-
-import {
-    Field,
-    FieldError,
-    FieldGroup
-} from "@/components/ui/field";
-import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CheckCircle2, Eye, EyeOff, FolderKanban, Loader2, Lock, Mail, Receipt, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import * as z from "zod";
-
 
 const formSchema = z.object({
     email: z.string().email("Enter a valid email address."),
     password: z
         .string()
         .min(6, "Password must be at least 6 characters.")
-        .max(20, "Password must be at most 10 characters."),
+        .max(64, "Password must be at most 64 characters."),
 });
 
+type FormValues = z.infer<typeof formSchema>;
 
 const Login = () => {
     const navigate = useNavigate();
@@ -38,7 +31,7 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             email: "",
@@ -46,57 +39,127 @@ const Login = () => {
         },
     });
 
-    const handleLogin = async (data: z.infer<typeof formSchema>) => {
+    const handleLogin = async (data: FormValues) => {
         setIsSubmitting(true);
         setIsLoading(true);
 
         try {
             await login(data.email, data.password);
-            toast.success("Login successful.");
+            toast.success("Welcome back!");
             navigate("/dashboard");
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : "Something went wrong. Please try again.");
+            toast.error(error instanceof ApiError ? error.message : "Invalid credentials. Please try again.");
         } finally {
             setIsSubmitting(false);
             setIsLoading(false);
         }
-    }
+    };
 
     return (
-        <section className="bg-white dark:bg-slate-900 lg:flex flex-wrap min-h-[100vh]">
-            <div className="lg:w-1/2 lg:block hidden">
-                <div className="flex items-center flex-col h-full justify-center">
-                    <img src={AuthImage} alt="Image" />
-                </div>
-            </div>
-            <div className="lg:w-1/2 py-8 px-6 flex flex-col justify-center">
-                <div className="lg:max-w-[464px] mx-auto w-full">
+        <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2 bg-background">
+            {/* Left brand showcase panel - Desktop only */}
+            <div className="hidden lg:flex flex-col justify-between p-12 bg-zinc-950 text-zinc-100 relative overflow-hidden border-r border-zinc-800">
+                {/* Background decorative glow */}
+                <div className="absolute top-0 right-0 -mr-24 -mt-24 w-96 h-96 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 -ml-24 -mb-24 w-96 h-96 rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
+
+                {/* Brand header */}
+                <div className="relative z-10 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg shadow-primary/25">
+                        A
+                    </div>
                     <div>
-                        <Link to="/dashboard" className="mb-2.5 max-w-[290px] inline-block">
-                            <ThemeLogo />
-                        </Link>
-                        <h4 className="mb-3">Sign In to your Account</h4>
-                        <p className="mb-8 text-secondary-light text-lg">Welcome back! please enter your detail</p>
+                        <span className="font-bold text-base tracking-tight text-white">AgencyOS</span>
+                        <span className="block text-[11px] text-zinc-400 font-mono">Operations Platform</span>
+                    </div>
+                </div>
+
+                {/* Hero message & feature pills */}
+                <div className="relative z-10 max-w-md space-y-6 my-auto">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-300">
+                        <Sparkles className="w-3.5 h-3.5 text-primary" />
+                        <span>The operating system for modern agencies</span>
                     </div>
 
-                    <form action="#" onSubmit={form.handleSubmit(handleLogin)}>
-                        <FieldGroup className="mb-4">
+                    <h1 className="text-3xl font-bold tracking-tight text-white leading-tight">
+                        Streamline your agency's clients, projects, tasks, and billing.
+                    </h1>
+
+                    <p className="text-sm text-zinc-400 leading-relaxed">
+                        A unified workspace built for high-performance creative and technical teams. Monitor financial health, manage deliveries, and collaborate seamlessly.
+                    </p>
+
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center gap-3 text-xs text-zinc-300 bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/60">
+                            <FolderKanban className="w-4 h-4 text-primary shrink-0" />
+                            <span>Workspace boards with real-time task pipelines</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-zinc-300 bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/60">
+                            <Receipt className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>GST-compliant invoicing & multi-currency quotations</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-zinc-300 bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/60">
+                            <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
+                            <span>Role-based access control with granular permissions</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer status indicator */}
+                <div className="relative z-10 flex items-center justify-between text-xs text-zinc-500 pt-6 border-t border-zinc-900">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>All systems operational</span>
+                    </div>
+                    <span>v2.0.0 Enterprise</span>
+                </div>
+            </div>
+
+            {/* Right login form panel */}
+            <div className="flex flex-col justify-between p-6 sm:p-10 relative">
+                {/* Header with theme toggle */}
+                <div className="flex items-center justify-between">
+                    <div className="flex lg:hidden items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shadow-xs">
+                            A
+                        </div>
+                        <span className="font-bold text-sm tracking-tight">AgencyOS</span>
+                    </div>
+                    <div className="ml-auto">
+                        <ModeToggle />
+                    </div>
+                </div>
+
+                {/* Centered Form */}
+                <div className="max-w-[380px] w-full mx-auto my-auto py-8">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h2>
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                            Enter your email and password to access your agency dashboard.
+                        </p>
+                    </div>
+
+                    <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4">
+                        <FieldGroup>
                             <Controller
                                 name="email"
                                 control={form.control}
                                 render={({ field, fieldState }) => (
-                                    <Field data-invalid={fieldState.invalid} className={cn('gap-1')}>
-                                        <div className="icon-field relative">
-                                            <Mail className="absolute start-5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-700 dark:text-neutral-200" />
+                                    <Field data-invalid={fieldState.invalid} className="gap-1.5">
+                                        <label htmlFor="email" className="text-xs font-medium text-foreground">
+                                            Email Address
+                                        </label>
+                                        <div className="relative">
+                                            <Mail className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                                             <Input
                                                 {...field}
+                                                id="email"
                                                 type="email"
                                                 aria-invalid={fieldState.invalid}
                                                 disabled={isSubmitting}
-                                                placeholder="Email"
-                                                name="email"
-                                                autoComplete="off"
-                                                className="ps-13 pe-12 h-14 rounded-xl bg-neutral-100 dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 focus:border-primary dark:focus:border-primary focus-visible:border-primary !shadow-none !ring-0"
+                                                placeholder="name@agency.com"
+                                                autoComplete="email"
+                                                className="ps-9 h-10 text-xs rounded-lg border-border bg-card focus-visible:ring-1 focus-visible:ring-primary shadow-xs"
                                             />
                                         </div>
                                         {fieldState.invalid && (
@@ -106,33 +169,41 @@ const Login = () => {
                                 )}
                             />
                         </FieldGroup>
-                        <FieldGroup className="mb-4">
+
+                        <FieldGroup>
                             <Controller
                                 name="password"
                                 control={form.control}
                                 render={({ field, fieldState }) => (
-                                    <Field data-invalid={fieldState.invalid} className={cn('gap-1')}>
-                                        <div className="icon-field relative">
-                                            <Lock className="absolute start-5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-700 dark:text-neutral-200" />
+                                    <Field data-invalid={fieldState.invalid} className="gap-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <label htmlFor="password" className="text-xs font-medium text-foreground">
+                                                Password
+                                            </label>
+                                        </div>
+                                        <div className="relative">
+                                            <Lock className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                                             <Input
                                                 {...field}
-                                                type={showPassword ? 'text' : 'password'}
+                                                id="password"
+                                                type={showPassword ? "text" : "password"}
                                                 aria-invalid={fieldState.invalid}
                                                 disabled={isSubmitting}
-                                                placeholder="Password"
-                                                name="password"
-                                                autoComplete="off"
-                                                className="ps-13 pe-12 h-14 rounded-xl bg-neutral-100 dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 focus:border-primary dark:focus:border-primary focus-visible:border-primary !shadow-none !ring-0"
+                                                placeholder="••••••••"
+                                                autoComplete="current-password"
+                                                className="ps-9 pe-10 h-10 text-xs rounded-lg border-border bg-card focus-visible:ring-1 focus-visible:ring-primary shadow-xs"
                                             />
                                             <Button
                                                 type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-4 top-1/2 transform -translate-y-1/2 !p-0 bg-transparent hover:bg-transparent text-muted-foreground h-[unset]"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setShowPassword((prev) => !prev)}
+                                                className="absolute end-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-transparent"
                                             >
                                                 {showPassword ? (
-                                                    <EyeOff className="w-5 h-5" />
+                                                    <EyeOff className="w-3.5 h-3.5" />
                                                 ) : (
-                                                    <Eye className="w-5 h-5" />
+                                                    <Eye className="w-3.5 h-3.5" />
                                                 )}
                                             </Button>
                                         </div>
@@ -144,29 +215,32 @@ const Login = () => {
                             />
                         </FieldGroup>
 
-                        {/* Remember Me */}
-                        <div className="mt-2 flex items-center gap-2">
-                            <Checkbox
-                                id="remember"
-                                className="border border-neutral-400 w-4.5 h-4.5"
-                            />
-                            <label htmlFor="remember" className="text-sm">
-                                Remember me
-                            </label>
+                        <div className="flex items-center justify-between pt-1">
+                            <div className="flex items-center gap-2">
+                                <Checkbox id="remember" className="h-4 w-4 rounded border-border" />
+                                <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer select-none">
+                                    Remember this device
+                                </label>
+                            </div>
                         </div>
 
                         <Button
                             type="submit"
-                            className="w-full rounded-lg h-[52px] text-sm mt-8"
+                            className="w-full h-10 text-xs font-medium rounded-lg mt-6 shadow-xs"
                             disabled={isSubmitting}
                         >
-                            {isLoading && <Loader2 className="animate-spin h-4.5 w-4.5 mr-2" />}
-                            {isLoading ? "Signing in..." : "Sign In"}
+                            {isLoading && <Loader2 className="animate-spin h-3.5 w-3.5 mr-2" />}
+                            {isLoading ? "Signing in..." : "Sign in to Dashboard"}
                         </Button>
                     </form>
                 </div>
+
+                {/* Footer copyright */}
+                <div className="text-center text-[11px] text-muted-foreground py-2">
+                    Protected by enterprise-grade encryption & security standards.
+                </div>
             </div>
-        </section>
+        </div>
     );
 };
 

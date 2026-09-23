@@ -1,15 +1,17 @@
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import DataTableShell from "@/components/shared/DataTableShell";
+import PageHeader from "@/components/shared/PageHeader";
+import RowActions from "@/components/tables/RowActions";
+import { cellClass, headClass, rowClass } from "@/components/tables/table-styles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/context/AuthContext";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type { Permission, Role } from "@/types/user";
-import { Loader2, Pencil, Plus, ShieldAlert, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Lock, Plus, Shield, ShieldCheck, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import RoleFormDialog from "./components/RoleFormDialog";
 
@@ -26,6 +28,7 @@ const RolesList = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [companyId, setCompanyId] = useState<string | undefined>(actor?.companyId ?? undefined);
     const [isLoading, setIsLoading] = useState(true);
+    const [search, setSearch] = useState("");
     const [formOpen, setFormOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<Role | null>(null);
     const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
@@ -71,111 +74,178 @@ const RolesList = () => {
         }
     };
 
+    const filteredRoles = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        if (!query) return roles;
+        return roles.filter(
+            (role) =>
+                role.displayName.toLowerCase().includes(query) ||
+                role.name.toLowerCase().includes(query) ||
+                (role.description && role.description.toLowerCase().includes(query))
+        );
+    }, [roles, search]);
+
     return (
-        <>
-            <Breadcrumb title="Roles & Permissions" text="Roles" />
-
-            <Card className="card h-full !p-0 !block border-0 overflow-hidden mb-6">
-                <CardHeader className="border-b border-neutral-200 dark:border-slate-600 !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
-                    <div className="flex items-center flex-wrap gap-3">
-                        {isSuperAdmin && (
-                            <Select value={companyId} onValueChange={setCompanyId}>
-                                <SelectTrigger className="min-w-[200px] h-11 dark:bg-slate-700 border border-slate-300 dark:border-slate-500">
-                                    <SelectValue placeholder="All companies" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {companies.map((company) => (
-                                        <SelectItem key={company.id} value={company.id}>
-                                            {company.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    </div>
-
+        <div className="space-y-6">
+            <PageHeader
+                title="Roles & Permissions"
+                description="Manage user roles, access control levels, and granular feature permissions across modules."
+                badge={roles.length ? `${roles.length} roles` : undefined}
+                breadcrumbs={[
+                    { label: "Settings", href: "/setting/company" },
+                    { label: "Roles & Permissions" },
+                ]}
+                actions={
                     <Button
-                        className="w-auto h-11"
+                        size="sm"
                         disabled={isSuperAdmin && !companyId}
                         onClick={() => {
                             setEditingRole(null);
                             setFormOpen(true);
                         }}
                     >
-                        <Plus className="w-5 h-5" />
+                        <Plus className="w-4 h-4 mr-1.5" />
                         Add Role
                     </Button>
-                </CardHeader>
+                }
+            />
 
-                <CardContent className="card-body p-6">
-                    {isLoading ? (
-                        <div className="flex items-center justify-center py-16">
-                            <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
-                        </div>
-                    ) : roles.length === 0 ? (
-                        <div className="flex flex-col items-center gap-2 py-16 text-center">
-                            <ShieldAlert className="w-8 h-8 text-neutral-400" />
-                            <p className="text-neutral-500 dark:text-neutral-300">
-                                {isSuperAdmin && !companyId ? "Select a company to manage its roles." : "No roles found. Create one to get started."}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Role</TableHead>
-                                        <TableHead>Description</TableHead>
-                                        <TableHead>Permissions</TableHead>
-                                        <TableHead>Users</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {roles.map((role) => (
-                                        <TableRow key={role.id}>
-                                            <TableCell className="font-medium">
-                                                {role.displayName}
-                                                {role.isSystem && <Badge variant="outline" className="ml-2 h-6 px-2 text-xs">System</Badge>}
+            <DataTableShell
+                search={{
+                    value: search,
+                    onChange: setSearch,
+                    placeholder: "Search roles by name or key...",
+                }}
+                filters={
+                    isSuperAdmin ? (
+                        <Select value={companyId} onValueChange={setCompanyId}>
+                            <SelectTrigger className="h-9 w-[200px] text-xs">
+                                <SelectValue placeholder="All companies" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {companies.map((company) => (
+                                    <SelectItem key={company.id} value={company.id} className="text-xs">
+                                        {company.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    ) : null
+                }
+                isLoading={isLoading}
+                isEmpty={filteredRoles.length === 0}
+                emptyState={{
+                    icon: Shield,
+                    title: search ? "No roles match your search" : "No roles found",
+                    description: search
+                        ? `No roles matched "${search}". Try clearing your search keyword.`
+                        : isSuperAdmin && !companyId
+                        ? "Select a company to view and configure its roles."
+                        : "Create custom roles to assign specific capabilities to your team.",
+                    action:
+                        !search && (!isSuperAdmin || companyId)
+                            ? {
+                                  label: "Create First Role",
+                                  onClick: () => {
+                                      setEditingRole(null);
+                                      setFormOpen(true);
+                                  },
+                              }
+                            : undefined,
+                }}
+            >
+                <div className="overflow-x-auto">
+                    <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className={`${headClass} min-w-[220px]`}>Role</TableHead>
+                                    <TableHead className={`${headClass} min-w-[280px]`}>Description</TableHead>
+                                    <TableHead className={`${headClass} text-center w-[130px]`}>Permissions</TableHead>
+                                    <TableHead className={`${headClass} text-center w-[110px]`}>Assigned Users</TableHead>
+                                    <TableHead className={`${headClass} text-right w-[100px]`}>Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredRoles.map((role) => {
+                                    const permissionCount = role.permissions?.length ?? 0;
+                                    const userCount = role._count?.users ?? 0;
+
+                                    return (
+                                        <TableRow key={role.id} className={rowClass}>
+                                            <TableCell className={cellClass}>
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                                        {role.isSystem ? (
+                                                            <ShieldCheck className="w-4 h-4" />
+                                                        ) : (
+                                                            <Shield className="w-4 h-4" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-foreground text-sm">
+                                                                {role.displayName}
+                                                            </span>
+                                                            {role.isSystem && (
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="text-[10px] px-1.5 py-0 h-4.5 font-normal tracking-wide uppercase bg-muted text-muted-foreground border-border"
+                                                                >
+                                                                    System
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <span className="font-mono text-[11px] text-muted-foreground">
+                                                            {role.name}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </TableCell>
-                                            <TableCell className="text-neutral-500 dark:text-neutral-400 max-w-[280px] truncate">
+                                            <TableCell className={`${cellClass} text-muted-foreground text-sm`}>
                                                 {role.description || "—"}
                                             </TableCell>
-                                            <TableCell>{role.permissions?.length ?? 0}</TableCell>
-                                            <TableCell>{role._count?.users ?? 0}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        aria-label={`Edit ${role.displayName}`}
-                                                        disabled={role.isSystem}
-                                                        onClick={() => {
+                                            <TableCell className={`${cellClass} text-center`}>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="font-mono text-xs px-2 py-0.5 rounded-md border-border bg-muted/40 font-medium"
+                                                >
+                                                    {permissionCount} allowed
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className={`${cellClass} text-center`}>
+                                                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                                    <Users className="w-3.5 h-3.5" />
+                                                    {userCount}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className={`${cellClass} text-right`}>
+                                                {role.isSystem ? (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80 font-normal">
+                                                        <Lock className="w-3 h-3" />
+                                                        Locked
+                                                    </span>
+                                                ) : (
+                                                    <RowActions
+                                                        label={role.displayName}
+                                                        onEdit={() => {
                                                             setEditingRole(role);
                                                             setFormOpen(true);
                                                         }}
-                                                    >
-                                                        <Pencil className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        aria-label={`Delete ${role.displayName}`}
-                                                        disabled={role.isSystem || (role._count?.users ?? 0) > 0}
-                                                        onClick={() => setRoleToDelete(role)}
-                                                    >
-                                                        <Trash2 className="w-4 h-4 text-destructive" />
-                                                    </Button>
-                                                </div>
+                                                        onDelete={
+                                                            userCount === 0
+                                                                ? () => setRoleToDelete(role)
+                                                                : undefined
+                                                        }
+                                                    />
+                                                )}
                                             </TableCell>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+            </DataTableShell>
 
             <RoleFormDialog
                 open={formOpen}
@@ -194,7 +264,7 @@ const RolesList = () => {
                 isLoading={isDeleting}
                 onConfirm={handleDelete}
             />
-        </>
+        </div>
     );
 };
 

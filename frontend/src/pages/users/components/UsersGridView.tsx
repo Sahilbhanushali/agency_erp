@@ -1,71 +1,114 @@
+import StatusBadge from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { User } from "@/types/user";
-import { ChevronRight, EllipsisVertical } from "lucide-react";
+import { ArrowUpRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 interface UsersGridViewProps {
-    users: User[];
-    onView: (user: User) => void;
-    onEdit: (user: User) => void;
-    onDelete: (user: User) => void;
+  users: User[];
+  onView: (user: User) => void;
+  onEdit: (user: User) => void;
+  onDelete: (user: User) => void;
 }
 
-const UsersGridView = ({ users, onView, onEdit, onDelete }: UsersGridViewProps) => {
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 gap-6 items-start">
-            {users.map((user) => (
-                <div key={user.id} className="border border-neutral-200 dark:border-neutral-600 rounded-2xl overflow-hidden">
-                    <div className="relative h-[80px] bg-gradient-to-r from-primary/40 to-primary/10">
-                        <div className="absolute top-0 end-0 me-3 mt-3">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger className="bg-white/30 w-8 h-8 rounded-lg border border-white/40 flex justify-center items-center text-white">
-                                    <EllipsisVertical className="h-5" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <DropdownMenuItem onClick={() => onEdit(user)}>Edit</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => onDelete(user)} className="text-red-600 focus:text-red-600">
-                                        Delete
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
-                    </div>
+export default function UsersGridView({
+  users,
+  onView,
+  onEdit,
+  onDelete,
+}: UsersGridViewProps) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
+      {users.map((user) => (
+        <div
+          key={user.id}
+          className="group relative rounded-xl border border-border bg-card p-5 shadow-xs hover:shadow-sm hover:border-primary/40 transition-all flex flex-col justify-between"
+        >
+          {/* Top row: Status & Actions */}
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <StatusBadge status={user.status} />
 
-                    <div className="px-6 pb-4 text-center -mt-[40px] relative z-[1]">
-                        <span className="flex items-center justify-center w-20 h-20 mx-auto rounded-full bg-primary text-white text-2xl font-semibold border-4 border-white dark:border-slate-800">
-                            {user.firstName[0]?.toUpperCase()}
-                        </span>
-                        <h6 className="text-lg mb-0 mt-2">{user.firstName} {user.lastName}</h6>
-                        <span className="text-neutral-500 dark:text-neutral-300 mb-4 block">{user.email}</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                aria-label="User actions"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="text-xs">
+                <DropdownMenuItem onClick={() => onEdit(user)}>
+                  <Pencil className="w-3.5 h-3.5 mr-2" />
+                  Edit details
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => onDelete(user)}
+                  className="text-rose-600 focus:text-rose-600"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-2" />
+                  Remove user
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-                        <div className="relative bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-3 flex items-center gap-4 before:absolute before:w-px before:h-full before:z-[1] before:bg-neutral-200 dark:before:bg-neutral-500 before:start-1/2">
-                            <div className="text-center w-1/2">
-                                <h6 className="text-base mb-0 truncate">{user.department || "—"}</h6>
-                                <span className="text-neutral-500 dark:text-neutral-300 text-sm mb-0">Department</span>
-                            </div>
-                            <div className="text-center w-1/2">
-                                <h6 className="text-base mb-0 truncate">{user.designation || "—"}</h6>
-                                <span className="text-neutral-500 dark:text-neutral-300 text-sm mb-0">Designation</span>
-                            </div>
-                        </div>
+          {/* User profile center */}
+          <div className="flex flex-col items-center text-center">
+            <div className="w-14 h-14 rounded-full bg-primary/10 text-primary font-bold text-lg flex items-center justify-center border-2 border-primary/20 mb-3 shadow-xs">
+              {user.firstName?.[0]?.toUpperCase() ?? "U"}
+            </div>
 
-                        <Button
-                            className="bg-blue-50 hover:bg-primary dark:hover:bg-primary hover:text-white dark:hover:text-white dark:bg-primary/25 text-primary dark:text-blue-400 text-sm px-3 py-3 rounded-lg flex items-center justify-center mt-4 font-medium gap-2 w-full h-12"
-                            onClick={() => onView(user)}
-                        >
-                            View Profile
-                            <ChevronRight className="w-5 h-5" />
-                        </Button>
-                    </div>
-                </div>
-            ))}
+            <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+              {user.firstName} {user.lastName}
+            </h4>
+
+            <p className="text-xs text-muted-foreground font-mono truncate max-w-[200px] mt-0.5">
+              {user.email}
+            </p>
+
+            <div className="mt-2.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted text-[11px] font-medium text-foreground/80 border border-border/60">
+              <span>{user.role?.displayName ?? "Member"}</span>
+              {user.designation && <span>• {user.designation}</span>}
+            </div>
+          </div>
+
+          {/* Department stats */}
+          <div className="mt-4 pt-3 border-t border-border/60 grid grid-cols-2 gap-2 text-center text-xs">
+            <div className="p-1.5 rounded-lg bg-muted/40">
+              <span className="text-[10px] text-muted-foreground uppercase font-mono block">
+                Department
+              </span>
+              <span className="font-medium text-foreground truncate block">
+                {user.department || "—"}
+              </span>
+            </div>
+            <div className="p-1.5 rounded-lg bg-muted/40">
+              <span className="text-[10px] text-muted-foreground uppercase font-mono block">
+                Status
+              </span>
+              <span className="font-mono text-xs font-semibold text-foreground">
+                {user.status}
+              </span>
+            </div>
+          </div>
+
+          {/* View Profile Action */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full mt-4 h-8 text-xs gap-1.5 rounded-lg border-border hover:bg-primary/5 hover:text-primary hover:border-primary/30"
+            onClick={() => onView(user)}
+          >
+            <span>View Profile</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Button>
         </div>
-    );
-};
-
-export default UsersGridView;
+      ))}
+    </div>
+  );
+}

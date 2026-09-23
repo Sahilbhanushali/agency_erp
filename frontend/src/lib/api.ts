@@ -67,20 +67,35 @@ async function rawRequest(path: string, options: RequestOptions) {
   return fetch(`${API_URL}${path}`, { method: options.method ?? "GET", headers, body });
 }
 
+// Shared by every caller that hits a 401 at once, so a page firing several parallel requests
+// triggers exactly one /auth/refresh instead of a duplicate-token race against the single-use
+// refresh token (the backend revokes-then-reissues, so concurrent refreshes fail each other).
+let refreshInFlight: Promise<boolean> | null = null;
+
 async function refreshAccessToken(): Promise<boolean> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
+  if (refreshInFlight) return refreshInFlight;
 
-  const response = await rawRequest("/auth/refresh", {
-    method: "POST",
-    body: { refreshToken },
-    skipAuth: true,
-  });
-  if (!response.ok) return false;
+  refreshInFlight = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
 
-  const data = await response.json();
-  setTokens(data.accessToken, data.refreshToken);
-  return true;
+    const response = await rawRequest("/auth/refresh", {
+      method: "POST",
+      body: { refreshToken },
+      skipAuth: true,
+    });
+    if (!response.ok) return false;
+
+    const data = await response.json();
+    setTokens(data.accessToken, data.refreshToken);
+    return true;
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -103,10 +118,32 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return response.json() as Promise<T>;
 }
 
+async function download(path: string, filename: string): Promise<void> {
+  let response = await rawRequest(path, {});
+
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) response = await rawRequest(path, {});
+  }
+
+  if (!response.ok) {
+    throw new ApiError(await extractErrorMessage(response), response.status);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   get: <T>(path: string) => apiRequest<T>(path),
   post: <T>(path: string, body?: unknown, options?: Partial<RequestOptions>) =>
     apiRequest<T>(path, { ...options, method: "POST", body }),
   patch: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: "PATCH", body }),
   delete: <T>(path: string) => apiRequest<T>(path, { method: "DELETE" }),
+  download,
 };

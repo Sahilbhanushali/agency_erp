@@ -5,37 +5,30 @@ import SearchBox from "@/components/shared/SearchBox";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-const Header = () => {
-    return (
-        <div className="bg-sidebar border-b border-neutral-200 dark:border-slate-700 flex items-center justify-between sm:h-18 h-13 shrink-0 gap-2 md:px-6 px-4 py-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-18 sticky top-0 z-[2]">
-            <div className="col-auto">
-                <div className="flex flex-wrap items-center gap-[16px]">
-
-                    {/* <SidebarToggle /> */}
-                    <SidebarTrigger className={cn(`!p-0 h-auto w-auto !bg-transparent cursor-pointer text-neutral-700 hover:text-neutral-900 dark:text-neutral-200`)} />
-
-                    <SearchBox /> 
-                </div>
-            </div>
-
-            <div className="col-auto">
-                <div className="flex flex-wrap items-center gap-3">
-
-                    {/* Light & Dark Mode */}
-                    <ModeToggle />
-
-                    {/* Notification Start   */}
-                    <NotificationDropdown />
-                    {/* Notification End   */}
-
-                    {/* Profile dropdown start */}
-                    <ProfileDropdown />
-                    {/* Profile dropdown end */}
-
-                </div>
-            </div>
+export default function Header() {
+  return (
+    <header className="sticky top-0 z-20 flex h-14 w-full shrink-0 items-center justify-between border-b border-border/70 bg-background/85 px-4 sm:px-6 backdrop-blur-md transition-colors">
+      <div className="flex items-center gap-3">
+        <SidebarTrigger
+          className={cn(
+            "h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+          )}
+        />
+        <div className="hidden h-4 w-px bg-border/60 sm:block" />
+        <div className="hidden sm:block">
+          <SearchBox />
         </div>
-    );
-};
+      </div>
 
-export default Header;
+      <div className="flex items-center gap-2">
+        <div className="sm:hidden">
+          <SearchBox />
+        </div>
+        <ModeToggle />
+        <NotificationDropdown />
+        <div className="h-4 w-px bg-border/60 mx-1" />
+        <ProfileDropdown />
+      </div>
+    </header>
+  );
+}
