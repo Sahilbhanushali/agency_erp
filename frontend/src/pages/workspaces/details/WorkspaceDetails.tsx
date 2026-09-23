@@ -1,17 +1,18 @@
+import EmptyState from "@/components/shared/EmptyState";
+import PageHeader from "@/components/shared/PageHeader";
+import StatusBadge from "@/components/shared/StatusBadge";
 import WorkspaceMembersTable from "@/components/tables/WorkspaceMembersTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
-import type { AddMemberPayload } from "@/types/workspace";
+import TasksPanel from "@/pages/tasks/components/TasksPanel";
 import type { Project } from "@/types/project";
-import type { Workspace, WorkspaceMember } from "@/types/workspace";
-import { FolderKanban, Loader2, Pencil, Search, UserPlus, X } from "lucide-react";
+import type { AddMemberPayload, Workspace, WorkspaceMember } from "@/types/workspace";
+import { ArrowLeft, FolderKanban, Loader2, Pencil, Search, UserPlus, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import TasksPanel from "@/pages/tasks/components/TasksPanel";
 import WorkspaceMemberPicker, { type PickedMember } from "../components/WorkspaceMemberPicker";
 
 const WorkspaceDetails = () => {
@@ -46,7 +47,8 @@ const WorkspaceDetails = () => {
         return workspace.members.filter(
             (member) =>
                 `${member.user.firstName} ${member.user.lastName}`.toLowerCase().includes(query) ||
-                member.user.email.toLowerCase().includes(query),
+                member.user.email.toLowerCase().includes(query) ||
+                (member.memberRole && member.memberRole.toLowerCase().includes(query))
         );
     }, [workspace, search]);
 
@@ -58,6 +60,7 @@ const WorkspaceDetails = () => {
             const member = await api.post<WorkspaceMember>(`/workspaces/${workspace.id}/members`, payload);
             toast.success("Member added.");
             setWorkspace((current) => (current ? { ...current, members: [...current.members, member] } : current));
+            setShowAddPanel(false);
         } catch (error) {
             toast.error(error instanceof ApiError ? error.message : "Failed to add member.");
         } finally {
@@ -71,7 +74,9 @@ const WorkspaceDetails = () => {
         try {
             await api.delete(`/workspaces/${workspace.id}/members/${member.userId}`);
             toast.success("Member removed.");
-            setWorkspace((current) => (current ? { ...current, members: current.members.filter((m) => m.userId !== member.userId) } : current));
+            setWorkspace((current) =>
+                current ? { ...current, members: current.members.filter((m) => m.userId !== member.userId) } : current
+            );
         } catch (error) {
             toast.error(error instanceof ApiError ? error.message : "Failed to remove member.");
         } finally {
@@ -81,80 +86,141 @@ const WorkspaceDetails = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+            <div className="flex flex-col items-center justify-center py-24 space-y-3">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Loading workspace details...</p>
             </div>
         );
     }
 
     if (!workspace) {
-        return <p className="text-center text-neutral-500 py-24">Workspace not found.</p>;
+        return (
+            <EmptyState
+                icon={FolderKanban}
+                title="Workspace not found"
+                description="The workspace you are looking for does not exist or has been deleted."
+                action={{
+                    label: "Back to Workspaces",
+                    onClick: () => navigate("/workspaces-list"),
+                }}
+            />
+        );
     }
 
     return (
-        <>
-            <Breadcrumb title={workspace.name} text="Workspace Details" />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <Card className="lg:col-span-1 h-fit">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: workspace.colorHex ?? "#94a3b8" }} />
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${workspace.isActive ? "bg-success/15 text-success border-success/30" : "bg-neutral-500/15 text-neutral-500 dark:text-neutral-300 border-neutral-400/30"}`}>
-                                {workspace.isActive ? "ACTIVE" : "INACTIVE"}
-                            </span>
-                        </div>
-                        <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
-                            <Link to={`/workspaces-list/${workspace.id}/edit`}>
-                                <Pencil className="w-3.5 h-3.5" />
-                                Edit
+        <div className="space-y-6">
+            <PageHeader
+                title={workspace.name}
+                description={workspace.description || "Workspace overview, assigned team members, and task management."}
+                breadcrumbs={[
+                    { label: "Workspaces", href: "/workspaces-list" },
+                    { label: workspace.name },
+                ]}
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                            <Link to="/workspaces-list">
+                                <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+                                Back
                             </Link>
                         </Button>
-                    </CardHeader>
-                    <CardContent className="space-y-3 text-sm">
-                        {project && (
-                            <Link
-                                to={`/projects-list/${project.id}`}
-                                className="flex items-center gap-2.5 text-primary hover:underline"
-                            >
-                                <FolderKanban className="w-4 h-4 shrink-0" />
-                                <span>{project.title}</span>
+                        <Button size="sm" asChild>
+                            <Link to={`/workspaces-list/${workspace.id}/edit`}>
+                                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                                Edit Workspace
                             </Link>
+                        </Button>
+                    </div>
+                }
+            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                {/* Workspace Info Card */}
+                <Card className="lg:col-span-1 rounded-xl border border-border shadow-xs">
+                    <CardHeader className="pb-3 border-b border-border">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <span
+                                    className="w-3 h-3 rounded-full shrink-0 ring-2 ring-background"
+                                    style={{ backgroundColor: workspace.colorHex ?? "var(--primary)" }}
+                                />
+                                <span className="font-semibold text-sm text-foreground">Workspace Info</span>
+                            </div>
+                            <StatusBadge status={workspace.isActive ? "ACTIVE" : "INACTIVE"} />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="pt-4 space-y-4 text-xs">
+                        {project && (
+                            <div>
+                                <span className="text-muted-foreground block text-[11px] mb-1 uppercase tracking-wide font-medium">
+                                    Parent Project
+                                </span>
+                                <Link
+                                    to={`/projects-list/${project.id}`}
+                                    className="inline-flex items-center gap-2 font-medium text-foreground hover:text-primary transition-colors p-2 rounded-lg bg-muted/40 hover:bg-muted/70 w-full"
+                                >
+                                    <FolderKanban className="w-4 h-4 text-primary shrink-0" />
+                                    <span className="truncate">{project.title}</span>
+                                </Link>
+                            </div>
                         )}
-                        {workspace.description && (
-                            <p className="text-neutral-500 dark:text-neutral-400 pt-1 border-t border-border mt-3">
-                                {workspace.description}
+
+                        <div>
+                            <span className="text-muted-foreground block text-[11px] mb-1 uppercase tracking-wide font-medium">
+                                Description
+                            </span>
+                            <p className="text-muted-foreground leading-relaxed text-xs">
+                                {workspace.description || "No description provided for this workspace."}
                             </p>
-                        )}
+                        </div>
+
+                        <div className="pt-2 border-t border-border flex items-center justify-between text-muted-foreground">
+                            <span>Total Members</span>
+                            <span className="font-mono font-medium text-foreground">{workspace.members.length}</span>
+                        </div>
                     </CardContent>
                 </Card>
 
-                <Card className="lg:col-span-2 !p-0 !block border-0 overflow-hidden">
-                    <CardHeader className="border-b border-border !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
-                        <div className="flex items-center flex-wrap gap-3">
-                            <h6 className="text-base font-semibold text-neutral-900 dark:text-white shrink-0">
-                                Members ({workspace.members.length})
-                            </h6>
+                {/* Workspace Members Card */}
+                <Card className="lg:col-span-2 rounded-xl border border-border shadow-xs overflow-hidden">
+                    <CardHeader className="border-b border-border py-3 px-5 flex flex-row items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-sm font-semibold text-foreground">Members</span>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-mono">
+                                    {workspace.members.length}
+                                </span>
+                            </div>
+
                             <div className="relative">
-                                <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search members..."
+                                    placeholder="Filter members..."
                                     value={search}
                                     onChange={(event) => setSearch(event.target.value)}
-                                    className="ps-9 h-10 w-[200px]"
+                                    className="ps-8 h-8 text-xs w-[170px] sm:w-[200px]"
                                 />
                             </div>
                         </div>
 
-                        <Button className="w-auto h-10" variant={showAddPanel ? "outline" : "default"} onClick={() => setShowAddPanel((current) => !current)}>
-                            {showAddPanel ? <X className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                            {showAddPanel ? "Close" : "Add Member"}
+                        <Button
+                            size="sm"
+                            variant={showAddPanel ? "secondary" : "outline"}
+                            className="h-8 text-xs"
+                            onClick={() => setShowAddPanel((current) => !current)}
+                        >
+                            {showAddPanel ? <X className="w-3.5 h-3.5 mr-1" /> : <UserPlus className="w-3.5 h-3.5 mr-1" />}
+                            {showAddPanel ? "Cancel" : "Add Member"}
                         </Button>
                     </CardHeader>
 
-                    <CardContent className="p-6">
+                    <CardContent className="p-4 sm:p-5">
                         {showAddPanel && (
-                            <div className="mb-6 pb-6 border-b border-border">
+                            <div className="mb-4 pb-4 border-b border-border">
+                                <span className="text-xs font-semibold text-foreground block mb-2">
+                                    Add Member to Workspace
+                                </span>
                                 <WorkspaceMemberPicker
                                     companyId={workspace.companyId}
                                     excludeUserIds={workspace.members.map((member) => member.userId)}
@@ -166,10 +232,15 @@ const WorkspaceDetails = () => {
                                 />
                             </div>
                         )}
+
                         {filteredMembers.length === 0 ? (
-                            <p className="text-center text-neutral-500 dark:text-neutral-300 py-16">
-                                {workspace.members.length === 0 ? "No members yet. Add the first one." : "No members match your search."}
-                            </p>
+                            <div className="py-10 text-center">
+                                <p className="text-xs text-muted-foreground">
+                                    {workspace.members.length === 0
+                                        ? "No members assigned yet. Use the 'Add Member' button above to assign team members."
+                                        : "No members matched your search filter."}
+                                </p>
+                            </div>
                         ) : (
                             <WorkspaceMembersTable
                                 members={filteredMembers}
@@ -177,23 +248,32 @@ const WorkspaceDetails = () => {
                                 onRemove={handleRemoveMember}
                             />
                         )}
+
                         {removingId && (
-                            <div className="flex justify-center pt-4">
-                                <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
+                            <div className="flex items-center justify-center gap-2 pt-3 text-xs text-muted-foreground">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Updating membership...</span>
                             </div>
                         )}
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="mt-6">
+            {/* Embedded Tasks Board */}
+            <div className="pt-2">
+                <div className="mb-4">
+                    <h3 className="text-base font-semibold text-foreground tracking-tight">Workspace Task Board</h3>
+                    <p className="text-xs text-muted-foreground">
+                        Drag and drop tasks across pipeline columns to manage progress.
+                    </p>
+                </div>
                 <TasksPanel
                     projectId={workspace.projectId}
                     workspaceId={workspace.id}
-                    emptyText="No tasks on this board yet."
+                    emptyText="No tasks on this workspace board yet."
                 />
             </div>
-        </>
+        </div>
     );
 };
 

@@ -1,6 +1,6 @@
 import LazyWrapper from "@/components/LazyWrapper";
+import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api } from "@/lib/api";
 import type { CompanyPayload } from "@/types/company";
 import { useState } from "react";
@@ -35,17 +35,24 @@ const CreateCompany = () => {
     };
 
     return (
-        <>
-            <Breadcrumb title="Add New Company" text="Create Company" />
+        <div className="space-y-6">
+            <PageHeader
+                title="Create Company"
+                description="Register a new agency organization or operating company profile."
+                breadcrumbs={[
+                    { label: "Companies", href: "/companies-list" },
+                    { label: "New Company" },
+                ]}
+            />
 
             <LazyWrapper>
-                <Card className="card rounded-lg border-0">
-                    <CardContent>
+                <Card className="p-6 rounded-xl border border-border shadow-xs">
+                    <CardContent className="p-0">
                         <CompanyForm mode="create" onSubmit={handleSubmit} isSubmitting={isSubmitting} />
                     </CardContent>
                 </Card>
             </LazyWrapper>
-        </>
+        </div>
     );
 };
 

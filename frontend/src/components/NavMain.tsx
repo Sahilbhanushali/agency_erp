@@ -14,7 +14,6 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
@@ -23,6 +22,7 @@ interface SidebarItem {
   title?: string;
   url?: string;
   icon?: LucideIcon;
+  badge?: string | number;
   items?: {
     title: string;
     url?: string;
@@ -35,16 +35,13 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
   const location = useLocation();
   const pathname = location.pathname;
 
-  // State: which dropdown is open
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
-  // Toggle a dropdown
   const handleToggleGroup = (title?: string) => {
     if (!title) return;
     setOpenGroup((prev) => (prev === title ? null : title));
   };
 
-  // Check if dropdown contains active page
   const isDropdownActive = (item: SidebarItem) => {
     if (!item.items) return false;
     return item.items.some(
@@ -53,9 +50,9 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
   };
 
   return (
-    <SidebarGroup className="flex flex-col w-full px-4 py-3">
-      <SidebarMenu>
-        {items.map((item) => {
+    <SidebarGroup className="flex flex-col w-full px-2 py-1.5">
+      <SidebarMenu className="gap-1">
+        {items.map((item, idx) => {
           // Dropdown with subitems
           if (item.items && item.items.length > 0 && item.title) {
             const isActiveDropdown = isDropdownActive(item);
@@ -70,25 +67,27 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
                         tooltip={item.title}
                         onClick={() => handleToggleGroup(item.title)}
                         className={cn(
-                          "flex items-center py-3 px-3 text-base text-sidebar-foreground/70 rounded-lg transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                          isOpen ? "bg-primary text-white hover:bg-primary" : ""
+                          "relative flex items-center h-8.5 py-1.5 px-2.5 text-xs font-medium rounded-lg transition-colors duration-150",
+                          isOpen
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                            : "text-sidebar-foreground/75 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
                         )}
                       >
                         {item.icon && (
-                          <item.icon className="!w-4.5 !h-4.5" />
+                          <item.icon className="!w-4 !h-4 shrink-0 transition-colors opacity-80" />
                         )}
-                        <span>{item.title}</span>
+                        <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
                         <ChevronRight
                           className={cn(
-                            "ms-auto transition-transform duration-200",
+                            "ms-auto w-3.5 h-3.5 transition-transform duration-200 text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden",
                             isOpen ? "rotate-90" : ""
                           )}
                         />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
 
-                    <CollapsibleContent>
-                      <SidebarMenuSub className="mt-2 ms-6 space-y-1">
+                    <CollapsibleContent className="group-data-[collapsible=icon]:hidden">
+                      <SidebarMenuSub className="mt-1 ms-4 space-y-0.5 border-l border-sidebar-border/70 ps-2.5">
                         {item.items.map((subItem) => {
                           if (!subItem.url) return null;
                           const isSubActive =
@@ -100,21 +99,23 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
                               <SidebarMenuSubButton
                                 asChild
                                 className={cn(
-                                  "py-3 px-3 text-base text-sidebar-foreground/70 rounded-lg transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground active:bg-sidebar-accent",
-                                  isSubActive ? "bg-sidebar-accent font-semibold text-sidebar-foreground" : ""
+                                  "h-7.5 py-1 px-2 text-xs text-sidebar-foreground/70 rounded-md transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                                  isSubActive
+                                    ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
+                                    : ""
                                 )}
                               >
                                 <NavLink
                                   to={subItem.url}
-                                  className="flex items-center gap-3.5"
+                                  className="flex items-center gap-2"
                                   onClick={() =>
                                     item.title && setOpenGroup(item.title)
                                   }
                                 >
                                   <span
-                                    className={`w-2 h-2 rounded-full ${subItem.circleColor}`}
+                                    className={`w-1.5 h-1.5 rounded-full ${subItem.circleColor}`}
                                   />
-                                  <span>{subItem.title}</span>
+                                  <span className="truncate">{subItem.title}</span>
                                 </NavLink>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
@@ -128,22 +129,23 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
             );
           }
 
-          // Label
+          // Section Label
           if (item.label) {
             return (
               <SidebarGroupLabel
-                key={`label-${item.label}`}
-                className="text-[11px] font-semibold tracking-wider uppercase text-sidebar-foreground/40 mt-3 mb-1 px-3"
+                key={`label-${item.label}-${idx}`}
+                className="text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/45 mt-3 mb-1 px-2.5 select-none group-data-[collapsible=icon]:hidden"
               >
                 {item.label}
               </SidebarGroupLabel>
             );
           }
 
-          // Top-level single page
+          // Top-level single item
           if (item.url && item.title) {
             const isMenuActive =
-              pathname === item.url || pathname.startsWith(item.url);
+              pathname === item.url ||
+              (item.url !== "/dashboard" && pathname.startsWith(item.url));
 
             return (
               <SidebarMenuItem key={item.title}>
@@ -151,23 +153,34 @@ export function NavMain({ items }: { items: SidebarItem[] }) {
                   asChild
                   tooltip={item.title}
                   className={cn(
-                    "relative flex items-center py-3 px-3 rounded-lg text-base text-sidebar-foreground/70 transition-colors duration-150",
-                    isMenuActive ? "text-white" : "hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    "relative flex items-center h-8.5 py-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors duration-150",
+                    isMenuActive
+                      ? "bg-primary/10 text-primary font-medium dark:bg-primary/20 dark:text-primary-foreground shadow-2xs"
+                      : "text-sidebar-foreground/75 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
                   )}
-                  onClick={() => setOpenGroup(null)} // Close all dropdowns
+                  onClick={() => setOpenGroup(null)}
                 >
-                  <Link to={item.url} className="flex items-center gap-2">
+                  <Link to={item.url} className="flex items-center gap-2.5">
+                    {/* Active Left Indicator Bar */}
                     {isMenuActive && (
-                      <motion.span
-                        layoutId="sidebar-active-pill"
-                        className="absolute inset-0 rounded-lg bg-primary -z-10"
-                        transition={{ type: "spring", stiffness: 500, damping: 36 }}
-                      />
+                      <span className="absolute start-0 top-1.5 bottom-1.5 w-0.75 rounded-r-full bg-primary group-data-[collapsible=icon]:hidden" />
                     )}
                     {item.icon && (
-                      <item.icon className="!w-4.5 !h-4.5 shrink-0" />
+                      <item.icon
+                        className={cn(
+                          "!w-4 !h-4 shrink-0 transition-colors",
+                          isMenuActive
+                            ? "text-primary"
+                            : "text-sidebar-foreground/70"
+                        )}
+                      />
                     )}
-                    <span>{item.title}</span>
+                    <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
+                    {item.badge && (
+                      <span className="ms-auto text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-sidebar-accent text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

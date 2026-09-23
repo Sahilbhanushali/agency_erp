@@ -1,12 +1,10 @@
-import AuthImage from "@/assets/images/auth/auth-img.png";
-import ThemeLogo from "@/components/shared/ThemeLogo";
+import { ModeToggle } from "@/components/ModeToggle";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Lock, Sparkles, UserCheck } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -17,8 +15,8 @@ const formSchema = z
     .object({
         password: z
             .string()
-            .min(8, "Password must be more than 8 characters")
-            .max(20, "Password must be at most 20 characters")
+            .min(8, "Password must be at least 8 characters")
+            .max(64, "Password must be at most 64 characters")
             .regex(/[a-zA-Z]/, "Contain at least one letter.")
             .regex(/[0-9]/, "Contain at least one number.")
             .regex(/[^a-zA-Z0-9]/, "Contain at least one special character."),
@@ -48,59 +46,129 @@ const AcceptInvite = () => {
         setIsSubmitting(true);
         try {
             await api.post("/auth/accept-invite", { token, password: values.password }, { skipAuth: true });
-            toast.success("Password set. You can now sign in.");
+            toast.success("Password set successfully. You can now sign in.");
             navigate("/auth/login");
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : "Something went wrong. Please try again.");
+            toast.error(error instanceof ApiError ? error.message : "Failed to set password. Link may be expired.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <section className="bg-background lg:flex flex-wrap min-h-[100vh]">
-            <div className="lg:w-1/2 lg:block hidden">
-                <div className="flex items-center flex-col h-full justify-center">
-                    <img src={AuthImage} alt="Image" />
+        <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2 bg-background">
+            {/* Left brand showcase panel */}
+            <div className="hidden lg:flex flex-col justify-between p-12 bg-zinc-950 text-zinc-100 relative overflow-hidden border-r border-zinc-800">
+                <div className="absolute top-0 right-0 -mr-24 -mt-24 w-96 h-96 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 -ml-24 -mb-24 w-96 h-96 rounded-full bg-purple-600/10 blur-3xl pointer-events-none" />
+
+                <div className="relative z-10 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg shadow-primary/25">
+                        A
+                    </div>
+                    <div>
+                        <span className="font-bold text-base tracking-tight text-white">AgencyOS</span>
+                        <span className="block text-[11px] text-zinc-400 font-mono">Workspace Invitation</span>
+                    </div>
+                </div>
+
+                <div className="relative z-10 max-w-md space-y-6 my-auto">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-300">
+                        <Sparkles className="w-3.5 h-3.5 text-primary" />
+                        <span>Team Onboarding</span>
+                    </div>
+
+                    <h1 className="text-3xl font-bold tracking-tight text-white leading-tight">
+                        You've been invited to join your team on AgencyOS.
+                    </h1>
+
+                    <p className="text-sm text-zinc-400 leading-relaxed">
+                        Set your personal password to activate your account and start collaborating on client projects, tracking tasks, and viewing shared workspaces.
+                    </p>
+
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center gap-3 text-xs text-zinc-300 bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/60">
+                            <KeyRound className="w-4 h-4 text-primary shrink-0" />
+                            <span>Encrypted single-tenant account security</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-zinc-300 bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/60">
+                            <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>Instant team workspace provisioning</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="relative z-10 flex items-center justify-between text-xs text-zinc-500 pt-6 border-t border-zinc-900">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Secure onboarding gateway</span>
+                    </div>
+                    <span>AgencyOS Enterprise</span>
                 </div>
             </div>
-            <div className="lg:w-1/2 py-8 px-6 flex flex-col justify-center">
-                <div className="lg:max-w-[464px] mx-auto w-full">
-                    <div>
-                        <Link to="/auth/login" className="mb-2.5 max-w-[290px] inline-block">
-                            <ThemeLogo />
-                        </Link>
-                        <h4 className="mb-3">Set Your Password</h4>
-                        <p className="mb-8 text-secondary-light text-lg">Choose a password to activate your account.</p>
+
+            {/* Right form panel */}
+            <div className="flex flex-col justify-between p-6 sm:p-10 relative">
+                <div className="flex items-center justify-between">
+                    <div className="flex lg:hidden items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shadow-xs">
+                            A
+                        </div>
+                        <span className="font-bold text-sm tracking-tight">AgencyOS</span>
+                    </div>
+                    <div className="ml-auto">
+                        <ModeToggle />
+                    </div>
+                </div>
+
+                <div className="max-w-[380px] w-full mx-auto my-auto py-8">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold tracking-tight text-foreground">Set Your Password</h2>
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                            Create a secure password to activate your agency account.
+                        </p>
                     </div>
 
                     {!token ? (
-                        <p className="text-red-500">This invite link is missing a token. Please use the link from your email.</p>
+                        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive space-y-3">
+                            <p className="text-xs font-medium">
+                                This invitation link is invalid or missing a security token. Please use the exact link provided in your email invitation.
+                            </p>
+                            <Button variant="outline" size="sm" asChild className="w-full text-xs">
+                                <Link to="/auth/login">Return to Sign In</Link>
+                            </Button>
+                        </div>
                     ) : (
-                        <form onSubmit={form.handleSubmit(handleSubmit)}>
-                            <FieldGroup className="mb-4">
+                        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                            <FieldGroup>
                                 <Controller
                                     name="password"
                                     control={form.control}
                                     render={({ field, fieldState }) => (
-                                        <Field data-invalid={fieldState.invalid} className={cn("gap-1")}>
-                                            <div className="icon-field relative">
-                                                <Lock className="absolute start-5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-700 dark:text-neutral-200" />
+                                        <Field data-invalid={fieldState.invalid} className="gap-1.5">
+                                            <label htmlFor="password" className="text-xs font-medium text-foreground">
+                                                New Password
+                                            </label>
+                                            <div className="relative">
+                                                <Lock className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                                                 <Input
                                                     {...field}
+                                                    id="password"
                                                     type={showPassword ? "text" : "password"}
                                                     aria-invalid={fieldState.invalid}
                                                     disabled={isSubmitting}
-                                                    placeholder="New password"
+                                                    placeholder="Min. 8 characters"
                                                     autoComplete="new-password"
-                                                    className="ps-13 pe-12 h-14 rounded-xl bg-muted border border-input focus:border-primary dark:focus:border-primary focus-visible:border-primary !shadow-none !ring-0"
+                                                    className="ps-9 pe-10 h-10 text-xs rounded-lg border-border bg-card focus-visible:ring-1 focus-visible:ring-primary shadow-xs"
                                                 />
                                                 <Button
                                                     type="button"
-                                                    onClick={() => setShowPassword(!showPassword)}
-                                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 !p-0 bg-transparent hover:bg-transparent text-muted-foreground h-[unset]"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => setShowPassword((prev) => !prev)}
+                                                    className="absolute end-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-transparent"
                                                 >
-                                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                                 </Button>
                                             </div>
                                             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -109,22 +177,26 @@ const AcceptInvite = () => {
                                 />
                             </FieldGroup>
 
-                            <FieldGroup className="mb-4">
+                            <FieldGroup>
                                 <Controller
                                     name="confirmPassword"
                                     control={form.control}
                                     render={({ field, fieldState }) => (
-                                        <Field data-invalid={fieldState.invalid} className={cn("gap-1")}>
-                                            <div className="icon-field relative">
-                                                <Lock className="absolute start-5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-700 dark:text-neutral-200" />
+                                        <Field data-invalid={fieldState.invalid} className="gap-1.5">
+                                            <label htmlFor="confirmPassword" className="text-xs font-medium text-foreground">
+                                                Confirm Password
+                                            </label>
+                                            <div className="relative">
+                                                <Lock className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                                                 <Input
                                                     {...field}
+                                                    id="confirmPassword"
                                                     type={showPassword ? "text" : "password"}
                                                     aria-invalid={fieldState.invalid}
                                                     disabled={isSubmitting}
-                                                    placeholder="Confirm password"
+                                                    placeholder="Confirm new password"
                                                     autoComplete="new-password"
-                                                    className="ps-13 pe-12 h-14 rounded-xl bg-muted border border-input focus:border-primary dark:focus:border-primary focus-visible:border-primary !shadow-none !ring-0"
+                                                    className="ps-9 pe-10 h-10 text-xs rounded-lg border-border bg-card focus-visible:ring-1 focus-visible:ring-primary shadow-xs"
                                                 />
                                             </div>
                                             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -133,15 +205,32 @@ const AcceptInvite = () => {
                                 />
                             </FieldGroup>
 
-                            <Button type="submit" className="w-full rounded-lg h-[52px] text-sm mt-8" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="animate-spin h-4.5 w-4.5 mr-2" />}
-                                {isSubmitting ? "Setting password..." : "Set Password & Activate"}
+                            <div className="p-3 rounded-lg bg-muted/50 border border-border/60 text-[11px] text-muted-foreground space-y-1">
+                                <p className="font-medium text-foreground">Password requirements:</p>
+                                <p>• Minimum 8 characters in length</p>
+                                <p>• At least one letter, number, and special character</p>
+                            </div>
+
+                            <Button
+                                type="submit"
+                                className="w-full h-10 text-xs font-medium rounded-lg mt-6 shadow-xs"
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting && <Loader2 className="animate-spin h-3.5 w-3.5 mr-2" />}
+                                {isSubmitting ? "Activating account..." : "Set Password & Activate"}
                             </Button>
                         </form>
                     )}
                 </div>
+
+                <div className="text-center text-[11px] text-muted-foreground py-2">
+                    Already have an active account?{" "}
+                    <Link to="/auth/login" className="text-primary hover:underline font-medium">
+                        Sign In
+                    </Link>
+                </div>
             </div>
-        </section>
+        </div>
     );
 };
 

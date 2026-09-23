@@ -1,17 +1,20 @@
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
-import { LogOutIcon, Settings, User } from "lucide-react";
+import { LogOut, Settings, ShieldCheck, User } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-const ProfileDropdown = () => {
+export default function ProfileDropdown() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -21,74 +24,90 @@ const ProfileDropdown = () => {
     try {
       await logout();
       navigate("/auth/login");
-      toast.success("You logged out successfully.");
+      toast.success("Logged out successfully.");
     } finally {
       setLoggingOut(false);
     }
   };
 
+  const initial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
+  const displayName = user?.firstName || user?.email?.split("@")[0] || "User";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
+        <button
           className={cn(
-            "rounded-full sm:w-10 sm:h-10 w-8 h-8 bg-muted hover:bg-accent focus-visible:ring-0 border-0 cursor-pointer data-[state=open]:bg-accent data-[state=open]:ring-4 data-[state=open]:ring-primary/20 text-primary font-bold hover:text-primary"
+            "flex items-center gap-2 p-1 rounded-full hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors cursor-pointer"
           )}
+          aria-label="User menu"
         >
-          {user?.email?.[0]?.toUpperCase() || "U"}
-        </Button>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-primary/70 text-primary-foreground font-semibold text-xs flex items-center justify-center shadow-xs">
+            {initial}
+          </div>
+        </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="sm:w-[300px] min-w-[250px] right-[40px] absolute p-4 rounded-2xl overflow-hidden shadow-lg"
-        side="bottom"
         align="end"
+        className="w-64 p-1.5 rounded-xl shadow-lg border border-border"
       >
-        <div className="py-3 px-4 rounded-lg bg-primary/10 dark:bg-primar flex items-center justify-between">
-          <div>
-            <h6 className="text-lg text-neutral-900 dark:text-white font-semibold mb-0">
-              {user?.email || "User"}
-            </h6>
-            <span className="text-sm text-neutral-500 dark:text-neutral-300">
-              {user?.roleName || ""}
-            </span>
+        <DropdownMenuLabel className="p-2 font-normal">
+          <div className="flex flex-col space-y-1">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground leading-none">
+                {displayName}
+              </p>
+              {user?.roleName && (
+                <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                  {user.roleName}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground truncate leading-none pt-0.5">
+              {user?.email}
+            </p>
           </div>
-        </div>
+        </DropdownMenuLabel>
 
-        <div className="max-h-[400px] overflow-y-auto scroll-sm pt-4">
-          <ul className="flex flex-col gap-3">
-            <li className="flex">
-              <Link
-                to="/view-profile"
-                className="text-black dark:text-white hover:text-primary dark:hover:text-primary flex items-center gap-3 w-full"
-              >
-                <User className="w-5 h-5" /> My Profile
+        <DropdownMenuSeparator className="my-1" />
+
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild className="cursor-pointer text-xs rounded-lg py-2">
+            <Link to="/view-profile" className="flex items-center gap-2.5">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <span>Personal Profile</span>
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem asChild className="cursor-pointer text-xs rounded-lg py-2">
+            <Link to="/company" className="flex items-center gap-2.5">
+              <Settings className="w-4 h-4 text-muted-foreground" />
+              <span>Company Settings</span>
+            </Link>
+          </DropdownMenuItem>
+
+          {user?.roleName === "SUPER_ADMIN" && (
+            <DropdownMenuItem asChild className="cursor-pointer text-xs rounded-lg py-2">
+              <Link to="/roles-list" className="flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+                <span>Access & Roles</span>
               </Link>
-            </li>
-            <li className="flex">
-              <Link
-                to="/company"
-                className="text-black dark:text-white hover:text-primary dark:hover:text-primary flex items-center gap-3 w-full"
-              >
-                <Settings className="w-5 h-5" /> Settings
-              </Link>
-            </li>
-            <li className="flex ms-[2px]">
-              <Button
-                variant="ghost"
-                className={`!p-0 h-auto w-full justify-start font-normal !bg-transparent cursor-pointer dark:text-neutral-200 flex items-center gap-3 text-[16px] hover:text-red-600 focus:text-red-600 ${loggingOut ? 'text-red-600 focus:text-red-600' : 'text-black'}`}
-                onClick={handleLogout}>
-                <LogOutIcon className="size-5" />
-                {loggingOut ? 'Logging out...' : "Logout"}
-              </Button>
-            </li>
-          </ul>
-        </div>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-1" />
+
+        <DropdownMenuItem
+          disabled={loggingOut}
+          onClick={handleLogout}
+          className="cursor-pointer text-xs rounded-lg py-2 text-rose-600 focus:text-rose-600 focus:bg-rose-500/10 dark:text-rose-400 dark:focus:text-rose-400"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          <span>{loggingOut ? "Signing out..." : "Sign out"}</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
-};
-
-export default ProfileDropdown;
+}

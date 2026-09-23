@@ -1,3 +1,4 @@
+import StatusBadge from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -8,10 +9,20 @@ import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import { can } from "@/lib/permissions";
 import type { SubTask, Task, TaskComment, TaskStatus } from "@/types/task";
-import { CalendarDays, FolderKanban, Loader2, Pencil, Plus, Trash2, User as UserIcon } from "lucide-react";
+import {
+    CalendarDays,
+    CheckSquare,
+    FolderKanban,
+    Loader2,
+    MessageSquare,
+    Pencil,
+    Plus,
+    Trash2,
+    User as UserIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { BOARD_COLUMNS, PRIORITY_STYLES, STATUS_STYLES, statusLabel } from "../task-styles";
+import { BOARD_COLUMNS } from "../task-styles";
 
 interface TaskDetailSheetProps {
     taskId: string | null;
@@ -23,10 +34,12 @@ interface TaskDetailSheetProps {
 }
 
 const MetaRow = ({ icon: Icon, label, value }: { icon: typeof UserIcon; label: string; value: string }) => (
-    <div className="flex items-center gap-2.5 text-sm">
-        <Icon className="w-4 h-4 text-neutral-400 shrink-0" />
-        <span className="text-neutral-500 dark:text-neutral-400">{label}</span>
-        <span className="ms-auto font-medium text-neutral-900 dark:text-white truncate">{value}</span>
+    <div className="flex items-center justify-between py-1.5 text-xs">
+        <div className="flex items-center gap-2 text-muted-foreground">
+            <Icon className="w-3.5 h-3.5 shrink-0" />
+            <span>{label}</span>
+        </div>
+        <span className="font-medium text-foreground truncate max-w-[200px] text-right">{value}</span>
     </div>
 );
 
@@ -67,7 +80,7 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
             const updated = await api.patch<Task>(`/tasks/${task.id}`, { status });
             applyTask({ ...updated, comments: task.comments });
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : "Failed to update the status.");
+            toast.error(error instanceof ApiError ? error.message : "Failed to update status.");
         }
     };
 
@@ -79,7 +92,7 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
             applyTask({ ...task, subTasks: [...task.subTasks, subTask] });
             setSubTaskTitle("");
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : "Failed to add the sub-task.");
+            toast.error(error instanceof ApiError ? error.message : "Failed to add sub-task.");
         } finally {
             setIsBusy(false);
         }
@@ -94,7 +107,7 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
                 subTasks: task.subTasks.map((item) => (item.id === subTask.id ? { ...item, status: updated.status } : item)),
             });
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : "Failed to update the sub-task.");
+            toast.error(error instanceof ApiError ? error.message : "Failed to update sub-task.");
         }
     };
 
@@ -104,7 +117,7 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
             await api.delete(`/tasks/${subTask.id}`);
             applyTask({ ...task, subTasks: task.subTasks.filter((item) => item.id !== subTask.id) });
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : "Failed to delete the sub-task.");
+            toast.error(error instanceof ApiError ? error.message : "Failed to delete sub-task.");
         }
     };
 
@@ -120,7 +133,7 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
             });
             setComment("");
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : "Failed to post the comment.");
+            toast.error(error instanceof ApiError ? error.message : "Failed to post comment.");
         } finally {
             setIsBusy(false);
         }
@@ -136,45 +149,46 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
                 _count: { comments: Math.max(0, task._count.comments - 1) },
             });
         } catch (error) {
-            toast.error(error instanceof ApiError ? error.message : "Failed to delete the comment.");
+            toast.error(error instanceof ApiError ? error.message : "Failed to delete comment.");
         }
     };
 
+    const completedSubTasks = task?.subTasks.filter((item) => item.status === "DONE").length ?? 0;
+    const totalSubTasks = task?.subTasks.length ?? 0;
+
     return (
         <Sheet open={!!taskId} onOpenChange={onOpenChange}>
-            <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+            <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0 flex flex-col gap-0 border-l border-border bg-card">
                 {isLoading || !task ? (
-                    <div className="flex items-center justify-center py-24">
-                        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+                    <div className="flex flex-col items-center justify-center py-24 space-y-3 m-auto">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground">Loading task details...</p>
                     </div>
                 ) : (
                     <>
-                        <SheetHeader>
-                            <SheetTitle className="text-lg pe-6">{task.title}</SheetTitle>
-                            <SheetDescription className="sr-only">Task details, sub-tasks and comments.</SheetDescription>
-                            <div className="flex flex-wrap items-center gap-2 pt-1">
-                                <span
-                                    className={`px-2.5 py-1 rounded-full text-xs font-medium border ${STATUS_STYLES[task.status]}`}
-                                >
-                                    {statusLabel(task.status)}
-                                </span>
-                                <span
-                                    className={`px-2.5 py-1 rounded-full text-xs font-medium border ${PRIORITY_STYLES[task.priority]}`}
-                                >
-                                    {task.priority}
-                                </span>
+                        {/* Sheet Header */}
+                        <SheetHeader className="p-5 pb-4 border-b border-border/80 sticky top-0 bg-card/95 backdrop-blur-md z-10">
+                            <div className="flex items-center gap-2 mb-2">
+                                <StatusBadge status={task.status} />
+                                <StatusBadge status={task.priority} />
                             </div>
+                            <SheetTitle className="text-base font-semibold text-foreground pe-6 leading-snug">
+                                {task.title}
+                            </SheetTitle>
+                            <SheetDescription className="sr-only">Task details, sub-tasks and comments.</SheetDescription>
                         </SheetHeader>
 
-                        <div className="px-4 pb-6 space-y-6">
-                            <div className="flex flex-wrap gap-2">
+                        {/* Sheet Body */}
+                        <div className="p-5 space-y-6 flex-1">
+                            {/* Controls Bar */}
+                            <div className="flex items-center gap-2">
                                 <Select value={task.status} onValueChange={(value) => handleStatusChange(value as TaskStatus)}>
-                                    <SelectTrigger aria-label="Task status" className="h-10 rounded-lg flex-1 min-w-[160px]">
+                                    <SelectTrigger aria-label="Task status" className="h-8 text-xs rounded-lg flex-1">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {BOARD_COLUMNS.map((column) => (
-                                            <SelectItem key={column.status} value={column.status}>
+                                            <SelectItem key={column.status} value={column.status} className="text-xs">
                                                 {column.label}
                                             </SelectItem>
                                         ))}
@@ -182,16 +196,17 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
                                 </Select>
 
                                 {canManage && (
-                                    <Button variant="outline" className="h-10 rounded-lg" onClick={() => onEdit(task)}>
-                                        <Pencil className="w-3.5 h-3.5" />
+                                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => onEdit(task)}>
+                                        <Pencil className="w-3.5 h-3.5 mr-1" />
                                         Edit
                                     </Button>
                                 )}
                                 {canDelete && onDelete && (
                                     <Button
                                         variant="outline"
+                                        size="sm"
                                         aria-label="Delete task"
-                                        className="h-10 rounded-lg text-destructive hover:text-destructive"
+                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                         onClick={() => onDelete(task)}
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -199,7 +214,8 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
                                 )}
                             </div>
 
-                            <div className="space-y-2.5 rounded-lg border border-border p-4">
+                            {/* Metadata Properties */}
+                            <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-0.5 divide-y divide-border/40">
                                 <MetaRow
                                     icon={FolderKanban}
                                     label="Project"
@@ -212,61 +228,82 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
                                 />
                                 <MetaRow
                                     icon={CalendarDays}
-                                    label="Due"
+                                    label="Due Date"
                                     value={task.dueDate ? task.dueDate.slice(0, 10) : "No due date"}
                                 />
                             </div>
 
+                            {/* Description */}
                             {task.description && (
-                                <p className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-pre-wrap">
-                                    {task.description}
-                                </p>
+                                <div className="space-y-1.5">
+                                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                        Description
+                                    </span>
+                                    <p className="text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed rounded-lg p-3 bg-muted/30 border border-border/50">
+                                        {task.description}
+                                    </p>
+                                </div>
                             )}
 
-                            <section className="space-y-3">
-                                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                                    Sub-tasks ({task.subTasks.filter((item) => item.status === "DONE").length}/
-                                    {task.subTasks.length})
-                                </h3>
-
-                                {task.subTasks.map((subTask) => (
-                                    <div key={subTask.id} className="flex items-center gap-2.5">
-                                        <Checkbox
-                                            id={`sub-${subTask.id}`}
-                                            checked={subTask.status === "DONE"}
-                                            disabled={!canManage && subTask.assignee?.id !== actor?.id}
-                                            onCheckedChange={(checked) => handleToggleSubTask(subTask, checked === true)}
-                                        />
-                                        <label
-                                            htmlFor={`sub-${subTask.id}`}
-                                            className={`text-sm flex-1 min-w-0 truncate ${subTask.status === "DONE" ? "line-through text-neutral-400" : "text-neutral-700 dark:text-neutral-200"}`}
-                                        >
-                                            {subTask.title}
-                                        </label>
-                                        {canDelete && (
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                aria-label={`Delete sub-task ${subTask.title}`}
-                                                className="h-7 w-7 text-neutral-400 hover:text-destructive"
-                                                onClick={() => handleDeleteSubTask(subTask)}
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </Button>
-                                        )}
+                            {/* Sub-tasks Section */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                        <CheckSquare className="w-3.5 h-3.5 text-muted-foreground" />
+                                        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                                            Sub-tasks
+                                        </span>
                                     </div>
-                                ))}
+                                    <span className="text-[11px] text-muted-foreground font-mono">
+                                        {completedSubTasks} / {totalSubTasks}
+                                    </span>
+                                </div>
 
-                                {task.subTasks.length === 0 && (
-                                    <p className="text-sm text-neutral-500 dark:text-neutral-400">No sub-tasks yet.</p>
+                                {task.subTasks.length > 0 && (
+                                    <div className="space-y-1.5 rounded-lg border border-border/70 p-2 bg-muted/10">
+                                        {task.subTasks.map((subTask) => (
+                                            <div
+                                                key={subTask.id}
+                                                className="flex items-center gap-2.5 p-1.5 rounded-md hover:bg-muted/50 group transition-colors"
+                                            >
+                                                <Checkbox
+                                                    id={`sub-${subTask.id}`}
+                                                    checked={subTask.status === "DONE"}
+                                                    disabled={!canManage && subTask.assignee?.id !== actor?.id}
+                                                    onCheckedChange={(checked) => handleToggleSubTask(subTask, checked === true)}
+                                                />
+                                                <label
+                                                    htmlFor={`sub-${subTask.id}`}
+                                                    className={`text-xs flex-1 min-w-0 truncate cursor-pointer ${
+                                                        subTask.status === "DONE"
+                                                            ? "line-through text-muted-foreground"
+                                                            : "text-foreground"
+                                                    }`}
+                                                >
+                                                    {subTask.title}
+                                                </label>
+                                                {canDelete && (
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        aria-label={`Delete sub-task ${subTask.title}`}
+                                                        className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={() => handleDeleteSubTask(subTask)}
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
 
                                 {can(actor, "tasks:create") && (
                                     <div className="flex items-center gap-2">
                                         <Input
                                             aria-label="New sub-task"
-                                            placeholder="Add a sub-task..."
-                                            className="h-10 rounded-lg"
+                                            placeholder="Add sub-task..."
+                                            className="h-8 text-xs"
                                             value={subTaskTitle}
                                             onChange={(event) => setSubTaskTitle(event.target.value)}
                                             onKeyDown={(event) => {
@@ -276,68 +313,90 @@ const TaskDetailSheet = ({ taskId, onOpenChange, onChanged, onEdit, onDelete }: 
                                             }}
                                         />
                                         <Button
-                                            size="icon"
+                                            size="sm"
                                             aria-label="Add sub-task"
-                                            className="h-10 w-10 shrink-0"
+                                            className="h-8 px-2.5 shrink-0 text-xs"
                                             disabled={isBusy || !subTaskTitle.trim()}
                                             onClick={handleAddSubTask}
                                         >
-                                            <Plus className="w-4 h-4" />
+                                            <Plus className="w-3.5 h-3.5 mr-1" />
+                                            Add
                                         </Button>
                                     </div>
                                 )}
-                            </section>
+                            </div>
 
-                            <section className="space-y-3">
-                                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                                    Comments ({task.comments?.length ?? 0})
-                                </h3>
+                            {/* Comments Section */}
+                            <div className="space-y-3 pt-2 border-t border-border">
+                                <div className="flex items-center gap-1.5">
+                                    <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                                        Comments ({task.comments?.length ?? 0})
+                                    </span>
+                                </div>
 
-                                {(task.comments ?? []).map((item) => (
-                                    <div key={item.id} className="rounded-lg bg-muted/50 p-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium text-neutral-900 dark:text-white">
-                                                {item.user.firstName} {item.user.lastName}
-                                            </span>
-                                            <span className="text-xs text-neutral-400">{item.createdAt.slice(0, 10)}</span>
-                                            {(item.user.id === actor?.id || canManage) && (
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    aria-label="Delete comment"
-                                                    className="ms-auto h-7 w-7 text-neutral-400 hover:text-destructive"
-                                                    onClick={() => handleDeleteComment(item.id)}
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </Button>
-                                            )}
+                                <div className="space-y-2.5">
+                                    {(task.comments ?? []).map((item) => (
+                                        <div key={item.id} className="rounded-lg bg-muted/40 border border-border/60 p-3 space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center">
+                                                        {item.user.firstName[0]?.toUpperCase()}
+                                                    </span>
+                                                    <span className="text-xs font-medium text-foreground">
+                                                        {item.user.firstName} {item.user.lastName}
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground font-mono">
+                                                        {item.createdAt.slice(0, 10)}
+                                                    </span>
+                                                </div>
+                                                {(item.user.id === actor?.id || canManage) && (
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        aria-label="Delete comment"
+                                                        className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                                                        onClick={() => handleDeleteComment(item.id)}
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-foreground/90 whitespace-pre-wrap pl-7">
+                                                {item.content}
+                                            </p>
                                         </div>
-                                        <p className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-pre-wrap mt-1">
-                                            {item.content}
+                                    ))}
+
+                                    {(task.comments?.length ?? 0) === 0 && (
+                                        <p className="text-xs text-muted-foreground py-2 text-center">
+                                            No comments on this task yet.
                                         </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2 pt-1">
+                                    <Textarea
+                                        aria-label="New comment"
+                                        rows={2}
+                                        placeholder="Add a remark or update..."
+                                        className="text-xs resize-none"
+                                        value={comment}
+                                        onChange={(event) => setComment(event.target.value)}
+                                    />
+                                    <div className="flex justify-end">
+                                        <Button
+                                            size="sm"
+                                            className="h-8 text-xs font-medium"
+                                            disabled={isBusy || !comment.trim()}
+                                            onClick={handleAddComment}
+                                        >
+                                            {isBusy && <Loader2 className="animate-spin h-3.5 w-3.5 mr-1.5" />}
+                                            Post Comment
+                                        </Button>
                                     </div>
-                                ))}
-
-                                {(task.comments?.length ?? 0) === 0 && (
-                                    <p className="text-sm text-neutral-500 dark:text-neutral-400">No comments yet.</p>
-                                )}
-
-                                <Textarea
-                                    aria-label="New comment"
-                                    rows={2}
-                                    placeholder="Write a comment..."
-                                    value={comment}
-                                    onChange={(event) => setComment(event.target.value)}
-                                />
-                                <Button
-                                    className="h-10 rounded-lg"
-                                    disabled={isBusy || !comment.trim()}
-                                    onClick={handleAddComment}
-                                >
-                                    {isBusy && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
-                                    Comment
-                                </Button>
-                            </section>
+                                </div>
+                            </div>
                         </div>
                     </>
                 )}

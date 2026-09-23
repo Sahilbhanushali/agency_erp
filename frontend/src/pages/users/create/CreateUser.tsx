@@ -1,7 +1,7 @@
 import LazyWrapper from "@/components/LazyWrapper";
+import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api } from "@/lib/api";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -30,17 +30,24 @@ const CreateUser = () => {
     };
 
     return (
-        <>
-            <Breadcrumb title="Add New User" text="Create User" />
+        <div className="space-y-6">
+            <PageHeader
+                title="Invite New User"
+                description="Invite an employee, manager, or contractor to join your workspace."
+                breadcrumbs={[
+                    { label: "Team", href: "/users-list" },
+                    { label: "Invite User" },
+                ]}
+            />
 
             <LazyWrapper>
-                <Card className="card rounded-lg border-0">
-                    <CardContent>
+                <Card className="p-6 rounded-xl border border-border shadow-xs">
+                    <CardContent className="p-0">
                         <UserForm mode="create" onSubmit={handleSubmit} isSubmitting={isSubmitting} />
                     </CardContent>
                 </Card>
             </LazyWrapper>
-        </>
+        </div>
     );
 };
 

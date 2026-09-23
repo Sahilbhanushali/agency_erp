@@ -49,8 +49,8 @@ interface UserFormProps {
     isSubmitting: boolean;
 }
 
-const inputClass = "h-11 rounded-lg";
-const selectTriggerClass = "h-11 rounded-lg !w-full";
+const inputClass = "h-9 text-xs rounded-lg";
+const selectTriggerClass = "h-9 text-xs rounded-lg !w-full";
 
 const FormSection = ({ title, description, children }: { title: string; description?: string; children: ReactNode }) => (
     <section className="border-b border-border last:border-0 pb-8 last:pb-0">

@@ -1,6 +1,6 @@
 import LazyWrapper from "@/components/LazyWrapper";
+import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type { User } from "@/types/user";
 import { Loader2 } from "lucide-react";
@@ -39,25 +39,33 @@ const EditUser = () => {
     };
 
     return (
-        <>
-            <Breadcrumb title="Edit User" text="Edit User" />
+        <div className="space-y-6">
+            <PageHeader
+                title={user ? `Edit ${user.firstName} ${user.lastName}` : "Edit User"}
+                description="Update user account information, access role, and employment credentials."
+                breadcrumbs={[
+                    { label: "Team", href: "/users-list" },
+                    { label: user ? `${user.firstName} ${user.lastName}` : "User", href: id ? `/users-list/${id}` : undefined },
+                    { label: "Edit" },
+                ]}
+            />
 
             <LazyWrapper>
-                <Card className="card rounded-lg border-0">
-                    <CardContent>
+                <Card className="p-6 rounded-xl border border-border shadow-xs">
+                    <CardContent className="p-0">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-16">
-                                <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+                                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                             </div>
                         ) : user ? (
                             <UserForm mode="edit" initialValues={user} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
                         ) : (
-                            <p className="text-center text-neutral-500 py-16">User not found.</p>
+                            <p className="text-center text-muted-foreground py-16 text-sm">User not found.</p>
                         )}
                     </CardContent>
                 </Card>
             </LazyWrapper>
-        </>
+        </div>
     );
 };
 

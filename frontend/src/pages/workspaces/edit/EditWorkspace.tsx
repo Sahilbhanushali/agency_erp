@@ -1,6 +1,6 @@
 import LazyWrapper from "@/components/LazyWrapper";
+import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type { Workspace } from "@/types/workspace";
 import { Loader2 } from "lucide-react";
@@ -32,32 +32,40 @@ const EditWorkspace = () => {
             const { name, description, colorHex, isActive } = values;
             await api.patch(`/workspaces/${id}`, { name, description, colorHex, isActive });
             toast.success("Workspace updated successfully.");
-            navigate("/workspaces-list");
+            navigate(`/workspaces-list/${id}`);
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <>
-            <Breadcrumb title="Edit Workspace" text="Edit Workspace" />
+        <div className="space-y-6">
+            <PageHeader
+                title={workspace ? `Edit ${workspace.name}` : "Edit Workspace"}
+                description="Update workspace configuration, status, and theme accent color."
+                breadcrumbs={[
+                    { label: "Workspaces", href: "/workspaces-list" },
+                    { label: workspace ? workspace.name : "Workspace", href: id ? `/workspaces-list/${id}` : undefined },
+                    { label: "Edit" },
+                ]}
+            />
 
             <LazyWrapper>
-                <Card className="card rounded-lg border-0">
-                    <CardContent>
+                <Card className="p-6 rounded-xl border border-border shadow-xs">
+                    <CardContent className="p-0">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-16">
-                                <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+                                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                             </div>
                         ) : workspace ? (
                             <WorkspaceForm mode="edit" initialValues={workspace} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
                         ) : (
-                            <p className="text-center text-neutral-500 py-16">Workspace not found.</p>
+                            <p className="text-center text-muted-foreground py-16 text-sm">Workspace not found.</p>
                         )}
                     </CardContent>
                 </Card>
             </LazyWrapper>
-        </>
+        </div>
     );
 };
 

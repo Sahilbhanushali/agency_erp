@@ -1,14 +1,13 @@
-import LazyWrapper from "@/components/LazyWrapper";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import FormActions from "@/components/shared/FormActions";
+import PageHeader from "@/components/shared/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type { Company as CompanyType, CompanyPayload } from "@/types/company";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Building2, FileText, Loader2, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -32,7 +31,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-const inputClass = "h-11 rounded-lg";
+const inputClass = "h-9 text-xs rounded-lg";
 
 const Company = () => {
     const { user: actor } = useAuth();
@@ -106,111 +105,164 @@ const Company = () => {
     };
 
     return (
-        <>
-            <Breadcrumb title="Company" text="Settings" />
+        <div className="space-y-6">
+            <PageHeader
+                title="Company Settings"
+                description="Manage your organization profile, legal tax credentials, and official invoicing address."
+                breadcrumbs={[
+                    { label: "Settings" },
+                    { label: "Company Settings" },
+                ]}
+            />
 
-            <LazyWrapper>
-                <Card className="card rounded-lg border-0">
-                    <CardContent>
-                        {isLoading ? (
-                            <div className="flex items-center justify-center py-16">
-                                <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
-                            </div>
-                        ) : !actor?.companyId ? (
-                            <p className="text-center text-neutral-500 dark:text-neutral-300 py-16">
-                                Platform administrators are not scoped to a single company.
-                            </p>
-                        ) : (
-                            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
-                                    <Field data-invalid={!!form.formState.errors.name}>
-                                        <FieldLabel htmlFor="name">Company Name *</FieldLabel>
-                                        <Input id="name" className={inputClass} {...form.register("name")} />
-                                        {form.formState.errors.name && <FieldError errors={[form.formState.errors.name]} />}
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="legalName">Legal Name</FieldLabel>
-                                        <Input id="legalName" className={inputClass} {...form.register("legalName")} />
-                                    </Field>
-
-                                    <Field data-invalid={!!form.formState.errors.email}>
-                                        <FieldLabel htmlFor="email">Email</FieldLabel>
-                                        <Input id="email" type="email" className={inputClass} {...form.register("email")} />
-                                        {form.formState.errors.email && <FieldError errors={[form.formState.errors.email]} />}
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="phone">Phone</FieldLabel>
-                                        <Input id="phone" className={inputClass} {...form.register("phone")} />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="website">Website</FieldLabel>
-                                        <Input id="website" type="url" className={inputClass} {...form.register("website")} />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="gstNumber">GST Number</FieldLabel>
-                                        <Input id="gstNumber" className={inputClass} {...form.register("gstNumber")} />
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="panNumber">PAN Number</FieldLabel>
-                                        <Input id="panNumber" className={inputClass} {...form.register("panNumber")} />
-                                    </Field>
-                                </div>
-
-                                <div>
-                                    <h6 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-4">Registered Address</h6>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
-                                        <Field>
-                                            <FieldLabel htmlFor="line1">Address Line 1</FieldLabel>
-                                            <Input id="line1" className={inputClass} {...form.register("line1")} />
-                                        </Field>
-
-                                        <Field>
-                                            <FieldLabel htmlFor="line2">Address Line 2</FieldLabel>
-                                            <Input id="line2" className={inputClass} {...form.register("line2")} />
-                                        </Field>
-
-                                        <Field>
-                                            <FieldLabel htmlFor="city">City</FieldLabel>
-                                            <Input id="city" className={inputClass} {...form.register("city")} />
-                                        </Field>
-
-                                        <Field>
-                                            <FieldLabel htmlFor="state">State</FieldLabel>
-                                            <Input id="state" className={inputClass} {...form.register("state")} />
-                                        </Field>
-
-                                        <Field>
-                                            <FieldLabel htmlFor="postalCode">Postal Code</FieldLabel>
-                                            <Input id="postalCode" className={inputClass} {...form.register("postalCode")} />
-                                        </Field>
-
-                                        <Field>
-                                            <FieldLabel htmlFor="country">Country</FieldLabel>
-                                            <Input id="country" className={inputClass} {...form.register("country")} />
-                                        </Field>
-                                    </div>
-                                </div>
-
-                                <div className="sticky bottom-0 -mx-6 flex items-center justify-end gap-3 border-t border-border bg-card/95 backdrop-blur-sm px-6 py-4 mt-8">
-                                    <Button type="button" variant="outline" className="h-11 px-8 rounded-lg" onClick={() => form.reset()} disabled={isSubmitting}>
-                                        Reset
-                                    </Button>
-                                    <Button type="submit" className="h-11 px-8 rounded-lg" disabled={isSubmitting}>
-                                        {isSubmitting && <Loader2 className="animate-spin h-4.5 w-4.5 mr-2" />}
-                                        Save Changes
-                                    </Button>
-                                </div>
-                            </form>
-                        )}
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-3">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Loading company profile...</p>
+                </div>
+            ) : !actor?.companyId ? (
+                <Card className="rounded-xl border border-border">
+                    <CardContent className="py-16 text-center text-muted-foreground text-sm">
+                        Platform administrators are not scoped to a single organization.
                     </CardContent>
                 </Card>
-            </LazyWrapper>
-        </>
+            ) : (
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+                    {/* General Profile Section */}
+                    <Card className="rounded-xl border border-border shadow-xs overflow-hidden">
+                        <CardHeader className="border-b border-border/70 py-4 px-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <Building2 className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-sm font-semibold">General Information</CardTitle>
+                                    <CardDescription className="text-xs mt-0.5">
+                                        Basic profile and contact details used across your client documents.
+                                    </CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                <Field data-invalid={!!form.formState.errors.name}>
+                                    <FieldLabel htmlFor="name" className="text-xs font-medium">Company Name *</FieldLabel>
+                                    <Input id="name" placeholder="Acme Studio" className={inputClass} {...form.register("name")} />
+                                    {form.formState.errors.name && <FieldError errors={[form.formState.errors.name]} />}
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="legalName" className="text-xs font-medium">Legal Name</FieldLabel>
+                                    <Input id="legalName" placeholder="Acme Technologies Pvt Ltd" className={inputClass} {...form.register("legalName")} />
+                                </Field>
+
+                                <Field data-invalid={!!form.formState.errors.email}>
+                                    <FieldLabel htmlFor="email" className="text-xs font-medium">Official Email</FieldLabel>
+                                    <Input id="email" type="email" placeholder="contact@acme.com" className={inputClass} {...form.register("email")} />
+                                    {form.formState.errors.email && <FieldError errors={[form.formState.errors.email]} />}
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="phone" className="text-xs font-medium">Phone</FieldLabel>
+                                    <Input id="phone" placeholder="+91 98765 43210" className={inputClass} {...form.register("phone")} />
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="website" className="text-xs font-medium">Website</FieldLabel>
+                                    <Input id="website" type="url" placeholder="https://acme.com" className={inputClass} {...form.register("website")} />
+                                </Field>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Tax & Financial Identifiers */}
+                    <Card className="rounded-xl border border-border shadow-xs overflow-hidden">
+                        <CardHeader className="border-b border-border/70 py-4 px-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <FileText className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-sm font-semibold">Tax & Identifiers</CardTitle>
+                                    <CardDescription className="text-xs mt-0.5">
+                                        Tax numbers printed on invoices and quotations.
+                                    </CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
+                                <Field>
+                                    <FieldLabel htmlFor="gstNumber" className="text-xs font-medium">GST Number (GSTIN)</FieldLabel>
+                                    <Input id="gstNumber" placeholder="27AAPCA1234F1Z5" className={inputClass} {...form.register("gstNumber")} />
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="panNumber" className="text-xs font-medium">PAN Number</FieldLabel>
+                                    <Input id="panNumber" placeholder="ABCDE1234F" className={inputClass} {...form.register("panNumber")} />
+                                </Field>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Registered Address */}
+                    <Card className="rounded-xl border border-border shadow-xs overflow-hidden">
+                        <CardHeader className="border-b border-border/70 py-4 px-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <MapPin className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-sm font-semibold">Registered Address</CardTitle>
+                                    <CardDescription className="text-xs mt-0.5">
+                                        Official physical address displayed on billing documentation.
+                                    </CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                <Field className="sm:col-span-2">
+                                    <FieldLabel htmlFor="line1" className="text-xs font-medium">Address Line 1</FieldLabel>
+                                    <Input id="line1" placeholder="Building, Street name" className={inputClass} {...form.register("line1")} />
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="line2" className="text-xs font-medium">Address Line 2</FieldLabel>
+                                    <Input id="line2" placeholder="Suite, floor (optional)" className={inputClass} {...form.register("line2")} />
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="city" className="text-xs font-medium">City</FieldLabel>
+                                    <Input id="city" placeholder="Mumbai" className={inputClass} {...form.register("city")} />
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="state" className="text-xs font-medium">State / Province</FieldLabel>
+                                    <Input id="state" placeholder="Maharashtra" className={inputClass} {...form.register("state")} />
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="postalCode" className="text-xs font-medium">Postal Code / PIN</FieldLabel>
+                                    <Input id="postalCode" placeholder="400001" className={inputClass} {...form.register("postalCode")} />
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel htmlFor="country" className="text-xs font-medium">Country</FieldLabel>
+                                    <Input id="country" placeholder="India" className={inputClass} {...form.register("country")} />
+                                </Field>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <FormActions
+                        isSubmitting={isSubmitting}
+                        submitLabel="Save Changes"
+                        onCancel={() => form.reset()}
+                    />
+                </form>
+            )}
+        </div>
     );
 };
 

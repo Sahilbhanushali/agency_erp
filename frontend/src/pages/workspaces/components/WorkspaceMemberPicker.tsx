@@ -77,11 +77,11 @@ const WorkspaceMemberPicker = ({ companyId, excludeUserIds, members, onAdd, onRe
                     placeholder="Role label (optional)"
                     value={memberRole}
                     onChange={(event) => setMemberRole(event.target.value)}
-                    className="h-11 rounded-lg w-full sm:w-[180px]"
+                    className="h-9 text-xs rounded-lg w-full sm:w-[180px]"
                 />
-                <Button type="button" className="h-11 rounded-lg shrink-0" onClick={handleAdd} disabled={!selectedUserId || isBusy}>
-                    {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                    Add
+                <Button type="button" size="sm" className="h-9 rounded-lg shrink-0 text-xs" onClick={handleAdd} disabled={!selectedUserId || isBusy}>
+                    {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Plus className="w-3.5 h-3.5 mr-1.5" />}
+                    Add Member
                 </Button>
             </div>
 

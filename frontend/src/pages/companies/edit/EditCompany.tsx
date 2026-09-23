@@ -1,6 +1,6 @@
 import LazyWrapper from "@/components/LazyWrapper";
+import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type { Company, CompanyPayload } from "@/types/company";
 import { Loader2 } from "lucide-react";
@@ -49,25 +49,33 @@ const EditCompany = () => {
     };
 
     return (
-        <>
-            <Breadcrumb title="Edit Company" text="Edit Company" />
+        <div className="space-y-6">
+            <PageHeader
+                title={company ? `Edit ${company.name}` : "Edit Company"}
+                description="Update company credentials, contact information, and address details."
+                breadcrumbs={[
+                    { label: "Companies", href: "/companies-list" },
+                    { label: company ? company.name : "Company", href: id ? `/companies-list/${id}` : undefined },
+                    { label: "Edit" },
+                ]}
+            />
 
             <LazyWrapper>
-                <Card className="card rounded-lg border-0">
-                    <CardContent>
+                <Card className="p-6 rounded-xl border border-border shadow-xs">
+                    <CardContent className="p-0">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-16">
-                                <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+                                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                             </div>
                         ) : company ? (
                             <CompanyForm mode="edit" initialValues={company} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
                         ) : (
-                            <p className="text-center text-neutral-500 py-16">Company not found.</p>
+                            <p className="text-center text-muted-foreground py-16 text-sm">Company not found.</p>
                         )}
                     </CardContent>
                 </Card>
             </LazyWrapper>
-        </>
+        </div>
     );
 };
 

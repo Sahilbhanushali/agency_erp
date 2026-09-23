@@ -44,8 +44,8 @@ interface CompanyFormProps {
     isSubmitting: boolean;
 }
 
-const inputClass = "h-11 rounded-lg";
-const selectTriggerClass = "h-11 rounded-lg !w-full";
+const inputClass = "h-9 text-xs rounded-lg";
+const selectTriggerClass = "h-9 text-xs rounded-lg !w-full";
 
 const CompanyForm = ({ mode, initialValues, onSubmit, isSubmitting }: CompanyFormProps) => {
     const form = useForm<CompanyFormValues>({

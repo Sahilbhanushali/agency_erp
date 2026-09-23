@@ -1,14 +1,20 @@
+import ClientFormDialog from "@/components/shared/ClientFormDialog";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import EmptyState from "@/components/shared/EmptyState";
+import PageHeader from "@/components/shared/PageHeader";
 import Pagination from "@/components/shared/Pagination";
+import StatusBadge from "@/components/shared/StatusBadge";
+import TableSkeleton from "@/components/shared/TableSkeleton";
 import ClientsListTable from "@/components/tables/ClientsListTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type { Client } from "@/types/client";
 import type { Company } from "@/types/company";
 import {
+    ArrowLeft,
+    Building2,
     Globe,
     Loader2,
     Mail,
@@ -17,11 +23,11 @@ import {
     Phone,
     Plus,
     Search,
+    Users,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import ClientFormDialog from "@/components/shared/ClientFormDialog";
 
 const CompanyDetails = () => {
     const { id } = useParams<{ id: string }>();
@@ -64,7 +70,7 @@ const CompanyDetails = () => {
         const query = search.trim().toLowerCase();
         if (!query) return clients;
         return clients.filter(
-            (client) => client.name.toLowerCase().includes(query) || client.email.toLowerCase().includes(query),
+            (client) => client.name.toLowerCase().includes(query) || client.email.toLowerCase().includes(query)
         );
     }, [clients, search]);
 
@@ -92,108 +98,173 @@ const CompanyDetails = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+            <div className="flex flex-col items-center justify-center py-24 space-y-3">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Loading company profile...</p>
             </div>
         );
     }
 
     if (!company) {
-        return <p className="text-center text-neutral-500 py-24">Company not found.</p>;
+        return (
+            <EmptyState
+                icon={Building2}
+                title="Company not found"
+                description="The company you are looking for does not exist or has been removed."
+                action={{
+                    label: "Back to Companies",
+                    onClick: () => navigate("/companies-list"),
+                }}
+            />
+        );
     }
 
     const address = company.registeredAddress;
 
     return (
-        <>
-            <Breadcrumb title={company.name} text="Company Details" />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <Card className="lg:col-span-1 h-fit">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <span className="flex items-center justify-center w-11 h-11 rounded-full bg-primary/10 text-primary font-semibold shrink-0">
-                                {company.name[0]?.toUpperCase()}
-                            </span>
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${company.isActive ? "bg-success/15 text-success border-success/30" : "bg-neutral-500/15 text-neutral-500 dark:text-neutral-300 border-neutral-400/30"}`}>
-                                {company.isActive ? "ACTIVE" : "INACTIVE"}
-                            </span>
-                        </div>
-                        <Button variant="outline" size="sm" className="h-9 rounded-lg" asChild>
-                            <Link to={`/companies-list/${company.id}/edit`}>
-                                <Pencil className="w-3.5 h-3.5" />
-                                Edit
+        <div className="space-y-6">
+            <PageHeader
+                title={company.name}
+                description={company.legalName || "Organization profile, contact information, and associated clients."}
+                breadcrumbs={[
+                    { label: "Companies", href: "/companies-list" },
+                    { label: company.name },
+                ]}
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                            <Link to="/companies-list">
+                                <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+                                Back
                             </Link>
                         </Button>
+                        <Button size="sm" asChild>
+                            <Link to={`/companies-list/${company.id}/edit`}>
+                                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                                Edit Company
+                            </Link>
+                        </Button>
+                    </div>
+                }
+            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                {/* Left Overview Card */}
+                <Card className="lg:col-span-1 rounded-xl border border-border shadow-xs">
+                    <CardHeader className="pb-3 border-b border-border">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary font-bold text-sm shrink-0">
+                                    {company.name[0]?.toUpperCase() ?? "C"}
+                                </span>
+                                <div>
+                                    <h4 className="font-semibold text-sm text-foreground">{company.name}</h4>
+                                    <span className="text-[11px] text-muted-foreground font-mono">
+                                        {company.currency} • {company.timezone}
+                                    </span>
+                                </div>
+                            </div>
+                            <StatusBadge status={company.isActive ? "ACTIVE" : "INACTIVE"} />
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-3 text-sm">
+
+                    <CardContent className="pt-4 space-y-3.5 text-xs">
                         {company.email && (
-                            <div className="flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200">
-                                <Mail className="w-4 h-4 text-neutral-400 shrink-0" />
-                                <span>{company.email}</span>
+                            <div className="flex items-center gap-2.5 text-muted-foreground">
+                                <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <span className="text-foreground">{company.email}</span>
                             </div>
                         )}
                         {company.phone && (
-                            <div className="flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200">
-                                <Phone className="w-4 h-4 text-neutral-400 shrink-0" />
-                                <span>{company.phone}</span>
+                            <div className="flex items-center gap-2.5 text-muted-foreground">
+                                <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <span className="text-foreground">{company.phone}</span>
                             </div>
                         )}
                         {company.website && (
-                            <div className="flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200">
-                                <Globe className="w-4 h-4 text-neutral-400 shrink-0" />
-                                <span>{company.website}</span>
+                            <div className="flex items-center gap-2.5 text-muted-foreground">
+                                <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <a
+                                    href={company.website}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-primary hover:underline truncate"
+                                >
+                                    {company.website}
+                                </a>
                             </div>
                         )}
                         {address && (
-                            <div className="flex items-start gap-2.5 text-neutral-700 dark:text-neutral-200">
-                                <MapPin className="w-4 h-4 text-neutral-400 shrink-0 mt-0.5" />
-                                <span>{[address.line1, address.city, address.state, address.country].filter(Boolean).join(", ")}</span>
+                            <div className="flex items-start gap-2.5 text-muted-foreground pt-1 border-t border-border">
+                                <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                                <span className="text-foreground leading-relaxed">
+                                    {[address.line1, address.city, address.state, address.country]
+                                        .filter(Boolean)
+                                        .join(", ")}
+                                </span>
                             </div>
                         )}
-                        <div className="pt-3 border-t border-border mt-3 flex items-center justify-between text-neutral-500 dark:text-neutral-400">
-                            <span>Currency</span>
-                            <span className="font-medium text-neutral-800 dark:text-neutral-100">{company.currency}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400">
-                            <span>Timezone</span>
-                            <span className="font-medium text-neutral-800 dark:text-neutral-100">{company.timezone}</span>
+                        <div className="pt-2 border-t border-border flex items-center justify-between text-muted-foreground">
+                            <span>Associated Clients</span>
+                            <span className="font-mono font-medium text-foreground">{clients.length}</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="lg:col-span-2 !p-0 !block border-0 overflow-hidden">
-                    <CardHeader className="border-b border-border !py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
-                        <div className="flex items-center flex-wrap gap-3">
-                            <h6 className="text-base font-semibold text-neutral-900 dark:text-white shrink-0">Clients</h6>
+                {/* Right Clients Section */}
+                <Card className="lg:col-span-2 rounded-xl border border-border shadow-xs overflow-hidden">
+                    <CardHeader className="border-b border-border py-3 px-5 flex flex-row items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-sm font-semibold text-foreground">Clients</span>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-mono">
+                                    {clients.length}
+                                </span>
+                            </div>
+
                             <div className="relative">
-                                <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search clients..."
+                                    placeholder="Filter clients..."
                                     value={search}
                                     onChange={(event) => setSearch(event.target.value)}
-                                    className="ps-9 h-10 w-[200px]"
+                                    className="ps-8 h-8 text-xs w-[170px] sm:w-[200px]"
                                 />
                             </div>
                         </div>
 
-                        <Button className="w-auto h-10" onClick={() => setFormOpen(true)}>
-                            <Plus className="w-4 h-4" />
-                            Add New Client
+                        <Button size="sm" className="h-8 text-xs" onClick={() => setFormOpen(true)}>
+                            <Plus className="w-3.5 h-3.5 mr-1" />
+                            Add Client
                         </Button>
                     </CardHeader>
 
-                    <CardContent className="p-6">
+                    <CardContent className="p-0">
                         {isLoadingClients ? (
-                            <div className="flex items-center justify-center py-16">
-                                <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
-                            </div>
+                            <TableSkeleton rows={4} columns={5} />
                         ) : filteredClients.length === 0 ? (
-                            <p className="text-center text-neutral-500 dark:text-neutral-300 py-16">
-                                {clients.length === 0 ? "No clients yet. Add the first one." : "No clients match your search."}
-                            </p>
+                            <div className="py-12">
+                                <EmptyState
+                                    icon={Users}
+                                    title={search ? "No clients match your filter" : "No clients yet"}
+                                    description={
+                                        search
+                                            ? `No clients matched "${search}".`
+                                            : "Add clients under this company to start issuing invoices and managing projects."
+                                    }
+                                    action={
+                                        !search
+                                            ? {
+                                                  label: "Add First Client",
+                                                  onClick: () => setFormOpen(true),
+                                              }
+                                            : undefined
+                                    }
+                                />
+                            </div>
                         ) : (
-                            <>
+                            <div className="p-4 sm:p-5 space-y-4">
                                 <ClientsListTable
                                     clients={paginatedClients}
                                     onView={(client) => navigate(`/clients-list/${client.id}`)}
@@ -209,7 +280,7 @@ const CompanyDetails = () => {
                                     onPageSizeChange={setPageSize}
                                     pageSizeOptions={[5, 10, 25]}
                                 />
-                            </>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
@@ -232,7 +303,7 @@ const CompanyDetails = () => {
                     onCreated={(client) => setClients((current) => [...current, client])}
                 />
             )}
-        </>
+        </div>
     );
 };
 

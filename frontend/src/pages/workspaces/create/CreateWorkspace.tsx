@@ -1,6 +1,6 @@
 import LazyWrapper from "@/components/LazyWrapper";
+import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import Breadcrumb from "@/layouts/Breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type { AddMemberPayload, Workspace } from "@/types/workspace";
 import { useState } from "react";
@@ -34,17 +34,24 @@ const CreateWorkspace = () => {
     };
 
     return (
-        <>
-            <Breadcrumb title="Add New Workspace" text="Create Workspace" />
+        <div className="space-y-6">
+            <PageHeader
+                title="Create Workspace"
+                description="Organize a project board, assign dedicated members, and structure workflows."
+                breadcrumbs={[
+                    { label: "Workspaces", href: "/workspaces-list" },
+                    { label: "New Workspace" },
+                ]}
+            />
 
             <LazyWrapper>
-                <Card className="card rounded-lg border-0">
-                    <CardContent>
+                <Card className="p-6 rounded-xl border border-border shadow-xs">
+                    <CardContent className="p-0">
                         <WorkspaceForm mode="create" onSubmit={handleSubmit} isSubmitting={isSubmitting} />
                     </CardContent>
                 </Card>
             </LazyWrapper>
-        </>
+        </div>
     );
 };
 

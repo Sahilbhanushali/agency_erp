@@ -19,7 +19,7 @@ import type { Project } from "@/types/project";
 import type { CreateTaskPayload, Task, TaskPriority, UpdateTaskPayload } from "@/types/task";
 import type { Workspace } from "@/types/workspace";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { CheckSquare, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -107,7 +107,6 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
             .catch(() => setWorkspaces([]));
     }, [open, selectedProjectId, workspaceId]);
 
-    // The assignee must belong to the project's company; a user without users:read simply gets no list.
     const companyId = projects.find((project) => project.id === selectedProjectId)?.companyId ?? actor?.companyId;
 
     useEffect(() => {
@@ -142,18 +141,25 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>{task ? "Edit Task" : "New Task"}</DialogTitle>
-                    <DialogDescription>
-                        {task ? "Update the task details." : "Tasks live inside a project, and optionally on a board."}
-                    </DialogDescription>
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <CheckSquare className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-base">{task ? "Edit Task" : "Create New Task"}</DialogTitle>
+                            <DialogDescription className="text-xs mt-0.5">
+                                {task ? "Update the task details and status." : "Tasks organize project deliverables into actionable items."}
+                            </DialogDescription>
+                        </div>
+                    </div>
                 </DialogHeader>
 
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pt-2">
                     {!projectId && (
                         <Field data-invalid={!!form.formState.errors.projectId}>
-                            <FieldLabel htmlFor="task-project">Project *</FieldLabel>
+                            <FieldLabel htmlFor="task-project" className="text-xs font-medium">Project *</FieldLabel>
                             <Controller
                                 control={form.control}
                                 name="projectId"
@@ -180,19 +186,31 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
                     )}
 
                     <Field data-invalid={!!form.formState.errors.title}>
-                        <FieldLabel htmlFor="task-title">Title *</FieldLabel>
-                        <Input id="task-title" className="h-11 rounded-lg" autoFocus {...form.register("title")} />
+                        <FieldLabel htmlFor="task-title" className="text-xs font-medium">Title *</FieldLabel>
+                        <Input
+                            id="task-title"
+                            className="h-9 text-xs"
+                            placeholder="e.g. Design homepage hero component"
+                            autoFocus
+                            {...form.register("title")}
+                        />
                         {form.formState.errors.title && <FieldError errors={[form.formState.errors.title]} />}
                     </Field>
 
                     <Field>
-                        <FieldLabel htmlFor="task-description">Description</FieldLabel>
-                        <Textarea id="task-description" rows={3} {...form.register("description")} />
+                        <FieldLabel htmlFor="task-description" className="text-xs font-medium">Description</FieldLabel>
+                        <Textarea
+                            id="task-description"
+                            rows={3}
+                            className="text-xs resize-none"
+                            placeholder="Detailed requirements, acceptance criteria, or links..."
+                            {...form.register("description")}
+                        />
                     </Field>
 
                     {!workspaceId && (
                         <Field>
-                            <FieldLabel htmlFor="task-workspace">Workspace</FieldLabel>
+                            <FieldLabel htmlFor="task-workspace" className="text-xs font-medium">Workspace</FieldLabel>
                             <Controller
                                 control={form.control}
                                 name="workspaceId"
@@ -215,20 +233,20 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
                         </Field>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                         <Field>
-                            <FieldLabel htmlFor="task-priority">Priority</FieldLabel>
+                            <FieldLabel htmlFor="task-priority" className="text-xs font-medium">Priority</FieldLabel>
                             <Controller
                                 control={form.control}
                                 name="priority"
                                 render={({ field }) => (
                                     <Select value={field.value} onValueChange={field.onChange}>
-                                        <SelectTrigger id="task-priority" className="h-11 rounded-lg !w-full">
+                                        <SelectTrigger id="task-priority" className="h-9 text-xs !w-full">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {PRIORITY_OPTIONS.map((option) => (
-                                                <SelectItem key={option} value={option}>
+                                                <SelectItem key={option} value={option} className="text-xs">
                                                     {option}
                                                 </SelectItem>
                                             ))}
@@ -239,7 +257,7 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
                         </Field>
 
                         <Field>
-                            <FieldLabel htmlFor="task-due">Due Date</FieldLabel>
+                            <FieldLabel htmlFor="task-due" className="text-xs font-medium">Due Date</FieldLabel>
                             <Controller
                                 control={form.control}
                                 name="dueDate"
@@ -256,7 +274,7 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
                     </div>
 
                     <Field>
-                        <FieldLabel htmlFor="task-assignee">Assignee</FieldLabel>
+                        <FieldLabel htmlFor="task-assignee" className="text-xs font-medium">Assignee</FieldLabel>
                         <Controller
                             control={form.control}
                             name="assigneeId"
@@ -277,17 +295,18 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
                         />
                     </Field>
 
-                    <DialogFooter>
+                    <DialogFooter className="pt-2">
                         <Button
                             type="button"
                             variant="outline"
+                            size="sm"
                             onClick={() => onOpenChange(false)}
                             disabled={form.formState.isSubmitting}
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={form.formState.isSubmitting}>
-                            {form.formState.isSubmitting && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
+                        <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
+                            {form.formState.isSubmitting && <Loader2 className="animate-spin h-3.5 w-3.5 mr-1.5" />}
                             {task ? "Save Changes" : "Create Task"}
                         </Button>
                     </DialogFooter>

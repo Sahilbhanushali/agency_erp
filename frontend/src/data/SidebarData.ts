@@ -2,22 +2,23 @@ import type { AuthUser } from "@/context/AuthContext";
 import {
   Briefcase,
   Building2,
+  CheckSquare,
+  FileText,
   FolderKanban,
-  House,
+  LayoutDashboard,
   LayoutGrid,
-  ListTodo,
   Receipt,
   ShieldCheck,
   UsersRound,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
-interface SidebarNavItem {
+export interface SidebarNavItem {
   title?: string;
   url?: string;
   icon?: LucideIcon;
   label?: string;
+  badge?: string | number;
   /** Permission code (e.g. "clients:read") required to see this item. Omit for items open to any authenticated user. */
   permission?: string;
   /** Restrict to the platform SUPER_ADMIN role, for modules with no per-permission access (e.g. Companies). */
@@ -28,27 +29,15 @@ const NAV_ITEMS: SidebarNavItem[] = [
   {
     title: "Dashboard",
     url: "/dashboard",
-    icon: House,
+    icon: LayoutDashboard,
   },
   {
     title: "My Tasks",
     url: "/tasks",
-    icon: ListTodo,
+    icon: CheckSquare,
   },
   {
-    label: "Application",
-  },
-  {
-    title: "Companies",
-    url: "/companies-list",
-    icon: Building2,
-    superAdminOnly: true,
-  },
-  {
-    title: "Clients",
-    url: "/clients-list",
-    icon: Briefcase,
-    permission: "clients:read",
+    label: "Delivery",
   },
   {
     title: "Projects",
@@ -63,19 +52,31 @@ const NAV_ITEMS: SidebarNavItem[] = [
     permission: "workspaces:read",
   },
   {
-    title: "Quotations",
-    url: "/quotations-list",
-    icon: Receipt,
-    permission: "quotations:read",
+    title: "Clients",
+    url: "/clients-list",
+    icon: Briefcase,
+    permission: "clients:read",
   },
   {
-    title: "Billing",
+    label: "Financials",
+  },
+  {
+    title: "Invoices & Billing",
     url: "/invoices-list",
-    icon: Wallet,
+    icon: Receipt,
     permission: "invoices:read",
   },
   {
-    title: "Users",
+    title: "Quotations",
+    url: "/quotations-list",
+    icon: FileText,
+    permission: "quotations:read",
+  },
+  {
+    label: "Organization",
+  },
+  {
+    title: "Team Members",
     url: "/users-list",
     icon: UsersRound,
     permission: "users:read",
@@ -85,6 +86,12 @@ const NAV_ITEMS: SidebarNavItem[] = [
     url: "/roles-list",
     icon: ShieldCheck,
     permission: "roles:read",
+  },
+  {
+    title: "Companies",
+    url: "/companies-list",
+    icon: Building2,
+    superAdminOnly: true,
   },
 ];
 
