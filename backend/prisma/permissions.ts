@@ -9,6 +9,9 @@ export const PERMISSION_MODULES = [
   'tasks',
   'quotations',
   'invoices',
+  'campaigns',
+  'posts',
+  'social_accounts',
 ] as const;
 
 export const PERMISSION_ACTIONS = [
@@ -26,6 +29,9 @@ export const PERMISSION_ACTIONS = [
 export const EXTRA_PERMISSIONS = [
   // The audit trail is read-only by design: nothing may create or edit an entry.
   { module: 'activity', action: 'read' },
+  // Publishing is a distinct privilege: producing content is not the same as
+  // putting it in front of a client's audience.
+  { module: 'posts', action: 'publish' },
 ] as const;
 
 function crudPermissions() {

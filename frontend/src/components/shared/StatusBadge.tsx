@@ -38,6 +38,15 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
   // Projects
   DRAFT: { label: "Draft", variant: "neutral" },
+  PLANNED: { label: "Planned", variant: "info" },
+
+  // Content production
+  IDEA: { label: "Idea", variant: "neutral" },
+  IN_DESIGN: { label: "In Design", variant: "info" },
+  APPROVED: { label: "Approved", variant: "success" },
+  SCHEDULED: { label: "Scheduled", variant: "primary" },
+  PUBLISHED: { label: "Published", variant: "success" },
+  PAUSED: { label: "Paused", variant: "warning" },
   ON_HOLD: { label: "On Hold", variant: "warning" },
   COMPLETED: { label: "Completed", variant: "success" },
   ARCHIVED: { label: "Archived", variant: "neutral" },
