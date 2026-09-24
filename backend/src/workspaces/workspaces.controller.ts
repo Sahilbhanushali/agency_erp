@@ -11,12 +11,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
   type CurrentUserPayload,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { LogActivity } from '../common/decorators/log-activity.decorator';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { AddMemberDto } from './dto/add-member.dto';
@@ -37,6 +39,7 @@ export class WorkspacesController {
       'Create a workspace under a project. SUPER_ADMIN or a role with workspaces:create.',
   })
   @RequirePermissions('workspaces:create')
+  @LogActivity(ActivityEntity.WORKSPACE, ActivityAction.CREATE)
   @Post()
   create(
     @Body() dto: CreateWorkspaceDto,
@@ -67,6 +70,7 @@ export class WorkspacesController {
 
   @ApiOperation({ summary: 'Update a workspace.' })
   @RequirePermissions('workspaces:update')
+  @LogActivity(ActivityEntity.WORKSPACE, ActivityAction.UPDATE)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -78,6 +82,7 @@ export class WorkspacesController {
 
   @ApiOperation({ summary: 'Soft-delete a workspace.' })
   @RequirePermissions('workspaces:delete')
+  @LogActivity(ActivityEntity.WORKSPACE, ActivityAction.SOFT_DELETE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @CurrentUser() actor: CurrentUserPayload) {

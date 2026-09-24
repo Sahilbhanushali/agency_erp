@@ -7,6 +7,7 @@ import { can } from "@/lib/permissions";
 import type { Task, TaskStatus } from "@/types/task";
 import { Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import TaskBoard from "./TaskBoard";
 import TaskDetailSheet from "./TaskDetailSheet";
@@ -35,7 +36,11 @@ export default function TasksPanel({
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // A notification links to /tasks?taskId=..., so the card it names opens directly.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => searchParams.get("taskId")
+  );
   const [formOpen, setFormOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -214,7 +219,15 @@ export default function TasksPanel({
 
       <TaskDetailSheet
         taskId={selectedId}
-        onOpenChange={(open) => !open && setSelectedId(null)}
+        onOpenChange={(open) => {
+          if (open) return;
+          setSelectedId(null);
+          // Drop the deep link so a refresh does not reopen what was just closed.
+          if (searchParams.has("taskId")) {
+            searchParams.delete("taskId");
+            setSearchParams(searchParams, { replace: true });
+          }
+        }}
         onChanged={upsertTask}
         onEdit={(task) => {
           setTaskToEdit(task);

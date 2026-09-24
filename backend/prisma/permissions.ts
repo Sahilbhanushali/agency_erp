@@ -11,16 +11,44 @@ export const PERMISSION_MODULES = [
   'invoices',
 ] as const;
 
-export const PERMISSION_ACTIONS = ['create', 'read', 'update', 'delete'] as const;
+export const PERMISSION_ACTIONS = [
+  'create',
+  'read',
+  'update',
+  'delete',
+] as const;
+
+/**
+ * Codes outside the CRUD grid. Kept as an explicit list rather than widening the
+ * cartesian, which would mint meaningless pairs like `roles:publish`.
+ * Add non-CRUD actions (approve, publish, export) here as their modules land.
+ */
+export const EXTRA_PERMISSIONS = [
+  // The audit trail is read-only by design: nothing may create or edit an entry.
+  { module: 'activity', action: 'read' },
+] as const;
+
+function crudPermissions() {
+  return PERMISSION_MODULES.flatMap((module) =>
+    PERMISSION_ACTIONS.map((action) => ({ module, action })),
+  );
+}
+
+export const ALL_PERMISSIONS: { module: string; action: string }[] = [
+  ...crudPermissions(),
+  ...EXTRA_PERMISSIONS,
+];
+
+export const ALL_PERMISSION_CODES = ALL_PERMISSIONS.map(
+  ({ module, action }) => `${module}:${action}`,
+);
 
 export async function seedPermissions(prisma: PrismaClient) {
-  for (const module of PERMISSION_MODULES) {
-    for (const action of PERMISSION_ACTIONS) {
-      await prisma.permission.upsert({
-        where: { module_action: { module, action } },
-        update: {},
-        create: { code: `${module}:${action}`, module, action },
-      });
-    }
+  for (const { module, action } of ALL_PERMISSIONS) {
+    await prisma.permission.upsert({
+      where: { module_action: { module, action } },
+      update: {},
+      create: { code: `${module}:${action}`, module, action },
+    });
   }
 }

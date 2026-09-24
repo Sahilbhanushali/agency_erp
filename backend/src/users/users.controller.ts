@@ -14,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import {
@@ -29,6 +30,7 @@ import {
   type CurrentUserPayload,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { LogActivity } from '../common/decorators/log-activity.decorator';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
@@ -52,6 +54,7 @@ export class UsersController {
       'Create a user/employee. SUPER_ADMIN can target any company; others create within their own.',
   })
   @RequirePermissions('users:create')
+  @LogActivity(ActivityEntity.USER, ActivityAction.CREATE)
   @Post()
   create(@Body() dto: CreateUserDto, @CurrentUser() actor: CurrentUserPayload) {
     return this.usersService.create(dto, actor);
@@ -81,6 +84,7 @@ export class UsersController {
 
   @ApiOperation({ summary: "Update a user's basic details." })
   @RequirePermissions('users:update')
+  @LogActivity(ActivityEntity.USER, ActivityAction.UPDATE)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -92,6 +96,7 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Soft-delete a user.' })
   @RequirePermissions('users:delete')
+  @LogActivity(ActivityEntity.USER, ActivityAction.SOFT_DELETE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @CurrentUser() actor: CurrentUserPayload) {

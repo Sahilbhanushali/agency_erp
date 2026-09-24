@@ -4,9 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, TaskStatus } from '@prisma/client';
+import {
+  ActivityEntity,
+  NotificationType,
+  Prisma,
+  TaskStatus,
+} from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { buildMeta, toSkipTake } from '../common/utils/paginate.util';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   assertCompanyAccess,
   hasPermission,
@@ -68,6 +74,10 @@ const TASK_ORDER_BY = {
   dueDate: [{ dueDate: 'asc' }],
 } satisfies Record<string, Prisma.TaskOrderByWithRelationInput[]>;
 
+function humanStatus(status: TaskStatus) {
+  return status.toLowerCase().replace(/_/g, ' ');
+}
+
 /** undefined leaves the column untouched; null clears it. */
 function toNullableDate(value?: string | null) {
   if (value === undefined) return undefined;
@@ -76,14 +86,22 @@ function toNullableDate(value?: string | null) {
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
+
+  /** Deep link the notification opens; the board reads taskId and opens that card. */
+  private taskUrl(taskId: string) {
+    return `/tasks?taskId=${taskId}`;
+  }
 
   async create(dto: CreateTaskDto, actor: CurrentUserPayload) {
     const project = await this.loadProject(dto.projectId, actor);
     await this.assertWorkspaceInProject(dto.workspaceId, project.id);
     await this.assertAssigneeInCompany(dto.assigneeId, project.companyId);
 
-    return this.prisma.task.create({
+    const task = await this.prisma.task.create({
       data: {
         companyId: project.companyId,
         projectId: project.id,
@@ -99,6 +117,21 @@ export class TasksService {
       },
       include: TASK_INCLUDE,
     });
+
+    if (task.assigneeId) {
+      void this.notifications.notify({
+        userIds: [task.assigneeId],
+        actorId: actor.id,
+        type: NotificationType.TASK_ASSIGNED,
+        title: 'New task assigned to you',
+        body: `${actor.firstName} assigned you "${task.title}".`,
+        entity: ActivityEntity.TASK,
+        entityId: task.id,
+        actionUrl: this.taskUrl(task.id),
+      });
+    }
+
+    return task;
   }
 
   async findAll(actor: CurrentUserPayload, filters: ListTasksQueryDto) {
@@ -146,7 +179,7 @@ export class TasksService {
     if (dto.assigneeId)
       await this.assertAssigneeInCompany(dto.assigneeId, task.companyId);
 
-    return this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id },
       data: {
         workspaceId: dto.workspaceId,
@@ -166,6 +199,37 @@ export class TasksService {
       },
       include: TASK_INCLUDE,
     });
+
+    if (dto.assigneeId && dto.assigneeId !== task.assigneeId) {
+      void this.notifications.notify({
+        userIds: [dto.assigneeId],
+        actorId: actor.id,
+        type: NotificationType.TASK_ASSIGNED,
+        title: 'New task assigned to you',
+        body: `${actor.firstName} assigned you "${updated.title}".`,
+        entity: ActivityEntity.TASK,
+        entityId: updated.id,
+        actionUrl: this.taskUrl(updated.id),
+      });
+    }
+
+    if (dto.status && dto.status !== task.status) {
+      // The people who care are whoever owns it and whoever raised it.
+      void this.notifications.notify({
+        userIds: [updated.assigneeId, updated.createdById].filter(
+          (id): id is string => !!id,
+        ),
+        actorId: actor.id,
+        type: NotificationType.TASK_STATUS_CHANGED,
+        title: 'Task status changed',
+        body: `${actor.firstName} moved "${updated.title}" from ${humanStatus(task.status)} to ${humanStatus(dto.status)}.`,
+        entity: ActivityEntity.TASK,
+        entityId: updated.id,
+        actionUrl: this.taskUrl(updated.id),
+      });
+    }
+
+    return updated;
   }
 
   /** Drag and drop: rewrites one column's order and moves any dropped card into it. */

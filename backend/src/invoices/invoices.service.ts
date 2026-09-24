@@ -3,7 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { ActivityAction, ActivityEntity, Prisma } from '@prisma/client';
+import { ActivityService } from '../activity/activity.service';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { buildMeta, toSkipTake } from '../common/utils/paginate.util';
 import { toDateOrUndefined } from '../common/utils/date.util';
@@ -40,7 +41,10 @@ function withBalance<
 
 @Injectable()
 export class InvoicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activity: ActivityService,
+  ) {}
 
   private latestInvoiceNumber(companyId: string, prefix: string) {
     return this.prisma.invoice
@@ -237,7 +241,7 @@ export class InvoicesService {
       );
     }
 
-    await this.prisma.payment.create({
+    const payment = await this.prisma.payment.create({
       data: {
         invoiceId,
         recordedById: actor.id,
@@ -248,6 +252,17 @@ export class InvoicesService {
         note: dto.note,
         paidAt: dto.paidAt,
       },
+    });
+
+    // Recorded here rather than by the interceptor: this handler returns the
+    // invoice, so only the service knows the payment's own id.
+    void this.activity.record({
+      actor,
+      entity: ActivityEntity.PAYMENT,
+      action: ActivityAction.CREATE,
+      entityId: payment.id,
+      summary: `${actor.firstName} recorded a ${payment.currency} ${Number(payment.amount).toFixed(2)} payment against invoice "${invoice.invoiceNumber}"`,
+      afterState: payment,
     });
 
     const refreshed = await this.findOne(invoiceId, actor);

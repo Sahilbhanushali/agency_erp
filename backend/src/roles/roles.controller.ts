@@ -11,6 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ListRolesQueryDto } from './dto/list-roles-query.dto';
 import {
@@ -18,6 +19,7 @@ import {
   type CurrentUserPayload,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { LogActivity } from '../common/decorators/log-activity.decorator';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -56,6 +58,7 @@ export class RolesController {
       'Create a role. SUPER_ADMIN can target any company; others create within their own.',
   })
   @RequirePermissions('roles:create')
+  @LogActivity(ActivityEntity.ROLE, ActivityAction.CREATE)
   @Post()
   create(@Body() dto: CreateRoleDto, @CurrentUser() actor: CurrentUserPayload) {
     return this.rolesService.create(dto, actor);
@@ -65,6 +68,7 @@ export class RolesController {
     summary: "Update a role's display name, description, or permissions.",
   })
   @RequirePermissions('roles:update')
+  @LogActivity(ActivityEntity.ROLE, ActivityAction.UPDATE)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -78,6 +82,7 @@ export class RolesController {
     summary: 'Soft-delete a role (must have no assigned users).',
   })
   @RequirePermissions('roles:delete')
+  @LogActivity(ActivityEntity.ROLE, ActivityAction.SOFT_DELETE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @CurrentUser() actor: CurrentUserPayload) {

@@ -12,6 +12,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { LogActivity } from '../common/decorators/log-activity.decorator';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ListCompaniesQueryDto } from './dto/list-companies-query.dto';
 import {
@@ -36,6 +38,7 @@ export class CompaniesController {
     summary: 'Create a new company (platform SUPER_ADMIN only).',
   })
   @Roles('SUPER_ADMIN')
+  @LogActivity(ActivityEntity.COMPANY, ActivityAction.CREATE)
   @Post()
   create(@Body() dto: CreateCompanyDto) {
     return this.companiesService.create(dto);
@@ -66,6 +69,7 @@ export class CompaniesController {
     summary:
       'Update a company. SUPER_ADMIN can update any company; other users only their own.',
   })
+  @LogActivity(ActivityEntity.COMPANY, ActivityAction.UPDATE)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -84,6 +88,7 @@ export class CompaniesController {
     summary: 'Soft-delete a company (platform SUPER_ADMIN only).',
   })
   @Roles('SUPER_ADMIN')
+  @LogActivity(ActivityEntity.COMPANY, ActivityAction.SOFT_DELETE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {

@@ -23,7 +23,7 @@ import {
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createHash } from 'crypto';
-import { PERMISSION_ACTIONS, PERMISSION_MODULES, seedPermissions } from './permissions';
+import { ALL_PERMISSION_CODES, seedPermissions } from './permissions';
 
 const prisma = new PrismaClient();
 
@@ -68,9 +68,7 @@ function documentTotals(lines: DocLine[], discountPercent: number, taxPercent: n
   return { subTotal, totalAmount: round2(taxable + taxable * (taxPercent / 100)) };
 }
 
-const ALL_PERMISSIONS = PERMISSION_MODULES.flatMap((module) =>
-  PERMISSION_ACTIONS.map((action) => `${module}:${action}`),
-);
+const ALL_PERMISSIONS = ALL_PERMISSION_CODES;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Demo specification

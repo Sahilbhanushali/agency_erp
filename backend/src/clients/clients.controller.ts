@@ -11,12 +11,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
   type CurrentUserPayload,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { LogActivity } from '../common/decorators/log-activity.decorator';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { ClientsService } from './clients.service';
@@ -36,6 +38,7 @@ export class ClientsController {
       'Create a client. SUPER_ADMIN can target any company; others create within their own.',
   })
   @RequirePermissions('clients:create')
+  @LogActivity(ActivityEntity.CLIENT, ActivityAction.CREATE)
   @Post()
   create(
     @Body() dto: CreateClientDto,
@@ -66,6 +69,7 @@ export class ClientsController {
 
   @ApiOperation({ summary: 'Update a client.' })
   @RequirePermissions('clients:update')
+  @LogActivity(ActivityEntity.CLIENT, ActivityAction.UPDATE)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -77,6 +81,7 @@ export class ClientsController {
 
   @ApiOperation({ summary: 'Soft-delete a client.' })
   @RequirePermissions('clients:delete')
+  @LogActivity(ActivityEntity.CLIENT, ActivityAction.SOFT_DELETE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @CurrentUser() actor: CurrentUserPayload) {
