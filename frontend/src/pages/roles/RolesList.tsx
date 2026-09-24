@@ -38,7 +38,7 @@ const RolesList = () => {
         setIsLoading(true);
         const query = companyId ? `?companyId=${companyId}` : "";
         api
-            .get<Role[]>(`/roles${query}`)
+            .list<Role>(`/roles${query}`)
             .then(setRoles)
             .catch((error) => toast.error(error instanceof ApiError ? error.message : "Failed to load roles."))
             .finally(() => setIsLoading(false));
@@ -55,7 +55,7 @@ const RolesList = () => {
 
     useEffect(() => {
         if (isSuperAdmin) {
-            api.get<Company[]>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
+            api.list<Company>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
         }
     }, [isSuperAdmin]);
 

@@ -8,8 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { can } from "@/lib/permissions";
+import type { DashboardSummary } from "@/types/dashboard";
 import type { Invoice } from "@/types/invoice";
-import type { Project } from "@/types/project";
 import type { Task } from "@/types/task";
 import {
   ArrowUpRight,
@@ -21,7 +21,7 @@ import {
   Plus,
   Wallet,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
@@ -29,138 +29,63 @@ export default function Dashboard() {
   const isSuperAdmin = user?.roleName === "SUPER_ADMIN";
 
   const [isLoading, setIsLoading] = useState(true);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [priorityTasks, setPriorityTasks] = useState<Task[]>([]);
+  const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadDashboardData() {
-      setIsLoading(true);
+    // Totals come from the server already aggregated; the lists below are only the
+    // handful of rows actually rendered. Never re-derive a total from these.
+    const requests: Promise<unknown>[] = [
+      api
+        .get<DashboardSummary>("/dashboard/summary")
+        .then((data) => !cancelled && setSummary(data))
+        .catch(() => undefined),
+      api
+        .list<Task>("/tasks?openOnly=true&sort=priority", 5)
+        .then((data) => !cancelled && setPriorityTasks(data))
+        .catch(() => undefined),
+    ];
 
-      const fetchers: Promise<void>[] = [];
-
-      // Fetch projects if allowed
-      if (isSuperAdmin || can(user, "projects:read")) {
-        fetchers.push(
-          api
-            .get<Project[]>("/projects")
-            .then((data) => {
-              if (!cancelled) setProjects(data);
-            })
-            .catch(() => undefined)
-        );
-      }
-
-      // Fetch tasks
-      fetchers.push(
+    if (isSuperAdmin || can(user, "invoices:read")) {
+      requests.push(
         api
-          .get<Task[]>("/tasks")
-          .then((data) => {
-            if (!cancelled) setTasks(data);
-          })
+          .list<Invoice>("/invoices", 5)
+          .then((data) => !cancelled && setRecentInvoices(data))
           .catch(() => undefined)
       );
-
-      // Fetch invoices if allowed
-      if (isSuperAdmin || can(user, "invoices:read")) {
-        fetchers.push(
-          api
-            .get<Invoice[]>("/invoices")
-            .then((data) => {
-              if (!cancelled) setInvoices(data);
-            })
-            .catch(() => undefined)
-        );
-      }
-
-      await Promise.allSettled(fetchers);
-      if (!cancelled) setIsLoading(false);
     }
 
-    loadDashboardData();
+    Promise.allSettled(requests).then(() => {
+      if (!cancelled) setIsLoading(false);
+    });
 
     return () => {
       cancelled = true;
     };
   }, [user, isSuperAdmin]);
 
-  // Financial calculations
-  const totalBilled = useMemo(() => {
-    return invoices.reduce((acc, inv) => acc + (Number(inv.totalAmount) || 0), 0);
-  }, [invoices]);
-
-  const totalOutstanding = useMemo(() => {
-    return invoices.reduce((acc, inv) => acc + (Number(inv.balanceDue) || 0), 0);
-  }, [invoices]);
-
-  const activeProjectsCount = useMemo(() => {
-    return projects.filter((p) => p.status === "ACTIVE" || p.status === "IN_REVIEW").length;
-  }, [projects]);
-
-  const pendingTasks = useMemo(() => {
-    return tasks.filter(
-      (t) => t.status !== "DONE" && t.status !== "CANCELLED"
-    );
-  }, [tasks]);
-
-  const overdueTasksCount = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return pendingTasks.filter((t) => t.dueDate && t.dueDate.slice(0, 10) < today).length;
-  }, [pendingTasks]);
+  const totalBilled = summary?.invoices?.totalBilled ?? 0;
+  const totalOutstanding = summary?.invoices?.totalOutstanding ?? 0;
+  const invoiceCount = summary?.invoices?.count ?? 0;
+  const activeProjectsCount = summary?.projects?.active ?? 0;
+  const projectCount = summary?.projects?.total ?? 0;
+  const pendingTaskCount = summary?.tasks.pending ?? 0;
+  const overdueTasksCount = summary?.tasks.overdue ?? 0;
+  const taskCount = summary?.tasks.total ?? 0;
+  const tasksByStatus = summary?.tasks.byStatus ?? {};
 
   // Format currency helper
-  const currencySymbol = invoices[0]?.currency ?? "INR";
+  const currencySymbol = recentInvoices[0]?.currency ?? "INR";
   const formatMoney = (amount: number) => {
     return `${currencySymbol === "INR" ? "₹" : currencySymbol + " "}${amount.toLocaleString("en-IN", {
       maximumFractionDigits: 0,
     })}`;
   };
 
-  // Recent invoices (top 5)
-  const recentInvoices = useMemo(() => {
-    return [...invoices]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
-  }, [invoices]);
-
-  // Recent / high-priority pending tasks (top 5)
-  const priorityTasks = useMemo(() => {
-    return [...pendingTasks]
-      .sort((a, b) => {
-        const pOrder: Record<string, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-        const pa = pOrder[a.priority] ?? 4;
-        const pb = pOrder[b.priority] ?? 4;
-        if (pa !== pb) return pa - pb;
-        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-        return 0;
-      })
-      .slice(0, 5);
-  }, [pendingTasks]);
-
-  // Simulated / computed monthly billing timeline
-  const chartData: DataPoint[] = useMemo(() => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const currentMonthIndex = new Date().getMonth();
-    // Build last 6 months
-    const result: DataPoint[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const mIdx = (currentMonthIndex - i + 12) % 12;
-      const mName = months[mIdx];
-      // calculate any real invoices for that month
-      const monthInvoices = invoices.filter((inv) => {
-        const d = new Date(inv.createdAt);
-        return d.getMonth() === mIdx;
-      });
-      const monthTotal = monthInvoices.reduce((acc, inv) => acc + (Number(inv.totalAmount) || 0), 0);
-      result.push({
-        label: mName,
-        value: monthTotal > 0 ? monthTotal : Math.round(totalBilled * (0.12 + (5 - i) * 0.05)),
-      });
-    }
-    return result;
-  }, [invoices, totalBilled]);
+  const chartData: DataPoint[] = summary?.invoices?.revenueByMonth ?? [];
 
   return (
     <div className="space-y-6">
@@ -221,7 +146,7 @@ export default function Dashboard() {
               icon={Wallet}
               color="primary"
               change={{
-                value: `${invoices.length} invoices`,
+                value: `${invoiceCount} invoices`,
                 trend: "neutral",
                 label: "issued",
               }}
@@ -246,7 +171,7 @@ export default function Dashboard() {
               icon={FolderKanban}
               color="sky"
               change={{
-                value: `${projects.length} total`,
+                value: `${projectCount} total`,
                 trend: "neutral",
                 label: "across agency",
               }}
@@ -255,7 +180,7 @@ export default function Dashboard() {
 
             <StatCard
               label="Open Tasks"
-              value={pendingTasks.length}
+              value={pendingTaskCount}
               icon={CheckCircle2}
               color={overdueTasksCount > 0 ? "rose" : "emerald"}
               change={
@@ -328,29 +253,29 @@ export default function Dashboard() {
               {
                 label: "To Do",
                 status: "TODO",
-                count: tasks.filter((t) => t.status === "TODO").length,
+                count: tasksByStatus.TODO ?? 0,
                 color: "bg-neutral-400 dark:bg-neutral-600",
               },
               {
                 label: "In Progress",
                 status: "IN_PROGRESS",
-                count: tasks.filter((t) => t.status === "IN_PROGRESS").length,
+                count: tasksByStatus.IN_PROGRESS ?? 0,
                 color: "bg-sky-500",
               },
               {
                 label: "In Review",
                 status: "IN_REVIEW",
-                count: tasks.filter((t) => t.status === "IN_REVIEW").length,
+                count: tasksByStatus.IN_REVIEW ?? 0,
                 color: "bg-amber-500",
               },
               {
                 label: "Completed",
                 status: "DONE",
-                count: tasks.filter((t) => t.status === "DONE").length,
+                count: tasksByStatus.DONE ?? 0,
                 color: "bg-emerald-500",
               },
             ].map((col) => {
-              const total = tasks.length || 1;
+              const total = taskCount || 1;
               const pct = Math.round((col.count / total) * 100);
               return (
                 <div key={col.label} className="space-y-1">
@@ -374,15 +299,11 @@ export default function Dashboard() {
           </div>
 
           <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Total Tasks: {tasks.length}</span>
+            <span>Total Tasks: {taskCount}</span>
             <span>
               Done Rate:{" "}
-              {tasks.length > 0
-                ? `${Math.round(
-                    (tasks.filter((t) => t.status === "DONE").length /
-                      tasks.length) *
-                      100
-                  )}%`
+              {taskCount > 0
+                ? `${Math.round(((tasksByStatus.DONE ?? 0) / taskCount) * 100)}%`
                 : "—"}
             </span>
           </div>

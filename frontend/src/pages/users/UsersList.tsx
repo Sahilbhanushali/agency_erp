@@ -10,6 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useDebounced } from "@/hooks/use-debounced";
+import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { api, ApiError } from "@/lib/api";
 import type { User, UserStatus } from "@/types/user";
 import { LayoutGrid, List, Plus, UsersRound } from "lucide-react";
@@ -28,8 +30,6 @@ const STATUS_OPTIONS: (UserStatus | "ALL")[] = [
 
 export default function UsersList() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<UserStatus | "ALL">("ALL");
@@ -38,38 +38,27 @@ export default function UsersList() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchUsers = () => {
-    setIsLoading(true);
-    api
-      .get<User[]>("/users")
-      .then(setUsers)
-      .catch((error) =>
-        toast.error(error instanceof ApiError ? error.message : "Failed to load users.")
-      )
-      .finally(() => setIsLoading(false));
-  };
+  const debouncedSearch = useDebounced(search);
 
-  useEffect(fetchUsers, []);
-
-  const filteredUsers = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return users.filter((user) => {
-      const matchesStatus = status === "ALL" || user.status === status;
-      const matchesSearch =
-        !query ||
-        `${user.firstName} ${user.lastName}`.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        (user.department && user.department.toLowerCase().includes(query));
-      return matchesStatus && matchesSearch;
+  const query = useMemo(() => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(pageSize),
     });
-  }, [users, search, status]);
+    if (status !== "ALL") params.set("status", status);
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    return params.toString();
+  }, [page, pageSize, status, debouncedSearch]);
 
-  useEffect(() => setPage(1), [search, status, pageSize]);
+  const {
+    data: users,
+    total,
+    isLoading,
+    refetch,
+  } = usePaginatedList<User>("/users", query, "Failed to load users.");
 
-  const paginatedUsers = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredUsers.slice(start, start + pageSize);
-  }, [filteredUsers, page, pageSize]);
+  useEffect(() => setPage(1), [debouncedSearch, pageSize, status]);
+
 
   const handleDelete = async () => {
     if (!userToDelete) return;
@@ -77,9 +66,7 @@ export default function UsersList() {
     try {
       await api.delete(`/users/${userToDelete.id}`);
       toast.success("User deleted successfully.");
-      setUsers((current) =>
-        current.filter((user) => user.id !== userToDelete.id)
-      );
+      refetch();
       setUserToDelete(null);
     } catch (error) {
       toast.error(
@@ -158,7 +145,7 @@ export default function UsersList() {
           </Select>
         }
         isLoading={isLoading}
-        isEmpty={filteredUsers.length === 0}
+        isEmpty={users.length === 0}
         emptyState={{
           icon: UsersRound,
           title: search || status !== "ALL" ? "No matching team members" : "No users created yet",
@@ -177,14 +164,14 @@ export default function UsersList() {
         pagination={{
           page,
           pageSize,
-          total: filteredUsers.length,
+          total,
           onPageChange: setPage,
           onPageSizeChange: setPageSize,
         }}
       >
         {viewMode === "list" ? (
           <UsersListTable
-            users={paginatedUsers}
+            users={users}
             onView={(user) => navigate(`/users-list/${user.id}`)}
             onEdit={(user) => navigate(`/users-list/${user.id}/edit`)}
             onDelete={setUserToDelete}
@@ -192,7 +179,7 @@ export default function UsersList() {
         ) : (
           <div className="p-4 sm:p-6">
             <UsersGridView
-              users={paginatedUsers}
+              users={users}
               onView={(user) => navigate(`/users-list/${user.id}`)}
               onEdit={(user) => navigate(`/users-list/${user.id}/edit`)}
               onDelete={setUserToDelete}

@@ -79,7 +79,7 @@ const WorkspaceForm = ({ mode, initialValues, onSubmit, isSubmitting }: Workspac
 
     useEffect(() => {
         if (isSuperAdmin) {
-            api.get<Company[]>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
+            api.list<Company>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
         }
     }, [isSuperAdmin]);
 
@@ -88,7 +88,7 @@ const WorkspaceForm = ({ mode, initialValues, onSubmit, isSubmitting }: Workspac
             setProjects([]);
             return;
         }
-        api.get<Project[]>(`/projects?companyId=${targetCompanyId}`).then(setProjects).catch(() => toast.error("Failed to load projects."));
+        api.list<Project>(`/projects?companyId=${targetCompanyId}`).then(setProjects).catch(() => toast.error("Failed to load projects."));
     }, [targetCompanyId]);
 
     const handleSubmit = async (values: WorkspaceFormValues) => {

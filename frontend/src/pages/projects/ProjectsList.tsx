@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
+import { useDebounced } from "@/hooks/use-debounced";
+import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { api, ApiError } from "@/lib/api";
 import { can } from "@/lib/permissions";
 import type { Company } from "@/types/company";
@@ -36,12 +38,10 @@ export default function ProjectsList() {
   const { user: actor } = useAuth();
   const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
 
-  const [projects, setProjects] = useState<Project[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companyId, setCompanyId] = useState<string | undefined>(
     actor?.companyId ?? undefined
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ProjectStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
@@ -49,47 +49,37 @@ export default function ProjectsList() {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchProjects = () => {
-    setIsLoading(true);
-    const query = companyId ? `?companyId=${companyId}` : "";
-    api
-      .get<Project[]>(`/projects${query}`)
-      .then(setProjects)
-      .catch((error) =>
-        toast.error(error instanceof ApiError ? error.message : "Failed to load projects.")
-      )
-      .finally(() => setIsLoading(false));
-  };
+  const debouncedSearch = useDebounced(search);
 
-  useEffect(fetchProjects, [companyId]);
+  const query = useMemo(() => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(pageSize),
+    });
+    if (companyId) params.set("companyId", companyId);
+    if (status !== "ALL") params.set("status", status);
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    return params.toString();
+  }, [page, pageSize, companyId, status, debouncedSearch]);
+
+  const {
+    data: projects,
+    total,
+    isLoading,
+    refetch,
+  } = usePaginatedList<Project>("/projects", query, "Failed to load projects.");
 
   useEffect(() => {
     if (isSuperAdmin) {
       api
-        .get<Company[]>("/companies")
+        .list<Company>("/companies")
         .then(setCompanies)
         .catch(() => toast.error("Failed to load companies."));
     }
   }, [isSuperAdmin]);
 
-  const filteredProjects = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return projects.filter((project) => {
-      const matchesStatus = status === "ALL" || project.status === status;
-      const matchesSearch =
-        !query ||
-        project.title.toLowerCase().includes(query) ||
-        project.client?.name.toLowerCase().includes(query);
-      return matchesStatus && matchesSearch;
-    });
-  }, [projects, search, status]);
+  useEffect(() => setPage(1), [debouncedSearch, pageSize, companyId, status]);
 
-  useEffect(() => setPage(1), [search, status, pageSize]);
-
-  const paginatedProjects = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredProjects.slice(start, start + pageSize);
-  }, [filteredProjects, page, pageSize]);
 
   const handleDelete = async () => {
     if (!projectToDelete) return;
@@ -97,9 +87,7 @@ export default function ProjectsList() {
     try {
       await api.delete(`/projects/${projectToDelete.id}`);
       toast.success("Project deleted successfully.");
-      setProjects((current) =>
-        current.filter((project) => project.id !== projectToDelete.id)
-      );
+      refetch();
       setProjectToDelete(null);
     } catch (error) {
       toast.error(
@@ -118,7 +106,7 @@ export default function ProjectsList() {
         breadcrumbs={[{ label: "Projects" }]}
         badge={
           <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
-            {projects.length} total
+            {total} total
           </span>
         }
         actions={
@@ -186,7 +174,7 @@ export default function ProjectsList() {
           </div>
         }
         isLoading={isLoading}
-        isEmpty={filteredProjects.length === 0}
+        isEmpty={projects.length === 0}
         emptyState={{
           icon: FolderKanban,
           title: search || status !== "ALL" ? "No matching projects" : "No projects created yet",
@@ -205,13 +193,13 @@ export default function ProjectsList() {
         pagination={{
           page,
           pageSize,
-          total: filteredProjects.length,
+          total,
           onPageChange: setPage,
           onPageSizeChange: setPageSize,
         }}
       >
         <ProjectsListTable
-          projects={paginatedProjects}
+          projects={projects}
           onView={(project) => navigate(`/projects-list/${project.id}`)}
           onEdit={(project) => navigate(`/projects-list/${project.id}/edit`)}
           onDelete={setProjectToDelete}

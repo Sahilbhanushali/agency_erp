@@ -21,6 +21,7 @@ import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { ListWorkspacesQueryDto } from './dto/list-workspaces-query.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { WorkspacesService } from './workspaces.service';
 
@@ -52,10 +53,9 @@ export class WorkspacesController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('projectId') projectId?: string,
-    @Query('companyId') companyId?: string,
+    @Query() query: ListWorkspacesQueryDto,
   ) {
-    return this.workspacesService.findAll(actor, projectId, companyId);
+    return this.workspacesService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get a workspace with its active members.' })

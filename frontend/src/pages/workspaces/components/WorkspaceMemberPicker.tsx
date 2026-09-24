@@ -57,7 +57,7 @@ const WorkspaceMemberPicker = ({ companyId, excludeUserIds, members, onAdd, onRe
             return;
         }
         api
-            .get<MinimalUser[]>(`/users?companyId=${companyId}`)
+            .list<MinimalUser>(`/users?companyId=${companyId}`)
             .then((list) => {
                 setCompanyUsers(list);
                 setUsersUnavailable(false);

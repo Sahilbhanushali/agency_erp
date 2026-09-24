@@ -98,14 +98,14 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
                 : emptyValues(projectId, workspaceId),
         );
         if (!projectId) {
-            api.get<Project[]>("/projects").then(setProjects).catch(() => toast.error("Failed to load projects."));
+            api.list<Project>("/projects").then(setProjects).catch(() => toast.error("Failed to load projects."));
         }
     }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!open || !selectedProjectId || workspaceId) return;
         api
-            .get<Workspace[]>(`/workspaces?projectId=${selectedProjectId}`)
+            .list<Workspace>(`/workspaces?projectId=${selectedProjectId}`)
             .then(setWorkspaces)
             .catch(() => setWorkspaces([]));
     }, [open, selectedProjectId, workspaceId]);
@@ -129,7 +129,7 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
     useEffect(() => {
         if (!open || !companyId) return;
         api
-            .get<MinimalUser[]>(`/users?companyId=${companyId}`)
+            .list<MinimalUser>(`/users?companyId=${companyId}`)
             .then((list) => {
                 setUsers(list);
                 setUsersUnavailable(false);

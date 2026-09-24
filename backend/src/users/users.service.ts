@@ -6,7 +6,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import { Prisma } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { buildMeta, toSkipTake } from '../common/utils/paginate.util';
 import {
   assertCompanyAccess,
   resolveTargetCompanyId,
@@ -17,6 +19,7 @@ import { FilesService } from '../files/files.service';
 import { MailerService } from '../mailer/mailer.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddressInputDto } from '../common/dto/address-input.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -96,17 +99,40 @@ export class UsersService {
     return user;
   }
 
-  findAll(actor: CurrentUserPayload, companyId?: string) {
+  async findAll(actor: CurrentUserPayload, filters: ListUsersQueryDto) {
     const scopedCompanyId =
-      actor.roleName === 'SUPER_ADMIN' ? companyId : actor.companyId;
-    return this.prisma.user.findMany({
-      where: {
-        deletedAt: null,
-        ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
-      },
-      ...USER_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
+      actor.roleName === 'SUPER_ADMIN' ? filters.companyId : actor.companyId;
+    const query = filters.search?.trim();
+    const where: Prisma.UserWhereInput = {
+      deletedAt: null,
+      ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+      // Each term must hit some field, so "Jane Doe" still matches a split first/last name.
+      ...(query
+        ? {
+            AND: query.split(/\s+/).map((term) => ({
+              OR: [
+                { firstName: { contains: term } },
+                { lastName: { contains: term } },
+                { email: { contains: term } },
+                { department: { contains: term } },
+              ],
+            })),
+          }
+        : {}),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        ...USER_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { data, meta: buildMeta(total, filters.page, filters.limit) };
   }
 
   async findOne(id: string, actor: CurrentUserPayload) {

@@ -3,13 +3,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import {
+  buildMeta,
+  searchFilter,
+  toSkipTake,
+} from '../common/utils/paginate.util';
 import {
   assertCompanyAccess,
   resolveTargetCompanyId,
 } from '../common/utils/tenant-scope.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClientDto } from './dto/create-client.dto';
+import { ListClientsQueryDto } from './dto/list-clients-query.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 
 @Injectable()
@@ -37,16 +44,25 @@ export class ClientsService {
     });
   }
 
-  findAll(actor: CurrentUserPayload, companyId?: string) {
+  async findAll(actor: CurrentUserPayload, filters: ListClientsQueryDto) {
     const scopedCompanyId =
-      actor.roleName === 'SUPER_ADMIN' ? companyId : actor.companyId;
-    return this.prisma.client.findMany({
-      where: {
-        deletedAt: null,
-        ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+      actor.roleName === 'SUPER_ADMIN' ? filters.companyId : actor.companyId;
+    const where: Prisma.ClientWhereInput = {
+      deletedAt: null,
+      ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
+      ...searchFilter(filters.search, ['name', 'email', 'industry']),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.client.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.client.count({ where }),
+    ]);
+
+    return { data, meta: buildMeta(total, filters.page, filters.limit) };
   }
 
   async findOne(id: string, actor: CurrentUserPayload) {

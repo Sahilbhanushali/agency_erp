@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
+import { useDebounced } from "@/hooks/use-debounced";
+import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { api, ApiError } from "@/lib/api";
 import { can } from "@/lib/permissions";
 import type { Company } from "@/types/company";
@@ -26,14 +28,12 @@ export default function WorkspacesList() {
   const { user: actor } = useAuth();
   const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
 
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [companyId, setCompanyId] = useState<string | undefined>(
     actor?.companyId ?? undefined
   );
   const [projectId, setProjectId] = useState<string | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -42,27 +42,30 @@ export default function WorkspacesList() {
   );
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchWorkspaces = () => {
-    setIsLoading(true);
-    const params = new URLSearchParams();
+  const debouncedSearch = useDebounced(search);
+
+  const query = useMemo(() => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(pageSize),
+    });
     if (companyId) params.set("companyId", companyId);
     if (projectId) params.set("projectId", projectId);
-    const query = params.toString() ? `?${params.toString()}` : "";
-    api
-      .get<Workspace[]>(`/workspaces${query}`)
-      .then(setWorkspaces)
-      .catch((error) =>
-        toast.error(error instanceof ApiError ? error.message : "Failed to load workspaces.")
-      )
-      .finally(() => setIsLoading(false));
-  };
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    return params.toString();
+  }, [page, pageSize, companyId, projectId, debouncedSearch]);
 
-  useEffect(fetchWorkspaces, [companyId, projectId]);
+  const {
+    data: workspaces,
+    total,
+    isLoading,
+    refetch,
+  } = usePaginatedList<Workspace>("/workspaces", query, "Failed to load workspaces.");
 
   useEffect(() => {
     if (isSuperAdmin) {
       api
-        .get<Company[]>("/companies")
+        .list<Company>("/companies")
         .then(setCompanies)
         .catch(() => toast.error("Failed to load companies."));
     }
@@ -75,25 +78,13 @@ export default function WorkspacesList() {
       return;
     }
     api
-      .get<Project[]>(`/projects?companyId=${companyId}`)
+      .list<Project>(`/projects?companyId=${companyId}`)
       .then(setProjects)
       .catch(() => toast.error("Failed to load projects."));
   }, [companyId]);
 
-  const filteredWorkspaces = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return workspaces;
-    return workspaces.filter((workspace) =>
-      workspace.name.toLowerCase().includes(query)
-    );
-  }, [workspaces, search]);
+  useEffect(() => setPage(1), [debouncedSearch, pageSize, companyId, projectId]);
 
-  useEffect(() => setPage(1), [search, pageSize]);
-
-  const paginatedWorkspaces = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredWorkspaces.slice(start, start + pageSize);
-  }, [filteredWorkspaces, page, pageSize]);
 
   const handleDelete = async () => {
     if (!workspaceToDelete) return;
@@ -101,9 +92,7 @@ export default function WorkspacesList() {
     try {
       await api.delete(`/workspaces/${workspaceToDelete.id}`);
       toast.success("Workspace deleted successfully.");
-      setWorkspaces((current) =>
-        current.filter((workspace) => workspace.id !== workspaceToDelete.id)
-      );
+      refetch();
       setWorkspaceToDelete(null);
     } catch (error) {
       toast.error(
@@ -201,7 +190,7 @@ export default function WorkspacesList() {
           </div>
         }
         isLoading={isLoading}
-        isEmpty={filteredWorkspaces.length === 0}
+        isEmpty={workspaces.length === 0}
         emptyState={{
           icon: LayoutGrid,
           title: search ? "No matching workspaces" : "No workspaces created yet",
@@ -220,13 +209,13 @@ export default function WorkspacesList() {
         pagination={{
           page,
           pageSize,
-          total: filteredWorkspaces.length,
+          total,
           onPageChange: setPage,
           onPageSizeChange: setPageSize,
         }}
       >
         <WorkspacesListTable
-          workspaces={paginatedWorkspaces}
+          workspaces={workspaces}
           onView={(workspace) => navigate(`/workspaces-list/${workspace.id}`)}
           onEdit={(workspace) => navigate(`/workspaces-list/${workspace.id}/edit`)}
           onDelete={setWorkspaceToDelete}

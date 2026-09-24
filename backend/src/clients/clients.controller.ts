@@ -21,6 +21,7 @@ import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
+import { ListClientsQueryDto } from './dto/list-clients-query.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 
 @ApiTags('Admin - Clients')
@@ -51,9 +52,9 @@ export class ClientsController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('companyId') companyId?: string,
+    @Query() query: ListClientsQueryDto,
   ) {
-    return this.clientsService.findAll(actor, companyId);
+    return this.clientsService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get a client by id.' })

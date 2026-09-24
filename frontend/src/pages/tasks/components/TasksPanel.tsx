@@ -55,7 +55,7 @@ export default function TasksPanel({
     const queryString = query.toString();
     setIsLoading(true);
     api
-      .get<Task[]>(`/tasks${queryString ? `?${queryString}` : ""}`)
+      .list<Task>(`/tasks${queryString ? `?${queryString}` : ""}`)
       .then(setTasks)
       .catch((error) =>
         toast.error(error instanceof ApiError ? error.message : "Failed to load tasks.")

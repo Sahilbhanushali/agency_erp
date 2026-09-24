@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { ListInvoicesQueryDto } from './dto/list-invoices-query.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { InvoicesService } from './invoices.service';
@@ -52,11 +53,9 @@ export class InvoicesController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('companyId') companyId?: string,
-    @Query('clientId') clientId?: string,
-    @Query('projectId') projectId?: string,
+    @Query() query: ListInvoicesQueryDto,
   ) {
-    return this.invoicesService.findAll(actor, companyId, clientId, projectId);
+    return this.invoicesService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get an invoice with its line items and payments.' })

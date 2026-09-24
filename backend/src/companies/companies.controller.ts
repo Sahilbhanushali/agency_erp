@@ -9,9 +9,11 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ListCompaniesQueryDto } from './dto/list-companies-query.dto';
 import {
   CurrentUser,
   type CurrentUserPayload,
@@ -42,8 +44,8 @@ export class CompaniesController {
   @ApiOperation({ summary: 'List all companies (platform SUPER_ADMIN only).' })
   @Roles('SUPER_ADMIN')
   @Get()
-  findAll() {
-    return this.companiesService.findAll();
+  findAll(@Query() query: ListCompaniesQueryDto) {
+    return this.companiesService.findAll(query);
   }
 
   @ApiOperation({

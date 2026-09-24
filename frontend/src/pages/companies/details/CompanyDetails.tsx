@@ -58,7 +58,7 @@ const CompanyDetails = () => {
         if (!id) return;
         setIsLoadingClients(true);
         api
-            .get<Client[]>(`/clients?companyId=${id}`)
+            .list<Client>(`/clients?companyId=${id}`)
             .then(setClients)
             .catch((error) => toast.error(error instanceof ApiError ? error.message : "Failed to load clients."))
             .finally(() => setIsLoadingClients(false));

@@ -6,24 +6,18 @@ import {
 } from '@nestjs/common';
 import { Prisma, TaskStatus } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { buildMeta, toSkipTake } from '../common/utils/paginate.util';
 import {
   assertCompanyAccess,
   hasPermission,
+  taskScopeFilter,
 } from '../common/utils/tenant-scope.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
+import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { CreateSubTaskDto, CreateTaskDto } from './dto/create-task.dto';
 import { ReorderTasksDto } from './dto/reorder-tasks.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-
-export interface TaskFilters {
-  projectId?: string;
-  workspaceId?: string;
-  assigneeId?: string;
-  status?: TaskStatus;
-  search?: string;
-  companyId?: string;
-}
 
 const USER_SELECT = {
   select: {
@@ -56,6 +50,23 @@ const TASK_DETAIL_INCLUDE = {
     include: { user: USER_SELECT },
   },
 } as const;
+
+/** Anything not finished or abandoned, i.e. still real work. */
+const OPEN_TASK_STATUSES = [
+  TaskStatus.TODO,
+  TaskStatus.IN_PROGRESS,
+  TaskStatus.IN_REVIEW,
+  TaskStatus.NEEDS_REVISION,
+  TaskStatus.ADMIN_APPROVED,
+  TaskStatus.CLIENT_PENDING,
+];
+
+// TaskPriority ascends LOW -> URGENT, so desc puts the most urgent first.
+const TASK_ORDER_BY = {
+  board: [{ position: 'asc' }, { createdAt: 'desc' }],
+  priority: [{ priority: 'desc' }, { dueDate: 'asc' }],
+  dueDate: [{ dueDate: 'asc' }],
+} satisfies Record<string, Prisma.TaskOrderByWithRelationInput[]>;
 
 /** undefined leaves the column untouched; null clears it. */
 function toNullableDate(value?: string | null) {
@@ -90,22 +101,31 @@ export class TasksService {
     });
   }
 
-  findAll(actor: CurrentUserPayload, filters: TaskFilters) {
-    return this.prisma.task.findMany({
-      where: {
-        deletedAt: null,
-        // Sub-tasks travel with their parent rather than as board cards of their own.
-        parentTaskId: null,
-        ...this.scopeFilter(actor, filters.companyId),
-        ...(filters.projectId ? { projectId: filters.projectId } : {}),
-        ...(filters.workspaceId ? { workspaceId: filters.workspaceId } : {}),
-        ...(filters.assigneeId ? { assigneeId: filters.assigneeId } : {}),
-        ...(filters.status ? { status: filters.status } : {}),
-        ...(filters.search ? { title: { contains: filters.search } } : {}),
-      },
-      include: TASK_INCLUDE,
-      orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
-    });
+  async findAll(actor: CurrentUserPayload, filters: ListTasksQueryDto) {
+    const where: Prisma.TaskWhereInput = {
+      deletedAt: null,
+      // Sub-tasks travel with their parent rather than as board cards of their own.
+      parentTaskId: null,
+      ...this.scopeFilter(actor, filters.companyId),
+      ...(filters.projectId ? { projectId: filters.projectId } : {}),
+      ...(filters.workspaceId ? { workspaceId: filters.workspaceId } : {}),
+      ...(filters.assigneeId ? { assigneeId: filters.assigneeId } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.search ? { title: { contains: filters.search } } : {}),
+      ...(filters.openOnly ? { status: { in: OPEN_TASK_STATUSES } } : {}),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.task.findMany({
+        where,
+        include: TASK_INCLUDE,
+        orderBy: TASK_ORDER_BY[filters.sort ?? 'board'],
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    return { data, meta: buildMeta(total, filters.page, filters.limit) };
   }
 
   async findOne(id: string, actor: CurrentUserPayload) {
@@ -270,26 +290,7 @@ export class TasksService {
     actor: CurrentUserPayload,
     requestedCompanyId?: string,
   ): Prisma.TaskWhereInput {
-    if (actor.roleName === 'SUPER_ADMIN') {
-      return requestedCompanyId ? { companyId: requestedCompanyId } : {};
-    }
-    if (!actor.companyId)
-      throw new ForbiddenException('You are not scoped to a company');
-    if (hasPermission(actor, 'tasks:read'))
-      return { companyId: actor.companyId };
-
-    return {
-      companyId: actor.companyId,
-      OR: [
-        { assigneeId: actor.id },
-        { createdById: actor.id },
-        {
-          workspace: {
-            members: { some: { userId: actor.id, deletedAt: null } },
-          },
-        },
-      ],
-    };
+    return taskScopeFilter(actor, requestedCompanyId);
   }
 
   /** An assignee without `tasks:update` may move their own task along, nothing else. */

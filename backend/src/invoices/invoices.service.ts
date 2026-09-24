@@ -3,7 +3,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { buildMeta, toSkipTake } from '../common/utils/paginate.util';
 import { toDateOrUndefined } from '../common/utils/date.util';
 import { createWithDocumentNumber } from '../common/utils/document-number.util';
 import { computeLineTotals } from '../common/utils/pricing.util';
@@ -13,6 +15,7 @@ import {
 } from '../common/utils/tenant-scope.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { ListInvoicesQueryDto } from './dto/list-invoices-query.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 
@@ -106,25 +109,41 @@ export class InvoicesService {
     return withBalance(invoice);
   }
 
-  async findAll(
-    actor: CurrentUserPayload,
-    companyId?: string,
-    clientId?: string,
-    projectId?: string,
-  ) {
+  async findAll(actor: CurrentUserPayload, filters: ListInvoicesQueryDto) {
     const scopedCompanyId =
-      actor.roleName === 'SUPER_ADMIN' ? companyId : actor.companyId;
-    const invoices = await this.prisma.invoice.findMany({
-      where: {
-        deletedAt: null,
-        ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
-        ...(clientId ? { clientId } : {}),
-        ...(projectId ? { projectId } : {}),
-      },
-      include: INVOICE_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
-    return invoices.map(withBalance);
+      actor.roleName === 'SUPER_ADMIN' ? filters.companyId : actor.companyId;
+    const query = filters.search?.trim();
+    const where: Prisma.InvoiceWhereInput = {
+      deletedAt: null,
+      ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
+      ...(filters.clientId ? { clientId: filters.clientId } : {}),
+      ...(filters.projectId ? { projectId: filters.projectId } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query } },
+              { invoiceNumber: { contains: query } },
+              { client: { name: { contains: query } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [invoices, total] = await this.prisma.$transaction([
+      this.prisma.invoice.findMany({
+        where,
+        include: INVOICE_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.invoice.count({ where }),
+    ]);
+
+    return {
+      data: invoices.map(withBalance),
+      meta: buildMeta(total, filters.page, filters.limit),
+    };
   }
 
   async findOne(id: string, actor: CurrentUserPayload) {

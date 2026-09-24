@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import type { CurrentUserPayload } from '../../auth/decorators/current-user.decorator';
 
 export function resolveTargetCompanyId(
@@ -35,4 +36,33 @@ export function assertCompanyAccess(
       'You do not have permission to access this resource',
     );
   }
+}
+
+/**
+ * Which tasks an actor may see. Shared by the tasks list and the dashboard counts
+ * so the two can never disagree about what is visible.
+ */
+export function taskScopeFilter(
+  actor: CurrentUserPayload,
+  requestedCompanyId?: string,
+): Prisma.TaskWhereInput {
+  if (actor.roleName === 'SUPER_ADMIN') {
+    return requestedCompanyId ? { companyId: requestedCompanyId } : {};
+  }
+  if (!actor.companyId)
+    throw new ForbiddenException('You are not scoped to a company');
+  if (hasPermission(actor, 'tasks:read')) return { companyId: actor.companyId };
+
+  return {
+    companyId: actor.companyId,
+    OR: [
+      { assigneeId: actor.id },
+      { createdById: actor.id },
+      {
+        workspace: {
+          members: { some: { userId: actor.id, deletedAt: null } },
+        },
+      },
+    ],
+  };
 }

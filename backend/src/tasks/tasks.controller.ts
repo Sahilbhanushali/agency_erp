@@ -6,14 +6,12 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseEnumPipe,
   Patch,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { TaskStatus } from '@prisma/client';
 import {
   CurrentUser,
   type CurrentUserPayload,
@@ -22,6 +20,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
+import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { CreateSubTaskDto, CreateTaskDto } from './dto/create-task.dto';
 import { ReorderTasksDto } from './dto/reorder-tasks.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -51,22 +50,9 @@ export class TasksController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('projectId') projectId?: string,
-    @Query('workspaceId') workspaceId?: string,
-    @Query('assigneeId') assigneeId?: string,
-    @Query('status', new ParseEnumPipe(TaskStatus, { optional: true }))
-    status?: TaskStatus,
-    @Query('search') search?: string,
-    @Query('companyId') companyId?: string,
+    @Query() query: ListTasksQueryDto,
   ) {
-    return this.tasksService.findAll(actor, {
-      projectId,
-      workspaceId,
-      assigneeId,
-      status,
-      search,
-      companyId,
-    });
+    return this.tasksService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get a task with its sub-tasks and comments.' })

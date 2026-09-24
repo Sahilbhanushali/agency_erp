@@ -9,6 +9,13 @@ import {
   assertCompanyAccess,
   resolveTargetCompanyId,
 } from '../common/utils/tenant-scope.util';
+import { Prisma } from '@prisma/client';
+import {
+  buildMeta,
+  searchFilter,
+  toSkipTake,
+} from '../common/utils/paginate.util';
+import { ListRolesQueryDto } from './dto/list-roles-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -22,17 +29,26 @@ const ROLE_DETAIL_INCLUDE = {
 export class RolesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(actor: CurrentUserPayload, companyId?: string) {
+  async findAll(actor: CurrentUserPayload, filters: ListRolesQueryDto) {
     const scopedCompanyId =
-      actor.roleName === 'SUPER_ADMIN' ? companyId : actor.companyId;
-    return this.prisma.role.findMany({
-      where: {
-        deletedAt: null,
-        ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
-      },
-      include: ROLE_DETAIL_INCLUDE,
-      orderBy: { displayName: 'asc' },
-    });
+      actor.roleName === 'SUPER_ADMIN' ? filters.companyId : actor.companyId;
+    const where: Prisma.RoleWhereInput = {
+      deletedAt: null,
+      ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
+      ...searchFilter(filters.search, ['name', 'displayName']),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.role.findMany({
+        where,
+        include: ROLE_DETAIL_INCLUDE,
+        orderBy: { displayName: 'asc' },
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.role.count({ where }),
+    ]);
+
+    return { data, meta: buildMeta(total, filters.page, filters.limit) };
   }
 
   async findOne(id: string, actor: CurrentUserPayload) {

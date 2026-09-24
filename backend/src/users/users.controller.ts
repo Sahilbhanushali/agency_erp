@@ -31,6 +31,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -64,9 +65,9 @@ export class UsersController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('companyId') companyId?: string,
+    @Query() query: ListUsersQueryDto,
   ) {
-    return this.usersService.findAll(actor, companyId);
+    return this.usersService.findAll(actor, query);
   }
 
   @ApiOperation({

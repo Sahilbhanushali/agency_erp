@@ -94,7 +94,7 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
 
     useEffect(() => {
         if (isSuperAdmin) {
-            api.get<Company[]>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
+            api.list<Company>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
         }
     }, [isSuperAdmin]);
 
@@ -104,7 +104,7 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
             return;
         }
         api
-            .get<Role[]>(`/roles?companyId=${targetCompanyId}`)
+            .list<Role>(`/roles?companyId=${targetCompanyId}`)
             .then(setRoles)
             .catch(() => toast.error("Failed to load roles."));
     }, [targetCompanyId]);

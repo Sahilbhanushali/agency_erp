@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectsService } from './projects.service';
 
@@ -51,10 +52,9 @@ export class ProjectsController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('companyId') companyId?: string,
-    @Query('clientId') clientId?: string,
+    @Query() query: ListProjectsQueryDto,
   ) {
-    return this.projectsService.findAll(actor, companyId, clientId);
+    return this.projectsService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get a project by id.' })

@@ -3,6 +3,12 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5007";
 const ACCESS_TOKEN_KEY = "agencyos_access_token";
 const REFRESH_TOKEN_KEY = "agencyos_refresh_token";
 
+/** Shape returned by every list endpoint. */
+export interface Paginated<T> {
+  data: T[];
+  meta: { page: number; limit: number; total: number; pageCount: number };
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -141,6 +147,18 @@ async function download(path: string, filename: string): Promise<void> {
 
 export const api = {
   get: <T>(path: string) => apiRequest<T>(path),
+  /**
+   * Fetches a list endpoint and unwraps the page, so a caller that just needs the
+   * rows reads like a plain array fetch. Callers that need `meta` (a paged table)
+   * use the usePaginatedList hook instead.
+   *
+   * ponytail: pickers take a flat ceiling rather than searching server-side.
+   * Swap an individual picker to a search-as-you-type Combobox when one outgrows it.
+   */
+  list: <T>(path: string, limit = 200) =>
+    apiRequest<Paginated<T>>(
+      `${path}${path.includes("?") ? "&" : "?"}limit=${limit}`
+    ).then((result) => result.data),
   post: <T>(path: string, body?: unknown, options?: Partial<RequestOptions>) =>
     apiRequest<T>(path, { ...options, method: "POST", body }),
   patch: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: "PATCH", body }),

@@ -57,7 +57,7 @@ export default function ProjectDetails() {
     if (!id) return;
     setIsLoadingWorkspaces(true);
     api
-      .get<Workspace[]>(`/workspaces?projectId=${id}`)
+      .list<Workspace>(`/workspaces?projectId=${id}`)
       .then(setWorkspaces)
       .catch((error) =>
         toast.error(error instanceof ApiError ? error.message : "Failed to load workspaces.")

@@ -70,7 +70,7 @@ export default function ClientDetails() {
     if (!id) return;
     setIsLoadingProjects(true);
     api
-      .get<Project[]>(`/projects?clientId=${id}`)
+      .list<Project>(`/projects?clientId=${id}`)
       .then(setProjects)
       .catch((error) =>
         toast.error(error instanceof ApiError ? error.message : "Failed to load projects.")
@@ -84,7 +84,7 @@ export default function ClientDetails() {
     if (!id) return;
     setIsLoadingQuotations(true);
     api
-      .get<Quotation[]>(`/quotations?clientId=${id}`)
+      .list<Quotation>(`/quotations?clientId=${id}`)
       .then(setQuotations)
       .catch((error) =>
         toast.error(error instanceof ApiError ? error.message : "Failed to load quotations.")
@@ -96,7 +96,7 @@ export default function ClientDetails() {
     if (!id) return;
     setIsLoadingInvoices(true);
     api
-      .get<Invoice[]>(`/invoices?clientId=${id}`)
+      .list<Invoice>(`/invoices?clientId=${id}`)
       .then(setInvoices)
       .catch((error) =>
         toast.error(error instanceof ApiError ? error.message : "Failed to load invoices.")

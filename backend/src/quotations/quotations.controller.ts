@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
+import { ListQuotationsQueryDto } from './dto/list-quotations-query.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QuotationsService } from './quotations.service';
 
@@ -51,11 +52,9 @@ export class QuotationsController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('companyId') companyId?: string,
-    @Query('clientId') clientId?: string,
-    @Query('projectId') projectId?: string,
+    @Query() query: ListQuotationsQueryDto,
   ) {
-    return this.quotationsService.findAll(actor, companyId, clientId, projectId);
+    return this.quotationsService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get a quotation with its line items.' })

@@ -1,5 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { AddressInputDto } from '../common/dto/address-input.dto';
+import { Prisma } from '@prisma/client';
+import {
+  buildMeta,
+  searchFilter,
+  toSkipTake,
+} from '../common/utils/paginate.util';
+import { ListCompaniesQueryDto } from './dto/list-companies-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
@@ -20,12 +27,23 @@ export class CompaniesService {
     });
   }
 
-  findAll() {
-    return this.prisma.company.findMany({
-      where: { deletedAt: null },
-      include: { registeredAddress: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(filters: ListCompaniesQueryDto) {
+    const where: Prisma.CompanyWhereInput = {
+      deletedAt: null,
+      ...searchFilter(filters.search, ['name']),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.company.findMany({
+        where,
+        include: { registeredAddress: true },
+        orderBy: { createdAt: 'desc' },
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.company.count({ where }),
+    ]);
+
+    return { data, meta: buildMeta(total, filters.page, filters.limit) };
   }
 
   async findOne(id: string) {

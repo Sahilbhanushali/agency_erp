@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ListRolesQueryDto } from './dto/list-roles-query.dto';
 import {
   CurrentUser,
   type CurrentUserPayload,
@@ -38,9 +39,9 @@ export class RolesController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('companyId') companyId?: string,
+    @Query() query: ListRolesQueryDto,
   ) {
-    return this.rolesService.findAll(actor, companyId);
+    return this.rolesService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get a role with its assigned permissions.' })
