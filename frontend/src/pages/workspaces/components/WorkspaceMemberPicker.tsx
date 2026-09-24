@@ -1,7 +1,8 @@
 import Combobox from "@/components/shared/Combobox";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import type { MemberCompanyRole, WorkspaceMemberRole } from "@/types/workspace";
 import { Loader2, Plus, Trash2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
@@ -11,12 +12,15 @@ interface MinimalUser {
     firstName: string;
     lastName: string;
     email: string;
+    role?: MemberCompanyRole | null;
 }
 
 export interface PickedMember {
     userId: string;
     label: string;
-    memberRole?: string;
+    memberRole?: WorkspaceMemberRole;
+    /** The user's company role, shown for context — it is not what gets saved. */
+    companyRole?: string;
 }
 
 interface WorkspaceMemberPickerProps {
@@ -30,6 +34,13 @@ interface WorkspaceMemberPickerProps {
     showList?: boolean;
 }
 
+/** What the member does on this board. Their company role comes from their user account. */
+const WORKSPACE_ROLES: { value: WorkspaceMemberRole; label: string; hint: string }[] = [
+    { value: "LEAD", label: "Lead", hint: "Runs the board" },
+    { value: "MEMBER", label: "Member", hint: "Works on tasks" },
+    { value: "VIEWER", label: "Viewer", hint: "Read-only" },
+];
+
 /**
  * Inline (non-modal) member picker — deliberately not a Combobox-in-Dialog, since Radix's
  * Dialog focus trap steals focus from a nested Popover before a click can register.
@@ -37,48 +48,98 @@ interface WorkspaceMemberPickerProps {
 const WorkspaceMemberPicker = ({ companyId, excludeUserIds, members, onAdd, onRemove, isBusy, showList = true }: WorkspaceMemberPickerProps) => {
     const [companyUsers, setCompanyUsers] = useState<MinimalUser[]>([]);
     const [selectedUserId, setSelectedUserId] = useState("");
-    const [memberRole, setMemberRole] = useState("");
+    const [memberRole, setMemberRole] = useState<WorkspaceMemberRole>("MEMBER");
+    const [usersUnavailable, setUsersUnavailable] = useState(false);
 
     useEffect(() => {
         if (!companyId) {
             setCompanyUsers([]);
             return;
         }
-        api.get<MinimalUser[]>(`/users?companyId=${companyId}`).then(setCompanyUsers).catch(() => toast.error("Failed to load users."));
+        api
+            .get<MinimalUser[]>(`/users?companyId=${companyId}`)
+            .then((list) => {
+                setCompanyUsers(list);
+                setUsersUnavailable(false);
+            })
+            .catch(() => {
+                setCompanyUsers([]);
+                setUsersUnavailable(true);
+                toast.error("Could not load users — you may not have permission to list them.");
+            });
     }, [companyId]);
 
     const availableUsers = companyUsers.filter((user) => !excludeUserIds.includes(user.id));
 
+    const userPlaceholder = () => {
+        if (!companyId) return "Select a company first";
+        if (usersUnavailable) return "Users unavailable (needs users:read)";
+        if (companyUsers.length === 0) return "No users in this company";
+        if (availableUsers.length === 0) return "Everyone is already a member";
+        return "Select a user";
+    };
+
     const handleAdd = () => {
         const user = availableUsers.find((candidate) => candidate.id === selectedUserId);
         if (!user) return;
-        onAdd({ userId: user.id, label: `${user.firstName} ${user.lastName}`, memberRole: memberRole.trim() || undefined });
+        onAdd({
+            userId: user.id,
+            label: `${user.firstName} ${user.lastName}`,
+            memberRole,
+            companyRole: user.role?.displayName,
+        });
         setSelectedUserId("");
-        setMemberRole("");
+        setMemberRole("MEMBER");
     };
 
     return (
         <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-                <div className="w-full sm:w-[220px]">
+            <div className="flex flex-wrap items-end gap-2">
+                <div className="w-full sm:w-[260px]">
+                    <label htmlFor="workspace-member-user" className="block text-xs font-medium text-muted-foreground mb-1.5">
+                        User
+                    </label>
                     <Combobox
+                        id="workspace-member-user"
                         value={selectedUserId}
                         onChange={setSelectedUserId}
                         disabled={!companyId || !availableUsers.length}
-                        options={availableUsers.map((user) => ({ value: user.id, label: `${user.firstName} ${user.lastName}` }))}
-                        placeholder={companyId ? "Select a user" : "Select a company first"}
-                        searchPlaceholder="Search users..."
+                        visibleCount={8}
+                        options={availableUsers.map((user) => ({
+                            value: user.id,
+                            label: user.role
+                                ? `${user.firstName} ${user.lastName} · ${user.role.displayName}`
+                                : `${user.firstName} ${user.lastName}`,
+                        }))}
+                        placeholder={userPlaceholder()}
+                        searchPlaceholder="Search by name or role..."
                         emptyText="No users found."
                         createLabel="Go invite a user"
                         createHref="/users-list/create"
                     />
                 </div>
-                <Input
-                    placeholder="Role label (optional)"
-                    value={memberRole}
-                    onChange={(event) => setMemberRole(event.target.value)}
-                    className="h-9 text-xs rounded-lg w-full sm:w-[180px]"
-                />
+
+                <div className="w-full sm:w-[180px]">
+                    <label htmlFor="workspace-member-role" className="block text-xs font-medium text-muted-foreground mb-1.5">
+                        Workspace role
+                    </label>
+                    <Select value={memberRole} onValueChange={(value) => setMemberRole(value as WorkspaceMemberRole)}>
+                        <SelectTrigger id="workspace-member-role" className="h-9 text-xs rounded-lg !w-full">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {WORKSPACE_ROLES.map((role) => (
+                                <SelectItem key={role.value} value={role.value}>
+                                    <span className="flex items-baseline gap-2">
+                                        {role.label}
+                                        <span className="text-[11px] text-muted-foreground">{role.hint}</span>
+                                    </span>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
                 <Button type="button" size="sm" className="h-9 rounded-lg shrink-0 text-xs" onClick={handleAdd} disabled={!selectedUserId || isBusy}>
                     {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Plus className="w-3.5 h-3.5 mr-1.5" />}
                     Add Member
@@ -97,7 +158,10 @@ const WorkspaceMemberPicker = ({ companyId, excludeUserIds, members, onAdd, onRe
                             <li key={member.userId} className="flex items-center justify-between px-3 py-2">
                                 <div className="min-w-0">
                                     <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{member.label}</p>
-                                    {member.memberRole && <p className="text-xs text-neutral-500 dark:text-neutral-400">{member.memberRole}</p>}
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                        {WORKSPACE_ROLES.find((role) => role.value === member.memberRole)?.label ?? "Member"}
+                                        {member.companyRole ? ` · ${member.companyRole}` : ""}
+                                    </p>
                                 </div>
                                 <Button
                                     type="button"

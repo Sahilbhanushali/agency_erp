@@ -30,6 +30,7 @@ interface MinimalUser {
     id: string;
     firstName: string;
     lastName: string;
+    role?: { id: string; displayName: string } | null;
 }
 
 const schema = z.object({
@@ -71,6 +72,8 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
     const [projects, setProjects] = useState<Project[]>([]);
     const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
     const [users, setUsers] = useState<MinimalUser[]>([]);
+    const [fixedProject, setFixedProject] = useState<Project | null>(null);
+    const [usersUnavailable, setUsersUnavailable] = useState(false);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
@@ -107,15 +110,42 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
             .catch(() => setWorkspaces([]));
     }, [open, selectedProjectId, workspaceId]);
 
-    const companyId = projects.find((project) => project.id === selectedProjectId)?.companyId ?? actor?.companyId;
+    // Opened from a project or board, the project list is never fetched, so ask that project
+    // directly — a SUPER_ADMIN has no companyId of their own to fall back on.
+    useEffect(() => {
+        if (!open || !projectId) return;
+        api
+            .get<Project>(`/projects/${projectId}`)
+            .then(setFixedProject)
+            .catch(() => setFixedProject(null));
+    }, [open, projectId]);
+
+    const companyId =
+        projects.find((project) => project.id === selectedProjectId)?.companyId ??
+        fixedProject?.companyId ??
+        actor?.companyId ??
+        undefined;
 
     useEffect(() => {
         if (!open || !companyId) return;
         api
             .get<MinimalUser[]>(`/users?companyId=${companyId}`)
-            .then(setUsers)
-            .catch(() => setUsers([]));
+            .then((list) => {
+                setUsers(list);
+                setUsersUnavailable(false);
+            })
+            .catch(() => {
+                setUsers([]);
+                setUsersUnavailable(true);
+            });
     }, [open, companyId]);
+
+    const assigneePlaceholder = () => {
+        if (usersUnavailable) return "You cannot list people (needs users:read)";
+        if (!companyId) return "Select a project first";
+        if (users.length === 0) return "No people in this company";
+        return "Unassigned";
+    };
 
     const handleSubmit = async (values: FormValues) => {
         const shared = {
@@ -283,12 +313,15 @@ const TaskFormDialog = ({ open, onOpenChange, projectId, workspaceId, task, onSa
                                     id="task-assignee"
                                     value={field.value}
                                     onChange={field.onChange}
+                                    disabled={!companyId || usersUnavailable}
                                     options={users.map((user) => ({
                                         value: user.id,
-                                        label: `${user.firstName} ${user.lastName}`,
+                                        label: user.role
+                                            ? `${user.firstName} ${user.lastName} · ${user.role.displayName}`
+                                            : `${user.firstName} ${user.lastName}`,
                                     }))}
-                                    placeholder="Unassigned"
-                                    searchPlaceholder="Search people..."
+                                    placeholder={assigneePlaceholder()}
+                                    searchPlaceholder="Search by name or role..."
                                     emptyText="No people found."
                                 />
                             )}

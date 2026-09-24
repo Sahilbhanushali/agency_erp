@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { WorkspaceMemberRole } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { assertCompanyAccess } from '../common/utils/tenant-scope.util';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,7 +13,14 @@ import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 
 const MEMBER_INCLUDE = {
   user: {
-    select: { id: true, firstName: true, lastName: true, email: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      // The member's company role, so a board can show who is a manager, designer, etc.
+      role: { select: { id: true, name: true, displayName: true } },
+    },
   },
 } as const;
 
@@ -122,7 +130,9 @@ export class WorkspacesService {
       return this.prisma.workspaceMember.update({
         where: { id: existing.id },
         data: {
-          memberRole: dto.memberRole,
+          // Re-adding someone is a fresh membership, so an omitted role resets to the
+          // default rather than silently inheriting the role they had before removal.
+          memberRole: dto.memberRole ?? WorkspaceMemberRole.MEMBER,
           addedById: actor.id,
           deletedAt: null,
           deletedBy: null,

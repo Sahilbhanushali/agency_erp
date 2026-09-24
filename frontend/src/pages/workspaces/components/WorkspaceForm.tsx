@@ -38,6 +38,7 @@ const toPickedMember = (member: WorkspaceMember): PickedMember => ({
     userId: member.userId,
     label: `${member.user.firstName} ${member.user.lastName}`,
     memberRole: member.memberRole ?? undefined,
+    companyRole: member.user.role?.displayName,
 });
 
 const inputClass = "h-9 text-xs rounded-lg";
