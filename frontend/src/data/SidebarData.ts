@@ -3,6 +3,7 @@ import {
   Briefcase,
   Building2,
   CalendarDays,
+  CheckCheck,
   CheckSquare,
   FileText,
   FolderKanban,
@@ -12,6 +13,7 @@ import {
   Megaphone,
   Receipt,
   ShieldCheck,
+  Target,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -40,6 +42,15 @@ const NAV_ITEMS: SidebarNavItem[] = [
     icon: CheckSquare,
   },
   {
+    label: "Sales",
+  },
+  {
+    title: "Leads",
+    url: "/leads",
+    icon: Target,
+    permission: "leads:read",
+  },
+  {
     label: "Delivery",
   },
   {
@@ -59,6 +70,12 @@ const NAV_ITEMS: SidebarNavItem[] = [
     url: "/clients-list",
     icon: Briefcase,
     permission: "clients:read",
+  },
+  {
+    title: "Approvals",
+    url: "/approvals",
+    icon: CheckCheck,
+    permission: "approvals:read",
   },
   {
     label: "Marketing",

@@ -42,6 +42,7 @@ export default function ContentCalendar() {
   const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
   const canEdit = isSuperAdmin || can(actor, "posts:update");
   const canPublish = isSuperAdmin || can(actor, "posts:publish");
+  const canRequestApproval = isSuperAdmin || can(actor, "approvals:create");
 
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [posts, setPosts] = useState<Post[]>([]);
@@ -411,6 +412,7 @@ export default function ContentCalendar() {
         onChanged={load}
         canEdit={canEdit}
         canPublish={canPublish}
+        canRequestApproval={canRequestApproval}
       />
     </div>
   );

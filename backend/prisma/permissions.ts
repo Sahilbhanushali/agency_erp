@@ -12,6 +12,8 @@ export const PERMISSION_MODULES = [
   'campaigns',
   'posts',
   'social_accounts',
+  'approvals',
+  'leads',
 ] as const;
 
 export const PERMISSION_ACTIONS = [

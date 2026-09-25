@@ -17,6 +17,7 @@ import { ExternalLink, Link2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import PublishPanel from "./PublishPanel";
+import RequestApprovalPanel from "./RequestApprovalPanel";
 
 interface PostDetailSheetProps {
   postId: string | null;
@@ -24,6 +25,7 @@ interface PostDetailSheetProps {
   onChanged: () => void;
   canEdit: boolean;
   canPublish?: boolean;
+  canRequestApproval?: boolean;
 }
 
 function MetaRow({ label, value }: { label: string; value: string }) {
@@ -41,6 +43,7 @@ export default function PostDetailSheet({
   onChanged,
   canEdit,
   canPublish = false,
+  canRequestApproval = false,
 }: PostDetailSheetProps) {
   const [post, setPost] = useState<PostDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -256,6 +259,17 @@ export default function PostDetailSheet({
                   </div>
                 )}
               </section>
+
+              <RequestApprovalPanel
+                postId={post.id}
+                postTitle={post.title}
+                isUnderReview={post.status === "IN_REVIEW"}
+                canRequest={canRequestApproval}
+                onRequested={() => {
+                  void load();
+                  onChanged();
+                }}
+              />
 
               <PublishPanel
                 postId={post.id}

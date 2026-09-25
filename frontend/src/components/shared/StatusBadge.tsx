@@ -39,6 +39,16 @@ const STATUS_MAP: Record<string, StatusConfig> = {
   // Projects
   DRAFT: { label: "Draft", variant: "neutral" },
   PLANNED: { label: "Planned", variant: "info" },
+  CHANGES_REQUESTED: { label: "Changes Requested", variant: "warning" },
+
+  // Sales pipeline
+  NEW: { label: "New", variant: "neutral" },
+  CONTACTED: { label: "Contacted", variant: "info" },
+  QUALIFIED: { label: "Qualified", variant: "primary" },
+  PROPOSAL: { label: "Proposal", variant: "warning" },
+  NEGOTIATION: { label: "Negotiation", variant: "warning" },
+  WON: { label: "Won", variant: "success" },
+  LOST: { label: "Lost", variant: "neutral" },
 
   // Content production
   IDEA: { label: "Idea", variant: "neutral" },

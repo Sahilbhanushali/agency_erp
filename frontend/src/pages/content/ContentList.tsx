@@ -75,6 +75,7 @@ export default function ContentList() {
   const canCreate = isSuperAdmin || can(actor, "posts:create");
   const canEdit = isSuperAdmin || can(actor, "posts:update");
   const canPublish = isSuperAdmin || can(actor, "posts:publish");
+  const canRequestApproval = isSuperAdmin || can(actor, "approvals:create");
   const canDelete = isSuperAdmin || can(actor, "posts:delete");
 
   const openCreate = () => {
@@ -226,6 +227,7 @@ export default function ContentList() {
         onChanged={refetch}
         canEdit={canEdit}
         canPublish={canPublish}
+        canRequestApproval={canRequestApproval}
       />
 
       <ConfirmDialog

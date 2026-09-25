@@ -8,6 +8,8 @@ import CreateCompany from "@/pages/companies/create/CreateCompany";
 import CompanyDetails from "@/pages/companies/details/CompanyDetails";
 import EditCompany from "@/pages/companies/edit/EditCompany";
 import CompaniesList from "@/pages/companies/CompaniesList";
+import ApprovalsList from "@/pages/approvals/ApprovalsList";
+import LeadsList from "@/pages/leads/LeadsList";
 import CampaignsList from "@/pages/campaigns/CampaignsList";
 import ContentCalendar from "@/pages/content/ContentCalendar";
 import ContentList from "@/pages/content/ContentList";
@@ -122,6 +124,12 @@ export const router = createBrowserRouter([
           },
           {
             path: "social-accounts", element: <SocialAccountsList />
+          },
+          {
+            path: "approvals", element: <ApprovalsList />
+          },
+          {
+            path: "leads", element: <LeadsList />
           },
           {
             path: "projects-list/create", element: <CreateProject />
