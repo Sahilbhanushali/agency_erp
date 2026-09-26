@@ -595,6 +595,9 @@ model User {
   status          UserStatus      @default(INVITED)
   inviteTokenHash String?         @unique
   inviteTokenExpiresAt DateTime?
+  /// Separate from the invite token so a reset never clobbers a pending invite.
+  passwordResetTokenHash String?   @unique
+  passwordResetTokenExpiresAt DateTime?
   gender          Gender?
   dateOfBirth     DateTime?       @db.Date
   employmentType  EmploymentType?

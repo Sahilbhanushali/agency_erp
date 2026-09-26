@@ -67,6 +67,12 @@ export default function Dashboard() {
     };
   }, [user, isSuperAdmin]);
 
+  // The server returns null for sections this viewer may not see. Treat that as
+  // "hide", never as zero — an employee must not be told the agency invoiced nothing.
+  const canSeeFinance = !!summary?.invoices;
+  const canSeeProjects = !!summary?.projects;
+  const myTasks = summary?.myTasks;
+
   const totalBilled = summary?.invoices?.totalBilled ?? 0;
   const totalOutstanding = summary?.invoices?.totalOutstanding ?? 0;
   const invoiceCount = summary?.invoices?.count ?? 0;
@@ -92,7 +98,11 @@ export default function Dashboard() {
       {/* Top Header Section */}
       <PageHeader
         title="Dashboard"
-        description={`Welcome back, ${user?.firstName ?? "Team Member"}. Here is an overview of operational and financial activity.`}
+        description={
+          canSeeFinance
+            ? `Welcome back, ${user?.firstName ?? "Team Member"}. Here is an overview of operational and financial activity.`
+            : `Welcome back, ${user?.firstName ?? "Team Member"}. Here is your work at a glance.`
+        }
         actions={
           <div className="flex items-center gap-2">
             {(isSuperAdmin || can(user, "tasks:create")) && (
@@ -140,6 +150,7 @@ export default function Dashboard() {
           ))
         ) : (
           <>
+            {canSeeFinance && (
             <StatCard
               label="Total Invoiced"
               value={formatMoney(totalBilled)}
@@ -152,7 +163,9 @@ export default function Dashboard() {
               }}
               sparklineData={[12, 19, 15, 25, 22, 30, 28, 38]}
             />
+            )}
 
+            {canSeeFinance && (
             <StatCard
               label="Outstanding Balance"
               value={formatMoney(totalOutstanding)}
@@ -164,7 +177,9 @@ export default function Dashboard() {
               }}
               sparklineData={[30, 25, 28, 20, 18, 15, 12, 8]}
             />
+            )}
 
+            {canSeeProjects && (
             <StatCard
               label="Active Projects"
               value={activeProjectsCount}
@@ -176,6 +191,21 @@ export default function Dashboard() {
                 label: "across agency",
               }}
               sparklineData={[3, 5, 4, 6, 8, 7, 9, 11]}
+            />
+            )}
+
+            <StatCard
+              label="Assigned to Me"
+              value={myTasks?.open ?? 0}
+              icon={ListTodo}
+              color={myTasks?.overdue ? "rose" : "sky"}
+              change={
+                myTasks?.overdue
+                  ? { value: `${myTasks.overdue} overdue`, trend: "down", label: "needs attention" }
+                  : myTasks?.dueSoon
+                    ? { value: `${myTasks.dueSoon} due this week`, trend: "neutral", label: "coming up" }
+                    : { value: "Nothing overdue", trend: "up", label: "you are clear" }
+              }
             />
 
             <StatCard
@@ -203,8 +233,9 @@ export default function Dashboard() {
       </div>
 
       {/* Middle Row: Revenue Analytics & Task Pipeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={canSeeFinance ? "grid grid-cols-1 lg:grid-cols-3 gap-6" : "grid grid-cols-1 gap-6"}>
         {/* Revenue Analytics (2 Cols) */}
+        {canSeeFinance && (
         <Card className="lg:col-span-2 p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between pb-2 border-b border-border/60">
             <div>
@@ -231,6 +262,8 @@ export default function Dashboard() {
             />
           </div>
         </Card>
+
+        )}
 
         {/* Task Pipeline Health (1 Col) */}
         <Card className="p-5 flex flex-col">
@@ -311,8 +344,9 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row: Recent Invoices & Priority Tasks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={canSeeFinance ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "grid grid-cols-1 gap-6"}>
         {/* Recent Invoices */}
+        {canSeeFinance && (
         <Card className="p-0 overflow-hidden border border-border">
           <div className="p-4 border-b border-border/60 flex items-center justify-between bg-card">
             <div>
@@ -373,6 +407,8 @@ export default function Dashboard() {
             )}
           </div>
         </Card>
+
+        )}
 
         {/* Priority & Upcoming Tasks */}
         <Card className="p-0 overflow-hidden border border-border">

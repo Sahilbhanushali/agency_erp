@@ -1,4 +1,6 @@
 import AcceptInvite from "@/pages/auth/accept-invite/AcceptInvite";
+import ForgotPassword from "@/pages/auth/forgot-password/ForgotPassword";
+import ResetPassword from "@/pages/auth/reset-password/ResetPassword";
 import Login from "@/pages/auth/login/Login";
 import CreateClient from "@/pages/clients/create/CreateClient";
 import ClientDetails from "@/pages/clients/details/ClientDetails";
@@ -55,6 +57,14 @@ export const router = createBrowserRouter([
       {
         path: "/auth/accept-invite",
         element: <AcceptInvite />,
+      },
+      {
+        path: "/auth/forgot-password",
+        element: <ForgotPassword />,
+      },
+      {
+        path: "/auth/reset-password",
+        element: <ResetPassword />,
       },
     ]
   },

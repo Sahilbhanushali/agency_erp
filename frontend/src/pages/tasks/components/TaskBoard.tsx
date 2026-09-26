@@ -31,6 +31,8 @@ interface TaskBoardProps {
   tasks: Task[];
   isLoading: boolean;
   showProject?: boolean;
+  /** Label each card with its workspace, for boards that span more than one. */
+  showWorkspace?: boolean;
   canDelete?: boolean;
   emptyText?: string;
   canMove: (task: Task) => boolean;
@@ -58,6 +60,7 @@ export default function TaskBoard({
   tasks,
   isLoading,
   showProject,
+  showWorkspace,
   canDelete,
   emptyText = "No tasks yet.",
   canMove,
@@ -294,10 +297,25 @@ export default function TaskBoard({
                         </DropdownMenu>
                       </div>
 
-                      {showProject && (
+                      {(showProject || showWorkspace) && (
                         <p className="mt-1.5 text-[11px] text-muted-foreground truncate">
-                          {task.project.title}
-                          {task.workspace ? ` · ${task.workspace.name}` : ""}
+                          {showProject && task.project.title}
+                          {showProject && showWorkspace && task.workspace ? " · " : ""}
+                          {showWorkspace &&
+                            (task.workspace ? (
+                              <span className="inline-flex items-center gap-1">
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                                  style={{
+                                    backgroundColor:
+                                      task.workspace.colorHex ?? "var(--primary)",
+                                  }}
+                                />
+                                {task.workspace.name}
+                              </span>
+                            ) : (
+                              <span className="italic">Project backlog</span>
+                            ))}
                         </p>
                       )}
 

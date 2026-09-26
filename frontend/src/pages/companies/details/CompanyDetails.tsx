@@ -6,16 +6,31 @@ import Pagination from "@/components/shared/Pagination";
 import StatusBadge from "@/components/shared/StatusBadge";
 import TableSkeleton from "@/components/shared/TableSkeleton";
 import ClientsListTable from "@/components/tables/ClientsListTable";
+import InvoicesListTable from "@/components/tables/InvoicesListTable";
+import ProjectsListTable from "@/components/tables/ProjectsListTable";
+import QuotationsListTable from "@/components/tables/QuotationsListTable";
+import WorkspacesListTable from "@/components/tables/WorkspacesListTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, ApiError } from "@/lib/api";
 import type { Client } from "@/types/client";
 import type { Company } from "@/types/company";
+import type { Invoice } from "@/types/invoice";
+import type { Project } from "@/types/project";
+import type { Quotation } from "@/types/quotation";
+import type { Task } from "@/types/task";
+import type { Workspace } from "@/types/workspace";
 import {
     ArrowLeft,
     Building2,
+    CheckSquare,
+    FileText,
+    FolderKanban,
     Globe,
+    LayoutGrid,
+    Receipt,
     Loader2,
     Mail,
     MapPin,
@@ -28,6 +43,9 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import CompanyEntityPanel from "./components/CompanyEntityPanel";
+import CompanyRolesPanel from "./components/CompanyRolesPanel";
+import CompanyTeamPanel from "./components/CompanyTeamPanel";
 
 const CompanyDetails = () => {
     const { id } = useParams<{ id: string }>();
@@ -44,6 +62,7 @@ const CompanyDetails = () => {
     const [formOpen, setFormOpen] = useState(false);
     const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [tab, setTab] = useState("clients");
 
     useEffect(() => {
         if (!id) return;
@@ -211,8 +230,23 @@ const CompanyDetails = () => {
                     </CardContent>
                 </Card>
 
-                {/* Right Clients Section */}
-                <Card className="lg:col-span-2 rounded-xl border border-border shadow-xs overflow-hidden">
+                {/* Right: everything that lives under this company */}
+                <div className="lg:col-span-2 space-y-3">
+                <Tabs value={tab} onValueChange={setTab}>
+                    <TabsList className="h-9 p-0.5 bg-muted rounded-lg border border-border/80 flex-wrap h-auto">
+                        <TabsTrigger value="clients" className="h-8 text-xs px-3">Clients</TabsTrigger>
+                        <TabsTrigger value="team" className="h-8 text-xs px-3">Team</TabsTrigger>
+                        <TabsTrigger value="roles" className="h-8 text-xs px-3">Roles</TabsTrigger>
+                        <TabsTrigger value="projects" className="h-8 text-xs px-3">Projects</TabsTrigger>
+                        <TabsTrigger value="workspaces" className="h-8 text-xs px-3">Workspaces</TabsTrigger>
+                        <TabsTrigger value="tasks" className="h-8 text-xs px-3">Tasks</TabsTrigger>
+                        <TabsTrigger value="quotations" className="h-8 text-xs px-3">Quotations</TabsTrigger>
+                        <TabsTrigger value="invoices" className="h-8 text-xs px-3">Billing</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+
+                {tab === "clients" && (
+                <Card className="rounded-xl border border-border shadow-xs overflow-hidden">
                     <CardHeader className="border-b border-border py-3 px-5 flex flex-row items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2">
@@ -284,6 +318,155 @@ const CompanyDetails = () => {
                         )}
                     </CardContent>
                 </Card>
+                )}
+
+                {tab === "team" && id && (
+                    <Card className="rounded-xl border border-border shadow-xs p-5">
+                        <CompanyTeamPanel companyId={id} companyName={company.name} />
+                    </Card>
+                )}
+
+                {tab === "roles" && id && (
+                    <Card className="rounded-xl border border-border shadow-xs p-5">
+                        <CompanyRolesPanel companyId={id} companyName={company.name} />
+                    </Card>
+                )}
+
+                {tab === "projects" && id && (
+                    <Card className="rounded-xl border border-border shadow-xs p-5">
+                        <CompanyEntityPanel<Project>
+                            endpoint={`/projects?companyId=${id}`}
+                            emptyIcon={FolderKanban}
+                            emptyTitle="No projects yet"
+                            emptyDescription={`Projects group the work delivered for ${company.name}'s clients.`}
+                            errorMessage="Failed to load projects."
+                            searchPlaceholder="Filter projects..."
+                            matches={(row, q) =>
+                                row.title.toLowerCase().includes(q) ||
+                                (row.client?.name ?? "").toLowerCase().includes(q)
+                            }
+                            action={{ label: "Add Project", onClick: () => navigate("/projects-list/create") }}
+                        >
+                            {(rows) => (
+                                <ProjectsListTable
+                                    projects={rows}
+                                    onView={(row) => navigate(`/projects-list/${row.id}`)}
+                                    onEdit={(row) => navigate(`/projects-list/${row.id}/edit`)}
+                                    onDelete={() => toast.info("Delete a project from the Projects page.")}
+                                />
+                            )}
+                        </CompanyEntityPanel>
+                    </Card>
+                )}
+
+                {tab === "workspaces" && id && (
+                    <Card className="rounded-xl border border-border shadow-xs p-5">
+                        <CompanyEntityPanel<Workspace>
+                            endpoint={`/workspaces?companyId=${id}`}
+                            emptyIcon={LayoutGrid}
+                            emptyTitle="No workspaces yet"
+                            emptyDescription="Workspaces are the boards a project's work is organised on."
+                            errorMessage="Failed to load workspaces."
+                            searchPlaceholder="Filter workspaces..."
+                            matches={(row, q) => row.name.toLowerCase().includes(q)}
+                        >
+                            {(rows) => (
+                                <WorkspacesListTable
+                                    workspaces={rows}
+                                    onView={(row) => navigate(`/workspaces-list/${row.id}`)}
+                                    onEdit={(row) => navigate(`/workspaces-list/${row.id}/edit`)}
+                                    onDelete={() => toast.info("Delete a workspace from the Workspaces page.")}
+                                />
+                            )}
+                        </CompanyEntityPanel>
+                    </Card>
+                )}
+
+                {tab === "tasks" && id && (
+                    <Card className="rounded-xl border border-border shadow-xs p-5">
+                        <CompanyEntityPanel<Task>
+                            endpoint={`/tasks?companyId=${id}`}
+                            emptyIcon={CheckSquare}
+                            emptyTitle="No tasks yet"
+                            emptyDescription="Tasks raised on this company's project boards show up here."
+                            errorMessage="Failed to load tasks."
+                            searchPlaceholder="Filter tasks..."
+                            matches={(row, q) => row.title.toLowerCase().includes(q)}
+                        >
+                            {(rows) => (
+                                <div className="divide-y divide-border/60">
+                                    {rows.map((task) => (
+                                        <div key={task.id} className="py-2.5 flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    {task.project?.title ?? "—"}
+                                                    {task.assignee ? ` · ${task.assignee.firstName} ${task.assignee.lastName}` : " · Unassigned"}
+                                                </p>
+                                            </div>
+                                            <StatusBadge status={task.status} />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CompanyEntityPanel>
+                    </Card>
+                )}
+
+                {tab === "quotations" && id && (
+                    <Card className="rounded-xl border border-border shadow-xs p-5">
+                        <CompanyEntityPanel<Quotation>
+                            endpoint={`/quotations?companyId=${id}`}
+                            emptyIcon={FileText}
+                            emptyTitle="No quotations yet"
+                            emptyDescription="Quotations sent on behalf of this company appear here."
+                            errorMessage="Failed to load quotations."
+                            searchPlaceholder="Filter quotations..."
+                            matches={(row, q) =>
+                                row.title.toLowerCase().includes(q) ||
+                                row.quotationNumber.toLowerCase().includes(q)
+                            }
+                            action={{ label: "New Quotation", onClick: () => navigate("/quotations-list/create") }}
+                        >
+                            {(rows) => (
+                                <QuotationsListTable
+                                    quotations={rows}
+                                    onView={(row) => navigate(`/quotations-list/${row.id}`)}
+                                    onEdit={(row) => navigate(`/quotations-list/${row.id}/edit`)}
+                                    onDelete={() => toast.info("Delete a quotation from the Quotations page.")}
+                                />
+                            )}
+                        </CompanyEntityPanel>
+                    </Card>
+                )}
+
+                {tab === "invoices" && id && (
+                    <Card className="rounded-xl border border-border shadow-xs p-5">
+                        <CompanyEntityPanel<Invoice>
+                            endpoint={`/invoices?companyId=${id}`}
+                            emptyIcon={Receipt}
+                            emptyTitle="Nothing billed yet"
+                            emptyDescription="Invoices raised under this company, and what is still outstanding."
+                            errorMessage="Failed to load invoices."
+                            searchPlaceholder="Filter invoices..."
+                            matches={(row, q) =>
+                                row.title.toLowerCase().includes(q) ||
+                                row.invoiceNumber.toLowerCase().includes(q)
+                            }
+                            action={{ label: "New Invoice", onClick: () => navigate("/invoices-list/create") }}
+                        >
+                            {(rows) => (
+                                <InvoicesListTable
+                                    invoices={rows}
+                                    onView={(row) => navigate(`/invoices-list/${row.id}`)}
+                                    onEdit={(row) => navigate(`/invoices-list/${row.id}/edit`)}
+                                    onDelete={() => toast.info("Delete an invoice from the Invoices page.")}
+                                />
+                            )}
+                        </CompanyEntityPanel>
+                    </Card>
+                )}
+                </div>
             </div>
 
             <ConfirmDialog

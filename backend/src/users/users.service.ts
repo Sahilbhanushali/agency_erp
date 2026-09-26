@@ -1,12 +1,15 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserStatus } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { buildMeta, toSkipTake } from '../common/utils/paginate.util';
 import {
@@ -46,6 +49,8 @@ const USER_INCLUDE = {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly filesService: FilesService,
@@ -61,42 +66,149 @@ export class UsersService {
     });
     if (!role) throw new BadRequestException('Role not found in this company');
 
+    const clash = await this.findEmailOwner(dto.email);
+    this.assertEmailAvailable(clash, companyId);
+
     // Unusable placeholder — the account is unlocked via the invite link, which sets a real password.
     const passwordHash = await bcrypt.hash(randomBytes(24).toString('hex'), 10);
     const { token, tokenHash } = generateToken();
 
-    const user = await this.prisma.user.create({
-      data: {
-        companyId,
-        roleId: dto.roleId,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        email: dto.email,
-        phone: dto.phone,
-        passwordHash,
-        inviteTokenHash: tokenHash,
-        inviteTokenExpiresAt: new Date(Date.now() + INVITE_TOKEN_TTL_MS),
-        gender: dto.gender,
-        dateOfBirth: toDateOrUndefined(dto.dateOfBirth),
-        employmentType: dto.employmentType,
-        department: dto.department,
-        designation: dto.designation,
-        joiningDate: toDateOrUndefined(dto.joiningDate),
-        isRemote: dto.isRemote,
-      },
-      ...USER_INCLUDE,
-    });
+    const data = {
+      companyId,
+      roleId: dto.roleId,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      phone: dto.phone,
+      passwordHash,
+      inviteTokenHash: tokenHash,
+      inviteTokenExpiresAt: new Date(Date.now() + INVITE_TOKEN_TTL_MS),
+      gender: dto.gender,
+      dateOfBirth: toDateOrUndefined(dto.dateOfBirth),
+      employmentType: dto.employmentType,
+      department: dto.department,
+      designation: dto.designation,
+      joiningDate: toDateOrUndefined(dto.joiningDate),
+      isRemote: dto.isRemote,
+    };
 
-    const frontendOrigin = this.configService
-      .getOrThrow<string>('FRONTEND_ORIGIN')
-      .split(',')[0];
-    await this.mailerService.sendInviteEmail(
+    /**
+     * Email is unique across the whole install and a removed user keeps its row, so
+     * re-inviting someone who was removed has to revive that row. Creating a second
+     * one is impossible, and refusing would leave the address unusable forever.
+     */
+    const user = clash
+      ? await this.prisma.user.update({
+          where: { id: clash.id },
+          data: {
+            ...data,
+            status: UserStatus.INVITED,
+            deletedAt: null,
+            deletedBy: null,
+          },
+          ...USER_INCLUDE,
+        })
+      : await this.prisma.user.create({ data, ...USER_INCLUDE });
+
+    // The member is already saved, so a mail problem must not fail the request and
+    // leave a row nobody knows about. It is reported instead, and can be resent.
+    const inviteEmailSent = await this.sendInvite(
       user.email,
       user.firstName,
-      `${frontendOrigin}/auth/accept-invite?token=${token}`,
+      token,
     );
 
-    return user;
+    return { ...user, inviteEmailSent };
+  }
+
+  /** Issues a fresh invite for someone whose first one never arrived. */
+  async resendInvite(id: string, actor: CurrentUserPayload) {
+    const user = await this.findOne(id, actor);
+    if (user.status !== UserStatus.INVITED) {
+      throw new BadRequestException(
+        'That user has already accepted their invite.',
+      );
+    }
+
+    const { token, tokenHash } = generateToken();
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        inviteTokenHash: tokenHash,
+        inviteTokenExpiresAt: new Date(Date.now() + INVITE_TOKEN_TTL_MS),
+      },
+    });
+
+    const inviteEmailSent = await this.sendInvite(
+      user.email,
+      user.firstName,
+      token,
+    );
+    if (!inviteEmailSent) {
+      throw new ServiceUnavailableException(
+        'Could not send the invite email. Check the mail settings and try again.',
+      );
+    }
+    return { inviteEmailSent };
+  }
+
+  /** Resolves false rather than throwing, so callers decide how much a failure matters. */
+  private async sendInvite(email: string, firstName: string, token: string) {
+    try {
+      const frontendOrigin = this.configService
+        .getOrThrow<string>('FRONTEND_ORIGIN')
+        .split(',')[0];
+      await this.mailerService.sendInviteEmail(
+        email,
+        firstName,
+        `${frontendOrigin}/auth/accept-invite?token=${token}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Invite email to ${email} failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+      return false;
+    }
+  }
+
+  private findEmailOwner(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        companyId: true,
+        deletedAt: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+  }
+
+  private assertEmailAvailable(
+    owner: {
+      companyId: string | null;
+      deletedAt: Date | null;
+      firstName: string;
+      lastName: string;
+    } | null,
+    companyId: string,
+  ) {
+    if (!owner) return;
+
+    if (!owner.deletedAt) {
+      throw new ConflictException(
+        owner.companyId === companyId
+          ? `${owner.firstName} ${owner.lastName} already uses that email in this company.`
+          : 'That email address already belongs to a user in another company.',
+      );
+    }
+    if (owner.companyId !== companyId) {
+      throw new ConflictException(
+        'That email belonged to a removed user in another company. Email addresses are unique across companies, so use a different address.',
+      );
+    }
+    // Same company, previously removed: the caller is re-inviting them, which is allowed.
   }
 
   async findAll(actor: CurrentUserPayload, filters: ListUsersQueryDto) {

@@ -33,4 +33,22 @@ export class MailerService {
     });
     this.logger.log(`Invite email sent to ${to}`);
   }
+
+  async sendPasswordResetEmail(
+    to: string,
+    firstName: string,
+    resetUrl: string,
+  ) {
+    await this.transporter.sendMail({
+      from: this.from,
+      to,
+      subject: 'Reset your AgencyOS password',
+      html: `
+        <p>Hi ${firstName},</p>
+        <p>Someone asked to reset the password for this account. If that was you, use the link below. It expires in one hour.</p>
+        <p><a href="${resetUrl}">Reset your password</a></p>
+        <p>If it wasn't you, you can ignore this email — your password has not changed.</p>
+      `,
+    });
+  }
 }

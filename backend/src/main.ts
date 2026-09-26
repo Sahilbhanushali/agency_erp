@@ -1,10 +1,20 @@
 import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { assertRequiredConfig } from './common/utils/required-config.util';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Fail here, not halfway through creating a user.
+  assertRequiredConfig(process.env);
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Behind nginx, req.ip is the proxy unless Express is told to trust it — the audit
+  // trail records that value, so without this every entry reads 127.0.0.1.
+  app.set('trust proxy', 'loopback');
   app.enableCors({
     origin: process.env.FRONTEND_ORIGIN?.split(',') ?? [
       'http://localhost:5173',
@@ -12,6 +22,11 @@ async function bootstrap() {
     ],
     credentials: true,
   });
+  // Constraint violations become 409/400/404 instead of leaking a 500 with a stack trace.
+  app.useGlobalFilters(
+    new PrismaExceptionFilter(app.get(HttpAdapterHost).httpAdapter),
+  );
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

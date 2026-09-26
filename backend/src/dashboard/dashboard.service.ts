@@ -35,13 +35,16 @@ export class DashboardService {
     const canSeeInvoices = hasPermission(actor, 'invoices:read');
     const canSeeProjects = hasPermission(actor, 'projects:read');
 
-    const [invoices, projects, tasks] = await Promise.all([
+    const [invoices, projects, tasks, myTasks] = await Promise.all([
       canSeeInvoices ? this.invoiceSummary(companyId) : null,
       canSeeProjects ? this.projectSummary(companyFilter) : null,
       this.taskSummary(actor, query.companyId),
+      this.myTaskSummary(actor),
     ]);
 
-    return { invoices, projects, tasks };
+    // A null section means "not permitted", which the UI must hide rather than
+    // render as a zero — an employee seeing "invoiced 0" would be told a falsehood.
+    return { invoices, projects, tasks, myTasks };
   }
 
   private async invoiceSummary(companyId: string | null | undefined) {
@@ -138,6 +141,48 @@ export class DashboardService {
     ]);
 
     return { total, active };
+  }
+
+  /**
+   * Work assigned to the person asking, whatever their permissions. This is the
+   * part of the dashboard that is always theirs, and for most staff it is the
+   * only part that matters.
+   */
+  private async myTaskSummary(actor: CurrentUserPayload) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const inSevenDays = new Date(startOfToday);
+    inSevenDays.setDate(inSevenDays.getDate() + 7);
+
+    const assignedToMe: Prisma.TaskWhereInput = {
+      deletedAt: null,
+      parentTaskId: null,
+      assigneeId: actor.id,
+    };
+    const stillOpen = { status: { in: OPEN_TASK_STATUSES } };
+
+    const [open, overdue, dueSoon, completed] = await this.prisma.$transaction([
+      this.prisma.task.count({ where: { ...assignedToMe, ...stillOpen } }),
+      this.prisma.task.count({
+        where: {
+          ...assignedToMe,
+          ...stillOpen,
+          dueDate: { lt: startOfToday },
+        },
+      }),
+      this.prisma.task.count({
+        where: {
+          ...assignedToMe,
+          ...stillOpen,
+          dueDate: { gte: startOfToday, lte: inSevenDays },
+        },
+      }),
+      this.prisma.task.count({
+        where: { ...assignedToMe, status: TaskStatus.DONE },
+      }),
+    ]);
+
+    return { open, overdue, dueSoon, completed };
   }
 
   private async taskSummary(

@@ -286,7 +286,7 @@ export default function ProjectDetails() {
         <div className="pt-2">
           <TasksPanel
             projectId={id}
-            title={`${project.title} Tasks`}
+
             emptyText="No tasks created in this project yet."
           />
         </div>

@@ -202,11 +202,7 @@ export class UsersController {
     @CurrentUser() actor: CurrentUserPayload,
     @Res() res: Response,
   ) {
-    const file = await this.usersService.getDocumentFile(
-      id,
-      documentId,
-      actor,
-    );
+    const file = await this.usersService.getDocumentFile(id, documentId, actor);
     res.download(file.absolutePath, file.originalName);
   }
 
@@ -222,5 +218,19 @@ export class UsersController {
     @CurrentUser() actor: CurrentUserPayload,
   ) {
     return this.usersService.removeDocument(id, documentId, actor);
+  }
+
+  @ApiOperation({
+    summary:
+      'Send a fresh invite to someone whose first one never arrived (e.g. a mail outage).',
+  })
+  @RequirePermissions('users:update')
+  @LogActivity(ActivityEntity.USER, ActivityAction.SEND)
+  @Post(':id/resend-invite')
+  resendInvite(
+    @Param('id') id: string,
+    @CurrentUser() actor: CurrentUserPayload,
+  ) {
+    return this.usersService.resendInvite(id, actor);
   }
 }

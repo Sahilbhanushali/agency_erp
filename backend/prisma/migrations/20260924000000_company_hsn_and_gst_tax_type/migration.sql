@@ -1,5 +1,12 @@
--- HSN/SAC on the company, and CGST+SGST vs IGST on quotations and invoices.
--- Additive only: the new columns are nullable or carry a default, so existing rows are unaffected.
-ALTER TABLE `itsme_companies` ADD COLUMN `hsnNumber` VARCHAR(191) NULL;
-ALTER TABLE `itsme_invoices` ADD COLUMN `taxType` ENUM('CGST_SGST', 'IGST') NOT NULL DEFAULT 'CGST_SGST';
-ALTER TABLE `itsme_quotations` ADD COLUMN `taxType` ENUM('CGST_SGST', 'IGST') NOT NULL DEFAULT 'CGST_SGST';
+-- Intentionally empty.
+--
+-- This migration originally re-added three columns that earlier migrations had
+-- already created:
+--   itsme_companies.hsnNumber   -> 20260813104113_add_company_hsn_number
+--   itsme_invoices.taxType      -> 20260813094502_add_tax_type
+--   itsme_quotations.taxType    -> 20260813094502_add_tax_type
+--
+-- Replaying it against a fresh database failed with "Duplicate column name",
+-- which broke `prisma migrate deploy` and `prisma migrate dev` for everyone.
+-- The columns it described are still created, just by those earlier migrations,
+-- so removing the statements changes no schema and is safe to apply anywhere.

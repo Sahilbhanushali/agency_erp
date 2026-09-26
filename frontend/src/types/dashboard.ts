@@ -15,4 +15,11 @@ export interface DashboardSummary {
     overdue: number;
     byStatus: Partial<Record<TaskStatus, number>>;
   };
+  /** Work assigned to the viewer, regardless of what else they may see. */
+  myTasks: {
+    open: number;
+    overdue: number;
+    dueSoon: number;
+    completed: number;
+  };
 }

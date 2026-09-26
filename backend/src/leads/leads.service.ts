@@ -349,7 +349,7 @@ export class LeadsService {
       );
     }
 
-    const client = await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       const created = await tx.client.create({
         data: {
           companyId: lead.companyId,
@@ -377,10 +377,11 @@ export class LeadsService {
           },
         },
       });
-      return created;
     });
 
-    return { lead: await this.findOne(id, actor), client };
+    // Returns the lead, with the new client hanging off convertedClient, so the
+    // audit interceptor can still name the record it acted on.
+    return this.findOne(id, actor);
   }
 
   async remove(id: string, actor: CurrentUserPayload) {
