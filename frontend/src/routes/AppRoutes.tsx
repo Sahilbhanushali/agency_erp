@@ -1,4 +1,6 @@
 import AcceptInvite from "@/pages/auth/accept-invite/AcceptInvite";
+import ForgotPassword from "@/pages/auth/forgot-password/ForgotPassword";
+import ResetPassword from "@/pages/auth/reset-password/ResetPassword";
 import Login from "@/pages/auth/login/Login";
 import CreateClient from "@/pages/clients/create/CreateClient";
 import ClientDetails from "@/pages/clients/details/ClientDetails";
@@ -8,6 +10,12 @@ import CreateCompany from "@/pages/companies/create/CreateCompany";
 import CompanyDetails from "@/pages/companies/details/CompanyDetails";
 import EditCompany from "@/pages/companies/edit/EditCompany";
 import CompaniesList from "@/pages/companies/CompaniesList";
+import ApprovalsList from "@/pages/approvals/ApprovalsList";
+import LeadsList from "@/pages/leads/LeadsList";
+import CampaignsList from "@/pages/campaigns/CampaignsList";
+import ContentCalendar from "@/pages/content/ContentCalendar";
+import ContentList from "@/pages/content/ContentList";
+import SocialAccountsList from "@/pages/social-accounts/SocialAccountsList";
 import Dashboard from "@/pages/dashboards/Dashboard";
 import InvoiceBuilder from "@/pages/invoices/builder/InvoiceBuilder";
 import InvoiceDetails from "@/pages/invoices/details/InvoiceDetails";
@@ -49,6 +57,14 @@ export const router = createBrowserRouter([
       {
         path: "/auth/accept-invite",
         element: <AcceptInvite />,
+      },
+      {
+        path: "/auth/forgot-password",
+        element: <ForgotPassword />,
+      },
+      {
+        path: "/auth/reset-password",
+        element: <ResetPassword />,
       },
     ]
   },
@@ -106,6 +122,24 @@ export const router = createBrowserRouter([
           },
           {
             path: "projects-list", element: <ProjectsList />
+          },
+          {
+            path: "campaigns-list", element: <CampaignsList />
+          },
+          {
+            path: "content", element: <ContentList />
+          },
+          {
+            path: "content/calendar", element: <ContentCalendar />
+          },
+          {
+            path: "social-accounts", element: <SocialAccountsList />
+          },
+          {
+            path: "approvals", element: <ApprovalsList />
+          },
+          {
+            path: "leads", element: <LeadsList />
           },
           {
             path: "projects-list/create", element: <CreateProject />

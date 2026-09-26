@@ -30,6 +30,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import BankDetailForm from "../components/BankDetailForm";
+import ChangePasswordCard from "../components/ChangePasswordCard";
 import DocumentsPanel from "../components/DocumentsPanel";
 import EmployeeProfileForm from "../components/EmployeeProfileForm";
 import SkillsPanel from "../components/SkillsPanel";
@@ -49,7 +50,10 @@ const InfoTile = ({ icon: Icon, label, value }: { icon: typeof Phone; label: str
 const ViewProfile = () => {
     const { id: routeId } = useParams<{ id: string }>();
     const { user: actor } = useAuth();
-    const isOwnProfile = !routeId;
+    // Two different questions: whose account is this, and how did we get here.
+    // Opening your own record from the team list is still your own record.
+    const isOwnProfile = !routeId || routeId === actor?.id;
+    const cameFromTeamList = !!routeId;
     const id = routeId ?? actor?.id;
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
@@ -113,7 +117,7 @@ const ViewProfile = () => {
                 ]}
                 actions={
                     <div className="flex items-center gap-2">
-                        {!isOwnProfile && (
+                        {cameFromTeamList && (
                             <Button variant="outline" size="sm" asChild>
                                 <Link to="/users-list">
                                     <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
@@ -183,6 +187,9 @@ const ViewProfile = () => {
                             <TabsTrigger value="bank" className="text-xs px-3 py-1.5">Bank Details</TabsTrigger>
                             <TabsTrigger value="skills" className="text-xs px-3 py-1.5">Skills</TabsTrigger>
                             <TabsTrigger value="documents" className="text-xs px-3 py-1.5">Documents</TabsTrigger>
+                            {isOwnProfile && (
+                                <TabsTrigger value="security" className="text-xs px-3 py-1.5">Security</TabsTrigger>
+                            )}
                         </TabsList>
 
                         <TabsContent value="overview" className="space-y-5 mt-4">
@@ -255,6 +262,12 @@ const ViewProfile = () => {
                                 </CardContent>
                             </Card>
                         </TabsContent>
+
+                        {isOwnProfile && (
+                            <TabsContent value="security" className="mt-4">
+                                <ChangePasswordCard />
+                            </TabsContent>
+                        )}
                     </Tabs>
                 </motion.div>
             </div>

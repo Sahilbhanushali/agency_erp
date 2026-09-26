@@ -4,26 +4,26 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, TaskStatus } from '@prisma/client';
+import {
+  ActivityEntity,
+  NotificationType,
+  Prisma,
+  TaskStatus,
+} from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { buildMeta, toSkipTake } from '../common/utils/paginate.util';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   assertCompanyAccess,
   hasPermission,
+  taskScopeFilter,
 } from '../common/utils/tenant-scope.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
+import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { CreateSubTaskDto, CreateTaskDto } from './dto/create-task.dto';
 import { ReorderTasksDto } from './dto/reorder-tasks.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-
-export interface TaskFilters {
-  projectId?: string;
-  workspaceId?: string;
-  assigneeId?: string;
-  status?: TaskStatus;
-  search?: string;
-  companyId?: string;
-}
 
 const USER_SELECT = {
   select: {
@@ -57,6 +57,27 @@ const TASK_DETAIL_INCLUDE = {
   },
 } as const;
 
+/** Anything not finished or abandoned, i.e. still real work. */
+const OPEN_TASK_STATUSES = [
+  TaskStatus.TODO,
+  TaskStatus.IN_PROGRESS,
+  TaskStatus.IN_REVIEW,
+  TaskStatus.NEEDS_REVISION,
+  TaskStatus.ADMIN_APPROVED,
+  TaskStatus.CLIENT_PENDING,
+];
+
+// TaskPriority ascends LOW -> URGENT, so desc puts the most urgent first.
+const TASK_ORDER_BY = {
+  board: [{ position: 'asc' }, { createdAt: 'desc' }],
+  priority: [{ priority: 'desc' }, { dueDate: 'asc' }],
+  dueDate: [{ dueDate: 'asc' }],
+} satisfies Record<string, Prisma.TaskOrderByWithRelationInput[]>;
+
+function humanStatus(status: TaskStatus) {
+  return status.toLowerCase().replace(/_/g, ' ');
+}
+
 /** undefined leaves the column untouched; null clears it. */
 function toNullableDate(value?: string | null) {
   if (value === undefined) return undefined;
@@ -65,14 +86,22 @@ function toNullableDate(value?: string | null) {
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
+
+  /** Deep link the notification opens; the board reads taskId and opens that card. */
+  private taskUrl(taskId: string) {
+    return `/tasks?taskId=${taskId}`;
+  }
 
   async create(dto: CreateTaskDto, actor: CurrentUserPayload) {
     const project = await this.loadProject(dto.projectId, actor);
     await this.assertWorkspaceInProject(dto.workspaceId, project.id);
     await this.assertAssigneeInCompany(dto.assigneeId, project.companyId);
 
-    return this.prisma.task.create({
+    const task = await this.prisma.task.create({
       data: {
         companyId: project.companyId,
         projectId: project.id,
@@ -88,24 +117,48 @@ export class TasksService {
       },
       include: TASK_INCLUDE,
     });
+
+    if (task.assigneeId) {
+      void this.notifications.notify({
+        userIds: [task.assigneeId],
+        actorId: actor.id,
+        type: NotificationType.TASK_ASSIGNED,
+        title: 'New task assigned to you',
+        body: `${actor.firstName} assigned you "${task.title}".`,
+        entity: ActivityEntity.TASK,
+        entityId: task.id,
+        actionUrl: this.taskUrl(task.id),
+      });
+    }
+
+    return task;
   }
 
-  findAll(actor: CurrentUserPayload, filters: TaskFilters) {
-    return this.prisma.task.findMany({
-      where: {
-        deletedAt: null,
-        // Sub-tasks travel with their parent rather than as board cards of their own.
-        parentTaskId: null,
-        ...this.scopeFilter(actor, filters.companyId),
-        ...(filters.projectId ? { projectId: filters.projectId } : {}),
-        ...(filters.workspaceId ? { workspaceId: filters.workspaceId } : {}),
-        ...(filters.assigneeId ? { assigneeId: filters.assigneeId } : {}),
-        ...(filters.status ? { status: filters.status } : {}),
-        ...(filters.search ? { title: { contains: filters.search } } : {}),
-      },
-      include: TASK_INCLUDE,
-      orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
-    });
+  async findAll(actor: CurrentUserPayload, filters: ListTasksQueryDto) {
+    const where: Prisma.TaskWhereInput = {
+      deletedAt: null,
+      // Sub-tasks travel with their parent rather than as board cards of their own.
+      parentTaskId: null,
+      ...this.scopeFilter(actor, filters.companyId),
+      ...(filters.projectId ? { projectId: filters.projectId } : {}),
+      ...(filters.workspaceId ? { workspaceId: filters.workspaceId } : {}),
+      ...(filters.assigneeId ? { assigneeId: filters.assigneeId } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.search ? { title: { contains: filters.search } } : {}),
+      ...(filters.openOnly ? { status: { in: OPEN_TASK_STATUSES } } : {}),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.task.findMany({
+        where,
+        include: TASK_INCLUDE,
+        orderBy: TASK_ORDER_BY[filters.sort ?? 'board'],
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    return { data, meta: buildMeta(total, filters.page, filters.limit) };
   }
 
   async findOne(id: string, actor: CurrentUserPayload) {
@@ -126,7 +179,7 @@ export class TasksService {
     if (dto.assigneeId)
       await this.assertAssigneeInCompany(dto.assigneeId, task.companyId);
 
-    return this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id },
       data: {
         workspaceId: dto.workspaceId,
@@ -146,6 +199,37 @@ export class TasksService {
       },
       include: TASK_INCLUDE,
     });
+
+    if (dto.assigneeId && dto.assigneeId !== task.assigneeId) {
+      void this.notifications.notify({
+        userIds: [dto.assigneeId],
+        actorId: actor.id,
+        type: NotificationType.TASK_ASSIGNED,
+        title: 'New task assigned to you',
+        body: `${actor.firstName} assigned you "${updated.title}".`,
+        entity: ActivityEntity.TASK,
+        entityId: updated.id,
+        actionUrl: this.taskUrl(updated.id),
+      });
+    }
+
+    if (dto.status && dto.status !== task.status) {
+      // The people who care are whoever owns it and whoever raised it.
+      void this.notifications.notify({
+        userIds: [updated.assigneeId, updated.createdById].filter(
+          (id): id is string => !!id,
+        ),
+        actorId: actor.id,
+        type: NotificationType.TASK_STATUS_CHANGED,
+        title: 'Task status changed',
+        body: `${actor.firstName} moved "${updated.title}" from ${humanStatus(task.status)} to ${humanStatus(dto.status)}.`,
+        entity: ActivityEntity.TASK,
+        entityId: updated.id,
+        actionUrl: this.taskUrl(updated.id),
+      });
+    }
+
+    return updated;
   }
 
   /** Drag and drop: rewrites one column's order and moves any dropped card into it. */
@@ -270,26 +354,7 @@ export class TasksService {
     actor: CurrentUserPayload,
     requestedCompanyId?: string,
   ): Prisma.TaskWhereInput {
-    if (actor.roleName === 'SUPER_ADMIN') {
-      return requestedCompanyId ? { companyId: requestedCompanyId } : {};
-    }
-    if (!actor.companyId)
-      throw new ForbiddenException('You are not scoped to a company');
-    if (hasPermission(actor, 'tasks:read'))
-      return { companyId: actor.companyId };
-
-    return {
-      companyId: actor.companyId,
-      OR: [
-        { assigneeId: actor.id },
-        { createdById: actor.id },
-        {
-          workspace: {
-            members: { some: { userId: actor.id, deletedAt: null } },
-          },
-        },
-      ],
-    };
+    return taskScopeFilter(actor, requestedCompanyId);
   }
 
   /** An assignee without `tasks:update` may move their own task along, nothing else. */

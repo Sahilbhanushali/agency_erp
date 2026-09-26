@@ -100,7 +100,7 @@ const ProjectForm = ({ mode, initialValues, onSubmit, isSubmitting }: ProjectFor
 
     useEffect(() => {
         if (isSuperAdmin) {
-            api.get<Company[]>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
+            api.list<Company>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
         }
     }, [isSuperAdmin]);
 
@@ -110,8 +110,8 @@ const ProjectForm = ({ mode, initialValues, onSubmit, isSubmitting }: ProjectFor
             setManagers([]);
             return;
         }
-        api.get<Client[]>(`/clients?companyId=${targetCompanyId}`).then(setClients).catch(() => toast.error("Failed to load clients."));
-        api.get<MinimalUser[]>(`/users?companyId=${targetCompanyId}`).then(setManagers).catch(() => toast.error("Failed to load users."));
+        api.list<Client>(`/clients?companyId=${targetCompanyId}`).then(setClients).catch(() => toast.error("Failed to load clients."));
+        api.list<MinimalUser>(`/users?companyId=${targetCompanyId}`).then(setManagers).catch(() => toast.error("Failed to load users."));
     }, [targetCompanyId]);
 
     const handleSubmit = async (values: ProjectFormValues) => {

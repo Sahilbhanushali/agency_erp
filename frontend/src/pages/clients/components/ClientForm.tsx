@@ -85,7 +85,7 @@ const ClientForm = ({ mode, initialValues, onSubmit, isSubmitting }: ClientFormP
 
     useEffect(() => {
         if (isSuperAdmin) {
-            api.get<Company[]>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
+            api.list<Company>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
         }
     }, [isSuperAdmin]);
 
@@ -95,7 +95,7 @@ const ClientForm = ({ mode, initialValues, onSubmit, isSubmitting }: ClientFormP
             return;
         }
         api
-            .get<MinimalUser[]>(`/users?companyId=${targetCompanyId}`)
+            .list<MinimalUser>(`/users?companyId=${targetCompanyId}`)
             .then(setManagers)
             .catch(() => toast.error("Failed to load users."));
     }, [targetCompanyId]);

@@ -6,6 +6,7 @@ import { cellClass, headClass, rowClass } from "@/components/tables/table-styles
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
@@ -38,7 +39,7 @@ const RolesList = () => {
         setIsLoading(true);
         const query = companyId ? `?companyId=${companyId}` : "";
         api
-            .get<Role[]>(`/roles${query}`)
+            .list<Role>(`/roles${query}`)
             .then(setRoles)
             .catch((error) => toast.error(error instanceof ApiError ? error.message : "Failed to load roles."))
             .finally(() => setIsLoading(false));
@@ -55,7 +56,7 @@ const RolesList = () => {
 
     useEffect(() => {
         if (isSuperAdmin) {
-            api.get<Company[]>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
+            api.list<Company>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
         }
     }, [isSuperAdmin]);
 
@@ -96,17 +97,28 @@ const RolesList = () => {
                     { label: "Roles & Permissions" },
                 ]}
                 actions={
-                    <Button
-                        size="sm"
-                        disabled={isSuperAdmin && !companyId}
-                        onClick={() => {
-                            setEditingRole(null);
-                            setFormOpen(true);
-                        }}
-                    >
-                        <Plus className="w-4 h-4 mr-1.5" />
-                        Add Role
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span>
+                                <Button
+                                    size="sm"
+                                    disabled={isSuperAdmin && !companyId}
+                                    onClick={() => {
+                                        setEditingRole(null);
+                                        setFormOpen(true);
+                                    }}
+                                >
+                                    <Plus className="w-4 h-4 mr-1.5" />
+                                    Add Role
+                                </Button>
+                            </span>
+                        </TooltipTrigger>
+                        {isSuperAdmin && !companyId && (
+                            <TooltipContent>
+                                A role belongs to one company. Choose a company first.
+                            </TooltipContent>
+                        )}
+                    </Tooltip>
                 }
             />
 
@@ -120,7 +132,7 @@ const RolesList = () => {
                     isSuperAdmin ? (
                         <Select value={companyId} onValueChange={setCompanyId}>
                             <SelectTrigger className="h-9 w-[200px] text-xs">
-                                <SelectValue placeholder="All companies" />
+                                <SelectValue placeholder="Select a company" />
                             </SelectTrigger>
                             <SelectContent>
                                 {companies.map((company) => (
@@ -136,7 +148,11 @@ const RolesList = () => {
                 isEmpty={filteredRoles.length === 0}
                 emptyState={{
                     icon: Shield,
-                    title: search ? "No roles match your search" : "No roles found",
+                    title: search
+                        ? "No roles match your search"
+                        : isSuperAdmin && !companyId
+                          ? "Choose a company to see its roles"
+                          : "No roles yet",
                     description: search
                         ? `No roles matched "${search}". Try clearing your search keyword.`
                         : isSuperAdmin && !companyId

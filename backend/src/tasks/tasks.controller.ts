@@ -6,22 +6,23 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseEnumPipe,
   Patch,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { TaskStatus } from '@prisma/client';
 import {
   CurrentUser,
   type CurrentUserPayload,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { LogActivity } from '../common/decorators/log-activity.decorator';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
+import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { CreateSubTaskDto, CreateTaskDto } from './dto/create-task.dto';
 import { ReorderTasksDto } from './dto/reorder-tasks.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -39,6 +40,7 @@ export class TasksController {
       'Create a task inside a project, optionally on one of its workspace boards.',
   })
   @RequirePermissions('tasks:create')
+  @LogActivity(ActivityEntity.TASK, ActivityAction.CREATE)
   @Post()
   create(@Body() dto: CreateTaskDto, @CurrentUser() actor: CurrentUserPayload) {
     return this.tasksService.create(dto, actor);
@@ -51,22 +53,9 @@ export class TasksController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('projectId') projectId?: string,
-    @Query('workspaceId') workspaceId?: string,
-    @Query('assigneeId') assigneeId?: string,
-    @Query('status', new ParseEnumPipe(TaskStatus, { optional: true }))
-    status?: TaskStatus,
-    @Query('search') search?: string,
-    @Query('companyId') companyId?: string,
+    @Query() query: ListTasksQueryDto,
   ) {
-    return this.tasksService.findAll(actor, {
-      projectId,
-      workspaceId,
-      assigneeId,
-      status,
-      search,
-      companyId,
-    });
+    return this.tasksService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get a task with its sub-tasks and comments.' })
@@ -92,6 +81,7 @@ export class TasksController {
     summary:
       'Update a task. With tasks:update any field; otherwise the assignee may only change the status.',
   })
+  @LogActivity(ActivityEntity.TASK, ActivityAction.UPDATE)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -103,6 +93,7 @@ export class TasksController {
 
   @ApiOperation({ summary: 'Soft-delete a task and its sub-tasks.' })
   @RequirePermissions('tasks:delete')
+  @LogActivity(ActivityEntity.TASK, ActivityAction.SOFT_DELETE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @CurrentUser() actor: CurrentUserPayload) {

@@ -54,7 +54,7 @@ const ProjectFormDialog = ({ open, onOpenChange, clientId, companyId, onCreated 
     useEffect(() => {
         if (!open) return;
         form.reset({ title: "", managerId: "", deadline: "", colorHex: "#4F46E5" });
-        api.get<MinimalUser[]>(`/users?companyId=${companyId}`).then(setManagers).catch(() => toast.error("Failed to load users."));
+        api.list<MinimalUser>(`/users?companyId=${companyId}`).then(setManagers).catch(() => toast.error("Failed to load users."));
     }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSubmit = async (values: FormValues) => {

@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
+import { useDebounced } from "@/hooks/use-debounced";
+import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { api, ApiError } from "@/lib/api";
 import { can } from "@/lib/permissions";
 import type { Company } from "@/types/company";
@@ -37,12 +39,10 @@ export default function InvoicesList() {
   const { user: actor } = useAuth();
   const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
 
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companyId, setCompanyId] = useState<string | undefined>(
     actor?.companyId ?? undefined
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<InvoiceStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
@@ -50,48 +50,37 @@ export default function InvoicesList() {
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchInvoices = () => {
-    setIsLoading(true);
-    const query = companyId ? `?companyId=${companyId}` : "";
-    api
-      .get<Invoice[]>(`/invoices${query}`)
-      .then(setInvoices)
-      .catch((error) =>
-        toast.error(error instanceof ApiError ? error.message : "Failed to load invoices.")
-      )
-      .finally(() => setIsLoading(false));
-  };
+  const debouncedSearch = useDebounced(search);
 
-  useEffect(fetchInvoices, [companyId]);
+  const query = useMemo(() => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(pageSize),
+    });
+    if (companyId) params.set("companyId", companyId);
+    if (status !== "ALL") params.set("status", status);
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    return params.toString();
+  }, [page, pageSize, companyId, status, debouncedSearch]);
+
+  const {
+    data: invoices,
+    total,
+    isLoading,
+    refetch,
+  } = usePaginatedList<Invoice>("/invoices", query, "Failed to load invoices.");
 
   useEffect(() => {
     if (isSuperAdmin) {
       api
-        .get<Company[]>("/companies")
+        .list<Company>("/companies")
         .then(setCompanies)
         .catch(() => toast.error("Failed to load companies."));
     }
   }, [isSuperAdmin]);
 
-  const filteredInvoices = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return invoices.filter((invoice) => {
-      const matchesStatus = status === "ALL" || invoice.status === status;
-      const matchesSearch =
-        !query ||
-        invoice.title.toLowerCase().includes(query) ||
-        invoice.invoiceNumber.toLowerCase().includes(query) ||
-        invoice.client?.name.toLowerCase().includes(query);
-      return matchesStatus && matchesSearch;
-    });
-  }, [invoices, search, status]);
+  useEffect(() => setPage(1), [debouncedSearch, pageSize, companyId, status]);
 
-  useEffect(() => setPage(1), [search, status, pageSize]);
-
-  const paginatedInvoices = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredInvoices.slice(start, start + pageSize);
-  }, [filteredInvoices, page, pageSize]);
 
   const handleDelete = async () => {
     if (!invoiceToDelete) return;
@@ -99,9 +88,7 @@ export default function InvoicesList() {
     try {
       await api.delete(`/invoices/${invoiceToDelete.id}`);
       toast.success("Invoice deleted successfully.");
-      setInvoices((current) =>
-        current.filter((invoice) => invoice.id !== invoiceToDelete.id)
-      );
+      refetch();
       setInvoiceToDelete(null);
     } catch (error) {
       toast.error(
@@ -188,7 +175,7 @@ export default function InvoicesList() {
           </div>
         }
         isLoading={isLoading}
-        isEmpty={filteredInvoices.length === 0}
+        isEmpty={invoices.length === 0}
         emptyState={{
           icon: Wallet,
           title: search || status !== "ALL" ? "No matching invoices" : "No invoices issued yet",
@@ -207,13 +194,13 @@ export default function InvoicesList() {
         pagination={{
           page,
           pageSize,
-          total: filteredInvoices.length,
+          total,
           onPageChange: setPage,
           onPageSizeChange: setPageSize,
         }}
       >
         <InvoicesListTable
-          invoices={paginatedInvoices}
+          invoices={invoices}
           onView={(inv) => navigate(`/invoices-list/${inv.id}`)}
           onEdit={(inv) => navigate(`/invoices-list/${inv.id}/edit`)}
           onDelete={setInvoiceToDelete}

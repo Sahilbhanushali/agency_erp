@@ -104,7 +104,7 @@ const QuotationBuilder = () => {
 
     useEffect(() => {
         if (isSuperAdmin) {
-            api.get<Company[]>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
+            api.list<Company>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
         }
     }, [isSuperAdmin]);
 
@@ -121,7 +121,7 @@ const QuotationBuilder = () => {
             setClients([]);
             return;
         }
-        api.get<Client[]>(`/clients?companyId=${targetCompanyId}`).then(setClients).catch(() => toast.error("Failed to load clients."));
+        api.list<Client>(`/clients?companyId=${targetCompanyId}`).then(setClients).catch(() => toast.error("Failed to load clients."));
     }, [targetCompanyId]);
 
     useEffect(() => {
@@ -130,7 +130,7 @@ const QuotationBuilder = () => {
             return;
         }
         api
-            .get<Project[]>(`/projects?companyId=${targetCompanyId}&clientId=${clientId}`)
+            .list<Project>(`/projects?companyId=${targetCompanyId}&clientId=${clientId}`)
             .then(setProjects)
             .catch(() => toast.error("Failed to load projects."));
     }, [targetCompanyId, clientId]);

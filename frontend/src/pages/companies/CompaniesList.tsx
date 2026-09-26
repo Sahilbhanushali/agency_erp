@@ -3,6 +3,8 @@ import DataTableShell from "@/components/shared/DataTableShell";
 import PageHeader from "@/components/shared/PageHeader";
 import CompaniesListTable from "@/components/tables/CompaniesListTable";
 import { Button } from "@/components/ui/button";
+import { useDebounced } from "@/hooks/use-debounced";
+import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { api, ApiError } from "@/lib/api";
 import type { Company } from "@/types/company";
 import { Building2, Plus } from "lucide-react";
@@ -12,42 +14,32 @@ import { toast } from "react-toastify";
 
 export default function CompaniesList() {
   const navigate = useNavigate();
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchCompanies = () => {
-    setIsLoading(true);
-    api
-      .get<Company[]>("/companies")
-      .then(setCompanies)
-      .catch((error) =>
-        toast.error(error instanceof ApiError ? error.message : "Failed to load companies.")
-      )
-      .finally(() => setIsLoading(false));
-  };
+  const debouncedSearch = useDebounced(search);
 
-  useEffect(fetchCompanies, []);
+  const query = useMemo(() => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(pageSize),
+    });
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    return params.toString();
+  }, [page, pageSize, debouncedSearch]);
 
-  const filteredCompanies = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return companies;
-    return companies.filter((company) =>
-      company.name.toLowerCase().includes(query) ||
-      (company.email && company.email.toLowerCase().includes(query))
-    );
-  }, [companies, search]);
+  const {
+    data: companies,
+    total,
+    isLoading,
+    refetch,
+  } = usePaginatedList<Company>("/companies", query, "Failed to load companies.");
 
-  useEffect(() => setPage(1), [search, pageSize]);
+  useEffect(() => setPage(1), [debouncedSearch, pageSize]);
 
-  const paginatedCompanies = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredCompanies.slice(start, start + pageSize);
-  }, [filteredCompanies, page, pageSize]);
 
   const handleDelete = async () => {
     if (!companyToDelete) return;
@@ -55,9 +47,7 @@ export default function CompaniesList() {
     try {
       await api.delete(`/companies/${companyToDelete.id}`);
       toast.success("Company deleted successfully.");
-      setCompanies((current) =>
-        current.filter((company) => company.id !== companyToDelete.id)
-      );
+      refetch();
       setCompanyToDelete(null);
     } catch (error) {
       toast.error(
@@ -96,7 +86,7 @@ export default function CompaniesList() {
           placeholder: "Search companies by name or email...",
         }}
         isLoading={isLoading}
-        isEmpty={filteredCompanies.length === 0}
+        isEmpty={companies.length === 0}
         emptyState={{
           icon: Building2,
           title: search ? "No matching companies found" : "No companies registered",
@@ -114,13 +104,13 @@ export default function CompaniesList() {
         pagination={{
           page,
           pageSize,
-          total: filteredCompanies.length,
+          total,
           onPageChange: setPage,
           onPageSizeChange: setPageSize,
         }}
       >
         <CompaniesListTable
-          companies={paginatedCompanies}
+          companies={companies}
           onView={(company) => navigate(`/companies-list/${company.id}`)}
           onEdit={(company) => navigate(`/companies-list/${company.id}/edit`)}
           onDelete={setCompanyToDelete}

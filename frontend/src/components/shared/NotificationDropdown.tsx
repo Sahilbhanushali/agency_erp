@@ -4,34 +4,81 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { AppNotification, NotificationPage } from "@/types/notification";
+import { formatDistanceToNowStrict } from "date-fns";
 import { Bell, CheckCheck, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-interface NotificationItem {
-  id: string;
-  title: string;
-  description: string;
-  time: string;
-  unread: boolean;
-  type: "system" | "task" | "invoice";
-}
+const POLL_INTERVAL_MS = 60_000;
+const PAGE_SIZE = 10;
 
 export default function NotificationDropdown() {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const load = useCallback(async () => {
+    try {
+      const page = await api.get<NotificationPage>(
+        `/notifications?limit=${PAGE_SIZE}`
+      );
+      setNotifications(page.data);
+      setUnreadCount(page.meta.unread);
+    } catch {
+      // A failed poll is not worth interrupting the user over; the next one retries.
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => void load(), POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [load]);
+
+  const markAllAsRead = async () => {
+    const now = new Date().toISOString();
+    setNotifications((current) =>
+      current.map((item) => ({ ...item, readAt: item.readAt ?? now }))
+    );
+    setUnreadCount(0);
+    try {
+      await api.patch("/notifications/read-all");
+    } finally {
+      void load();
+    }
+  };
+
+  const openNotification = async (item: AppNotification) => {
+    if (!item.readAt) {
+      setNotifications((current) =>
+        current.map((n) =>
+          n.id === item.id ? { ...n, readAt: new Date().toISOString() } : n
+        )
+      );
+      setUnreadCount((count) => Math.max(0, count - 1));
+      try {
+        await api.patch(`/notifications/${item.id}/read`);
+      } catch {
+        void load();
+      }
+    }
+    if (item.actionUrl) navigate(item.actionUrl);
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => open && void load()}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Open notifications"
+          aria-label={
+            unreadCount > 0
+              ? `Open notifications, ${unreadCount} unread`
+              : "Open notifications"
+          }
           className={cn(
             "relative h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
           )}
@@ -64,7 +111,7 @@ export default function NotificationDropdown() {
 
           {unreadCount > 0 && (
             <button
-              onClick={markAllAsRead}
+              onClick={() => void markAllAsRead()}
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
             >
               <CheckCheck className="w-3.5 h-3.5" />
@@ -88,27 +135,31 @@ export default function NotificationDropdown() {
             </div>
           ) : (
             notifications.map((item) => (
-              <div
+              <button
                 key={item.id}
+                type="button"
+                onClick={() => void openNotification(item)}
                 className={cn(
-                  "p-3.5 hover:bg-muted/40 transition-colors flex items-start gap-3",
-                  item.unread && "bg-primary/5"
+                  "w-full text-left p-3.5 hover:bg-muted/40 transition-colors flex items-start gap-3",
+                  !item.readAt && "bg-primary/5"
                 )}
               >
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-foreground">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-foreground truncate">
                       {item.title}
                     </p>
-                    <span className="text-[10px] text-muted-foreground">
-                      {item.time}
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {formatDistanceToNowStrict(new Date(item.createdAt), {
+                        addSuffix: true,
+                      })}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {item.description}
+                    {item.body}
                   </p>
                 </div>
-              </div>
+              </button>
             ))
           )}
         </div>

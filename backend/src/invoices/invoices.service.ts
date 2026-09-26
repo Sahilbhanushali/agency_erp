@@ -3,7 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ActivityAction, ActivityEntity, Prisma } from '@prisma/client';
+import { ActivityService } from '../activity/activity.service';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { buildMeta, toSkipTake } from '../common/utils/paginate.util';
 import { toDateOrUndefined } from '../common/utils/date.util';
 import { createWithDocumentNumber } from '../common/utils/document-number.util';
 import { computeLineTotals } from '../common/utils/pricing.util';
@@ -13,6 +16,7 @@ import {
 } from '../common/utils/tenant-scope.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { ListInvoicesQueryDto } from './dto/list-invoices-query.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 
@@ -37,7 +41,10 @@ function withBalance<
 
 @Injectable()
 export class InvoicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activity: ActivityService,
+  ) {}
 
   private latestInvoiceNumber(companyId: string, prefix: string) {
     return this.prisma.invoice
@@ -106,25 +113,41 @@ export class InvoicesService {
     return withBalance(invoice);
   }
 
-  async findAll(
-    actor: CurrentUserPayload,
-    companyId?: string,
-    clientId?: string,
-    projectId?: string,
-  ) {
+  async findAll(actor: CurrentUserPayload, filters: ListInvoicesQueryDto) {
     const scopedCompanyId =
-      actor.roleName === 'SUPER_ADMIN' ? companyId : actor.companyId;
-    const invoices = await this.prisma.invoice.findMany({
-      where: {
-        deletedAt: null,
-        ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
-        ...(clientId ? { clientId } : {}),
-        ...(projectId ? { projectId } : {}),
-      },
-      include: INVOICE_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
-    return invoices.map(withBalance);
+      actor.roleName === 'SUPER_ADMIN' ? filters.companyId : actor.companyId;
+    const query = filters.search?.trim();
+    const where: Prisma.InvoiceWhereInput = {
+      deletedAt: null,
+      ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
+      ...(filters.clientId ? { clientId: filters.clientId } : {}),
+      ...(filters.projectId ? { projectId: filters.projectId } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query } },
+              { invoiceNumber: { contains: query } },
+              { client: { name: { contains: query } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [invoices, total] = await this.prisma.$transaction([
+      this.prisma.invoice.findMany({
+        where,
+        include: INVOICE_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.invoice.count({ where }),
+    ]);
+
+    return {
+      data: invoices.map(withBalance),
+      meta: buildMeta(total, filters.page, filters.limit),
+    };
   }
 
   async findOne(id: string, actor: CurrentUserPayload) {
@@ -218,7 +241,7 @@ export class InvoicesService {
       );
     }
 
-    await this.prisma.payment.create({
+    const payment = await this.prisma.payment.create({
       data: {
         invoiceId,
         recordedById: actor.id,
@@ -229,6 +252,17 @@ export class InvoicesService {
         note: dto.note,
         paidAt: dto.paidAt,
       },
+    });
+
+    // Recorded here rather than by the interceptor: this handler returns the
+    // invoice, so only the service knows the payment's own id.
+    void this.activity.record({
+      actor,
+      entity: ActivityEntity.PAYMENT,
+      action: ActivityAction.CREATE,
+      entityId: payment.id,
+      summary: `${actor.firstName} recorded a ${payment.currency} ${Number(payment.amount).toFixed(2)} payment against invoice "${invoice.invoiceNumber}"`,
+      afterState: payment,
     });
 
     const refreshed = await this.findOne(invoiceId, actor);

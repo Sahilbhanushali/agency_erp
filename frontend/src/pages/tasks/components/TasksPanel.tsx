@@ -1,12 +1,20 @@
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import { can } from "@/lib/permissions";
 import type { Task, TaskStatus } from "@/types/task";
 import { Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import TaskBoard from "./TaskBoard";
 import TaskDetailSheet from "./TaskDetailSheet";
@@ -35,11 +43,18 @@ export default function TasksPanel({
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // A notification links to /tasks?taskId=..., so the card it names opens directly.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => searchParams.get("taskId")
+  );
   const [formOpen, setFormOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Only meaningful when the board is not already pinned to one workspace.
+  const spansWorkspaces = !workspaceId;
+  const [workspaceFilter, setWorkspaceFilter] = useState("ALL");
 
   const canCreate = can(actor, "tasks:create");
   const canDelete = can(actor, "tasks:delete");
@@ -55,7 +70,7 @@ export default function TasksPanel({
     const queryString = query.toString();
     setIsLoading(true);
     api
-      .get<Task[]>(`/tasks${queryString ? `?${queryString}` : ""}`)
+      .list<Task>(`/tasks${queryString ? `?${queryString}` : ""}`)
       .then(setTasks)
       .catch((error) =>
         toast.error(error instanceof ApiError ? error.message : "Failed to load tasks.")
@@ -64,9 +79,16 @@ export default function TasksPanel({
   }, [projectId, workspaceId, assigneeId]);
 
   const filteredTasks = useMemo(() => {
+    const byWorkspace =
+      workspaceFilter === "ALL"
+        ? tasks
+        : workspaceFilter === "NONE"
+          ? tasks.filter((task) => !task.workspace)
+          : tasks.filter((task) => task.workspace?.id === workspaceFilter);
+
     const query = search.trim().toLowerCase();
-    if (!query) return tasks;
-    return tasks.filter(
+    if (!query) return byWorkspace;
+    return byWorkspace.filter(
       (task) =>
         task.title.toLowerCase().includes(query) ||
         task.project.title.toLowerCase().includes(query) ||
@@ -74,7 +96,16 @@ export default function TasksPanel({
           .toLowerCase()
           .includes(query)
     );
-  }, [tasks, search]);
+  }, [tasks, search, workspaceFilter]);
+
+  /** Workspaces actually present on this board, so the filter never offers an empty one. */
+  const workspaceOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const task of tasks) {
+      if (task.workspace) map.set(task.workspace.id, task.workspace.name);
+    }
+    return [...map].map(([id, name]) => ({ id, name }));
+  }, [tasks]);
 
   const upsertTask = (task: Task) =>
     setTasks((current) =>
@@ -163,6 +194,27 @@ export default function TasksPanel({
 
             {headerExtra}
 
+            {spansWorkspaces && workspaceOptions.length > 1 && (
+              <Select value={workspaceFilter} onValueChange={setWorkspaceFilter}>
+                <SelectTrigger className="h-9 w-[190px] text-xs bg-background">
+                  <SelectValue placeholder="All workspaces" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL" className="text-xs">
+                    All workspaces
+                  </SelectItem>
+                  {workspaceOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id} className="text-xs">
+                      {option.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="NONE" className="text-xs">
+                    Project backlog
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
             <div className="relative w-full sm:w-64">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
@@ -202,6 +254,7 @@ export default function TasksPanel({
             tasks={filteredTasks}
             isLoading={isLoading}
             showProject={showProject}
+            showWorkspace={spansWorkspaces}
             canDelete={canDelete}
             emptyText={search ? "No tasks match your search." : emptyText}
             canMove={canMove}
@@ -214,7 +267,15 @@ export default function TasksPanel({
 
       <TaskDetailSheet
         taskId={selectedId}
-        onOpenChange={(open) => !open && setSelectedId(null)}
+        onOpenChange={(open) => {
+          if (open) return;
+          setSelectedId(null);
+          // Drop the deep link so a refresh does not reopen what was just closed.
+          if (searchParams.has("taskId")) {
+            searchParams.delete("taskId");
+            setSearchParams(searchParams, { replace: true });
+          }
+        }}
         onChanged={upsertTask}
         onEdit={(task) => {
           setTaskToEdit(task);

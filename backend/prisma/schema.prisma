@@ -418,6 +418,8 @@ enum ActivityEntity {
   EXPENSE
   CHAT_CONVERSATION
   CLIENT_PORTAL_PERMISSION
+  LEAD
+  APPROVAL
 }
 
 enum ActivityAction {
@@ -490,6 +492,8 @@ model Company {
   chatConversations ChatConversation[]
   socialAccounts    SocialAccount[]
   documents         Document[]
+  approvalRequests  ApprovalRequest[]
+  leads             Lead[]
 
   @@index([registeredAddressId])
   @@index([isActive])
@@ -591,6 +595,9 @@ model User {
   status          UserStatus      @default(INVITED)
   inviteTokenHash String?         @unique
   inviteTokenExpiresAt DateTime?
+  /// Separate from the invite token so a reset never clobbers a pending invite.
+  passwordResetTokenHash String?   @unique
+  passwordResetTokenExpiresAt DateTime?
   gender          Gender?
   dateOfBirth     DateTime?       @db.Date
   employmentType  EmploymentType?
@@ -644,6 +651,11 @@ model User {
   notificationPreferences NotificationPreference[]
   portalPermissionUpdates ClientPortalPermission[] @relation("PortalPermissionUpdater")
   activityLogs            ActivityLog[]
+  approvalsRequested      ApprovalRequest[]        @relation("ApprovalRequester")
+  approvalsAssigned       ApprovalRequest[]        @relation("ApprovalAssignee")
+  approvalDecisions       ApprovalDecision[]
+  ownedLeads              Lead[]                   @relation("LeadOwner")
+  leadActivities          LeadActivity[]
 
   @@index([companyId])
   @@index([roleId])
@@ -823,6 +835,8 @@ model Client {
   documents         Document[]
 
   @@unique([companyId, email])
+  convertedFromLead Lead?
+
   @@index([companyId])
   @@index([accountManagerId])
   @@index([billingAddressId])
@@ -864,7 +878,9 @@ model ClientPortalUser {
   deletedBy    String?
 
   client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  notifications Notification[]
+  notifications     Notification[]
+  approvalRequests  ApprovalRequest[]
+  approvalDecisions ApprovalDecision[]
 
   @@index([clientId])
   @@index([deletedAt])
@@ -2211,4 +2227,173 @@ model ActivityLog {
   @@index([action])
   @@index([createdAt])
   @@map("itsme_activity_logs")
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+  CANCELLED
+}
+
+enum ApprovalDecisionType {
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+  COMMENT
+}
+
+/// A request for someone to sign off on a record. Deliberately holds no copy of the
+/// record's own state: the entity stays the source of truth for what it is, while
+/// this tracks who was asked, who answered, and when.
+model ApprovalRequest {
+  id                 String         @id @default(uuid())
+  companyId          String
+  entity             ActivityEntity
+  entityId           String
+  requestedById      String
+  /// Internal reviewer. Exactly one of this or clientPortalUserId is set.
+  assignedToId       String?
+  /// Client-side reviewer, for approvals routed through the client portal.
+  clientPortalUserId String?
+  title              String
+  note               String?        @db.Text
+  status             ApprovalStatus @default(PENDING)
+  dueAt              DateTime?
+  resolvedAt         DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requestedBy      User              @relation("ApprovalRequester", fields: [requestedById], references: [id])
+  assignedTo       User?             @relation("ApprovalAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  clientPortalUser ClientPortalUser? @relation(fields: [clientPortalUserId], references: [id], onDelete: SetNull)
+
+  decisions ApprovalDecision[]
+
+  @@index([companyId])
+  @@index([entity, entityId])
+  @@index([assignedToId, status])
+  @@index([clientPortalUserId, status])
+  @@index([status])
+  @@map("itsme_approval_requests")
+}
+
+/// Append-only. No updatedAt and no deletedAt on purpose: a decision that was made
+/// cannot later be edited or withdrawn, which is what makes the trail worth trusting.
+/// A reviewer who changes their mind records a new decision.
+model ApprovalDecision {
+  id                 String               @id @default(uuid())
+  approvalRequestId  String
+  /// Internal decider. Exactly one of this or clientPortalUserId is set.
+  userId             String?
+  clientPortalUserId String?
+  decision           ApprovalDecisionType
+  comment            String?              @db.Text
+  createdAt          DateTime             @default(now())
+
+  request          ApprovalRequest   @relation(fields: [approvalRequestId], references: [id], onDelete: Cascade)
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  clientPortalUser ClientPortalUser? @relation(fields: [clientPortalUserId], references: [id], onDelete: SetNull)
+
+  @@index([approvalRequestId, createdAt])
+  @@index([userId])
+  @@map("itsme_approval_decisions")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  SOCIAL
+  COLD_OUTREACH
+  EVENT
+  INBOUND_CALL
+  PARTNER
+  OTHER
+}
+
+enum LeadActivityType {
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+  STATUS_CHANGED
+  ASSIGNED
+  FOLLOW_UP_SET
+  CONVERTED
+}
+
+/// A prospective client, before they become one. Priority reuses TaskPriority
+/// rather than minting a parallel scale that means the same thing.
+model Lead {
+  id                String       @id @default(uuid())
+  companyId         String
+  /// Salesperson responsible for working it.
+  ownerId           String?
+  name              String
+  companyName       String?
+  email             String?
+  phone             String?
+  source            LeadSource   @default(OTHER)
+  industry          String?
+  estimatedValue    Decimal?     @db.Decimal(14, 2)
+  currency          String       @default("INR")
+  status            LeadStatus   @default(NEW)
+  priority          TaskPriority @default(MEDIUM)
+  notes             String?      @db.Text
+  nextFollowUpAt    DateTime?
+  /// Sort order within its pipeline column.
+  position          Int          @default(0)
+  /// Set when the lead is won and turned into a real client.
+  convertedClientId String?      @unique
+  /// Why it was lost, captured while the reason is still known.
+  lostReason        String?      @db.Text
+  closedAt          DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  deletedAt         DateTime?
+  deletedBy         String?
+
+  company         Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  owner           User?   @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  convertedClient Client? @relation(fields: [convertedClientId], references: [id], onDelete: SetNull)
+
+  activities LeadActivity[]
+
+  @@index([companyId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([nextFollowUpAt])
+  @@index([deletedAt])
+  @@map("itsme_leads")
+}
+
+/// Append-only history for a lead, mirroring how post timelines work.
+model LeadActivity {
+  id        String           @id @default(uuid())
+  leadId    String
+  userId    String?
+  type      LeadActivityType
+  note      String?          @db.Text
+  fromValue String?
+  toValue   String?
+  createdAt DateTime         @default(now())
+
+  lead Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, createdAt])
+  @@index([userId])
+  @@map("itsme_lead_activities")
 }

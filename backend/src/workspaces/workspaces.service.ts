@@ -3,16 +3,30 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma, WorkspaceMemberRole } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import {
+  buildMeta,
+  searchFilter,
+  toSkipTake,
+} from '../common/utils/paginate.util';
 import { assertCompanyAccess } from '../common/utils/tenant-scope.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { ListWorkspacesQueryDto } from './dto/list-workspaces-query.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 
 const MEMBER_INCLUDE = {
   user: {
-    select: { id: true, firstName: true, lastName: true, email: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      // The member's company role, so a board can show who is a manager, designer, etc.
+      role: { select: { id: true, name: true, displayName: true } },
+    },
   },
 } as const;
 
@@ -46,18 +60,27 @@ export class WorkspacesService {
     });
   }
 
-  findAll(actor: CurrentUserPayload, projectId?: string, companyId?: string) {
+  async findAll(actor: CurrentUserPayload, filters: ListWorkspacesQueryDto) {
     const scopedCompanyId =
-      actor.roleName === 'SUPER_ADMIN' ? companyId : actor.companyId;
-    return this.prisma.workspace.findMany({
-      where: {
-        deletedAt: null,
-        ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
-        ...(projectId ? { projectId } : {}),
-      },
-      include: WORKSPACE_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
+      actor.roleName === 'SUPER_ADMIN' ? filters.companyId : actor.companyId;
+    const where: Prisma.WorkspaceWhereInput = {
+      deletedAt: null,
+      ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
+      ...(filters.projectId ? { projectId: filters.projectId } : {}),
+      ...searchFilter(filters.search, ['name']),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.workspace.findMany({
+        where,
+        include: WORKSPACE_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.workspace.count({ where }),
+    ]);
+
+    return { data, meta: buildMeta(total, filters.page, filters.limit) };
   }
 
   async findOne(id: string, actor: CurrentUserPayload) {
@@ -122,7 +145,9 @@ export class WorkspacesService {
       return this.prisma.workspaceMember.update({
         where: { id: existing.id },
         data: {
-          memberRole: dto.memberRole,
+          // Re-adding someone is a fresh membership, so an omitted role resets to the
+          // default rather than silently inheriting the role they had before removal.
+          memberRole: dto.memberRole ?? WorkspaceMemberRole.MEMBER,
           addedById: actor.id,
           deletedAt: null,
           deletedBy: null,

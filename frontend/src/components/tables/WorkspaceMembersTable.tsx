@@ -9,7 +9,13 @@ import {
     TableHeader,
     TableRow
 } from "@/components/ui/table";
-import type { WorkspaceMember } from "@/types/workspace";
+import type { WorkspaceMember, WorkspaceMemberRole } from "@/types/workspace";
+
+const WORKSPACE_ROLE_LABELS: Record<WorkspaceMemberRole, string> = {
+    LEAD: "Lead",
+    MEMBER: "Member",
+    VIEWER: "Viewer",
+};
 
 interface WorkspaceMembersTableProps {
     members: WorkspaceMember[];
@@ -45,8 +51,8 @@ export default function WorkspaceMembersTable({ members, onView, onRemove }: Wor
                                         <p className="font-medium text-foreground text-sm leading-tight">
                                             {member.user.firstName} {member.user.lastName}
                                         </p>
-                                        <span className="text-[11px] text-muted-foreground font-mono">
-                                            {member.memberRole || "Member"}
+                                        <span className="text-[11px] text-muted-foreground">
+                                            {member.user.role?.displayName ?? "No company role"}
                                         </span>
                                     </div>
                                 </div>
@@ -55,13 +61,9 @@ export default function WorkspaceMembersTable({ members, onView, onRemove }: Wor
                                 {member.user.email}
                             </TableCell>
                             <TableCell className={cellClass}>
-                                {member.memberRole ? (
-                                    <Badge variant="outline" className="text-xs font-normal border-border bg-muted/30">
-                                        {member.memberRole}
-                                    </Badge>
-                                ) : (
-                                    <span className="text-muted-foreground text-xs">—</span>
-                                )}
+                                <Badge variant="outline" className="text-xs font-normal border-border bg-muted/30">
+                                    {WORKSPACE_ROLE_LABELS[member.memberRole ?? "MEMBER"]}
+                                </Badge>
                             </TableCell>
                             <TableCell className={`${cellClass} text-right`} onClick={(e) => e.stopPropagation()}>
                                 <RowActions

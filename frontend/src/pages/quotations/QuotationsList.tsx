@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
+import { useDebounced } from "@/hooks/use-debounced";
+import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { api, ApiError } from "@/lib/api";
 import { can } from "@/lib/permissions";
 import type { Company } from "@/types/company";
@@ -35,12 +37,10 @@ export default function QuotationsList() {
   const { user: actor } = useAuth();
   const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
 
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companyId, setCompanyId] = useState<string | undefined>(
     actor?.companyId ?? undefined
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<QuotationStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
@@ -50,48 +50,37 @@ export default function QuotationsList() {
   );
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchQuotations = () => {
-    setIsLoading(true);
-    const query = companyId ? `?companyId=${companyId}` : "";
-    api
-      .get<Quotation[]>(`/quotations${query}`)
-      .then(setQuotations)
-      .catch((error) =>
-        toast.error(error instanceof ApiError ? error.message : "Failed to load quotations.")
-      )
-      .finally(() => setIsLoading(false));
-  };
+  const debouncedSearch = useDebounced(search);
 
-  useEffect(fetchQuotations, [companyId]);
+  const query = useMemo(() => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(pageSize),
+    });
+    if (companyId) params.set("companyId", companyId);
+    if (status !== "ALL") params.set("status", status);
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    return params.toString();
+  }, [page, pageSize, companyId, status, debouncedSearch]);
+
+  const {
+    data: quotations,
+    total,
+    isLoading,
+    refetch,
+  } = usePaginatedList<Quotation>("/quotations", query, "Failed to load quotations.");
 
   useEffect(() => {
     if (isSuperAdmin) {
       api
-        .get<Company[]>("/companies")
+        .list<Company>("/companies")
         .then(setCompanies)
         .catch(() => toast.error("Failed to load companies."));
     }
   }, [isSuperAdmin]);
 
-  const filteredQuotations = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return quotations.filter((quotation) => {
-      const matchesStatus = status === "ALL" || quotation.status === status;
-      const matchesSearch =
-        !query ||
-        quotation.title.toLowerCase().includes(query) ||
-        quotation.quotationNumber.toLowerCase().includes(query) ||
-        quotation.client?.name.toLowerCase().includes(query);
-      return matchesStatus && matchesSearch;
-    });
-  }, [quotations, search, status]);
+  useEffect(() => setPage(1), [debouncedSearch, pageSize, companyId, status]);
 
-  useEffect(() => setPage(1), [search, status, pageSize]);
-
-  const paginatedQuotations = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredQuotations.slice(start, start + pageSize);
-  }, [filteredQuotations, page, pageSize]);
 
   const handleDelete = async () => {
     if (!quotationToDelete) return;
@@ -99,9 +88,7 @@ export default function QuotationsList() {
     try {
       await api.delete(`/quotations/${quotationToDelete.id}`);
       toast.success("Quotation deleted successfully.");
-      setQuotations((current) =>
-        current.filter((item) => item.id !== quotationToDelete.id)
-      );
+      refetch();
       setQuotationToDelete(null);
     } catch (error) {
       toast.error(
@@ -188,7 +175,7 @@ export default function QuotationsList() {
           </div>
         }
         isLoading={isLoading}
-        isEmpty={filteredQuotations.length === 0}
+        isEmpty={quotations.length === 0}
         emptyState={{
           icon: Receipt,
           title: search || status !== "ALL" ? "No matching quotations" : "No quotations created yet",
@@ -207,13 +194,13 @@ export default function QuotationsList() {
         pagination={{
           page,
           pageSize,
-          total: filteredQuotations.length,
+          total,
           onPageChange: setPage,
           onPageSizeChange: setPageSize,
         }}
       >
         <QuotationsListTable
-          quotations={paginatedQuotations}
+          quotations={quotations}
           onView={(q) => navigate(`/quotations-list/${q.id}`)}
           onEdit={(q) => navigate(`/quotations-list/${q.id}/edit`)}
           onDelete={setQuotationToDelete}

@@ -1,12 +1,26 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
-import { hashToken } from '../common/utils/token.util';
+import { generateToken, hashToken } from '../common/utils/token.util';
+import { MailerService } from '../mailer/mailer.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { LoginDto } from './dto/login.dto';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto/password.dto';
+
+/** Short-lived on purpose: a reset link is a bearer credential sitting in an inbox. */
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 
 interface RequestMeta {
   userAgent?: string;
@@ -15,9 +29,12 @@ interface RequestMeta {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -163,6 +180,121 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Refresh token is invalid or expired');
     }
+  }
+
+  /**
+   * Always resolves the same way, whether or not the address exists. Telling a
+   * caller "no such user" would turn this into a way to enumerate accounts.
+   */
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const settled = {
+      message:
+        'If that email belongs to an account, a reset link is on its way.',
+    };
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (!user || user.deletedAt || user.status === 'SUSPENDED') return settled;
+
+    const { token, tokenHash } = generateToken();
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetTokenHash: tokenHash,
+        passwordResetTokenExpiresAt: new Date(
+          Date.now() + PASSWORD_RESET_TTL_MS,
+        ),
+      },
+    });
+
+    try {
+      const origin = this.configService
+        .getOrThrow<string>('FRONTEND_ORIGIN')
+        .split(',')[0];
+      await this.mailerService.sendPasswordResetEmail(
+        user.email,
+        user.firstName,
+        `${origin}/auth/reset-password?token=${token}`,
+      );
+    } catch (error) {
+      // Still reports success: the response must not differ based on mail delivery.
+      this.logger.error(
+        `Password reset email to ${user.email} failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+    }
+
+    return settled;
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const tokenHash = hashToken(dto.token);
+    const user = await this.prisma.user.findUnique({
+      where: { passwordResetTokenHash: tokenHash },
+    });
+
+    if (
+      !user ||
+      user.deletedAt ||
+      !user.passwordResetTokenExpiresAt ||
+      user.passwordResetTokenExpiresAt < new Date()
+    ) {
+      throw new UnauthorizedException('Reset link is invalid or expired');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: await bcrypt.hash(dto.password, 10),
+          passwordResetTokenHash: null,
+          passwordResetTokenExpiresAt: null,
+          // An invited user who resets instead of accepting is still verified.
+          status: user.status === 'INVITED' ? 'ACTIVE' : user.status,
+          emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+        },
+      }),
+      // Whoever knew the old password is logged out everywhere.
+      this.prisma.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    return { message: 'Password updated. Sign in with your new password.' };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.deletedAt) throw new UnauthorizedException();
+
+    const matches = await bcrypt.compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
+    if (!matches) {
+      throw new BadRequestException('Your current password is not correct.');
+    }
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException(
+        'The new password must differ from the current one.',
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash: await bcrypt.hash(dto.newPassword, 10) },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    return {
+      message: 'Password changed. Other sessions have been signed out.',
+    };
   }
 
   private async issueTokenPair(

@@ -1,9 +1,25 @@
+/** How the member participates in this workspace — distinct from their company role. */
+export type WorkspaceMemberRole = "LEAD" | "MEMBER" | "VIEWER";
+
+/** The member's company-wide RBAC role, e.g. Project Manager. */
+export interface MemberCompanyRole {
+  id: string;
+  name: string;
+  displayName: string;
+}
+
 export interface WorkspaceMember {
   id: string;
   workspaceId: string;
   userId: string;
-  memberRole: string | null;
-  user: { id: string; firstName: string; lastName: string; email: string };
+  memberRole: WorkspaceMemberRole | null;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role?: MemberCompanyRole | null;
+  };
 }
 
 export interface Workspace {
@@ -32,5 +48,5 @@ export type UpdateWorkspacePayload = Partial<Omit<CreateWorkspacePayload, "proje
 
 export interface AddMemberPayload {
   userId: string;
-  memberRole?: string;
+  memberRole?: WorkspaceMemberRole;
 }

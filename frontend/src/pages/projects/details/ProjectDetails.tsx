@@ -57,7 +57,7 @@ export default function ProjectDetails() {
     if (!id) return;
     setIsLoadingWorkspaces(true);
     api
-      .get<Workspace[]>(`/workspaces?projectId=${id}`)
+      .list<Workspace>(`/workspaces?projectId=${id}`)
       .then(setWorkspaces)
       .catch((error) =>
         toast.error(error instanceof ApiError ? error.message : "Failed to load workspaces.")
@@ -286,7 +286,7 @@ export default function ProjectDetails() {
         <div className="pt-2">
           <TasksPanel
             projectId={id}
-            title={`${project.title} Tasks`}
+
             emptyText="No tasks created in this project yet."
           />
         </div>

@@ -11,15 +11,18 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
   type CurrentUserPayload,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { LogActivity } from '../common/decorators/log-activity.decorator';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { ListInvoicesQueryDto } from './dto/list-invoices-query.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { InvoicesService } from './invoices.service';
@@ -36,6 +39,7 @@ export class InvoicesController {
       'Create an invoice with its line items. SUPER_ADMIN can target any company; others create within their own.',
   })
   @RequirePermissions('invoices:create')
+  @LogActivity(ActivityEntity.INVOICE, ActivityAction.CREATE)
   @Post()
   create(
     @Body() dto: CreateInvoiceDto,
@@ -52,11 +56,9 @@ export class InvoicesController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('companyId') companyId?: string,
-    @Query('clientId') clientId?: string,
-    @Query('projectId') projectId?: string,
+    @Query() query: ListInvoicesQueryDto,
   ) {
-    return this.invoicesService.findAll(actor, companyId, clientId, projectId);
+    return this.invoicesService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get an invoice with its line items and payments.' })
@@ -71,6 +73,7 @@ export class InvoicesController {
       'Update an invoice. Passing lineItems replaces the full set (delete + recreate).',
   })
   @RequirePermissions('invoices:update')
+  @LogActivity(ActivityEntity.INVOICE, ActivityAction.UPDATE)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -82,6 +85,7 @@ export class InvoicesController {
 
   @ApiOperation({ summary: 'Soft-delete an invoice.' })
   @RequirePermissions('invoices:delete')
+  @LogActivity(ActivityEntity.INVOICE, ActivityAction.SOFT_DELETE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @CurrentUser() actor: CurrentUserPayload) {

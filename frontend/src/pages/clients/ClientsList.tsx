@@ -11,7 +11,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
-import { api, ApiError } from "@/lib/api";
+import { useDebounced } from "@/hooks/use-debounced";
+import { usePaginatedList } from "@/hooks/use-paginated-list";
+import { api, ApiError, type Paginated } from "@/lib/api";
 import { can } from "@/lib/permissions";
 import type { Client } from "@/types/client";
 import type { Company } from "@/types/company";
@@ -25,58 +27,45 @@ export default function ClientsList() {
   const { user: actor } = useAuth();
   const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
 
-  const [clients, setClients] = useState<Client[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companyId, setCompanyId] = useState<string | undefined>(
     actor?.companyId ?? undefined
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchClients = () => {
-    setIsLoading(true);
-    const query = companyId ? `?companyId=${companyId}` : "";
-    api
-      .get<Client[]>(`/clients${query}`)
-      .then(setClients)
-      .catch((error) =>
-        toast.error(error instanceof ApiError ? error.message : "Failed to load clients.")
-      )
-      .finally(() => setIsLoading(false));
-  };
+  const debouncedSearch = useDebounced(search);
 
-  useEffect(fetchClients, [companyId]);
+  const query = useMemo(() => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(pageSize),
+    });
+    if (companyId) params.set("companyId", companyId);
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    return params.toString();
+  }, [page, pageSize, companyId, debouncedSearch]);
+
+  const {
+    data: clients,
+    total,
+    isLoading,
+    refetch,
+  } = usePaginatedList<Client>("/clients", query, "Failed to load clients.");
 
   useEffect(() => {
     if (isSuperAdmin) {
       api
-        .get<Company[]>("/companies")
-        .then(setCompanies)
+        .get<Paginated<Company>>("/companies?limit=200")
+        .then((result) => setCompanies(result.data))
         .catch(() => toast.error("Failed to load companies."));
     }
   }, [isSuperAdmin]);
 
-  const filteredClients = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return clients;
-    return clients.filter(
-      (client) =>
-        client.name.toLowerCase().includes(query) ||
-        client.email.toLowerCase().includes(query) ||
-        (client.industry && client.industry.toLowerCase().includes(query))
-    );
-  }, [clients, search]);
-
-  useEffect(() => setPage(1), [search, pageSize]);
-
-  const paginatedClients = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredClients.slice(start, start + pageSize);
-  }, [filteredClients, page, pageSize]);
+  useEffect(() => setPage(1), [debouncedSearch, pageSize, companyId]);
 
   const handleDelete = async () => {
     if (!clientToDelete) return;
@@ -84,9 +73,7 @@ export default function ClientsList() {
     try {
       await api.delete(`/clients/${clientToDelete.id}`);
       toast.success("Client deleted successfully.");
-      setClients((current) =>
-        current.filter((client) => client.id !== clientToDelete.id)
-      );
+      refetch();
       setClientToDelete(null);
     } catch (error) {
       toast.error(
@@ -105,7 +92,7 @@ export default function ClientsList() {
         breadcrumbs={[{ label: "Clients" }]}
         badge={
           <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
-            {clients.length} total
+            {total} total
           </span>
         }
         actions={
@@ -155,7 +142,7 @@ export default function ClientsList() {
           ) : undefined
         }
         isLoading={isLoading}
-        isEmpty={filteredClients.length === 0}
+        isEmpty={clients.length === 0}
         emptyState={{
           icon: Briefcase,
           title: search ? "No matching clients found" : "No clients created yet",
@@ -174,13 +161,13 @@ export default function ClientsList() {
         pagination={{
           page,
           pageSize,
-          total: filteredClients.length,
+          total,
           onPageChange: setPage,
           onPageSizeChange: setPageSize,
         }}
       >
         <ClientsListTable
-          clients={paginatedClients}
+          clients={clients}
           onView={(client) => navigate(`/clients-list/${client.id}`)}
           onEdit={(client) => navigate(`/clients-list/${client.id}/edit`)}
           onDelete={setClientToDelete}

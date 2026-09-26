@@ -46,6 +46,8 @@ export type UserFormValues = z.infer<typeof schema>;
 interface UserFormProps {
     mode: "create" | "edit";
     initialValues?: User;
+    /** Pre-selects the company when arriving from a company's page. */
+    defaultCompanyId?: string;
     onSubmit: (values: UserFormValues) => Promise<void>;
     isSubmitting: boolean;
 }
@@ -63,7 +65,7 @@ const FormSection = ({ title, description, children }: { title: string; descript
     </section>
 );
 
-const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps) => {
+const UserForm = ({ mode, initialValues, defaultCompanyId, onSubmit, isSubmitting }: UserFormProps) => {
     const { user: actor } = useAuth();
     const isSuperAdmin = actor?.roleName === "SUPER_ADMIN";
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -77,7 +79,7 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
             email: initialValues?.email ?? "",
             phone: initialValues?.phone ?? "",
             roleId: initialValues?.roleId ?? "",
-            companyId: initialValues?.companyId ?? undefined,
+            companyId: initialValues?.companyId ?? defaultCompanyId ?? undefined,
             gender: initialValues?.gender ?? undefined,
             dateOfBirth: initialValues?.dateOfBirth?.slice(0, 10) ?? "",
             employmentType: initialValues?.employmentType ?? undefined,
@@ -94,7 +96,7 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
 
     useEffect(() => {
         if (isSuperAdmin) {
-            api.get<Company[]>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
+            api.list<Company>("/companies").then(setCompanies).catch(() => toast.error("Failed to load companies."));
         }
     }, [isSuperAdmin]);
 
@@ -104,7 +106,7 @@ const UserForm = ({ mode, initialValues, onSubmit, isSubmitting }: UserFormProps
             return;
         }
         api
-            .get<Role[]>(`/roles?companyId=${targetCompanyId}`)
+            .list<Role>(`/roles?companyId=${targetCompanyId}`)
             .then(setRoles)
             .catch(() => toast.error("Failed to load roles."));
     }, [targetCompanyId]);

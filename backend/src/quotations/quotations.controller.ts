@@ -11,15 +11,18 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
   type CurrentUserPayload,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { LogActivity } from '../common/decorators/log-activity.decorator';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
+import { ListQuotationsQueryDto } from './dto/list-quotations-query.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QuotationsService } from './quotations.service';
 
@@ -35,6 +38,7 @@ export class QuotationsController {
       'Create a quotation with its line items. SUPER_ADMIN can target any company; others create within their own.',
   })
   @RequirePermissions('quotations:create')
+  @LogActivity(ActivityEntity.QUOTATION, ActivityAction.CREATE)
   @Post()
   create(
     @Body() dto: CreateQuotationDto,
@@ -51,11 +55,9 @@ export class QuotationsController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('companyId') companyId?: string,
-    @Query('clientId') clientId?: string,
-    @Query('projectId') projectId?: string,
+    @Query() query: ListQuotationsQueryDto,
   ) {
-    return this.quotationsService.findAll(actor, companyId, clientId, projectId);
+    return this.quotationsService.findAll(actor, query);
   }
 
   @ApiOperation({ summary: 'Get a quotation with its line items.' })
@@ -70,6 +72,7 @@ export class QuotationsController {
       'Update a quotation. Passing lineItems replaces the full set (delete + recreate).',
   })
   @RequirePermissions('quotations:update')
+  @LogActivity(ActivityEntity.QUOTATION, ActivityAction.UPDATE)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -81,6 +84,7 @@ export class QuotationsController {
 
   @ApiOperation({ summary: 'Soft-delete a quotation.' })
   @RequirePermissions('quotations:delete')
+  @LogActivity(ActivityEntity.QUOTATION, ActivityAction.SOFT_DELETE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @CurrentUser() actor: CurrentUserPayload) {

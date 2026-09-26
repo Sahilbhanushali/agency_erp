@@ -3,14 +3,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { toDateOrUndefined } from '../common/utils/date.util';
+import { buildMeta, toSkipTake } from '../common/utils/paginate.util';
 import {
   assertCompanyAccess,
   resolveTargetCompanyId,
 } from '../common/utils/tenant-scope.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
 const PROJECT_INCLUDE = {
@@ -48,18 +51,36 @@ export class ProjectsService {
     });
   }
 
-  findAll(actor: CurrentUserPayload, companyId?: string, clientId?: string) {
+  async findAll(actor: CurrentUserPayload, filters: ListProjectsQueryDto) {
     const scopedCompanyId =
-      actor.roleName === 'SUPER_ADMIN' ? companyId : actor.companyId;
-    return this.prisma.project.findMany({
-      where: {
-        deletedAt: null,
-        ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
-        ...(clientId ? { clientId } : {}),
-      },
-      include: PROJECT_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
+      actor.roleName === 'SUPER_ADMIN' ? filters.companyId : actor.companyId;
+    const query = filters.search?.trim();
+    const where: Prisma.ProjectWhereInput = {
+      deletedAt: null,
+      ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
+      ...(filters.clientId ? { clientId: filters.clientId } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query } },
+              { client: { name: { contains: query } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.project.findMany({
+        where,
+        include: PROJECT_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        ...toSkipTake(filters.page, filters.limit),
+      }),
+      this.prisma.project.count({ where }),
+    ]);
+
+    return { data, meta: buildMeta(total, filters.page, filters.limit) };
   }
 
   async findOne(id: string, actor: CurrentUserPayload) {

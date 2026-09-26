@@ -2,13 +2,18 @@ import type { AuthUser } from "@/context/AuthContext";
 import {
   Briefcase,
   Building2,
+  CalendarDays,
+  CheckCheck,
   CheckSquare,
   FileText,
   FolderKanban,
   LayoutDashboard,
   LayoutGrid,
+  Link2,
+  Megaphone,
   Receipt,
   ShieldCheck,
+  Target,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -37,6 +42,15 @@ const NAV_ITEMS: SidebarNavItem[] = [
     icon: CheckSquare,
   },
   {
+    label: "Sales",
+  },
+  {
+    title: "Leads",
+    url: "/leads",
+    icon: Target,
+    permission: "leads:read",
+  },
+  {
     label: "Delivery",
   },
   {
@@ -56,6 +70,39 @@ const NAV_ITEMS: SidebarNavItem[] = [
     url: "/clients-list",
     icon: Briefcase,
     permission: "clients:read",
+  },
+  {
+    title: "Approvals",
+    url: "/approvals",
+    icon: CheckCheck,
+    permission: "approvals:read",
+  },
+  {
+    label: "Marketing",
+  },
+  {
+    title: "Campaigns",
+    url: "/campaigns-list",
+    icon: Megaphone,
+    permission: "campaigns:read",
+  },
+  {
+    title: "Content",
+    url: "/content",
+    icon: FileText,
+    permission: "posts:read",
+  },
+  {
+    title: "Content Calendar",
+    url: "/content/calendar",
+    icon: CalendarDays,
+    permission: "posts:read",
+  },
+  {
+    title: "Social Accounts",
+    url: "/social-accounts",
+    icon: Link2,
+    permission: "social_accounts:read",
   },
   {
     label: "Financials",

@@ -149,7 +149,7 @@ const EmployeeProfileForm = ({ user, onSaved }: EmployeeProfileFormProps) => {
     useEffect(() => {
         if (!user.companyId) return;
         api
-            .get<User[]>(`/users?companyId=${user.companyId}`)
+            .list<User>(`/users?companyId=${user.companyId}`)
             .then((users) => setColleagues(users.filter((u) => u.id !== user.id)))
             .catch(() => toast.error("Failed to load managers."));
     }, [user.companyId, user.id]);

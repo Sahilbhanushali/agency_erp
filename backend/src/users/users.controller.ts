@@ -14,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import {
@@ -29,8 +30,10 @@ import {
   type CurrentUserPayload,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { LogActivity } from '../common/decorators/log-activity.decorator';
 import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -51,6 +54,7 @@ export class UsersController {
       'Create a user/employee. SUPER_ADMIN can target any company; others create within their own.',
   })
   @RequirePermissions('users:create')
+  @LogActivity(ActivityEntity.USER, ActivityAction.CREATE)
   @Post()
   create(@Body() dto: CreateUserDto, @CurrentUser() actor: CurrentUserPayload) {
     return this.usersService.create(dto, actor);
@@ -64,9 +68,9 @@ export class UsersController {
   @Get()
   findAll(
     @CurrentUser() actor: CurrentUserPayload,
-    @Query('companyId') companyId?: string,
+    @Query() query: ListUsersQueryDto,
   ) {
-    return this.usersService.findAll(actor, companyId);
+    return this.usersService.findAll(actor, query);
   }
 
   @ApiOperation({
@@ -80,6 +84,7 @@ export class UsersController {
 
   @ApiOperation({ summary: "Update a user's basic details." })
   @RequirePermissions('users:update')
+  @LogActivity(ActivityEntity.USER, ActivityAction.UPDATE)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -91,6 +96,7 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Soft-delete a user.' })
   @RequirePermissions('users:delete')
+  @LogActivity(ActivityEntity.USER, ActivityAction.SOFT_DELETE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @CurrentUser() actor: CurrentUserPayload) {
@@ -196,11 +202,7 @@ export class UsersController {
     @CurrentUser() actor: CurrentUserPayload,
     @Res() res: Response,
   ) {
-    const file = await this.usersService.getDocumentFile(
-      id,
-      documentId,
-      actor,
-    );
+    const file = await this.usersService.getDocumentFile(id, documentId, actor);
     res.download(file.absolutePath, file.originalName);
   }
 
@@ -216,5 +218,19 @@ export class UsersController {
     @CurrentUser() actor: CurrentUserPayload,
   ) {
     return this.usersService.removeDocument(id, documentId, actor);
+  }
+
+  @ApiOperation({
+    summary:
+      'Send a fresh invite to someone whose first one never arrived (e.g. a mail outage).',
+  })
+  @RequirePermissions('users:update')
+  @LogActivity(ActivityEntity.USER, ActivityAction.SEND)
+  @Post(':id/resend-invite')
+  resendInvite(
+    @Param('id') id: string,
+    @CurrentUser() actor: CurrentUserPayload,
+  ) {
+    return this.usersService.resendInvite(id, actor);
   }
 }

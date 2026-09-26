@@ -10,7 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Eye, EyeOff, FolderKanban, Loader2, Lock, Mail, Receipt, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import * as z from "zod";
 
@@ -180,6 +180,12 @@ const Login = () => {
                                             <label htmlFor="password" className="text-xs font-medium text-foreground">
                                                 Password
                                             </label>
+                                            <Link
+                                                to="/auth/forgot-password"
+                                                className="text-[11px] text-muted-foreground hover:text-primary transition-colors"
+                                            >
+                                                Forgot password?
+                                            </Link>
                                         </div>
                                         <div className="relative">
                                             <Lock className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />

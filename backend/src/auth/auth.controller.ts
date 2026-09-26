@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -17,6 +18,11 @@ import {
 } from './decorators/current-user.decorator';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { LoginDto } from './dto/login.dto';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto/password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -78,5 +84,40 @@ export class AuthController {
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     };
+  }
+
+  @ApiOperation({
+    summary:
+      'Start a password reset. Always succeeds, so it cannot be used to discover which emails exist.',
+  })
+  @HttpCode(HttpStatus.OK)
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @ApiOperation({
+    summary:
+      'Set a new password using an emailed token. Signs out every existing session.',
+  })
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
+  @ApiOperation({
+    summary:
+      'Change your own password. Requires the current one and ends other sessions.',
+  })
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Patch('change-password')
+  changePassword(
+    @CurrentUser() actor: CurrentUserPayload,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(actor.id, dto);
   }
 }
