@@ -123,3 +123,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Printable finance documents. "Export PDF" is the browser's own print-to-PDF —
+ * no PDF library, and what you see on screen is what lands in the file.
+ * Mark anything that must not print with Tailwind's `print:hidden`.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Keep a line item and the totals block from splitting across pages. */
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+}

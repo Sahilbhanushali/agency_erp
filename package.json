@@ -8,7 +8,8 @@
     "lint": "next lint",
     "start": "next start -p $PORT",
     "db:seed": "node prisma/seed.mjs",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "check:finance": "tsc lib/finance.ts lib/finance.check.ts --outDir node_modules/.cache/finance-check --module commonjs --target es2022 --esModuleInterop --strict && node node_modules/.cache/finance-check/finance.check.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

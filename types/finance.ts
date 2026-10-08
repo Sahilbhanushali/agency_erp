@@ -54,3 +54,53 @@ export interface DocumentLine {
   unitPrice: number
   position: number
 }
+
+/** Prisma Decimal columns serialize to strings over JSON — coerce with `toNumber`. */
+export type Money = string | number
+
+export interface QuotationLineItem {
+  id: string
+  description: string
+  quantity: Money
+  unit: string | null
+  unitPrice: Money
+  position: number
+}
+
+/** What a list row renders. */
+export interface QuotationRow {
+  id: string
+  number: string
+  title: string
+  status: QuotationStatus
+  currency: string
+  totalAmount: Money
+  validUntil: string | null
+  createdAt: string
+  shareToken: string | null
+  company: { id: string; name: string }
+  client: { id: string; name: string; company: string | null }
+  project: { id: string; name: string } | null
+  invoice: { id: string; number: string } | null
+}
+
+/** The whole document, as the editor and the printable sheet need it. */
+export interface QuotationDetail extends QuotationRow {
+  companyId: string
+  clientId: string
+  projectId: string | null
+  subtotal: Money
+  discountPercent: Money
+  taxType: TaxType
+  taxPercent: Money
+  terms: string | null
+  notes: string | null
+  shareExpiresAt: string | null
+  sentAt: string | null
+  acceptedAt: string | null
+  convertedAt: string | null
+  updatedAt: string
+  company: Company
+  createdBy: { id: number; name: string | null } | null
+  lineItems: QuotationLineItem[]
+}

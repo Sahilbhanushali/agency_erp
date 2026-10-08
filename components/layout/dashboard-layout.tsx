@@ -61,6 +61,7 @@ const navigation: NavigationItem[] = [
   { name: "Reports", href: "/dashboard/reports", icon: BarChart3, permissions: ["View-reports"] },
   { name: "Clients", href: "/dashboard/clients", icon: Users, permissions: ["Manage-clients", "View-clients"] },
   { name: "Companies", href: "/dashboard/companies", icon: Building2, permissions: ["Manage-companies", "View-companies"] },
+  { name: "Quotations", href: "/dashboard/quotations", icon: FileText, permissions: ["Manage-quotations", "View-quotations"] },
   { name: "User Management", href: "/dashboard/users", icon: UserCog, permissions: ["Manage-User"], allowedRoles: ["ADMIN", "MANAGER"] },
   { name: "Utilities", href: "/dashboard/utilities", icon: UtilityPole, permissions: ["View-utilities"] },
   { name: "Credentials", href: "/dashboard/credentials", icon: Key, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
