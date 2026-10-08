@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post Rejected</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      text-align: center;
+    }
+    .header {
+      background-color: #1976d2;
+      padding: 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: #ffffff;
+    }
+    .header img {
+      max-width: 140px;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .content {
+      padding: 30px;
+      text-align: left;
+    }
+    .content p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin: 0 0 20px;
+    }
+    .details {
+      background-color: #f9fafb;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .details h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #d32f2f;
+      margin: 0 0 15px;
+    }
+    .details p {
+      font-size: 14px;
+      margin: 8px 0;
+    }
+    .label {
+      font-weight: 600;
+      color: #555;
+    }
+    .value {
+      color: #333;
+    }
+    .asset-image {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 20px 0;
+      display: block;
+    }
+    .footer {
+      background-color: #f4f4f9;
+      padding: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+      border-top: 1px solid #e5e5e5;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #d32f2f;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-top: 20px;
+    }
+    .button:hover {
+      background-color: #b71c1c;
+    }
+    @media (max-width: 600px) {
+      .container {
+        margin: 20px;
+      }
+      .content {
+        padding: 20px;
+      }
+      .asset-image {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="https://automation.rndtechnosoft.com/templates/images/rnd.png" alt="Header Image" />
+      <h1>Post Rejected</h1>
+    </div>
+
+    <div class="content">
+      <p>Dear {{ designerName }},</p>
+      <p>The post <strong>{{ postTitle }}</strong> for the project <strong>{{ projectName }}</strong> has been rejected. Please review the feedback below and take the necessary actions to resubmit the post.</p>
+      
+      {{ #assetUrl }}
+      <!-- <div class="asset">
+        <h2>Post Image</h2>
+        <img src="{{ assetUrl }}" alt="Post Image" class="asset-image">
+      </div> -->
+      {{ /assetUrl }}
+
+      <p>Please review the feedback and coordinate with the project team as needed. Resubmit the post after making the necessary changes.</p>
+      
+      <a href="{{ dashboardUrl }}" class="button">View Post in Dashboard</a>
+    </div>
+
+    <div class="footer">
+      <p>This is an automated email from Automation.rndtechnosoft.com. Please do not reply directly to this email.</p>
+      <p>&copy; {{ currentYear }} Automation.rndtechnosoft.com. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

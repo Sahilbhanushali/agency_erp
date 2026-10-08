@@ -1,0 +1,82 @@
+import { type NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { hasPermission } from "@/lib/api-auth";
+import { promises as fs } from "fs";
+import path from "path";
+
+// Helper function to delete file from filesystem
+async function deleteFileFromDisk(fileUrl: string): Promise<void> {
+  try {
+    const filename = fileUrl.replace('/api/uploads/', '').replace('/uploads/', '').replace('/Uploads/', '');
+    const filePath = path.join(process.cwd(), "public", "uploads", filename)
+    
+    try {
+      await fs.access(filePath)
+      await fs.unlink(filePath)
+      console.log(`Successfully deleted file: ${filePath}`)
+    } catch (fileError) {
+      console.warn(`File not found or already deleted: ${filePath}`)
+    }
+  } catch (error) {
+    console.error(`Failed to delete file: ${fileUrl}`, error)
+  }
+}
+
+// POST bulk delete assets
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!(await hasPermission(session, "Manage-assets"))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { assetIds } = await request.json();
+
+    if (!assetIds || !Array.isArray(assetIds) || assetIds.length === 0) {
+      return NextResponse.json({ error: "Asset IDs array is required" }, { status: 400 });
+    }
+
+    // Get all assets to delete
+    const assets = await prisma.asset.findMany({
+      where: { 
+        id: { in: assetIds }
+      },
+      select: { id: true, url: true, filename: true }
+    });
+
+    if (assets.length === 0) {
+      return NextResponse.json({ error: "No assets found" }, { status: 404 });
+    }
+
+    // Delete files from filesystem (continue even if some fail)
+    const deleteFilePromises = assets.map((asset: { url: string }) => deleteFileFromDisk(asset.url));
+    await Promise.allSettled(deleteFilePromises);
+
+    // Delete from database
+    const deleteResult = await prisma.asset.deleteMany({
+      where: { 
+        id: { in: assetIds }
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully deleted ${deleteResult.count} assets`,
+      deletedCount: deleteResult.count,
+      requestedCount: assetIds.length
+    });
+
+  } catch (error) {
+    console.error("Error bulk deleting assets:", error);
+    return NextResponse.json({ 
+      error: "Failed to delete assets",
+      details: process.env.NODE_ENV === 'development' ? error : undefined
+    }, { status: 500 });
+  }
+}

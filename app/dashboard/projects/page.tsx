@@ -1,0 +1,752 @@
+
+"use client";
+
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import useSWR, { mutate } from "swr";
+import { useEffect, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Search, Loader2 } from "lucide-react";
+import { toast } from "react-hot-toast";
+import Link from "next/link";
+import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getMediaUrl } from "@/lib/utils";
+import MediaPopup from "@/components/mediaPopup";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
+import { ProjectTimingBadge } from "@/components/posts/postTimingBadge";
+
+interface PostTypeCount {
+  [key: string]: number;
+}
+
+interface PostAsset {
+  id: string;
+  isReference: boolean;
+  createdAt?: string;
+}
+
+interface PostItem {
+  id: string | number;
+  createdAt: string;
+  scheduledAt?: string | null;
+  status?: string;
+  assets?: PostAsset[];
+}
+
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string | null;
+  isActive: boolean;
+  postTypes: PostTypeCount;
+  client: { id: string; name: string; company: string } | null;
+  manager: { name: string } | null;
+  posts: PostItem[];
+  image?: string | null;
+}
+
+interface User {
+  id: string;
+  role: string;
+}
+
+const isValidDate = (dateString: string | undefined | null): boolean => {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  return !isNaN(date.getTime());
+};
+
+const truncateWords = (text?: string | null, maxWords: number = 3): string => {
+  if (!text) return "Unknown Company";
+  const words = text.trim().split(/\s+/);
+  if (words.length > maxWords) {
+    return `${words.slice(0, maxWords).join(" ")}...`;
+  }
+  return text;
+};
+
+const fetcher = async (url: string) => {
+  const separator = url.includes("?") ? "&" : "?";
+  const fullUrl = `${url}${separator}t=${Date.now()}`;
+  console.log("Fetching URL:", fullUrl);
+  const response = await fetch(fullUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorMessage;
+    } catch {
+      errorMessage = response.statusText || errorMessage;
+    }
+
+    console.error(`API Error for ${url}:`, {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorMessage,
+    });
+
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+};
+
+// Function to calculate total posts from postTypes
+const calculateTotalPosts = (postTypes: PostTypeCount | undefined): number => {
+  if (!postTypes) return 0;
+  return Object.values(postTypes).reduce((sum, count) => sum + count, 0);
+};
+
+export default function ProjectsPage() {
+  const { data: session, status } = useSession();
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("Active");
+  const [clientFilter, setClientFilter] = useState("All");
+  const [monthFilter, setMonthFilter] = useState<string>(String(new Date().getMonth() + 1));
+  const [yearFilter, setYearFilter] = useState<string>(String(new Date().getFullYear()));
+  const [isToggling, setIsToggling] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isNavigatingToEdit, setIsNavigatingToEdit] = useState<string | null>(null);
+  const [selectedLogo, setSelectedLogo] = useState<{ url: string; filename: string; type: string } | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
+
+  console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      if (status !== "authenticated" || !session?.user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("Fetching permissions for user:", session.user.id);
+        const roleResponse = await fetch(`/api/users/role?id=${session.user.id}`, {
+          credentials: "include",
+        });
+
+        if (!roleResponse.ok) {
+          throw new Error(`Failed to fetch user role: ${roleResponse.status}`);
+        }
+
+        const userData = await roleResponse.json();
+        console.log("User role data:", userData);
+
+        if (userData.role) {
+          const permResponse = await fetch(`/api/role-permission/role/${userData.role}`, {
+            credentials: "include",
+          });
+
+          if (!permResponse.ok) {
+            throw new Error(`Failed to fetch permissions: ${permResponse.status}`);
+          }
+
+          const permData = await permResponse.json();
+          const userPermissions = permData.map((item: { permission: string }) => item.permission);
+          console.log("User permissions:", userPermissions);
+          setPermissions(userPermissions);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching permissions:", err);
+        setError(err instanceof Error ? err.message : "Failed to fetch permissions");
+        setLoading(false);
+      }
+    };
+
+    fetchPermissions();
+  }, [session, status]);
+
+  const userRole = session?.user?.role;
+  const isAdminOrManager = userRole === "ADMIN" || userRole === "Manager";
+
+  const projectsUrl = session?.user?.id
+    ? `/api/projects?month=${monthFilter}&year=${yearFilter}${!isAdminOrManager ? `&userId=${session.user.id}` : ""}`
+    : null;
+  console.log("Projects URL:", projectsUrl);
+
+  const { data: projects = [], error: projectsError, isLoading: projectsLoading } = useSWR<Project[]>(
+    status === "authenticated" && session?.user?.id ? projectsUrl : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      shouldRetryOnError: false,
+      onError: (error) => {
+        console.error("Projects SWR error:", error);
+      },
+    }
+  );
+
+  useEffect(() => {
+    if (projectsError) {
+      console.error("Failed to fetch projects:", projectsError);
+      setError(`Failed to fetch projects: ${projectsError.message}`);
+    }
+  }, [projectsError]);
+
+  const toggleProjectStatus = useCallback(
+    async (projectId: string, isActive: boolean) => {
+      if (isToggling === projectId) return;
+      setIsToggling(projectId);
+
+      try {
+        console.log("Toggling project status for ID:", projectId, "to isActive:", !isActive);
+        const project = projects.find((p) => p.id === projectId);
+        if (!project) {
+          throw new Error("Project not found");
+        }
+
+        mutate(
+          projectsUrl,
+          (currentProjects: Project[] | undefined) =>
+            currentProjects?.map((proj) =>
+              proj.id === projectId ? { ...proj, isActive: !isActive } : proj
+            ),
+          false
+        );
+
+        const payload = {
+          id: projectId,
+          isActive: !isActive,
+        };
+        console.log("Sending payload to /api/projects/toggle-status:", payload);
+
+        const response = await fetch(`/api/projects/toggle-status`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Request-Source": "toggleProjectStatus",
+          },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Failed to toggle project status: ${errorData.error || response.statusText}`);
+        }
+
+        console.log("Toggle successful for project ID:", projectId);
+        mutate(projectsUrl);
+        toast.success(`Project ${!isActive ? "activated" : "deactivated"} successfully`);
+      } catch (error) {
+        console.error("Error toggling project status:", error);
+        mutate(projectsUrl);
+        setError(error instanceof Error ? error.message : "Failed to toggle project status");
+        toast.error(error instanceof Error ? error.message : "Failed to toggle project status");
+      } finally {
+        setIsToggling(null);
+      }
+    },
+    [projectsUrl, isToggling, projects]
+  );
+
+  const handleDeleteProject = async (projectId: string) => {
+    setIsDeleting(projectId);
+    try {
+      const response = await fetch(`/api/projects?id=${projectId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete project");
+      }
+
+      toast.success("Project deleted successfully");
+      mutate(projectsUrl);
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete project");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleEditNavigation = (projectId: string) => {
+    setIsNavigatingToEdit(projectId);
+    router.push(`/dashboard/projects/${projectId}/edit`);
+    setTimeout(() => {
+      setIsNavigatingToEdit((prev) => (prev === projectId ? null : prev));
+    }, 5000);
+  };
+
+  const companyNames = Array.from(
+    new Set(projects.map((project) => project.client?.company).filter((company): company is string => !!company))
+  );
+
+  const filteredProjects = projects.filter((project) => {
+    const matchesSearch =
+      (project.name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (project.client?.company?.toLowerCase() || "").includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === "All" ||
+      (statusFilter === "Active" && project.isActive) ||
+      (statusFilter === "Inactive" && !project.isActive);
+    const matchesClient = clientFilter === "All" || project.client?.company === clientFilter;
+    return matchesSearch && matchesStatus && matchesClient;
+  });
+
+  if (status === "loading" || loading || projectsLoading) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <Skeleton className="h-8 w-32 mb-2" />
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated" || !session?.user?.id || error) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {status === "unauthenticated" || !session?.user?.id ? "Unauthorized" : "Error Loading Data"}
+            </h3>
+            <p className="text-gray-600 text-center mb-4">
+              {status === "unauthenticated" || !session?.user?.id
+                ? "Please sign in to access this page."
+                : error || "An error occurred."}
+            </p>
+            <Button
+              onClick={() =>
+                status === "unauthenticated" || !session?.user?.id
+                  ? router.push("/auth/signin")
+                  : window.location.reload()
+              }
+            >
+              {status === "unauthenticated" || !session?.user?.id ? "Sign In" : "Retry"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const roleName = session.user.role || "Unknown";
+  const canManageProjects = ["ADMIN", "Manager"].includes(roleName) || permissions.includes("Manage-projects");
+
+  const getProjectPostMetrics = (project: Project) => {
+    if (!project.posts || !Array.isArray(project.posts)) {
+      return { created: 0, designUploaded: 0, clientApproved: 0, scheduled: 0, posted: 0 };
+    }
+
+    const filtered = project.posts.filter((post: any) => {
+      const dateStr = post.scheduledAt || post.createdAt;
+      if (!dateStr) return false;
+      const postDate = new Date(dateStr);
+      if (isNaN(postDate.getTime())) return false;
+
+      const yearMatch =
+        yearFilter === "all" ||
+        postDate.getFullYear() === parseInt(yearFilter as string) ||
+        postDate.getUTCFullYear() === parseInt(yearFilter as string);
+      const monthMatch =
+        monthFilter === "all" ||
+        postDate.getMonth() + 1 === parseInt(monthFilter as string) ||
+        postDate.getUTCMonth() + 1 === parseInt(monthFilter as string);
+      return yearMatch && monthMatch;
+    });
+
+    let designUploaded = 0;
+    let clientApproved = 0;
+    let scheduled = 0;
+    let posted = 0;
+
+    filtered.forEach((post: any) => {
+      if (post.assets && post.assets.some((asset: any) => !asset.isReference)) {
+        designUploaded++;
+      }
+      if (post.status === "C_APPROVED") {
+        clientApproved++;
+      } else if (post.status === "SCHEDULED") {
+        scheduled++;
+      } else if (post.status === "POSTED") {
+        posted++;
+      }
+    });
+
+    return {
+      created: filtered.length,
+      designUploaded,
+      clientApproved,
+      scheduled,
+      posted,
+    };
+  };
+
+  const getProjectPostsCount = (project: Project) => {
+    return getProjectPostMetrics(project).created;
+  };
+
+  const totalTargetPosts = filteredProjects.reduce((sum, project) => {
+    if (!project.isActive) return sum;
+    return sum + calculateTotalPosts(project.postTypes);
+  }, 0);
+
+  const totalPostsCreated = filteredProjects.reduce((sum, project) => {
+    if (!project.isActive) return sum;
+    return sum + getProjectPostsCount(project);
+  }, 0);
+
+
+  return (
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-800">Projects</h2>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
+            Manage your clients&apos; social media campaigns.
+          </p>
+        </div>
+        {canManageProjects && (
+          <Link href="/dashboard/projects/new">
+            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
+              <Plus className="mr-2 h-4 w-4" /> New Project
+            </Button>
+          </Link>
+        )}
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search projects by name or company..."
+            className="pl-9 w-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        
+        <div className="hidden md:flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="whitespace-nowrap font-medium text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 cursor-default"
+          >
+            Total Count: {totalTargetPosts}
+          </Button>
+          <Button
+            variant="outline"
+            className="whitespace-nowrap font-medium text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 cursor-default"
+          >
+            Total Posts Created: {totalPostsCreated}
+          </Button>
+        </div>
+        
+        <div className="flex gap-2 w-full md:w-auto">
+          <Select value={yearFilter} onValueChange={(val) => setYearFilter(val)}>
+            <SelectTrigger className="w-[110px]">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 2 + i).map(year => (
+                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={monthFilter} onValueChange={(val) => setMonthFilter(val)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Months</SelectItem>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                <SelectItem key={month} value={month.toString()}>
+                  {new Date(0, month - 1).toLocaleString('default', { month: 'short' })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={(value: "All" | "Active" | "Inactive") => setStatusFilter(value)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All Statuses</SelectItem>
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={clientFilter} onValueChange={setClientFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter by company" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All Companies</SelectItem>
+              {companyNames.map((company) => (
+                <SelectItem key={company} value={company}>
+                  {company}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {filteredProjects.length > 0 ? (
+        <div className="border rounded-lg overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px] text-center">#</TableHead>
+                <TableHead className="min-w-[200px]">Project Name</TableHead>
+                <TableHead className="min-w-[160px]">Company Name</TableHead>
+                <TableHead className="text-center">Target</TableHead>
+                <TableHead className="text-center">Post Created</TableHead>
+                <TableHead className="text-center">Design</TableHead>
+                <TableHead className="text-center">CA</TableHead>
+                <TableHead className="text-center">Scheduled</TableHead>
+                <TableHead className="text-center">Post</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProjects.map((project, index) => {
+                const metrics = getProjectPostMetrics(project);
+                const monthPosts = project.posts?.filter((post: any) => {
+                  const dateStr = post.scheduledAt || post.createdAt;
+                  if (!dateStr) return false;
+                  const postDate = new Date(dateStr);
+                  if (isNaN(postDate.getTime())) return false;
+
+                  const yearMatch =
+                    yearFilter === "all" ||
+                    postDate.getFullYear() === parseInt(yearFilter as string) ||
+                    postDate.getUTCFullYear() === parseInt(yearFilter as string);
+                  const monthMatch =
+                    monthFilter === "all" ||
+                    postDate.getMonth() + 1 === parseInt(monthFilter as string) ||
+                    postDate.getUTCMonth() + 1 === parseInt(monthFilter as string);
+                  return yearMatch && monthMatch;
+                }) || [];
+                const isFiltered = yearFilter !== "all" || monthFilter !== "all";
+                const timingPosts = isFiltered ? monthPosts : (project.posts || []);
+
+                return (
+                  <TableRow key={project.id}>
+                    <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        {project.image ? (
+                          <img
+                            src={getMediaUrl(project.image)}
+                            alt={project.name || "Project"}
+                            className="h-8 w-8 rounded-md object-cover border border-border flex-shrink-0 cursor-pointer hover:opacity-80 hover:scale-105 transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLogo({
+                                url: getMediaUrl(project.image!),
+                                filename: project.image!.split("/").pop() || `${project.name || "Project"}.jpg`,
+                                type: "image",
+                              });
+                            }}
+                            title="Click to view logo"
+                          />
+                        ) : (
+                          <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center border border-border text-[10px] font-semibold text-muted-foreground uppercase flex-shrink-0">
+                            {project.name ? project.name.substring(0, 2) : "PR"}
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0 items-start justify-center gap-0.5">
+                          <Link
+                            href={`/dashboard/projects/posts?projectId=${project.id}`}
+                            className="text-blue-600 hover:underline font-semibold text-sm leading-snug truncate block max-w-[220px]"
+                            onClick={() => console.log("Navigating to PostsPage with projectId:", project.id)}
+                            title={project.name || "Unnamed Project"}
+                          >
+                            {project.name || "Unnamed Project"}
+                          </Link>
+                          <ProjectTimingBadge posts={timingPosts as any} />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell title={project.client?.company || "Unknown Company"}>
+                      {truncateWords(project.client?.company, 3)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" title="Target Posts">
+                        {calculateTotalPosts(project.postTypes)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="secondary" className="font-semibold" title="Posts Created">
+                        {metrics.created}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-semibold dark:bg-purple-950 dark:text-purple-300" title="Design Uploaded">
+                        {metrics.designUploaded}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-semibold dark:bg-blue-950 dark:text-blue-300" title="Client Approve (CA)">
+                        {metrics.clientApproved}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-semibold dark:bg-amber-950 dark:text-amber-300" title="Scheduled">
+                        {metrics.scheduled}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold dark:bg-emerald-950 dark:text-emerald-300" title="Posted">
+                        {metrics.posted}
+                      </Badge>
+                    </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Link href={`/dashboard/projects/${project.id}`}>
+                        <Button variant="ghost" size="sm" disabled={isToggling === project.id}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      {(() => {
+                        const normalizedRole = roleName.toLowerCase();
+                        const canEditDelete = ["admin", "manager", "team lead", "social media manager", "designer"].includes(normalizedRole) || permissions.includes("Manage-projects");
+                        return canEditDelete;
+                      })() && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            disabled={isToggling === project.id || isDeleting === project.id || isNavigatingToEdit === project.id}
+                            onClick={() => handleEditNavigation(project.id)}
+                          >
+                            {isNavigatingToEdit === project.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Edit className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              toggleProjectStatus(project.id, project.isActive);
+                            }}
+                          >
+                            <Button
+                              type="submit"
+                              variant="ghost"
+                              size="sm"
+                              className={`${
+                                project.isActive ? "text-green-600 hover:text-green-700" : "text-red-900 hover:text-red-800"
+                              } hover:bg-red-100 transition-colors`}
+                              title={project.isActive ? "Deactivate" : "Activate"}
+                              disabled={isToggling === project.id || isDeleting === project.id || isNavigatingToEdit === project.id}
+                            >
+                              {isToggling === project.id ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                              ) : project.isActive ? (
+                                <ToggleLeft className="h-5 w-5" />
+                              ) : (
+                                <ToggleRight className="h-5 w-5" />
+                              )}
+                            </Button>
+                          </form>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-100 transition-colors"
+                            onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
+                            title="Delete"
+                            disabled={isToggling === project.id || isDeleting === project.id || isNavigatingToEdit === project.id}
+                          >
+                            {isDeleting === project.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="border rounded-lg p-12 text-center">
+          <div className="flex flex-col items-center">
+            <Plus className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {roleName === "ADMIN" ? "No projects match your filters" : "No assigned projects match your filters"}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {roleName === "ADMIN"
+                ? "No projects match the current filters."
+                : "No assigned projects match the current filters."}
+            </p>
+            {permissions.includes("Manage-projects") && (
+              <Link href="/dashboard/projects/new">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Project
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      <MediaPopup
+        isOpen={!!selectedLogo}
+        onClose={() => setSelectedLogo(null)}
+        asset={selectedLogo}
+      />
+
+      <DeleteConfirmationDialog
+        isOpen={!!projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={async () => {
+          if (!projectToDelete) return;
+          await handleDeleteProject(projectToDelete.id);
+          setProjectToDelete(null);
+        }}
+        itemName={projectToDelete?.name || "Project"}
+        entityType="project"
+        isLoading={isDeleting === projectToDelete?.id}
+      />
+    </div>
+  );
+}
