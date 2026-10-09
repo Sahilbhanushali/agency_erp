@@ -31,11 +31,22 @@ import {
   Clock,
   Sparkles,
   User,
+  FileSignature,
+  RotateCw,
+  Trash2,
+  Download,
+  AlertTriangle,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { getMediaUrl } from "@/lib/utils";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
+import { ContractDialog } from "@/components/contracts/contract-dialog";
+import { ExpenseDialog } from "@/components/expenses/expense-dialog";
+import toast from "react-hot-toast";
 
 interface Client {
   id: string;
@@ -91,6 +102,39 @@ interface Client {
     url?: string | null;
     createdAt: string;
   }>;
+  contracts?: Array<{
+    id: string;
+    contractNumber?: string | null;
+    title: string;
+    type: string;
+    status: string;
+    value: number | string;
+    currency: string;
+    billingCycle: string;
+    startDate: string;
+    endDate?: string | null;
+    renewalDate?: string | null;
+    autoRenew: boolean;
+    noticePeriodDays: number;
+    retainerHours?: number | string | null;
+    deliverableQuota?: Record<string, number> | null;
+    documentUrl?: string | null;
+    project?: { id: string; name: string } | null;
+    createdAt: string;
+  }>;
+  expenses?: Array<{
+    id: string;
+    title: string;
+    category: string;
+    amount: number | string;
+    currency: string;
+    date: string;
+    isBillable: boolean;
+    status: string;
+    receiptUrl?: string | null;
+    project?: { id: string; name: string } | null;
+    createdAt: string;
+  }>;
 }
 
 export default function ClientIdPage() {
@@ -103,6 +147,11 @@ export default function ClientIdPage() {
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [contractDialogOpen, setContractDialogOpen] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<any | null>(null);
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   useBreadcrumbTitle(clientId, client?.name || "Client Details");
 
@@ -179,6 +228,62 @@ export default function ClientIdPage() {
     }
   };
 
+  const handleRenewContract = async (contractId: string) => {
+    try {
+      setActionLoadingId(contractId);
+      const res = await fetch(`/api/contracts/${contractId}/renew`, { method: "POST" });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Failed to renew agreement");
+      toast.success(resData.message || "Agreement renewed successfully");
+      fetchClient();
+    } catch (err: any) {
+      toast.error(err.message || "Could not renew contract");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleSendContractReminder = async (contractId: string) => {
+    try {
+      setActionLoadingId(contractId);
+      const res = await fetch(`/api/contracts/${contractId}/reminder`, { method: "POST" });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Failed to send reminder");
+      toast.success(resData.message || "Renewal reminder dispatched");
+      fetchClient();
+    } catch (err: any) {
+      toast.error(err.message || "Could not send reminder");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleDeleteContract = async (contractId: string) => {
+    if (!confirm("Are you sure you want to remove this contract / agreement?")) return;
+    try {
+      const res = await fetch(`/api/contracts/${contractId}`, { method: "DELETE" });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Failed to delete");
+      toast.success("Contract removed successfully");
+      fetchClient();
+    } catch (err: any) {
+      toast.error(err.message || "Could not delete contract");
+    }
+  };
+
+  const handleDeleteClientExpense = async (expenseId: string) => {
+    if (!confirm("Are you sure you want to delete this expense record?")) return;
+    try {
+      const res = await fetch(`/api/expenses/${expenseId}`, { method: "DELETE" });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Failed to delete");
+      toast.success("Expense removed successfully");
+      fetchClient();
+    } catch (err: any) {
+      toast.error(err.message || "Could not delete expense");
+    }
+  };
+
   if (loading || status === "loading") {
     return (
       <div className="space-y-6 animate-pulse">
@@ -217,6 +322,13 @@ export default function ClientIdPage() {
   const quotations = client.quotations || [];
   const invoices = client.invoices || [];
   const credentials = client.credentials || [];
+  const contracts = client.contracts || [];
+  const expenses = client.expenses || [];
+
+  const totalInvoiced = invoices.reduce((acc, inv) => acc + Number(inv.total || 0), 0);
+  const totalExpenses = expenses.reduce((acc, exp) => acc + Number(exp.amount || 0), 0);
+  const netMargin = totalInvoiced - totalExpenses;
+  const marginPercent = totalInvoiced > 0 ? Number(((netMargin / totalInvoiced) * 100).toFixed(1)) : 0;
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
@@ -352,6 +464,12 @@ export default function ClientIdPage() {
           </TabsTrigger>
           <TabsTrigger value="billing" className="text-xs">
             Quotations & Invoices ({quotations.length + invoices.length})
+          </TabsTrigger>
+          <TabsTrigger value="contracts" className="text-xs">
+            Contracts & SOW ({contracts.length})
+          </TabsTrigger>
+          <TabsTrigger value="profitability" className="text-xs">
+            Expenses & Margins ({expenses.length})
           </TabsTrigger>
           <TabsTrigger value="credentials" className="text-xs">
             Credentials Vault ({credentials.length})
@@ -693,7 +811,429 @@ export default function ClientIdPage() {
           </Card>
         </TabsContent>
 
-        {/* Tab 4: Credentials Vault */}
+        {/* Tab 4: Contracts & Retainers */}
+        <TabsContent value="contracts" className="space-y-4">
+          <Card className="shadow-2xs">
+            <CardHeader className="pb-3 border-b border-border/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <FileSignature className="size-4 text-primary" />
+                    Contracts, Retainers & SOWs ({contracts.length})
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Deliverable quotas, retainer billing cycles, and automated renewal reminders
+                  </CardDescription>
+                </div>
+                {canManageClients && (
+                  <Button
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => {
+                      setSelectedContract(null);
+                      setContractDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="size-3.5 mr-1.5" />
+                    Add Agreement
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {contracts.length === 0 ? (
+                <EmptyState
+                  icon={FileSignature}
+                  title="No agreements recorded"
+                  description="Add an active retainer agreement, SOW, or MSA to track deliverable quotas and renewals."
+                  actionLabel={canManageClients ? "Add First Agreement" : undefined}
+                  onAction={
+                    canManageClients
+                      ? () => {
+                          setSelectedContract(null);
+                          setContractDialogOpen(true);
+                        }
+                      : undefined
+                  }
+                />
+              ) : (
+                <div className="rounded-lg border border-border/60 overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/40">
+                      <TableRow>
+                        <TableHead className="text-xs font-semibold">Agreement</TableHead>
+                        <TableHead className="text-xs font-semibold">Type & Cycle</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Value</TableHead>
+                        <TableHead className="text-xs font-semibold">Scope & Quota</TableHead>
+                        <TableHead className="text-xs font-semibold">Timeline & Renewal</TableHead>
+                        <TableHead className="text-xs font-semibold text-center">Document</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {contracts.map((cnt) => {
+                        const targetDate = cnt.renewalDate || cnt.endDate;
+                        const daysLeft = targetDate
+                          ? differenceInDays(new Date(targetDate), new Date())
+                          : null;
+                        const isExpiringSoon =
+                          cnt.status === "ACTIVE" &&
+                          daysLeft !== null &&
+                          daysLeft <= 30 &&
+                          daysLeft >= 0;
+
+                        return (
+                          <TableRow key={cnt.id} className="hover:bg-muted/30">
+                            <TableCell className="text-xs">
+                              <div className="font-semibold text-foreground">{cnt.title}</div>
+                              <div className="text-[11px] text-muted-foreground font-mono">
+                                {cnt.contractNumber || "—"}
+                                {cnt.project && (
+                                  <span className="ml-2 font-sans text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                    {cnt.project.name}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+
+                            <TableCell className="text-xs">
+                              <div className="flex flex-col gap-1 items-start">
+                                <Badge variant="outline" className="text-[10px] font-medium">
+                                  {cnt.type.replace(/_/g, " ")}
+                                </Badge>
+                                <span className="text-[10px] text-muted-foreground uppercase">
+                                  {cnt.billingCycle}
+                                </span>
+                              </div>
+                            </TableCell>
+
+                            <TableCell className="text-xs text-right font-semibold tabular-nums">
+                              ₹{Number(cnt.value || 0).toLocaleString("en-IN")}
+                              {cnt.autoRenew && (
+                                <div className="text-[10px] text-muted-foreground font-normal">
+                                  Auto-renews
+                                </div>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-xs">
+                              {cnt.retainerHours && (
+                                <div className="font-medium text-foreground">
+                                  {Number(cnt.retainerHours)} hrs / cycle
+                                </div>
+                              )}
+                              {cnt.deliverableQuota && Object.keys(cnt.deliverableQuota).length > 0 ? (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {Object.entries(cnt.deliverableQuota).map(([k, v]) => (
+                                    <span
+                                      key={k}
+                                      className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono"
+                                    >
+                                      {k}: {String(v)}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                !cnt.retainerHours && <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-xs">
+                              <div>
+                                {formatDate(cnt.startDate)} {cnt.endDate ? `→ ${formatDate(cnt.endDate)}` : ""}
+                              </div>
+                              {isExpiringSoon && (
+                                <Badge variant="destructive" className="text-[9px] mt-1">
+                                  Expires in {daysLeft}d
+                                </Badge>
+                              )}
+                              {cnt.status === "ACTIVE" && !isExpiringSoon && (
+                                <Badge variant="success" className="text-[9px] mt-1">
+                                  Active
+                                </Badge>
+                              )}
+                              {cnt.status === "EXPIRED" && (
+                                <Badge variant="neutral" className="text-[9px] mt-1">
+                                  Expired
+                                </Badge>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-xs text-center">
+                              {cnt.documentUrl ? (
+                                <a
+                                  href={getMediaUrl(cnt.documentUrl)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                                >
+                                  <FileText className="size-3.5" /> SOW
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground text-[11px]">—</span>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-xs text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {canManageClients && (
+                                  <>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="size-7"
+                                      title="Renew Agreement"
+                                      disabled={actionLoadingId === cnt.id}
+                                      onClick={() => handleRenewContract(cnt.id)}
+                                    >
+                                      <RotateCw className="size-3.5" />
+                                    </Button>
+
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="size-7"
+                                      title="Send Renewal Reminder"
+                                      disabled={actionLoadingId === cnt.id}
+                                      onClick={() => handleSendContractReminder(cnt.id)}
+                                    >
+                                      <Mail className="size-3.5" />
+                                    </Button>
+
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="size-7"
+                                      title="Edit Agreement"
+                                      onClick={() => {
+                                        setSelectedContract(cnt);
+                                        setContractDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="size-3.5" />
+                                    </Button>
+
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="size-7 text-destructive hover:text-destructive"
+                                      title="Delete"
+                                      onClick={() => handleDeleteContract(cnt.id)}
+                                    >
+                                      <Trash2 className="size-3.5" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 5: Expenses & Profitability */}
+        <TabsContent value="profitability" className="space-y-4">
+          {/* Client Financial Margins Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <Card className="shadow-2xs">
+              <CardContent className="p-3.5">
+                <div className="flex items-center justify-between text-muted-foreground mb-1">
+                  <span className="text-xs font-medium">Billed Invoices</span>
+                  <DollarSign className="size-4 text-emerald-600" />
+                </div>
+                <div className="text-lg font-bold text-foreground">
+                  ₹{Number(totalInvoiced).toLocaleString("en-IN")}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Commercial revenue</p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-2xs">
+              <CardContent className="p-3.5">
+                <div className="flex items-center justify-between text-muted-foreground mb-1">
+                  <span className="text-xs font-medium">Direct Expenses</span>
+                  <Receipt className="size-4 text-primary" />
+                </div>
+                <div className="text-lg font-bold text-foreground">
+                  ₹{Number(totalExpenses).toLocaleString("en-IN")}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Freelancers, tools, shoots</p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-2xs">
+              <CardContent className="p-3.5">
+                <div className="flex items-center justify-between text-muted-foreground mb-1">
+                  <span className="text-xs font-medium">Account Net Margin</span>
+                  {netMargin >= 0 ? (
+                    <TrendingUp className="size-4 text-emerald-600" />
+                  ) : (
+                    <TrendingDown className="size-4 text-rose-600" />
+                  )}
+                </div>
+                <div
+                  className={`text-lg font-bold ${
+                    netMargin >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-600"
+                  }`}
+                >
+                  ₹{Number(netMargin).toLocaleString("en-IN")}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Revenue minus direct costs</p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-2xs">
+              <CardContent className="p-3.5">
+                <div className="flex items-center justify-between text-muted-foreground mb-1">
+                  <span className="text-xs font-medium">Margin Ratio</span>
+                  <Badge
+                    variant={marginPercent >= 35 ? "success" : marginPercent >= 15 ? "outline" : "destructive"}
+                    className="text-[9px]"
+                  >
+                    {marginPercent >= 35 ? "Healthy" : marginPercent >= 15 ? "Moderate" : "Low Margin"}
+                  </Badge>
+                </div>
+                <div className="text-lg font-bold text-foreground">
+                  {marginPercent}%
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Commercial profitability</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Expenses Table */}
+          <Card className="shadow-2xs">
+            <CardHeader className="pb-3 border-b border-border/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Receipt className="size-4 text-primary" />
+                    Account Direct Costs & Contractor Expenses ({expenses.length})
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Contractors, production spend, ad budgets, and tools attributed to this client
+                  </CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => {
+                    setSelectedExpense(null);
+                    setExpenseDialogOpen(true);
+                  }}
+                >
+                  <Plus className="size-3.5 mr-1.5" />
+                  Log Expense
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {expenses.length === 0 ? (
+                <EmptyState
+                  icon={Receipt}
+                  title="No expenses logged for this client"
+                  description="Track freelancer fees, shoot production costs, or tool licenses to see actual client profit margins."
+                  actionLabel="Log Client Expense"
+                  onAction={() => {
+                    setSelectedExpense(null);
+                    setExpenseDialogOpen(true);
+                  }}
+                />
+              ) : (
+                <div className="rounded-lg border border-border/60 overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/40">
+                      <TableRow>
+                        <TableHead className="text-xs font-semibold">Date</TableHead>
+                        <TableHead className="text-xs font-semibold">Expense Title</TableHead>
+                        <TableHead className="text-xs font-semibold">Category</TableHead>
+                        <TableHead className="text-xs font-semibold">Project</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Amount</TableHead>
+                        <TableHead className="text-xs font-semibold text-center">Receipt</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {expenses.map((exp) => (
+                        <TableRow key={exp.id} className="hover:bg-muted/30">
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {format(new Date(exp.date), "MMM d, yyyy")}
+                          </TableCell>
+                          <TableCell className="text-xs font-medium">
+                            <span className="font-semibold text-foreground block">{exp.title}</span>
+                            {exp.isBillable && (
+                              <Badge variant="outline" className="text-[9px] font-normal mt-0.5">
+                                Rebillable
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <Badge variant="outline" className="text-[10px]">
+                              {exp.category.replace(/_/g, " ")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {exp.project ? exp.project.name : "General Account"}
+                          </TableCell>
+                          <TableCell className="text-xs text-right font-semibold tabular-nums">
+                            ₹{Number(exp.amount || 0).toLocaleString("en-IN")}
+                          </TableCell>
+                          <TableCell className="text-xs text-center">
+                            {exp.receiptUrl ? (
+                              <a
+                                href={getMediaUrl(exp.receiptUrl)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                              >
+                                <FileText className="size-3" /> Receipt
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground text-[11px]">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-7"
+                                title="Edit"
+                                onClick={() => {
+                                  setSelectedExpense(exp);
+                                  setExpenseDialogOpen(true);
+                                }}
+                              >
+                                <Edit className="size-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-7 text-destructive hover:text-destructive"
+                                title="Delete"
+                                onClick={() => handleDeleteClientExpense(exp.id)}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 6: Credentials Vault */}
         <TabsContent value="credentials">
           <Card className="shadow-2xs">
             <CardHeader className="pb-3 border-b border-border/50">
@@ -749,6 +1289,22 @@ export default function ClientIdPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ContractDialog
+        open={contractDialogOpen}
+        onOpenChange={setContractDialogOpen}
+        contract={selectedContract}
+        preselectedClientId={client.id}
+        onSaved={fetchClient}
+      />
+
+      <ExpenseDialog
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
+        expense={selectedExpense}
+        preselectedClientId={client.id}
+        onSaved={fetchClient}
+      />
     </div>
   );
 }

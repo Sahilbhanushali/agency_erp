@@ -3,15 +3,19 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logAuditAction } from "@/lib/audit"
+import { hasPermission } from "@/lib/api-auth"
+import { sendOnboardingInviteEmail } from "@/lib/email"
 import bcrypt from "bcryptjs"
+import crypto from "crypto"
+
+export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    // Uncomment if you want admin-only access
-    // if (!session?.user?.id || session.user.role !== "ADMIN") {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    // }
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
     // Extract role(s) from query params
     const { searchParams } = new URL(request.url)
@@ -35,6 +39,7 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         email: true,
+        password: true,
         role: { select: { name: true } },
         avatar: true,
         createdAt: true,
@@ -49,6 +54,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       role: user.role?.name || null,
       avatar: user.avatar,
+      hasPassword: !!user.password,
       createdAt: user.createdAt,
       assignedProjects: user.assignedProjects.map((project: any) => ({ name: project.name, id: project.id.toString() })),
     }))
@@ -57,23 +63,27 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching users:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  } finally {
-    // await prisma.$disconnect()
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id || !["ADMIN", "MANAGER", "Manager"].includes(session.user.role)) {
+    const canManageUsers = session?.user && (
+      ["ADMIN", "MANAGER", "Manager"].includes((session.user as any).role) ||
+      await hasPermission(session, "Manage-User")
+    )
+
+    if (!canManageUsers) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { name, email, password, role } = await request.json()
+    const body = await request.json()
+    const { name, email, role, password, sendInvite = true } = body
 
     // Validate input
-    if (!name || !email || !password || !role) {
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 })
+    if (!name || !email || !role) {
+      return NextResponse.json({ error: "Name, email, and role are required" }, { status: 400 })
     }
 
     // Check if role exists
@@ -88,8 +98,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User with this email already exists" }, { status: 400 })
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
+    let hashedPassword: string | null = null
+    const shouldSendInvite = sendInvite || !password
+
+    if (password && !shouldSendInvite) {
+      hashedPassword = await bcrypt.hash(password, 10)
+    }
 
     // Create user
     const user = await prisma.user.create({
@@ -97,29 +111,82 @@ export async function POST(request: NextRequest) {
         name,
         email,
         password: hashedPassword,
-        roleId: roleObj.id, // Use roleId
+        roleId: roleObj.id,
+      },
+      include: {
+        role: { select: { name: true } },
       },
     })
 
+    let inviteSent = false
+    let inviteError: string | null = null
+
+    // If onboarding invite is requested or no password was provided:
+    if (shouldSendInvite) {
+      try {
+        const setupToken = crypto.randomBytes(32).toString("hex")
+        const expiresAt = new Date(Date.now() + 48 * 3600 * 1000) // 48 hours validity
+
+        // Clean any pre-existing tokens for this email
+        await prisma.passwordReset.deleteMany({ where: { email } })
+
+        // Store setup token
+        await prisma.passwordReset.create({
+          data: {
+            email,
+            token: setupToken,
+            expiresAt,
+          },
+        })
+
+        // Dispatch onboarding email
+        await sendOnboardingInviteEmail({
+          email,
+          name,
+          role: roleObj.name,
+          token: setupToken,
+        })
+
+        inviteSent = true
+      } catch (err: any) {
+        console.error("Failed to send onboarding email:", err)
+        inviteError = err.message || "Failed to dispatch email"
+      }
+    }
+
     // Log audit action
     await logAuditAction({
-      userId: session.user.id.toString(),
+      userId: String(session.user.id),
       action: "CREATE",
       entityType: "User",
-      entityId: user.id.toString(),
-      newValues: JSON.stringify({ name, email, role }),
+      entityId: String(user.id),
+      newValues: JSON.stringify({
+        name,
+        email,
+        role,
+        inviteSent,
+        hasPassword: !!hashedPassword,
+      }),
       ipAddress: request.headers.get("x-forwarded-for") || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
     return NextResponse.json({
-      message: "User created successfully",
-      user: { id: user.id.toString(), name: user.name, email: user.email, role },
-    })
+      message: inviteSent
+        ? "User registered and onboarding invitation email sent successfully"
+        : "User created successfully",
+      user: {
+        id: user.id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role?.name,
+        hasPassword: !!user.password,
+      },
+      inviteSent,
+      inviteError,
+    }, { status: 201 })
   } catch (error) {
     console.error("Error creating user:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  } finally {
-    // await prisma.$disconnect()
   }
 }

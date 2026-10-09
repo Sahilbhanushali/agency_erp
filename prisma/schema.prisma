@@ -155,6 +155,12 @@ model User {
   createdQuotations   Quotation[]  @relation("CreatedQuotations")
   createdInvoices     Invoice[]    @relation("CreatedInvoices")
   recordedPayments    Payment[]    @relation("RecordedPayments")
+  createdContracts    Contract[]   @relation("CreatedContracts")
+  createdAnnotations  ProofAnnotation[]      @relation("CreatedAnnotations")
+  annotationReplies   ProofAnnotationReply[] @relation("UserReplies")
+  approvalDecisions   ApprovalStep[]         @relation("StepDecisions")
+  expenses            Expense[]              @relation("UserExpenses")
+  recordedExpenses    Expense[]              @relation("RecordedExpenses")
 
   // HR & Employee Details
   joiningDate          DateTime?
@@ -210,6 +216,8 @@ model Client {
   exportLinks ExportLink[]
   quotations  Quotation[]
   invoices    Invoice[]
+  contracts   Contract[]
+  expenses    Expense[]
 
   @@map("clients")
 }
@@ -241,6 +249,8 @@ model Project {
   exportLinks   ExportLink[]
   quotations    Quotation[]
   invoices      Invoice[]
+  contracts     Contract[]
+  expenses      Expense[]
 
   @@map("projects")
 }
@@ -321,6 +331,10 @@ model Post {
   // New relation for multiple assignees
   assignedUsers User[] @relation("PostAssignees")
 
+  // Proofing & Multi-stage Approval Chain relations
+  annotations    ProofAnnotation[]
+  approvalChains ApprovalChain[]
+
   @@map("posts")
 }
 
@@ -359,8 +373,9 @@ model Asset {
   uploadedById Int? // Add this field
 
   // Relations
-  post       Post  @relation(fields: [postId], references: [id])
-  uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull) // Add this relation
+  post        Post              @relation(fields: [postId], references: [id])
+  uploadedBy  User?             @relation(fields: [uploadedById], references: [id], onDelete: SetNull) // Add this relation
+  annotations ProofAnnotation[]
 
   @@map("assets")
 }
@@ -990,8 +1005,9 @@ model Invoice {
   project   Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
   quotation Quotation?    @relation(fields: [quotationId], references: [id], onDelete: SetNull)
   createdBy User?         @relation("CreatedInvoices", fields: [createdById], references: [id], onDelete: SetNull)
-  lineItems InvoiceLine[]
-  payments  Payment[]
+  lineItems        InvoiceLine[]
+  payments         Payment[]
+  reBilledExpenses Expense[]
 
   @@unique([companyId, number])
   @@index([companyId])
@@ -1110,3 +1126,234 @@ model LeadActivity {
   @@index([leadId])
   @@map("lead_activities")
 }
+
+enum ContractType {
+  RETAINER
+  FIXED_SOW
+  NDA
+  MASTER_SERVICES_AGREEMENT
+  ONE_TIME
+  CUSTOM
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  TERMINATED
+  RENEWED
+}
+
+model Contract {
+  id               String         @id @default(cuid())
+  clientId         String
+  projectId        String?
+  createdById      Int?
+
+  contractNumber   String?        // e.g. CNT-2026-0001
+  title            String
+  type             ContractType   @default(RETAINER)
+  status           ContractStatus @default(ACTIVE)
+
+  value            Decimal        @default(0) @db.Decimal(14, 2)
+  currency         String         @default("INR")
+  billingCycle     String         @default("MONTHLY") // MONTHLY, QUARTERLY, ANNUALLY, ONE_TIME
+
+  startDate        DateTime
+  endDate          DateTime?
+  renewalDate      DateTime?
+  autoRenew        Boolean        @default(false)
+  noticePeriodDays Int            @default(30)
+
+  retainerHours    Decimal?       @db.Decimal(8, 2)
+  deliverableQuota Json?          // e.g. { "posts": 12, "reels": 8, "stories": 15 }
+
+  documentUrl      String?        // PDF / Signed SOW upload
+  signedAt         DateTime?
+  signedBy         String?
+
+  reminderSent     Boolean        @default(false)
+  lastReminderAt   DateTime?
+
+  notes            String?        @db.Text
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  client           Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project          Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdBy        User?          @relation("CreatedContracts", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([projectId])
+  @@index([status])
+  @@index([renewalDate])
+  @@map("contracts")
+}
+
+// =============================================================================
+// APPROVAL WORKFLOWS & VISUAL PROOFING
+// Multi-stage sequential/parallel approval chains + pin-point image proofing
+// =============================================================================
+
+enum ApprovalStageType {
+  INTERNAL_LEAD
+  ACCOUNT_MANAGER
+  CLIENT
+}
+
+enum ApprovalStepStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+  SKIPPED
+}
+
+model ApprovalChain {
+  id                String         @id @default(cuid())
+  postId            String
+  currentStageIndex Int            @default(0)
+  isCompleted       Boolean        @default(false)
+  finalStatus       String         @default("IN_REVIEW") // IN_REVIEW, APPROVED, CHANGES_REQUESTED, REJECTED
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  post              Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  steps             ApprovalStep[]
+
+  @@index([postId])
+  @@index([finalStatus])
+  @@map("approval_chains")
+}
+
+model ApprovalStep {
+  id             String             @id @default(cuid())
+  chainId        String
+  stage          ApprovalStageType
+  order          Int                @default(0)
+  status         ApprovalStepStatus @default(PENDING)
+  decisionAt     DateTime?
+  decisionById   Int?
+  decisionByName String?
+  feedback       String?            @db.Text
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  chain          ApprovalChain      @relation(fields: [chainId], references: [id], onDelete: Cascade)
+  decisionBy     User?              @relation("StepDecisions", fields: [decisionById], references: [id], onDelete: SetNull)
+
+  @@index([chainId])
+  @@index([stage])
+  @@index([status])
+  @@map("approval_steps")
+}
+
+model ProofAnnotation {
+  id         String                 @id @default(cuid())
+  assetId    String?
+  postId     String
+  x          Float                  // percentage coordinate (0-100)
+  y          Float                  // percentage coordinate (0-100)
+  color      String?                @default("#ef4444")
+  comment    String                 @db.Text
+  authorName String
+  authorRole String?
+  userId     Int?
+  isResolved Boolean                @default(false)
+  resolvedAt DateTime?
+  resolvedBy String?
+  version    Int                    @default(1)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  post       Post                   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  asset      Asset?                 @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user       User?                  @relation("CreatedAnnotations", fields: [userId], references: [id], onDelete: SetNull)
+  replies    ProofAnnotationReply[]
+
+  @@index([postId])
+  @@index([assetId])
+  @@index([isResolved])
+  @@map("proof_annotations")
+}
+
+model ProofAnnotationReply {
+  id           String          @id @default(cuid())
+  annotationId String
+  content      String          @db.Text
+  authorName   String
+  authorRole   String?
+  userId       Int?
+  createdAt    DateTime        @default(now())
+
+  annotation   ProofAnnotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  user         User?           @relation("UserReplies", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([annotationId])
+  @@map("proof_annotation_replies")
+}
+
+// =============================================================================
+// EXPENSE MANAGEMENT & PROFITABILITY TRACKER
+// Project & Client direct costs, software subscriptions, freelancers, ad spend
+// =============================================================================
+
+enum ExpenseCategory {
+  SOFTWARE_TOOL
+  CONTRACTOR_FREELANCER
+  AD_SPEND
+  SHOOT_PRODUCTION
+  OFFICE_TRAVEL
+  HARDWARE_EQUIPMENT
+  OTHER
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REIMBURSED
+}
+
+model Expense {
+  id            String          @id @default(cuid())
+  title         String
+  category      ExpenseCategory @default(OTHER)
+  amount        Decimal         @db.Decimal(14, 2)
+  currency      String          @default("INR")
+  date          DateTime        @default(now())
+  isBillable    Boolean         @default(false)
+  status        ExpenseStatus   @default(APPROVED)
+  paymentMethod PaymentMethod   @default(BANK_TRANSFER)
+
+  receiptUrl    String?         // Receipt PDF/Image
+  receiptName   String?
+  notes         String?         @db.Text
+
+  // Relations
+  projectId     String?
+  clientId      String?
+  userId        Int?            // Member who incurred the expense
+  recordedById  Int?            // Finance/Admin who recorded/approved
+  invoiceId     String?         // Linked client invoice if re-billed
+
+  project       Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  client        Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  user          User?           @relation("UserExpenses", fields: [userId], references: [id], onDelete: SetNull)
+  recordedBy    User?           @relation("RecordedExpenses", fields: [recordedById], references: [id], onDelete: SetNull)
+  invoice       Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([projectId])
+  @@index([clientId])
+  @@index([userId])
+  @@index([category])
+  @@index([status])
+  @@index([date])
+  @@map("expenses")
+}
+

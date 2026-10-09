@@ -38,8 +38,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Hash new password
-    const hashedPassword = password
+    // Hash new password using bcrypt
+    const bcrypt = (await import("bcryptjs")).default
+    const hashedPassword = await bcrypt.hash(password, 10)
 
     // Update user password
     await prisma.user.update({
@@ -54,10 +55,10 @@ export async function POST(request: NextRequest) {
 
     // Log audit action
     await logAuditAction({
-      userId: user.id,
+      userId: String(user.id),
       action: "UPDATE",
       entityType: "User",
-      entityId: user.id,
+      entityId: String(user.id),
       oldValues: JSON.stringify({ action: "password_reset_used" }),
       newValues: JSON.stringify({ action: "password_reset_completed" }),
       ipAddress: request.headers.get("x-forwarded-for") || "unknown",

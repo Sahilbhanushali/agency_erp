@@ -49,6 +49,18 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
             createdAt: true,
           },
         },
+        contracts: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            project: { select: { id: true, name: true } },
+          },
+        },
+        expenses: {
+          orderBy: { date: "desc" },
+          include: {
+            project: { select: { id: true, name: true } },
+          },
+        },
       },
     });
 

@@ -20,7 +20,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Trash2, Edit, Plus, Search, AlertCircle, CheckCircle, Mail, RefreshCw, FileText } from "lucide-react"
+import { Trash2, Edit, Plus, Search, AlertCircle, CheckCircle, Mail, RefreshCw, FileText, Clock, Send } from "lucide-react"
 import SmtpConfigForm from "@/components/SmtpConfigForm"
 import { toast } from "react-hot-toast"
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
@@ -35,6 +35,7 @@ interface User {
   email: string
   role: string | null
   avatar?: string | null
+  hasPassword?: boolean
   createdAt: string
 }
 
@@ -81,11 +82,13 @@ export default function UsersPage() {
     email: "",
     role: "",
     password: "",
+    sendInvite: true,
   })
   const [error, setError] = useState<string | null>(null)
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeletingUser, setIsDeletingUser] = useState(false)
   const [selectedHrUserId, setSelectedHrUserId] = useState<string | null>(null)
+  const [resendingInviteId, setResendingInviteId] = useState<string | null>(null)
 
   // SMTP-specific state
   const [smtpConfigs, setSmtpConfigs] = useState<SmtpConfig[]>([])
@@ -198,22 +201,51 @@ export default function UsersPage() {
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          password: formData.sendInvite ? undefined : formData.password,
+          sendInvite: formData.sendInvite,
+        }),
       })
 
+      const data = await response.json()
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to create user")
+        throw new Error(data.error || "Failed to create user")
       }
 
       await fetchUsers()
       setIsCreateDialogOpen(false)
-      setFormData({ name: "", email: "", role: roles[0]?.name || "", password: "" })
-      toast.success("User created successfully")
+      setFormData({ name: "", email: "", role: roles[0]?.name || "", password: "", sendInvite: true })
+      
+      if (data.inviteSent) {
+        toast.success(`User invited! Setup link sent to ${formData.email}`)
+      } else {
+        toast.success("User created successfully")
+      }
     } catch (error: any) {
       console.error(error)
       setError(error.message || "Failed to create user")
       toast.error(error.message || "Failed to create user")
+    }
+  }
+
+  const handleResendInvite = async (user: User) => {
+    try {
+      setResendingInviteId(user.id)
+      const response = await fetch(`/api/users/${user.id}/resend-invite`, {
+        method: "POST",
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to resend invitation")
+      }
+      toast.success(data.message || `Onboarding invitation resent to ${user.email}`)
+    } catch (error: any) {
+      toast.error(error.message || "Could not resend invitation")
+    } finally {
+      setResendingInviteId(null)
     }
   }
 
@@ -606,19 +638,44 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        required
-                        minLength={8}
-                      />
+                    <div className="rounded-lg border border-border/70 p-3 bg-muted/20 space-y-1.5">
+                      <div className="flex items-start space-x-2.5">
+                        <Checkbox
+                          id="sendInvite"
+                          checked={formData.sendInvite}
+                          onCheckedChange={(checked) =>
+                            setFormData({ ...formData, sendInvite: !!checked })
+                          }
+                          className="mt-0.5"
+                        />
+                        <div className="space-y-0.5">
+                          <Label htmlFor="sendInvite" className="text-xs font-semibold cursor-pointer">
+                            Send Onboarding Invitation Email (Recommended)
+                          </Label>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            The user will receive an email with a secure 48-hour link to create their password and activate their account.
+                          </p>
+                        </div>
+                      </div>
                     </div>
+
+                    {!formData.sendInvite && (
+                      <div className="space-y-2">
+                        <Label htmlFor="password">Set Manual Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          required={!formData.sendInvite}
+                          minLength={8}
+                          placeholder="Minimum 8 characters"
+                        />
+                      </div>
+                    )}
+
                     <Button type="submit" className="w-full" disabled={roles.length === 0}>
-                      Create User
+                      {formData.sendInvite ? "Send Onboarding Invite" : "Create User"}
                     </Button>
                   </form>
                 </DialogContent>
@@ -637,6 +694,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">User</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quick Reassign</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">HR Records</TableHead>
                     <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Created</TableHead>
@@ -664,6 +722,19 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                         <Badge variant={getRoleBadgeVariant(user.role)} className="text-[10px] uppercase font-mono tracking-wider">
                           {user.role ?? "NONE"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {user.hasPassword === false ? (
+                          <Badge variant="outline" className="text-[10px] gap-1 text-amber-600 border-amber-500/30 bg-amber-500/5 font-mono">
+                            <Clock className="size-2.5" />
+                            Invite Pending
+                          </Badge>
+                        ) : (
+                          <Badge variant="success" className="text-[10px] gap-1 font-mono">
+                            <CheckCircle className="size-2.5" />
+                            Active
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Select
@@ -700,6 +771,18 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {user.hasPassword === false && (
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              disabled={resendingInviteId === user.id}
+                              onClick={() => handleResendInvite(user)}
+                              className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                              title="Resend onboarding email invite"
+                            >
+                              <Send className="size-3.5" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon-xs"
@@ -710,13 +793,14 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                                 email: user.email,
                                 role: user.role || "",
                                 password: "",
+                                sendInvite: false,
                               })
                             }}
                             className="text-muted-foreground hover:text-foreground"
                           >
                             <Edit className="size-3.5" />
                           </Button>
-                          {session.user.id !== user.id && (
+                          {session?.user?.id !== user.id && (
                             <Button
                               variant="ghost"
                               size="icon-xs"

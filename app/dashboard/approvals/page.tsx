@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, AlertCircle, ChevronLeft, ChevronRight, Eye, MoreHorizontal, Download, Edit, Trash2, FileText, SlidersHorizontal, Search } from "lucide-react";
+import { Check, X, AlertCircle, ChevronLeft, ChevronRight, Eye, MoreHorizontal, Download, Edit, Trash2, FileText, SlidersHorizontal, Search, FileCheck2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -23,6 +23,7 @@ import DesignerHeadApprovalRejectDialog from '@/components/DesignerHeadApprovalD
 import MediaWithFallback from '@/components/MediaWithFallback';
 import ImageModal from '@/components/ImageModal';
 import AssetsDialog from '@/components/posts/assetsDialog';
+import { ProofingApprovalDialog } from "@/components/approvals/proofing-approval-dialog";
 import useSWR, { mutate as globalMutate } from 'swr';
 import { useSession } from 'next-auth/react';
 import { getMediaUrl } from '@/lib/utils';
@@ -184,6 +185,7 @@ const ApprovalTab: React.FC = () => {
 
   const [imageModal, setImageModal] = useState<{ src: string; alt: string; postId: string; assetId: string } | null>(null);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [proofingPost, setProofingPost] = useState<Post | null>(null);
   const [viewingAssets, setViewingAssets] = useState<string | null>(null);
   const [statusChangeDialog, setStatusChangeDialog] = useState<{ postId: string; statusType?: "content" | "design" | "designerHead" } | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('DRAFT');
@@ -753,10 +755,19 @@ const ApprovalTab: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between mt-4 gap-2">
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button
+                        size="sm"
+                        onClick={() => setProofingPost(approval.post)}
+                        className="text-xs h-8"
+                      >
+                        <FileCheck2 className="mr-1.5 size-3.5" />
+                        Proof & Workflow
+                      </Button>
                       <Button 
                         size="sm" 
                         variant="outline" 
+                        className="text-xs h-8"
                         onClick={() => currentAsset && setImageModal({ 
                           src: getMediaUrl(currentAsset.url), 
                           alt: currentAsset.filename, 
@@ -764,16 +775,17 @@ const ApprovalTab: React.FC = () => {
                           assetId: currentAsset.id 
                         })}
                       >
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Asset
+                        <Eye className="mr-1.5 size-3.5" />
+                        Asset
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline" 
+                        className="text-xs h-8"
                         onClick={() => setSelectedPost(approval.post)}
                       >
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Content
+                        <Eye className="mr-1.5 size-3.5" />
+                        Content
                       </Button>
                     </div>
                     <DropdownMenu>
@@ -782,7 +794,15 @@ const ApprovalTab: React.FC = () => {
                           <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="text-sm rounded-lg w-48">
+                      <DropdownMenuContent align="end" className="text-sm rounded-lg w-52">
+                        <DropdownMenuItem
+                          onClick={() => setProofingPost(approval.post)}
+                          className="cursor-pointer font-medium text-primary"
+                        >
+                          <FileCheck2 className="mr-2 h-4 w-4" />
+                          Proof & Workflow Chain
+                        </DropdownMenuItem>
+
                         <DropdownMenuItem asChild>
                           <Link href={`/dashboard/projects/posts/${approval.post.id}/edit`} className="flex items-center cursor-pointer">
                             <Edit className="mr-2 h-4 w-4" />
@@ -991,6 +1011,23 @@ const ApprovalTab: React.FC = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+
+      {proofingPost && (
+        <ProofingApprovalDialog
+          open={!!proofingPost}
+          onOpenChange={(open) => {
+            if (!open) setProofingPost(null);
+          }}
+          postId={proofingPost.id}
+          postTitle={proofingPost.title}
+          projectName={proofingPost.project?.name}
+          assets={proofingPost.assets}
+          onUpdate={() => {
+            mutate();
+            globalMutate((key: string) => typeof key === 'string' && key.startsWith('/api/posts'), undefined, { revalidate: true });
+          }}
+        />
       )}
     </div>
   );

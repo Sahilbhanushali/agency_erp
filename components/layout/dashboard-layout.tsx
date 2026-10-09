@@ -13,6 +13,7 @@ import {
   CheckCircle,
   ChevronRight,
   FileClock,
+  FileSignature,
   FileText,
   FolderOpen,
   ImageIcon,
@@ -22,6 +23,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  Receipt,
   Search,
   Settings,
   Sun,
@@ -73,6 +75,8 @@ const navigation: NavigationItem[] = [
   { name: "Reports", href: "/dashboard/reports", icon: BarChart3, permissions: ["View-reports"] },
   { name: "Leads Pipeline", href: "/dashboard/leads", icon: Target, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
   { name: "Clients", href: "/dashboard/clients", icon: Users, permissions: ["Manage-clients", "View-clients"] },
+  { name: "Contracts & SOW", href: "/dashboard/contracts", icon: FileSignature, permissions: ["Manage-clients", "View-clients"] },
+  { name: "Expenses & Margins", href: "/dashboard/expenses", icon: Receipt, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
   { name: "Companies", href: "/dashboard/companies", icon: Building2, permissions: ["Manage-companies", "View-companies"] },
   { name: "Quotations", href: "/dashboard/quotations", icon: FileText, permissions: ["Manage-quotations", "View-quotations"] },
   { name: "User Management", href: "/dashboard/users", icon: UserCog, permissions: ["Manage-User"], allowedRoles: ["ADMIN", "MANAGER"] },
@@ -84,7 +88,7 @@ const navigation: NavigationItem[] = [
 const navigationGroups = [
   { label: "Overview", names: ["Dashboard"] },
   { label: "Delivery", names: ["My Tasks", "Projects", "Project Summary", "Calendar", "Pending Approvals", "Assets", "Reports"] },
-  { label: "Agency", names: ["Leads Pipeline", "Clients", "Companies", "Quotations", "User Management", "Utilities", "Credentials"] },
+  { label: "Agency", names: ["Leads Pipeline", "Clients", "Contracts & SOW", "Expenses & Margins", "Companies", "Quotations", "User Management", "Utilities", "Credentials"] },
   { label: "Preferences", names: ["Settings"] },
 ]
 

@@ -33,11 +33,13 @@ import {
   FileText,
   Hash,
   Share2,
+  Pin,
 } from "lucide-react"
 import { getMediaUrl } from "@/lib/utils"
 import { toast } from "sonner"
 import ImageModal from "@/components/ImageModal"
 import RejectDialog from "@/components/posts/rejectDialog"
+import { ProofingApprovalDialog } from "@/components/approvals/proofing-approval-dialog"
 
 export interface Asset {
   id: string
@@ -134,6 +136,7 @@ export function CustomerPostDetailView({
     postId: string
     assetId?: string
   } | null>(null)
+  const [proofingOpen, setProofingOpen] = useState(false)
   const [isConfirmApproveOpen, setIsConfirmApproveOpen] = useState(false)
   const [statusRejectDialog, setStatusRejectDialog] = useState<{
     postId: string
@@ -551,24 +554,35 @@ export function CustomerPostDetailView({
               </div>
             )}
 
-            {/* Fullscreen Button */}
+            {/* Visual Proofing & Fullscreen Buttons */}
             {mediaUrl && !isVideo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  handleOpenImageModal(
-                    mediaUrl,
-                    currentAsset?.filename || post.title,
-                    post.id,
-                    currentAsset?.id
-                  )
-                }
-                className="text-xs text-slate-300 hover:text-white hover:bg-white/10 rounded-xl"
-              >
-                <Maximize2 className="w-3.5 h-3.5 mr-1.5" />
-                View Fullscreen & Annotate
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setProofingOpen(true)}
+                  className="text-xs bg-white text-slate-900 hover:bg-slate-100 font-semibold rounded-xl"
+                >
+                  <Pin className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                  Visual Proofing & Pin Comments
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    handleOpenImageModal(
+                      mediaUrl,
+                      currentAsset?.filename || post.title,
+                      post.id,
+                      currentAsset?.id
+                    )
+                  }
+                  className="text-xs text-slate-300 hover:text-white hover:bg-white/10 rounded-xl"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 mr-1.5" />
+                  Fullscreen
+                </Button>
+              </div>
             )}
           </div>
 
@@ -1032,6 +1046,19 @@ export function CustomerPostDetailView({
           }}
         />
       )}
+
+      <ProofingApprovalDialog
+        open={proofingOpen}
+        onOpenChange={setProofingOpen}
+        postId={post.id}
+        postTitle={post.title}
+        projectName={project.name}
+        assets={post.assets}
+        isClientView={true}
+        onUpdate={() => {
+          router.refresh()
+        }}
+      />
     </div>
   )
 }
