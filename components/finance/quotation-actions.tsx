@@ -8,6 +8,7 @@ import {
   Check,
   Copy,
   Edit,
+  FileImage,
   Link2,
   Link2Off,
   Loader2,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { QUOTATION_TRANSITIONS } from "@/lib/finance"
 import type { QuotationStatus } from "@/types/finance"
+import { DocumentBrandingModal } from "./document-branding-modal"
 
 /** Only the moves a person makes by hand; CONVERTED belongs to the conversion itself. */
 const STATUS_ACTIONS: Partial<
@@ -47,20 +49,27 @@ export default function QuotationActions({
   status,
   shareToken,
   shareExpiresAt,
+  companyId,
+  companyName = "Company",
+  letterhead,
+  signature,
 }: {
   id: string
   number: string
   status: QuotationStatus
   shareToken: string | null
   shareExpiresAt: string | null
+  companyId?: string
+  companyName?: string
+  letterhead?: string | null
+  signature?: string | null
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<QuotationStatus | null>(null)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [brandingOpen, setBrandingOpen] = useState(false)
 
-  // window does not exist while this renders on the server, so the absolute link is
-  // assembled after mount rather than in the initial state.
   useEffect(() => {
     setShareUrl(shareToken ? `${window.location.origin}/share/document/${shareToken}` : null)
   }, [shareToken])
@@ -132,7 +141,6 @@ export default function QuotationActions({
       await navigator.clipboard.writeText(text)
       return true
     } catch {
-      // Clipboard needs a secure context; show the URL so it can still be copied by hand.
       toast.error("Could not reach the clipboard — copy the link from the field below")
       return false
     }
@@ -170,6 +178,13 @@ export default function QuotationActions({
           <Printer className="mr-2 h-4 w-4" />
           Print / PDF
         </Button>
+
+        {companyId && (
+          <Button variant="outline" size="sm" onClick={() => setBrandingOpen(true)}>
+            <FileImage className="mr-2 h-4 w-4 text-primary" />
+            Letterhead &amp; Signature
+          </Button>
+        )}
 
         <Button variant="outline" size="sm" disabled={!!busy} onClick={issueLink}>
           {busy === "share" ? (
@@ -233,6 +248,18 @@ export default function QuotationActions({
             </span>
           )}
         </div>
+      )}
+
+      {companyId && (
+        <DocumentBrandingModal
+          open={brandingOpen}
+          onOpenChange={setBrandingOpen}
+          companyId={companyId}
+          companyName={companyName}
+          currentLetterhead={letterhead}
+          currentSignature={signature}
+          onSuccess={() => router.refresh()}
+        />
       )}
 
       <AlertDialog open={!!confirming} onOpenChange={(open) => !open && setConfirming(null)}>

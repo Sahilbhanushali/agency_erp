@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "react-hot-toast";
+import { useBreadcrumbTitle } from "@/lib/route-labels";
 
 interface User {
   id: string;
@@ -91,47 +92,7 @@ export default function EditProjectPage() {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      if (status !== "authenticated" || !session?.user?.id) {
-        return;
-      }
-
-      try {
-        console.log("Fetching permissions for user:", session.user.id);
-        const roleResponse = await fetch(`/api/users/role?id=${session.user.id}`, {
-          credentials: "include",
-        });
-
-        if (!roleResponse.ok) {
-          throw new Error(`Failed to fetch user role: ${roleResponse.status}`);
-        }
-
-        const userData = await roleResponse.json();
-        console.log("User role data:", userData);
-
-        if (userData.role) {
-          const permResponse = await fetch(`/api/role-permission/role/${userData.role}`, {
-            credentials: "include",
-          });
-
-          if (!permResponse.ok) {
-            throw new Error(`Failed to fetch permissions: ${permResponse.status}`);
-          }
-
-          const permData = await permResponse.json();
-          const userPermissions = permData.map((item: { permission: string }) => item.permission);
-          console.log("User permissions:", userPermissions);
-          setPermissions(userPermissions);
-        }
-      } catch (err) {
-        console.error("Error fetching permissions:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch permissions");
-      }
-    };
-
-    fetchPermissions();
-  }, [session, status]);
+  useBreadcrumbTitle(id, "Edit Project");
 
   useEffect(() => {
     console.log("Project ID:", id);
@@ -404,10 +365,10 @@ useEffect(() => {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-4xl mb-4">⚠️</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-foreground mb-2">
               {status === "unauthenticated" || !session?.user?.id ? "Unauthorized" : "Error Loading Data"}
             </h3>
-            <p className="text-gray-600 text-center mb-4">
+            <p className="text-muted-foreground text-center mb-4 text-xs">
               {status === "unauthenticated" || !session?.user?.id
                 ? "Please sign in to access this page."
                 : error || "Project not found or an error occurred."}
@@ -438,9 +399,9 @@ useEffect(() => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Edit Project</h1>
-        <p className="text-gray-600">Update project details</p>
+      <div className="mb-2">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Edit Project</h1>
+        <p className="text-xs text-muted-foreground">Update project details, monthly strategy, and team assignments</p>
       </div>
       <ProjectForm
         clients={formattedClients}

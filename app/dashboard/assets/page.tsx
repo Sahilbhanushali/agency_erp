@@ -150,7 +150,7 @@ export default function AssetsPage() {
             <p className="text-gray-600 dark:text-gray-300">Manage all your media assets and files</p>
           </div>
         </div>
-        <AssetManager assets={assets} hasManageAssetsPermission={hasManageAssetsPermission} />
+        <AssetManager assets={assets as any} hasManageAssetsPermission={hasManageAssetsPermission} />
       </div>
     </div>
   );

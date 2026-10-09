@@ -194,7 +194,7 @@ export default function ClientsPage() {
     return (
       <Card>
         <CardContent className="flex justify-center py-12">
-          <p className="text-gray-600">Loading ...</p>
+          <p className="text-sm text-muted-foreground">Loading clients…</p>
         </CardContent>
       </Card>
     );
@@ -204,7 +204,7 @@ export default function ClientsPage() {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-red-600">Please sign in to view clients.</p>
+          <p className="text-sm text-destructive">Please sign in to view clients.</p>
         </CardContent>
       </Card>
     );
@@ -214,7 +214,7 @@ export default function ClientsPage() {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-red-600">{authError}</p>
+          <p className="text-sm text-destructive">{authError}</p>
         </CardContent>
       </Card>
     );
@@ -224,8 +224,8 @@ export default function ClientsPage() {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
-          <p className="text-gray-600 text-center">You do not have permission to view clients.</p>
+          <h3 className="mb-2 text-base font-semibold tracking-tight text-foreground">Access Denied</h3>
+          <p className="text-center text-sm text-muted-foreground">You do not have permission to view clients.</p>
         </CardContent>
       </Card>
     );
@@ -238,17 +238,17 @@ export default function ClientsPage() {
         position="top-right"
         toastOptions={{
           duration: 4000,
-          style: { background: "#363636", color: "#fff" },
-          success: { style: { background: "#10b981" } },
-          error: { style: { background: "#ef4444" } },
+          style: { background: "var(--neutral-800)", color: "var(--neutral-0)" },
+          success: { style: { background: "var(--success)" } },
+          error: { style: { background: "var(--destructive)" } },
         }}
       />
 
-      <div className="space-y-6 p-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-            <p className="text-gray-600">Manage your client relationships</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">Clients</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage your client relationships</p>
           </div>
           {canManageClients && (
             <Link href="/dashboard/clients/new">
@@ -261,13 +261,14 @@ export default function ClientsPage() {
         </div>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
+          <CardContent className="pt-5">
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <div className="min-w-0 flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search clients by name, email, company, or phone..."
+                    aria-label="Search clients by name, email, company, or phone"
                     className="pl-10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -281,17 +282,17 @@ export default function ClientsPage() {
         {isLoading ? (
           <Card>
             <CardContent className="flex justify-center py-12">
-              <p className="text-gray-600">Loading clients...</p>
+              <p className="text-sm text-muted-foreground">Loading clients…</p>
             </CardContent>
           </Card>
         ) : filteredClients.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Building2 className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <Building2 className="mb-3 size-9 text-muted-foreground/60" />
+              <h3 className="mb-2 text-base font-semibold tracking-tight text-foreground">
                 {searchTerm ? "No clients match your search" : "No clients found"}
               </h3>
-              <p className="text-gray-600 text-center mb-4">
+              <p className="mb-4 max-w-md text-center text-sm text-muted-foreground">
                 {searchTerm
                   ? "Try adjusting your search criteria."
                   : "Get started by adding your first client to the system."}
@@ -315,7 +316,7 @@ export default function ClientsPage() {
                   <TableHead>Company</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Active Projects</TableHead>
+                  <TableHead className="text-right">Active Projects</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -325,12 +326,12 @@ export default function ClientsPage() {
                   <TableRow key={client.id}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 border border-blue-200">
+                        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-accent">
                           {client.avatar ? (
                             <img
                               src={getMediaUrl(client.avatar)}
                               alt={client.name}
-                              className="w-full h-full object-cover cursor-pointer hover:opacity-80 hover:scale-105 transition-all"
+                              className="h-full w-full cursor-pointer object-cover transition-opacity hover:opacity-80"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedLogo({
@@ -342,71 +343,73 @@ export default function ClientsPage() {
                               title="Click to view full image"
                             />
                           ) : (
-                            <span className="text-blue-700 font-bold text-xs uppercase">
+                            <span className="text-xs font-semibold uppercase text-accent-foreground">
                               {client.name.split(" ").slice(0, 2).map(w => w[0]).join("")}
                             </span>
                           )}
                         </div>
-                        <div className="font-medium">{client.name}</div>
+                        <div className="max-w-[220px] truncate font-medium text-foreground" title={client.name}>{client.name}</div>
                       </div>
                     </TableCell>
                     <TableCell>{client.company || "N/A"}</TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Mail className="h-4 w-4 text-gray-400" />
-                        <span>{client.email}</span>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Mail className="size-4 shrink-0" />
+                        <span className="max-w-[240px] truncate" title={client.email}>{client.email}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       {client.phone ? (
-                        <div className="flex items-center space-x-2">
-                          <Phone className="h-4 w-4 text-gray-400" />
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Phone className="size-4 shrink-0" />
                           <span>{client.phone}</span>
                         </div>
                       ) : (
-                        <span className="text-gray-400">N/A</span>
+                        <span className="text-muted-foreground">N/A</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <Badge variant="secondary">{client.projects?.length || 0} Projects</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm tabular-nums text-muted-foreground">
                         {format(new Date(client.createdAt), "MMM dd, yyyy")}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
+                      <div className="flex items-center justify-end gap-1">
                         <Link href={`/dashboard/clients/${client.id}`}>
-                          <Button variant="ghost" size="sm" title="View Client">
-                            <Eye className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" title="View Client" aria-label="View Client">
+                            <Eye className="size-4" />
                           </Button>
                         </Link>
                         {canManageClients && (
                           <>
                             <Button 
                               variant="ghost" 
-                              size="sm" 
+                              size="icon"
                               title="Edit Client"
+                              aria-label="Edit Client"
                               onClick={() => handleEditNavigation(client.id)}
                               disabled={isNavigatingToEdit === client.id}
                             >
                               {isNavigatingToEdit === client.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2 className="size-4 animate-spin" />
                               ) : (
-                                <Edit className="h-4 w-4" />
+                                <Edit className="size-4" />
                               )}
                             </Button>
                             
                             <Button 
                               variant="ghost" 
-                              size="sm" 
+                              size="icon"
                               title="Delete Client"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                              aria-label="Delete Client"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                               disabled={isNavigatingToEdit === client.id}
                               onClick={() => setClientToDelete({ id: client.id, name: client.name })}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="size-4" />
                             </Button>
                           </>
                         )}

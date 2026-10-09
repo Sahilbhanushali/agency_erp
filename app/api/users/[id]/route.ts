@@ -4,6 +4,67 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAuditAction } from "@/lib/audit";
 
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const params = await context.params;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = parseInt(params.id, 10);
+    if (isNaN(userId)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatar: true,
+        createdAt: true,
+        roleId: true,
+        role: { select: { id: true, name: true } },
+        joiningDate: true,
+        designation: true,
+        department: true,
+        currentSalary: true,
+        salaryFrequency: true,
+        employmentType: true,
+        phone: true,
+        personalEmail: true,
+        address: true,
+        panNumber: true,
+        aadhaarNumber: true,
+        bankName: true,
+        bankAccountNumber: true,
+        bankIfsc: true,
+        emergencyContactName: true,
+        emergencyContactPhone: true,
+        emergencyContactRelation: true,
+        offerLetterUrl: true,
+        documents: {
+          orderBy: { uploadedAt: "desc" },
+        },
+        assignedProjects: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(user);
+  } catch (error: any) {
+    console.error("Error fetching user details:", error);
+    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
@@ -12,13 +73,57 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, email, role } = await request.json();
+    const body = await request.json();
+    const {
+      name,
+      email,
+      role,
+      joiningDate,
+      designation,
+      department,
+      currentSalary,
+      salaryFrequency,
+      employmentType,
+      phone,
+      personalEmail,
+      address,
+      panNumber,
+      aadhaarNumber,
+      bankName,
+      bankAccountNumber,
+      bankIfsc,
+      emergencyContactName,
+      emergencyContactPhone,
+      emergencyContactRelation,
+      offerLetterUrl,
+    } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
     }
 
-    let data: any = { name, email };
+    let data: any = {
+      name,
+      email,
+      joiningDate: joiningDate ? new Date(joiningDate) : null,
+      designation: designation || null,
+      department: department || null,
+      currentSalary: currentSalary !== undefined && currentSalary !== null && currentSalary !== "" ? Number(currentSalary) : null,
+      salaryFrequency: salaryFrequency || "MONTHLY",
+      employmentType: employmentType || "FULL_TIME",
+      phone: phone || null,
+      personalEmail: personalEmail || null,
+      address: address || null,
+      panNumber: panNumber || null,
+      aadhaarNumber: aadhaarNumber || null,
+      bankName: bankName || null,
+      bankAccountNumber: bankAccountNumber || null,
+      bankIfsc: bankIfsc || null,
+      emergencyContactName: emergencyContactName || null,
+      emergencyContactPhone: emergencyContactPhone || null,
+      emergencyContactRelation: emergencyContactRelation || null,
+      offerLetterUrl: offerLetterUrl || null,
+    };
 
     if (role) {
       const roleObj = await prisma.role.findUnique({ where: { name: role } });
@@ -29,7 +134,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     const user = await prisma.user.update({
       where: { id: parseInt(params.id) },
       data,
-      include: { role: true },
+      include: { role: true, documents: true },
     });
 
     await logAuditAction({
@@ -37,20 +142,18 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       action: "UPDATE",
       entityType: "User",
       entityId: params.id,
-      newValues: JSON.stringify({ name, email, role: role || user.role?.name }),
+      newValues: JSON.stringify({ name, email, role: role || user.role?.name, designation, currentSalary }),
       ipAddress: request.headers.get("x-forwarded-for") || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 
     return NextResponse.json({
       message: "User updated successfully",
-      user: { id: user.id.toString(), name: user.name, email: user.email, role: role || user.role?.name },
+      user,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating user:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  } finally {
-    // await prisma.$disconnect();
+    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
   }
 }
 
@@ -100,8 +203,6 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   } catch (error) {
     console.error("Error updating user role:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  } finally {
-    // await prisma.$disconnect();
   }
 }
 
@@ -144,7 +245,5 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   } catch (error) {
     console.error("Error deleting user:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  } finally {
-    // await prisma.$disconnect();
   }
 }

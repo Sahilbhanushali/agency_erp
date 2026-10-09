@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
+import { AuthShell } from "@/components/auth/auth-shell"
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -67,8 +68,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
+    <AuthShell>
+      <Card className="w-full border-border shadow-none">
         <CardHeader>
           <CardTitle>Create Account</CardTitle>
           <CardDescription>Sign up for itsmeDezino Agency ERP</CardDescription>
@@ -129,19 +130,19 @@ export default function RegisterPage() {
                 required
               />
             </div>
-            {error && <div className="text-red-500 text-sm">{error}</div>}
+            {error && <div role="alert" className="text-sm text-destructive">{error}</div>}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
             Already have an account?{" "}
-            <Link href="/auth/signin" className="text-blue-600 hover:underline">
+            <Link href="/auth/signin" className="font-medium text-primary hover:underline">
               Sign in
             </Link>
           </div>
         </CardContent>
       </Card>
-    </div>
+    </AuthShell>
   )
 }

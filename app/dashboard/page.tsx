@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -10,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   FileText,
   CheckCircle,
@@ -22,7 +23,6 @@ import {
   AlertTriangle,
   Plus,
   ArrowUpRight,
-  ArrowDownRight,
   Eye,
   Edit3,
   MoreHorizontal,
@@ -30,7 +30,8 @@ import {
   X,
   Pencil,
   Send,
-  Loader
+  Loader2,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
@@ -42,7 +43,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Fetcher function
 const fetcher = async (url: string) => {
   const fullUrl = url;
 
@@ -79,7 +79,7 @@ const formatDate = (dateInput: string | Date): string => {
       minute: '2-digit',
       timeZone: 'Asia/Kolkata',
     }).format(date);
-  } catch (error) {
+  } catch {
     return 'Invalid Date';
   }
 };
@@ -95,38 +95,40 @@ const generateTypeOptions = () => {
   ];
 };
 
-const StatusCard = ({ icon: Icon, label, value, total, color, bgColor }: any) => {
+const StatusCard = ({ icon: Icon, label, value, total, colorClass }: any) => {
   const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
 
   return (
-    <div className="flex items-center gap-3 p-4 rounded-lg border bg-card hover:shadow-sm transition-all">
-      <div className={`${bgColor} dark:bg-card p-3 rounded-lg`}>
-        <Icon className={`h-5 w-5 ${color}`} />
+    <div className="flex min-w-0 flex-col justify-between gap-3 rounded-xl border border-border/70 bg-card p-4 shadow-2xs transition-all hover:border-border hover:shadow-xs">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+        <div className={`flex size-8 items-center justify-center rounded-lg ${colorClass}`}>
+          <Icon className="size-4 shrink-0" />
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
-        <div className="flex items-baseline gap-2 mt-1">
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-          <p className="text-sm text-muted-foreground">/ {total}</p>
+      <div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{value}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">/ {total}</span>
         </div>
         <div className="mt-2 space-y-1">
-          <Progress value={percentage} className="h-1.5" />
-          <p className="text-xs text-muted-foreground">{percentage}% complete</p>
+          <Progress value={percentage} className="h-1.5 bg-muted" />
+          <p className="text-[10px] text-muted-foreground font-medium">{percentage}% completed</p>
         </div>
       </div>
     </div>
   );
 };
 
-const SimpleStatusCard = ({ icon: Icon, label, value, color, bgColor }: any) => {
+const SimpleStatusCard = ({ icon: Icon, label, value, colorClass }: any) => {
   return (
-    <div className="flex items-center gap-3 p-4 rounded-lg border bg-card hover:shadow-sm transition-all">
-      <div className={`${bgColor} dark:bg-card p-3 rounded-lg`}>
-        <Icon className={`h-5 w-5 ${color}`} />
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-4 shadow-2xs transition-all hover:border-border hover:shadow-xs">
+      <div className="space-y-1">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{value}</p>
       </div>
-      <div className="flex-1">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
+      <div className={`flex size-9 items-center justify-center rounded-lg ${colorClass}`}>
+        <Icon className="size-4 shrink-0" />
       </div>
     </div>
   );
@@ -154,11 +156,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  // Default to current month so current month's count is shown by default
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
   const [selectedType, setSelectedType] = useState<string>("all");
 
-  // Generate last 12 months for the dropdown (matching Project Summary style)
   const monthOptions = useMemo(() => {
     const list: { value: string; label: string }[] = [];
     for (let i = 0; i < 12; i++) {
@@ -169,7 +169,6 @@ export default function DashboardPage() {
     }
     return list;
   }, []);
-
 
   const swrKey = status === "authenticated" && session?.user?.id
     ? `/api/dashboard?type=${selectedType}`
@@ -212,7 +211,7 @@ export default function DashboardPage() {
     
     Object.entries(dashboardData.monthlyBreakdown).forEach(([key, stats]: [string, any]) => {
       if (key.startsWith(yearPrefix)) {
-        aggregated.totalStrategy += stats.totalPosts || 0; // Use totalPosts to match actual post count for the year
+        aggregated.totalStrategy += stats.totalPosts || 0;
         aggregated.contentWritten += stats.contentWritten || 0;
         aggregated.contentApproved += stats.contentApproved || 0;
         aggregated.contentPending += stats.contentPending || 0;
@@ -227,7 +226,7 @@ export default function DashboardPage() {
         
         aggregated.posted += stats.posted || 0;
         aggregated.scheduled += stats.scheduled || 0;
-        aggregated.readyToSchedule += stats.approved || 0; // readyToSchedule is mapped from approved in month breakdown
+        aggregated.readyToSchedule += stats.approved || 0;
       }
     });
     return aggregated;
@@ -243,7 +242,7 @@ export default function DashboardPage() {
     const monthly = dashboardData?.monthlyBreakdown?.[selectedMonth];
     if (!monthly) return defaultZeroStats;
     return {
-      totalStrategy: monthly.totalPosts || monthly.total || 0, // Using actual total posts or strategy target
+      totalStrategy: monthly.totalPosts || monthly.total || 0,
       contentWritten: monthly.contentWritten || 0,
       contentApproved: monthly.contentApproved || 0,
       contentPending: monthly.contentPending || 0,
@@ -288,14 +287,14 @@ export default function DashboardPage() {
 
   if (status === "loading" || dashboardLoading) {
     return (
-      <div className="space-y-8 p-6 bg-background min-h-screen">
+      <div className="space-y-6">
         <div className="space-y-2">
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-5 w-64" />
+          <Skeleton className="h-8 w-48 rounded-lg" />
+          <Skeleton className="h-4 w-64 rounded-md" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
           ))}
         </div>
       </div>
@@ -309,13 +308,15 @@ export default function DashboardPage() {
 
   if (dashboardError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 px-6">
-            <div className="text-4xl mb-4">⚠️</div>
-            <h3 className="text-lg font-medium text-foreground mb-2">Error Loading Dashboard</h3>
-            <p className="text-muted-foreground text-center mb-4">{dashboardError.message}</p>
-            <Button onClick={() => window.location.reload()}>Retry</Button>
+      <div className="flex min-h-[45vh] items-center justify-center">
+        <Card className="max-w-md w-full">
+          <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mb-4">
+              <AlertTriangle className="size-6" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground">Error Loading Dashboard</h3>
+            <p className="text-xs text-muted-foreground mt-1 mb-5">{dashboardError.message}</p>
+            <Button size="sm" onClick={() => window.location.reload()}>Retry</Button>
           </CardContent>
         </Card>
       </div>
@@ -324,351 +325,297 @@ export default function DashboardPage() {
 
   if (!dashboardData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-xl font-medium text-foreground">Loading dashboard...</div>
+      <div className="flex min-h-[45vh] items-center justify-center text-xs font-medium text-muted-foreground">
+        <Loader2 className="mr-2 size-4 animate-spin" /> Loading dashboard data...
       </div>
     );
   }
 
   const userRole = session.user.role || "USER";
 
-  const statusConfig = {
-    DRAFT: { color: "bg-muted text-muted-foreground border-border", label: "Draft" },
-    SUBMITTED: { color: "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800", label: "Submitted" },
-    APPROVED: { color: "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", label: "Approved" },
-    REJECTED: { color: "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", label: "Changes" },
-    SCHEDULED: { color: "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800", label: "Scheduled" },
-    POSTED: { color: "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", label: "Published" },
-  } as const;
+  const getStatusBadgeVariant = (postStatus: string) => {
+    switch (postStatus) {
+      case "APPROVED":
+      case "POSTED":
+        return "success";
+      case "SCHEDULED":
+        return "warning";
+      case "REJECTED":
+        return "destructive";
+      case "SUBMITTED":
+        return "info";
+      default:
+        return "neutral";
+    }
+  };
 
   return (
-    <div className="space-y-6 p-6 bg-background min-h-screen">
+    <div className="space-y-8 animate-in fade-in-50 duration-200">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-            <Badge variant="outline" className="text-xs">{userRole}</Badge>
-          </div>
-          <p className="text-muted-foreground mt-1">
-            Welcome back, <span className="font-medium text-foreground">{session.user.name}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select timeframe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="font-medium cursor-pointer">
-                  All Time (Total)
+      <PageHeader
+        title="Dashboard Overview"
+        description={`Welcome back, ${session.user.name}. Overview of content planning, design approvals, and social publishing.`}
+        badge={
+          <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider">
+            {userRole}
+          </Badge>
+        }
+      >
+        {/* Month & Post Type Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger aria-label="Filter by month" className="h-8 w-[160px] bg-card text-xs">
+              <SelectValue placeholder="Select timeframe" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs font-medium cursor-pointer">
+                All Time (Total)
+              </SelectItem>
+              {monthOptions.map((m) => (
+                <SelectItem key={m.value} value={m.value} className="text-xs font-medium cursor-pointer">
+                  {m.label}
                 </SelectItem>
-                {monthOptions.map((m) => (
-                  <SelectItem key={m.value} value={m.value} className="font-medium cursor-pointer">
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedMonth !== currentMonthKey && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedMonth(currentMonthKey)}
-                className="h-9 px-2"
-                title="Reset to current month"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {typeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedType !== "all" && (
-              <Button variant="ghost" size="sm" onClick={() => setSelectedType("all")} className="h-9 px-2">
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+              ))}
+            </SelectContent>
+          </Select>
 
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger aria-label="Filter by post type" className="h-8 w-[140px] bg-card text-xs">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {typeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value} className="text-xs font-medium cursor-pointer">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {(selectedMonth !== currentMonthKey || selectedType !== "all") && (
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                setSelectedMonth(currentMonthKey);
+                setSelectedType("all");
+              }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Reset Filters
+            </Button>
+          )}
+
+          <Button asChild size="sm" className="gap-1.5">
+            <Link href="/dashboard/projects/posts/new">
+              <Plus className="size-3.5" />
+              New Post
+            </Link>
+          </Button>
+        </div>
+      </PageHeader>
+
+      {/* Content Status Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="size-4 text-primary" />
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">Content Pipeline</h2>
+          </div>
+          <Badge variant="neutral" className="text-[10px]">
+            Total Strategy Posts: {currentStrategyStats.totalStrategy}
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <StatusCard
+            icon={FileText}
+            label="Content Written"
+            value={currentStrategyStats.contentWritten}
+            total={currentStrategyStats.totalStrategy}
+            colorClass="bg-primary/10 text-primary"
+          />
+          <StatusCard
+            icon={CheckCircle}
+            label="Content Approved"
+            value={currentStrategyStats.contentApproved}
+            total={currentStrategyStats.totalStrategy}
+            colorClass="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          />
+          <SimpleStatusCard
+            icon={Clock}
+            label="Pending Review"
+            value={currentStrategyStats.contentPending}
+            colorClass="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+          />
+          <SimpleStatusCard
+            icon={AlertTriangle}
+            label="Changes Required"
+            value={currentStrategyStats.contentRejected}
+            colorClass="bg-rose-500/10 text-rose-600 dark:text-rose-400"
+          />
+          <SimpleStatusCard
+            icon={Loader2}
+            label="Resubmitted"
+            value={currentStrategyStats.contentResubmitted}
+            colorClass="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          />
         </div>
       </div>
 
-      {/* Content Status */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="border-b bg-muted/50 dark:bg-muted/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-semibold text-foreground">Content Status</CardTitle>
-                <CardDescription>Content writing and approval workflow (from contentStatus)</CardDescription>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-xs">
-              Total Posts: {currentStrategyStats.totalStrategy}
-            </Badge>
+      {/* Design Status Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Pencil className="size-4 text-violet-500" />
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">Design Workflow</h2>
           </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <StatusCard
-              icon={FileText}
-              label="Content Written"
-              value={currentStrategyStats.contentWritten}
-              total={currentStrategyStats.totalStrategy}
-              color="text-blue-600 dark:text-blue-300"
-              bgColor="bg-blue-50 dark:bg-blue-900/20"
-            />
-            <StatusCard
-              icon={CheckCircle}
-              label="Content Approved"
-              value={currentStrategyStats.contentApproved}
-              total={currentStrategyStats.totalStrategy}
-              color="text-green-600 dark:text-green-300"
-              bgColor="bg-green-50 dark:bg-green-900/20"
-            />
-            <SimpleStatusCard
-              icon={Clock}
-              label="Pending Review"
-              value={currentStrategyStats.contentPending}
-              color="text-amber-600 dark:text-amber-300"
-              bgColor="bg-amber-50 dark:bg-amber-900/20"
-            />
-            <SimpleStatusCard
-              icon={AlertTriangle}
-              label="Changes"
-              value={currentStrategyStats.contentRejected}
-              color="text-red-600 dark:text-red-300"
-              bgColor="bg-red-50 dark:bg-red-900/20"
-            />
-            <SimpleStatusCard
-              icon={Loader}
-              label="Resubmitted"
-              value={currentStrategyStats.contentResubmitted}
-              color="text-purple-600 dark:text-purple-300"
-              bgColor="bg-purple-50 dark:bg-purple-900/20"
-            />
-          </div>
-        </CardContent>
-      </Card>
+          <Badge variant="neutral" className="text-[10px]">
+            Designs Assigned: {currentDesignStats.designAssigned}
+          </Badge>
+        </div>
 
-      {/* Design Status */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="border-b bg-muted/50 dark:bg-muted/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900">
-                <Pencil className="h-5 w-5 text-purple-600 dark:text-purple-300" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-semibold text-foreground">Design Status</CardTitle>
-                <CardDescription>Design creation and approval workflow (from status field)</CardDescription>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-xs">
-              Designs Assigned: {currentDesignStats.designAssigned}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <StatusCard
-              icon={Pencil}
-              label="Design Assigned"
-              value={currentDesignStats.designAssigned}
-              total={currentDesignStats.designAssigned}
-              color="text-purple-600 dark:text-purple-300"
-              bgColor="bg-purple-50 dark:bg-purple-900/20"
-            />
-            <StatusCard
-              icon={Send}
-              label="Design Submitted"
-              value={currentDesignStats.designSubmitted}
-              total={currentDesignStats.designAssigned}
-              color="text-indigo-600 dark:text-indigo-300"
-              bgColor="bg-indigo-50 dark:bg-indigo-900/20"
-            />
-            <StatusCard
-              icon={CheckCircle}
-              label="Design Approved"
-              value={currentDesignStats.designApproved}
-              total={currentDesignStats.designAssigned}
-              color="text-green-600 dark:text-green-300"
-              bgColor="bg-green-50 dark:bg-green-900/20"
-            />
-            <SimpleStatusCard
-              icon={Clock}
-              label="Pending Review"
-              value={currentDesignStats.designPending}
-              color="text-amber-600 dark:text-amber-300"
-              bgColor="bg-amber-50 dark:bg-amber-900/20"
-            />
-            <SimpleStatusCard
-              icon={AlertTriangle}
-              label="Changes"
-              value={currentDesignStats.designRejected}
-              color="text-red-600 dark:text-red-300"
-              bgColor="bg-red-50 dark:bg-red-900/20"
-            />
-          </div>
-        </CardContent>
-      </Card>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <StatusCard
+            icon={Pencil}
+            label="Design Assigned"
+            value={currentDesignStats.designAssigned}
+            total={currentDesignStats.designAssigned}
+            colorClass="bg-violet-500/10 text-violet-600 dark:text-violet-400"
+          />
+          <StatusCard
+            icon={Send}
+            label="Design Submitted"
+            value={currentDesignStats.designSubmitted}
+            total={currentDesignStats.designAssigned}
+            colorClass="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          />
+          <StatusCard
+            icon={CheckCircle}
+            label="Design Approved"
+            value={currentDesignStats.designApproved}
+            total={currentDesignStats.designAssigned}
+            colorClass="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          />
+          <SimpleStatusCard
+            icon={Clock}
+            label="Pending Review"
+            value={currentDesignStats.designPending}
+            colorClass="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+          />
+          <SimpleStatusCard
+            icon={AlertTriangle}
+            label="Changes Required"
+            value={currentDesignStats.designRejected}
+            colorClass="bg-rose-500/10 text-rose-600 dark:text-rose-400"
+          />
+        </div>
+      </div>
 
-      {/* Posted & Scheduled */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="border-b bg-muted/50 dark:bg-muted/20">
+      {/* Posting & Schedule Status */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
-              <Calendar className="h-5 w-5 text-green-600 dark:text-green-300" />
+            <div className="flex size-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Clock className="size-5" />
             </div>
             <div>
-              <CardTitle className="text-lg font-semibold text-foreground">Posting & Schedule Status</CardTitle>
-              <CardDescription>Content scheduling and publishing (status = SCHEDULED or POSTED)</CardDescription>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Ready to Schedule</p>
+              <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{currentPostingStats.readyToSchedule}</p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center gap-3 p-6 rounded-lg border bg-card hover:shadow-md transition-all">
-              <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                <Clock className="h-6 w-6 text-blue-600 dark:text-blue-300" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Ready to Schedule</p>
-                <p className="text-3xl font-bold text-foreground mt-2">{currentPostingStats.readyToSchedule}</p>
-                <p className="text-xs text-muted-foreground mt-1">status = APPROVED</p>
-              </div>
-            </div>
+        </Card>
 
-            <div className="flex items-center gap-3 p-6 rounded-lg border bg-card hover:shadow-md transition-all">
-              <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
-                <Calendar className="h-6 w-6 text-purple-600 dark:text-purple-300" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Scheduled</p>
-                <p className="text-3xl font-bold text-foreground mt-2">{currentPostingStats.scheduled}</p>
-                <p className="text-xs text-muted-foreground mt-1">status = SCHEDULED</p>
-              </div>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <Calendar className="size-5" />
             </div>
-
-            <div className="flex items-center gap-3 p-6 rounded-lg border bg-card hover:shadow-md transition-all">
-              <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
-                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-300" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Posted</p>
-                <p className="text-3xl font-bold text-foreground mt-2">{currentPostingStats.posted}</p>
-                <p className="text-xs text-muted-foreground mt-1">status = POSTED</p>
-              </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Scheduled Posts</p>
+              <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{currentPostingStats.scheduled}</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
 
-      {/* Recent Activity */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle className="size-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Published / Posted</p>
+              <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{currentPostingStats.posted}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Recent Activity Feed */}
+      <Card>
+        <CardHeader className="border-b border-border/60 pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg font-semibold text-foreground">Recent Activity</CardTitle>
-              <CardDescription>Latest content updates and changes</CardDescription>
+              <CardTitle className="text-base">Recent Activity</CardTitle>
+              <CardDescription>Latest post updates across projects</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" className="gap-2">
-              <Eye className="h-4 w-4" />
-              View All
+            <Button asChild variant="ghost" size="xs" className="gap-1 text-muted-foreground hover:text-foreground">
+              <Link href="/dashboard/projects">
+                <Eye className="size-3.5" /> View All Projects
+              </Link>
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-1">
-            {processedRecentPosts.length > 0 ? (
-              processedRecentPosts.map((post: any, index: number) => {
+        <CardContent className="p-0">
+          {processedRecentPosts.length > 0 ? (
+            <div className="divide-y divide-border/60">
+              {processedRecentPosts.map((post: any) => {
                 if (!post?.id) return null;
                 return (
-                  <div key={post.id}>
-                    <div className="flex items-center justify-between py-4 hover:bg-accent -mx-6 px-6 rounded-lg transition-colors">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className={`p-2 rounded-lg ${post.status === 'APPROVED' ? 'bg-green-50 dark:bg-green-900/20' :
-                            post.status === 'REJECTED' ? 'bg-red-50 dark:bg-red-900/20' :
-                              post.status === 'SCHEDULED' ? 'bg-purple-50 dark:bg-purple-900/20' :
-                                post.status === 'POSTED' ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-blue-50 dark:bg-blue-900/20'
-                          }`}>
-                          <FileText className={`h-4 w-4 ${post.status === 'APPROVED' ? 'text-green-600 dark:text-green-300' :
-                              post.status === 'REJECTED' ? 'text-red-600 dark:text-red-300' :
-                                post.status === 'SCHEDULED' ? 'text-purple-600 dark:text-purple-300' :
-                                  post.status === 'POSTED' ? 'text-emerald-600 dark:text-emerald-300' : 'text-blue-600 dark:text-blue-300'
-                            }`} />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <Link href={`/dashboard/projects/posts/${post.id}`} className="font-medium text-foreground hover:text-primary transition-colors line-clamp-1">
-                            {post.title}
-                          </Link>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-sm text-muted-foreground">{post.project.client?.name || "No Client"}</span>
-                            <span className="text-muted">•</span>
-                            <span className="text-sm text-muted-foreground">{post.createdBy?.name || 'Deleted User'}</span>
-                            <span className="text-muted">•</span>
-                            <span className="text-xs text-muted-foreground">{formatDate(post.updatedAt)}</span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="outline" className="text-xs">{post.type}</Badge>
-                            {post.platforms?.length > 0 && (
-                              <span className="text-xs text-muted-foreground">
-                                {post.platforms.slice(0, 2).join(", ")}
-                                {post.platforms.length > 2 && ` +${post.platforms.length - 2}`}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                  <div key={post.id} className="flex items-center justify-between gap-4 p-3.5 sm:px-5 hover:bg-muted/40 transition-colors">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <FileText className="size-4" />
                       </div>
-
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className={statusConfig[post.status as keyof typeof statusConfig]?.color || "bg-muted text-muted-foreground"}>
-                          {statusConfig[post.status as keyof typeof statusConfig]?.label || post.status}
-                        </Badge>
-                        <Button variant="ghost" size="sm" className="gap-2">
-                          <Edit3 className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                      <div className="min-w-0">
+                        <Link href={`/dashboard/projects/posts/${post.id}`} className="font-medium text-xs sm:text-sm text-foreground hover:text-primary transition-colors line-clamp-1">
+                          {post.title}
+                        </Link>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                          <span className="font-medium text-foreground/80">{post.project.client?.name || "No Client"}</span>
+                          <span>•</span>
+                          <span>{post.createdBy?.name || 'Deleted User'}</span>
+                          <span>•</span>
+                          <span className="tabular-nums">{formatDate(post.updatedAt)}</span>
+                        </div>
                       </div>
                     </div>
-                    {index < processedRecentPosts.length - 1 && <Separator />}
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge variant={getStatusBadgeVariant(post.status)} dot className="text-[10px]">
+                        {post.status}
+                      </Badge>
+                      <Button asChild variant="ghost" size="icon-xs" title="Edit Post">
+                        <Link href={`/dashboard/projects/posts/${post.id}`}>
+                          <Edit3 className="size-3.5 text-muted-foreground" />
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 );
-              }).filter(Boolean)
-            ) : (
-              <div className="text-center py-12">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-2">No content yet</p>
-                <Link href="/dashboard/projects/posts/new">
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Create your first post
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
+              })}
+            </div>
+          ) : (
+            <div className="p-6">
+              <EmptyState
+                icon={FileText}
+                title="No posts found"
+                description="Create content posts to start tracking design assets and approval flows."
+                actionLabel="Create First Post"
+                actionHref="/dashboard/projects/posts/new"
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

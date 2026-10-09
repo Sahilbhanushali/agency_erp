@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeFile } from "fs/promises";
 import path from "path";
+import { deleteLocalFile } from "@/lib/storage";
 
 // GET: Fetch client details
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -45,6 +46,14 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const existingClient = await prisma.client.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!existingClient) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
     const formData = await request.formData();
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
@@ -53,8 +62,8 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     const avatarFile = formData.get("avatar") as File | null;
     const removeAvatar = formData.get("removeAvatar") as string | null;
 
-    if (!name ) {
-      return NextResponse.json({ error: "Name and email required" }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
     const dataToUpdate: any = {
@@ -65,14 +74,20 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     };
 
     if (avatarFile && avatarFile.size > 0) {
+      if (existingClient.avatar) {
+        await deleteLocalFile(existingClient.avatar);
+      }
       const bytes = await avatarFile.arrayBuffer();
       const buffer = Buffer.from(bytes);
       const fileName = `${Date.now()}-${avatarFile.name}`;
       const filePath = path.join(process.cwd(), "public", "uploads", fileName);
 
       await writeFile(filePath, buffer);
-      dataToUpdate.avatar = `/uploads/${fileName}`; // ✅ serve from public/uploads
+      dataToUpdate.avatar = `/uploads/${fileName}`;
     } else if (removeAvatar === "true") {
+      if (existingClient.avatar) {
+        await deleteLocalFile(existingClient.avatar);
+      }
       dataToUpdate.avatar = null;
     }
 
@@ -90,47 +105,51 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
-    try {
-      const session = await getServerSession(authOptions);
-      if (!session || !session.user) {
-        return NextResponse.json({ error: "Unauthorized: No session found" }, { status: 401 });
-      }
-  
-      // Check user permissions
-      const user = await prisma.user.findUnique({
-        where: { id: parseInt(session.user.id) },
-        include: {
-          role: {
-            include: {
-              permissions: {
-                select: { permission: { select: { name: true } } },
-              },
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized: No session found" }, { status: 401 });
+    }
+
+    // Check user permissions
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(session.user.id) },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              select: { permission: { select: { name: true } } },
             },
           },
         },
-      });
-  
-      if (!user || !user.role || !user.role.permissions.some((rp: any) => rp.permission.name === "Manage-clients")) {
-        return NextResponse.json({ error: "Unauthorized: Insufficient permissions" }, { status: 403 });
-      }
-  
-      // Check if client exists
-      const client = await prisma.client.findUnique({
-        where: { id: params.id },
-      });
-  
-      if (!client) {
-        return NextResponse.json({ error: "Client not found" }, { status: 404 });
-      }
-  
-      // Delete the client
-      await prisma.client.delete({
-        where: { id: params.id },
-      });
-  
-      return NextResponse.json({ message: "Client deleted successfully" });
-    } catch (error: any) {
-      console.error("Error deleting client:", error);
-      return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
+      },
+    });
+
+    if (!user || !user.role || !user.role.permissions.some((rp: any) => rp.permission.name === "Manage-clients")) {
+      return NextResponse.json({ error: "Unauthorized: Insufficient permissions" }, { status: 403 });
     }
+
+    // Check if client exists
+    const client = await prisma.client.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    if (client.avatar) {
+      await deleteLocalFile(client.avatar);
+    }
+
+    // Delete the client
+    await prisma.client.delete({
+      where: { id: params.id },
+    });
+
+    return NextResponse.json({ message: "Client deleted successfully" });
+  } catch (error: any) {
+    console.error("Error deleting client:", error);
+    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
   }
+}

@@ -1,4 +1,6 @@
-import { Card, CardContent } from "@/components/ui/card";
+"use client";
+
+import { useState, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -9,10 +11,33 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Eye, Edit, MoreHorizontal, FileText, MessageSquare, Check, X, Upload, Trash2 } from "lucide-react";
+import {
+  Eye,
+  Edit,
+  MoreHorizontal,
+  FileText,
+  Check,
+  X,
+  Upload,
+  Trash2,
+  FolderOpen,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  SlidersHorizontal,
+} from "lucide-react";
 import { Session } from "next-auth";
 import PostTimingBadge from "./postTimingBadge";
 
@@ -23,8 +48,8 @@ interface Post {
   title: string;
   caption?: string;
   type: string;
-  status: PostStatus; // Design Status
-  contentStatus: string; // Content Status
+  status: PostStatus;
+  contentStatus: string;
   createdAt: string;
   scheduledAt?: string;
   postedAt?: string;
@@ -52,25 +77,38 @@ interface PostTableProps {
   uploadingFiles: { [key: string]: boolean };
 }
 
-const statusColors: Record<PostStatus, string> = {
-  DRAFT: "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200",
-  SUBMITTED: "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200",
-  APPROVED: "bg-green-100 dark:bg-green-950/60 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-800",
-  REJECTED: "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200",
-  SCHEDULED: "bg-green-700 dark:bg-green-800 text-white border border-green-800 dark:border-green-900 font-semibold shadow-sm",
-  POSTED: "bg-green-700 dark:bg-green-800 text-white border border-green-800 dark:border-green-900 font-semibold shadow-sm",
-  RESUBMITTED: "bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200",
-  NEEDS_MINOR_CHANGE: "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200",
-  C_APPROVED: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800",
+const getDesignBadgeVariant = (status: PostStatus) => {
+  switch (status) {
+    case "APPROVED":
+    case "POSTED":
+    case "C_APPROVED":
+      return "success";
+    case "SCHEDULED":
+    case "SUBMITTED":
+      return "info";
+    case "REJECTED":
+      return "destructive";
+    case "NEEDS_MINOR_CHANGE":
+      return "warning";
+    case "RESUBMITTED":
+      return "purple";
+    default:
+      return "neutral";
+  }
 };
 
-const contentStatusColors: Record<string, string> = {
-  DRAFT: "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100",
-  PENDING_REVIEW: "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200",
-  APPROVED: "bg-green-200 dark:bg-green-900 text-green-900 dark:text-green-200",
-  NEEDS_REVISION: "bg-orange-200 dark:bg-orange-900 text-orange-900 dark:text-orange-200",
-  REJECTED: "bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-200",
-  NEEDS_MINOR_CHANGE: "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200",
+const getContentBadgeVariant = (status: string) => {
+  switch (status) {
+    case "APPROVED":
+      return "success";
+    case "PENDING_REVIEW":
+      return "warning";
+    case "REJECTED":
+    case "NEEDS_REVISION":
+      return "destructive";
+    default:
+      return "neutral";
+  }
 };
 
 const typeIcons: Record<string, string> = {
@@ -84,22 +122,21 @@ const typeIcons: Record<string, string> = {
 
 const getStatusDisplay = (post: Post) => {
   let display = post.status.charAt(0) + post.status.slice(1).toLowerCase();
-  if (post.status === "NEEDS_MINOR_CHANGE") display = "Needs Minor Change";
-  if (post.status === "REJECTED") display = "Changes";
   let dateStr = "";
   switch (post.status) {
     case "APPROVED":
-      if (post.approvedAt) dateStr = `(${format(new Date(post.approvedAt), "MMM dd, yyyy")})`;
+    case "C_APPROVED":
+      if (post.approvedAt) dateStr = `(${format(new Date(post.approvedAt), "MMM dd")})`;
       break;
     case "REJECTED":
     case "NEEDS_MINOR_CHANGE":
-      if (post.rejectedAt) dateStr = `(${format(new Date(post.rejectedAt), "MMM dd, yyyy")})`;
+      if (post.rejectedAt) dateStr = `(${format(new Date(post.rejectedAt), "MMM dd")})`;
       break;
     case "SCHEDULED":
-      if (post.scheduledAt) dateStr = `(${format(new Date(post.scheduledAt), "MMM dd, yyyy")})`;
+      if (post.scheduledAt) dateStr = `(${format(new Date(post.scheduledAt), "MMM dd")})`;
       break;
     case "POSTED":
-      if (post.postedAt) dateStr = `(${format(new Date(post.postedAt), "MMM dd, yyyy")})`;
+      if (post.postedAt) dateStr = `(${format(new Date(post.postedAt), "MMM dd")})`;
       break;
   }
   return `${display} ${dateStr}`.trim();
@@ -121,134 +158,204 @@ export default function PostTable({
   handleFileUpload,
   uploadingFiles,
 }: PostTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [isCompact, setIsCompact] = useState(false);
+
+  const totalPosts = posts.length;
+  const totalPages = Math.max(1, Math.ceil(totalPosts / pageSize));
+
+  // Keep currentPage within bounds if filtered
+  const safePage = Math.min(currentPage, totalPages);
+
+  const paginatedPosts = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return posts.slice(start, start + pageSize);
+  }, [posts, safePage, pageSize]);
+
+  const startIndex = totalPosts > 0 ? (safePage - 1) * pageSize + 1 : 0;
+  const endIndex = Math.min(safePage * pageSize, totalPosts);
+
+  if (posts.length === 0) {
+    return (
+      <EmptyState
+        icon={FolderOpen}
+        title="No posts found"
+        description="No posts match your filters or search criteria."
+        className="my-4"
+      />
+    );
+  }
+
   return (
-    <Card>
-      <CardContent className="pt-6">
+    <div className="space-y-3">
+      {/* Table Density & Count Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+        <div>
+          Showing <span className="font-semibold text-foreground tabular-nums">{startIndex}–{endIndex}</span> of{" "}
+          <span className="font-semibold text-foreground tabular-nums">{totalPosts}</span> posts
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCompact(!isCompact)}
+            className="h-7 text-xs gap-1.5"
+            title="Toggle row density"
+          >
+            <SlidersHorizontal className="size-3" />
+            <span>{isCompact ? "Normal view" : "Compact density"}</span>
+          </Button>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px]">Rows:</span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => {
+                setPageSize(Number(val));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="h-7 w-16 text-xs tabular-nums">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Table */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/40 sticky top-0 z-10 backdrop-blur-sm">
             <TableRow>
               {permissions.includes("Manage-post") && (
-                <TableHead className="w-12">
+                <TableHead className="w-10">
                   <Checkbox
                     checked={selectedPosts.length === posts.length && posts.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
               )}
-              <TableHead className="w-[50px]">#</TableHead>
-              <TableHead>Title</TableHead>
+              <TableHead className="w-10 text-center font-mono">#</TableHead>
+              <TableHead>Title & Overview</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Design Status</TableHead>
               <TableHead>Content Status</TableHead>
-              <TableHead>Project</TableHead>
-              <TableHead>Created</TableHead>
+              <TableHead>Project / Client</TableHead>
+              <TableHead>Created Date</TableHead>
               <TableHead>Assigned To</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {posts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={permissions.includes("Manage-post") ? 9 : 8} className="text-center py-12 text-muted-foreground">
-                  No posts found matching your filters
-                </TableCell>
-              </TableRow> 
-            ) : (
-              posts.map((post, index) => (
-                <TableRow key={post.id}>
+            {paginatedPosts.map((post, index) => {
+              const rowIndex = (safePage - 1) * pageSize + index + 1;
+              return (
+                <TableRow
+                  key={post.id}
+                  className={`transition-colors hover:bg-muted/50 ${
+                    isCompact ? "py-1" : "py-2.5"
+                  }`}
+                >
                   {permissions.includes("Manage-post") && (
-                    <TableCell>
+                    <TableCell className={isCompact ? "py-1.5" : "py-3"}>
                       <Checkbox
                         checked={selectedPosts.includes(post.id)}
                         onCheckedChange={(checked) => handleSelectPost(post.id, checked as boolean)}
                       />
                     </TableCell>
                   )}
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell className="font-medium">
-                    <div className="space-y-1">
+                  <TableCell className={`text-center font-mono text-muted-foreground text-xs ${isCompact ? "py-1.5" : "py-3"}`}>
+                    {rowIndex}
+                  </TableCell>
+                  <TableCell className={`font-medium max-w-[280px] ${isCompact ? "py-1.5" : "py-3"}`}>
+                    <div className="space-y-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold">{post.title}</span>
+                        <span className="font-semibold text-foreground text-xs sm:text-sm line-clamp-1">
+                          {post.title}
+                        </span>
                         <PostTimingBadge post={post} />
                       </div>
-                      {post.caption && (
-                        <div className="text-sm text-muted-foreground max-w-xs truncate">{post.caption}</div>
+                      {post.caption && !isCompact && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">{post.caption}</p>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
+                  <TableCell className={isCompact ? "py-1.5" : "py-3"}>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span>{typeIcons[post.type] || "📄"}</span>
-                      <span className="text-sm">{post.type.charAt(0) + post.type.slice(1).toLowerCase()}</span>
+                      <span className="font-medium">{post.type.charAt(0) + post.type.slice(1).toLowerCase()}</span>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Badge className={statusColors[post.status]}>{getStatusDisplay(post)}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={contentStatusColors[post.contentStatus] || "bg-gray-100 text-gray-800"}>
-                      {post.contentStatus === "REJECTED" ? "Changes" : post.contentStatus.charAt(0) + post.contentStatus.slice(1).toLowerCase().replace(/_/g, " ")}
+                  <TableCell className={isCompact ? "py-1.5" : "py-3"}>
+                    <Badge variant={getDesignBadgeVariant(post.status)} dot className="text-[10px]">
+                      {getStatusDisplay(post)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="font-medium text-sm">{post.project?.name}</div>
-                      <div className="text-xs text-muted-foreground">{post.project?.client?.name}</div>
+                  <TableCell className={isCompact ? "py-1.5" : "py-3"}>
+                    <Badge variant={getContentBadgeVariant(post.contentStatus)} className="text-[10px]">
+                      {post.contentStatus === "REJECTED"
+                        ? "Changes"
+                        : post.contentStatus.charAt(0) + post.contentStatus.slice(1).toLowerCase().replace(/_/g, " ")}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className={isCompact ? "py-1.5" : "py-3"}>
+                    <div className="space-y-0.5">
+                      <p className="font-medium text-xs text-foreground line-clamp-1">{post.project?.name}</p>
+                      <p className="text-[11px] text-muted-foreground line-clamp-1">{post.project?.client?.name}</p>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className={`text-xs text-muted-foreground tabular-nums ${isCompact ? "py-1.5" : "py-3"}`}>
                     {format(new Date(post.createdAt), "MMM dd, yyyy")}
                   </TableCell>
-                  <TableCell className="text-sm">{post.assignedTo?.name || "Unassigned"}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className={`text-xs text-muted-foreground ${isCompact ? "py-1.5" : "py-3"}`}>
+                    {post.assignedTo?.name || "Unassigned"}
+                  </TableCell>
+                  <TableCell className={`text-right ${isCompact ? "py-1.5" : "py-3"}`}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-foreground">
+                          <MoreHorizontal className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
+                      <DropdownMenuContent align="end" className="w-48 text-xs">
+                        <DropdownMenuItem asChild className="cursor-pointer">
                           <Link href={`/dashboard/projects/posts/${post.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
+                            <Eye className="mr-2 size-3.5" />
                             View Details
                           </Link>
                         </DropdownMenuItem>
                         {["ADMIN", "Manager", "Content Writer"].includes(session?.user?.role || "") && (
                           <>
-                            <DropdownMenuItem asChild>
+                            <DropdownMenuItem asChild className="cursor-pointer">
                               <Link href={`/dashboard/projects/posts/${post.id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" />
+                                <Edit className="mr-2 size-3.5" />
                                 Edit
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDeletePost(post.id)}
-                              className="text-destructive"
+                              className="text-destructive focus:text-destructive cursor-pointer"
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
+                              <Trash2 className="mr-2 size-3.5" />
                               Delete
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                           </>
                         )}
                         <DropdownMenuItem
-                          onClick={() => {
-                            setViewingAssets(post.id);
-                          }}
+                          onClick={() => setViewingAssets(post.id)}
+                          className="cursor-pointer"
                         >
-                          <FileText className="mr-2 h-4 w-4" />
+                          <FileText className="mr-2 size-3.5" />
                           View Assets ({post.assets?.length || 0})
                         </DropdownMenuItem>
-                        {/* <DropdownMenuItem
-                          onClick={() => {
-                            setCommentingPost(post.id);
-                            fetchComments(post.id);
-                          }}
-                        >
-                          <MessageSquare className="mr-2 h-4 w-4" />
-                          Comments
-                        </DropdownMenuItem> */}
                         {["ADMIN", "Manager", "Team Lead"].includes(session?.user?.role || "") && (
                           <>
                             <DropdownMenuSeparator />
@@ -256,25 +363,26 @@ export default function PostTable({
                               <>
                                 <DropdownMenuItem
                                   onClick={() => openApprovalDialog(post.id, "approve")}
-                                  className="text-green-600"
+                                  className="text-emerald-600 dark:text-emerald-400 cursor-pointer"
                                 >
-                                  <Check className="mr-2 h-4 w-4" />
+                                  <Check className="mr-2 size-3.5" />
                                   Approve
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => openApprovalDialog(post.id, "reject")}
+                                  className="cursor-pointer"
                                 >
-                                  <X className="mr-2 h-4 w-4" />
+                                  <X className="mr-2 size-3.5" />
                                   Changes
                                 </DropdownMenuItem>
                               </>
                             )}
-                            <DropdownMenuItem onClick={() => openStatusChange(post.id)}>
+                            <DropdownMenuItem onClick={() => openStatusChange(post.id)} className="cursor-pointer">
                               Change Status
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem className="cursor-pointer">
                               <label className="flex items-center cursor-pointer w-full">
-                                <Upload className="mr-2 h-4 w-4" />
+                                <Upload className="mr-2 size-3.5" />
                                 Upload Files
                                 <input
                                   type="file"
@@ -286,7 +394,7 @@ export default function PostTable({
                               </label>
                             </DropdownMenuItem>
                             {uploadingFiles[post.id] && (
-                              <DropdownMenuItem disabled>Uploading...</DropdownMenuItem>
+                              <DropdownMenuItem disabled className="text-muted-foreground">Uploading...</DropdownMenuItem>
                             )}
                           </>
                         )}
@@ -294,11 +402,67 @@ export default function PostTable({
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              );
+            })}
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Pagination Footer Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <p className="text-xs text-muted-foreground">
+            Page <span className="font-semibold text-foreground tabular-nums">{safePage}</span> of{" "}
+            <span className="font-semibold text-foreground tabular-nums">{totalPages}</span>
+          </p>
+
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="icon-xs"
+              onClick={() => setCurrentPage(1)}
+              disabled={safePage <= 1}
+              title="First page"
+            >
+              <ChevronsLeft className="size-3.5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              className="h-8 gap-1 text-xs px-2.5"
+            >
+              <ChevronLeft className="size-3.5" />
+              <span>Previous</span>
+            </Button>
+
+            <span className="px-2 text-xs font-mono font-medium text-foreground">
+              {safePage} / {totalPages}
+            </span>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              className="h-8 gap-1 text-xs px-2.5"
+            >
+              <span>Next</span>
+              <ChevronRight className="size-3.5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-xs"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={safePage >= totalPages}
+              title="Last page"
+            >
+              <ChevronsRight className="size-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

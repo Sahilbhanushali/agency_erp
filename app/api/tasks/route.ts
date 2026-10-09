@@ -116,9 +116,10 @@ export async function GET(request: Request) {
   });
   const userRole = dbUser?.role?.name || '';
 
+  const normalizedRole = userRole?.toUpperCase() || (session?.user as any)?.role?.toUpperCase() || '';
   // Admins and Managers see all assigned tasks (any user assigned)
   // Designers/others only see their own tasks
-  const isAdminOrManager = ['ADMIN', 'Manager', 'Social Media Manager'].includes(userRole);
+  const isAdminOrManager = ['ADMIN', 'MANAGER', 'SOCIAL MEDIA MANAGER', 'TEAM LEAD', 'TEAM_LEAD'].includes(normalizedRole);
 
   try {
     // Build where clause based on role

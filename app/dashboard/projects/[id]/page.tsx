@@ -1,10 +1,41 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useParams } from "next/navigation";
-import { Search, Filter, Calendar, Users, BarChart3, TrendingUp, Clock, CheckCircle, Target, Image, Video, Film, Camera } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  Search,
+  Filter,
+  Calendar,
+  Users,
+  BarChart3,
+  TrendingUp,
+  Clock,
+  CheckCircle2,
+  Target,
+  Image as ImageIcon,
+  Video,
+  Film,
+  Camera,
+  ArrowLeft,
+  Edit,
+  Plus,
+  Building2,
+  Mail,
+  Phone,
+  ArrowUpDown,
+  ExternalLink,
+} from "lucide-react";
 import { getMediaUrl } from "@/lib/utils";
 import MediaPopup from "@/components/mediaPopup";
+import { useBreadcrumbTitle } from "@/lib/route-labels";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type Post = {
   id: string;
@@ -57,26 +88,45 @@ type Project = {
   client: Client;
   manager: Manager;
   posts: Post[];
-  postTypes: Record<string, number>; // Added postTypes
+  postTypes: Record<string, number>;
 };
 
-// Updated getPostTypeIcon to include all post types
 const getPostTypeIcon = (type: string) => {
   const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
     reel: Film,
     story: Camera,
     video: Video,
-    carousel: Image,
-    photo: Image,
-    article: BarChart3, // Kept for compatibility
+    carousel: ImageIcon,
+    photo: ImageIcon,
+    article: BarChart3,
   };
-  return iconMap[type.toLowerCase()] || BarChart3; // Fallback to BarChart3
+  return iconMap[type.toLowerCase()] || BarChart3;
+};
+
+const getStatusBadge = (status: string) => {
+  const normalized = status.toUpperCase();
+  switch (normalized) {
+    case "POSTED":
+    case "APPROVED":
+      return <Badge variant="success">{status}</Badge>;
+    case "SCHEDULED":
+      return <Badge variant="warning">{status}</Badge>;
+    case "SUBMITTED":
+      return <Badge variant="info">{status}</Badge>;
+    case "REJECTED":
+      return <Badge variant="destructive">{status}</Badge>;
+    default:
+      return <Badge variant="secondary">{status}</Badge>;
+  }
 };
 
 export default function ProjectDetailsPage() {
+  const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useBreadcrumbTitle(id, project?.name);
 
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -108,92 +158,112 @@ export default function ProjectDetailsPage() {
   const projectStats = useMemo(() => {
     if (!project) return null;
 
-    const posts = project.posts;
+    const posts = project.posts || [];
     const total = posts.length;
 
     const statusCounts = posts.reduce(
       (acc, post) => {
         let status = post.status.toLowerCase();
-        if (status === 'rejected') status = 'changes';
+        if (status === "rejected") status = "changes";
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       },
       { draft: 0, submitted: 0, approved: 0, changes: 0, scheduled: 0, posted: 0 } as Record<string, number>
     );
 
-    // Calculate post type statistics based on postTypes and posts
-    const postTypeStats = Object.entries(project.postTypes).reduce(
+    const postTypeStats = Object.entries(project.postTypes || {}).reduce(
       (acc, [type, planned]) => {
         const typeLower = type.toLowerCase();
         acc[typeLower] = {
           planned,
           completed: 0,
-          created: 0, // Track created posts (all statuses)
+          created: 0,
           remaining: planned,
           progressPercentage: 0,
           status: "not-started",
-          isPlanned: true, // Mark as planned type
+          isPlanned: true,
         };
         return acc;
       },
-      {} as Record<string, { planned: number; completed: number; created: number; remaining: number; progressPercentage: number; status: string; isPlanned: boolean }>
+      {} as Record<
+        string,
+        {
+          planned: number;
+          completed: number;
+          created: number;
+          remaining: number;
+          progressPercentage: number;
+          status: string;
+          isPlanned: boolean;
+        }
+      >
     );
 
-    // Update stats based on created posts
     posts.forEach((post) => {
       const type = post.type.toLowerCase();
       if (!postTypeStats[type]) {
-        // Handle unplanned post types (like PHOTO)
         postTypeStats[type] = {
           planned: 0,
           completed: 0,
           created: 0,
           remaining: 0,
           progressPercentage: 0,
-          status: "not-started",
+          status: "unplanned",
           isPlanned: false,
         };
       }
+
       postTypeStats[type].created += 1;
-      if (post.status.toLowerCase() === "posted") {
+
+      if (post.status.toLowerCase() === "posted" || post.status.toLowerCase() === "approved") {
         postTypeStats[type].completed += 1;
       }
-      // Calculate remaining based on planned posts
-      if (postTypeStats[type].isPlanned) {
-        postTypeStats[type].remaining = Math.max(0, postTypeStats[type].planned - postTypeStats[type].created);
+
+      const planned = postTypeStats[type].planned;
+      const completed = postTypeStats[type].completed;
+
+      if (planned > 0) {
+        postTypeStats[type].remaining = Math.max(0, planned - completed);
+        postTypeStats[type].progressPercentage = Math.round((completed / planned) * 100);
+
+        if (completed === 0) {
+          postTypeStats[type].status = "not-started";
+        } else if (completed < planned) {
+          postTypeStats[type].status = "in-progress";
+        } else {
+          postTypeStats[type].status = "completed";
+        }
+      } else {
+        postTypeStats[type].remaining = 0;
+        postTypeStats[type].progressPercentage = 100;
+        postTypeStats[type].status = "unplanned";
       }
-      postTypeStats[type].progressPercentage =
-        postTypeStats[type].planned > 0
-          ? Math.round((postTypeStats[type].completed / postTypeStats[type].planned) * 100) || 0
-          : 0;
-      postTypeStats[type].status =
-        postTypeStats[type].completed === postTypeStats[type].planned && postTypeStats[type].planned > 0
-          ? "completed"
-          : postTypeStats[type].completed > 0
-          ? "in-progress"
-          : "not-started";
     });
 
-    const completionRate = total > 0 ? Math.round((statusCounts.posted / total) * 100) : 0;
-    const approvalRate = total > 0 ? Math.round(((statusCounts.approved + statusCounts.posted) / total) * 100) : 0;
+    const completedPosts = (statusCounts.posted || 0) + (statusCounts.approved || 0);
+    const completionRate = total > 0 ? Math.round((completedPosts / total) * 100) : 0;
 
-    const now = new Date();
+    const today = new Date().toDateString();
     const scheduledToday = posts.filter(
-      (post) => post.scheduledAt && new Date(post.scheduledAt).toDateString() === now.toDateString()
+      (p) => p.scheduledAt && new Date(p.scheduledAt).toDateString() === today
     ).length;
 
+    const now = new Date();
     const overduePosts = posts.filter(
-      (post) => post.scheduledAt && new Date(post.scheduledAt) < now && post.status !== "POSTED"
+      (p) =>
+        p.scheduledAt &&
+        new Date(p.scheduledAt) < now &&
+        p.status.toLowerCase() !== "posted" &&
+        p.status.toLowerCase() !== "approved"
     ).length;
 
     return {
       total,
-      statusCounts,
-      postTypeStats,
       completionRate,
-      approvalRate,
       scheduledToday,
       overduePosts,
+      statusCounts,
+      postTypeStats,
     };
   }, [project]);
 
@@ -201,28 +271,29 @@ export default function ProjectDetailsPage() {
   const filteredAndSortedPosts = useMemo(() => {
     if (!project) return [];
 
-    let filtered = project.posts.filter((post) => {
+    const filtered = (project.posts || []).filter((post) => {
       const matchesSearch =
         !searchQuery ||
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.caption.toLowerCase().includes(searchQuery.toLowerCase());
+        post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.caption?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = !statusFilter || post.status === statusFilter;
       const matchesType = !typeFilter || post.type === typeFilter;
 
-      const matchesDate = !dateFilter || (() => {
-        const postDate = new Date(post.createdAt).toDateString();
-        const filterDate = new Date(dateFilter).toDateString();
-        return postDate === filterDate;
-      })();
+      const matchesDate =
+        !dateFilter ||
+        (() => {
+          const postDate = new Date(post.createdAt).toDateString();
+          const filterDate = new Date(dateFilter).toDateString();
+          return postDate === filterDate;
+        })();
 
       return matchesSearch && matchesStatus && matchesType && matchesDate;
     });
 
-    // Sort posts
     filtered.sort((a, b) => {
-      let aValue = a[sortBy as keyof Post] as string;
-      let bValue = b[sortBy as keyof Post] as string;
+      let aValue = (a[sortBy as keyof Post] || "") as string;
+      let bValue = (b[sortBy as keyof Post] || "") as string;
 
       if (sortBy.includes("At") || sortBy.includes("Date")) {
         aValue = new Date(aValue || "").getTime().toString();
@@ -236,267 +307,214 @@ export default function ProjectDetailsPage() {
     return filtered;
   }, [project, searchQuery, statusFilter, dateFilter, typeFilter, sortBy, sortOrder]);
 
-  // Get unique values for filters
   const uniqueStatuses = useMemo(() => {
-    if (!project) return [];
+    if (!project?.posts) return [];
     return [...new Set(project.posts.map((post) => post.status))];
   }, [project]);
 
   const uniqueTypes = useMemo(() => {
-    if (!project) return [];
+    if (!project?.posts) return [];
     return [...new Set(project.posts.map((post) => post.type))];
   }, [project]);
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      DRAFT: "bg-slate-100 text-slate-700 border-slate-200",
-      SUBMITTED: "bg-blue-100 text-blue-700 border-blue-200",
-      APPROVED: "bg-emerald-100 text-emerald-700 border-emerald-200",
-      REJECTED: "bg-rose-100 text-rose-700 border-rose-200",
-      SCHEDULED: "bg-amber-100 text-amber-700 border-amber-200",
-      POSTED: "bg-violet-100 text-violet-700 border-violet-200",
-    };
-    return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-700 border-gray-200";
-  };
-
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="flex items-center space-x-3 bg-white p-6 rounded-xl shadow-lg">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="text-lg font-medium text-slate-700">Loading project details...</p>
+      <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-9 rounded-md" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-72 w-full rounded-xl" />
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="text-center bg-white p-8 rounded-xl shadow-lg">
-          <div className="w-16 h-16 mx-auto mb-4 bg-rose-100 rounded-full flex items-center justify-center">
-            <Search className="w-8 h-8 text-rose-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-slate-800 mb-2">Project Not Found</h2>
-          <p className="text-slate-600">The requested project could not be located.</p>
-        </div>
+      <div className="max-w-4xl mx-auto p-6">
+        <EmptyState
+          icon={Search}
+          title="Project Not Found"
+          description="The requested project could not be found or you may not have access."
+          action={{
+            label: "Back to Projects",
+            onClick: () => router.push("/dashboard/projects"),
+          }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-5">
+        <div className="flex items-start sm:items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            onClick={() => router.push("/dashboard/projects")}
+            aria-label="Back to projects"
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
                 {project.name}
               </h1>
-              <p className="text-lg text-slate-600 mt-2 max-w-3xl">{project.description}</p>
+              <Badge variant={project.isActive ? "success" : "secondary"}>
+                {project.isActive ? "Active Campaign" : "Inactive"}
+              </Badge>
             </div>
-            <div
-              className={`px-4 py-2 rounded-full text-sm font-medium border ${
-                project.isActive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
-              }`}
-            >
-              {project.isActive ? "Active Project" : "Inactive Project"}
-            </div>
+            {project.description && (
+              <p className="text-xs text-muted-foreground mt-1 max-w-2xl line-clamp-2">
+                {project.description}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Enhanced Dashboard Stats */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          {/* Key Metrics Cards */}
-          <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Total Posts</p>
-                  <p className="text-3xl font-bold text-slate-900">{projectStats?.total || 0}</p>
-                </div>
-                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-indigo-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Completion Rate</p>
-                  <p className="text-3xl font-bold text-emerald-600">{projectStats?.completionRate || 0}%</p>
-                </div>
-                <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-emerald-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Scheduled Today</p>
-                  <p className="text-3xl font-bold text-amber-600">{projectStats?.scheduledToday || 0}</p>
-                </div>
-                <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-amber-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Overdue</p>
-                  <p className="text-3xl font-bold text-rose-600">{projectStats?.overduePosts || 0}</p>
-                </div>
-                <div className="w-12 h-12 bg-rose-100 rounded-lg flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-rose-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Status Distribution */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-              <CheckCircle className="w-5 h-5 mr-2 text-slate-600" />
-              Post Status Distribution
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(projectStats?.statusCounts || {}).map(([status, count]) => (
-                <div key={status} className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
-                  <span className="text-sm font-medium text-slate-700 capitalize">{status}</span>
-                  <span className="text-lg font-bold text-slate-900">{count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="text-xs"
+          >
+            <Link href={`/dashboard/projects/${id}/edit`}>
+              <Edit className="size-3.5 mr-1.5" />
+              Edit Project
+            </Link>
+          </Button>
+          <Button
+            asChild
+            size="sm"
+            className="text-xs"
+          >
+            <Link href={`/dashboard/projects/posts/new?projectId=${id}`}>
+              <Plus className="size-3.5 mr-1.5" />
+              New Post
+            </Link>
+          </Button>
         </div>
+      </div>
 
-        {/* Status Distribution & Post Types Summary */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Status Distribution */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-              <CheckCircle className="w-5 h-5 mr-2 text-slate-600" />
-              Status Distribution
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(projectStats?.statusCounts || {}).map(([status, count]) => (
-                <div key={status} className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
-                  <span className="text-sm font-medium text-slate-700 capitalize">{status}</span>
-                  <span className="text-lg font-bold text-slate-900">{count}</span>
-                </div>
-              ))}
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <Card className="shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Total Posts</p>
+              <p className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+                {projectStats?.total || 0}
+              </p>
             </div>
-          </div>
-
-          {/* Post Types Summary Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2 text-slate-600" />
-              Post Types Summary
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b border-slate-200">
-                  <tr className="text-left">
-                    <th className="pb-2 text-slate-600 font-medium">Type</th>
-                    <th className="pb-2 text-slate-600 font-medium text-center">Planned</th>
-                    <th className="pb-2 text-slate-600 font-medium text-center">Created</th>
-                    <th className="pb-2 text-slate-600 font-medium text-center">Done</th>
-                    <th className="pb-2 text-slate-600 font-medium text-center">Left</th>
-                    <th className="pb-2 text-slate-600 font-medium text-center">Progress</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {Object.entries(projectStats?.postTypeStats || {}).map(([type, stats]: [string, any]) => {
-                    const IconComponent = getPostTypeIcon(type);
-                    return (
-                      <tr key={type} className="hover:bg-slate-50">
-                        <td className="py-3">
-                          <div className="flex items-center space-x-2">
-                            <IconComponent className="w-4 h-4 text-slate-500" />
-                            <span className="font-medium text-slate-700">
-                              {type}
-                              {!stats.isPlanned && <span className="text-xs text-rose-500 ml-2">(Unplanned)</span>}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 text-center text-slate-900 font-semibold">{stats.planned}</td>
-                        <td className="py-3 text-center text-slate-900 font-semibold">{stats.created}</td>
-                        <td className="py-3 text-center">
-                          <span className="text-emerald-600 font-semibold">{stats.completed}</span>
-                        </td>
-                        <td className="py-3 text-center">
-                          <span className={`font-semibold ${stats.remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                            {stats.remaining}
-                          </span>
-                        </td>
-                        <td className="py-3 text-center">
-                          <div className="flex items-center justify-center space-x-2">
-                            <div className="w-12 bg-slate-200 rounded-full h-1.5">
-                              <div
-                                className={`h-1.5 rounded-full ${
-                                  stats.status === "completed" ? "bg-emerald-500" : stats.status === "in-progress" ? "bg-blue-500" : "bg-slate-400"
-                                }`}
-                                style={{ width: `${Math.min(stats.progressPercentage, 100)}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-xs font-medium text-slate-600">{stats.progressPercentage}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {Object.keys(projectStats?.postTypeStats || {}).length === 0 && (
-                <div className="text-center py-8">
-                  <Target className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No post types configured for this project</p>
-                </div>
-              )}
+            <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <BarChart3 className="size-5" />
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Project Details */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Project Timeline</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-medium text-slate-600">Start Date</p>
-                <p className="text-slate-900">{new Date(project.startDate).toLocaleDateString('en-GB')}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-600">End Date</p>
-                <p className="text-slate-900">{project.endDate ? new Date(project.endDate).toLocaleDateString('en-GB') : "Not set"}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-600">Duration</p>
-                <p className="text-slate-900">
-                  {project.endDate
-                    ? `${Math.ceil((new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24))} days`
-                    : "Ongoing"}
-                </p>
-              </div>
+        <Card className="shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Completion Rate</p>
+              <p className="text-2xl font-semibold tracking-tight tabular-nums text-primary">
+                {projectStats?.completionRate || 0}%
+              </p>
             </div>
-          </div>
+            <div className="size-10 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <TrendingUp className="size-5" />
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Client Details */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Client Information</h3>
+        <Card className="shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Scheduled Today</p>
+              <p className="text-2xl font-semibold tracking-tight tabular-nums text-amber-600 dark:text-amber-400">
+                {projectStats?.scheduledToday || 0}
+              </p>
+            </div>
+            <div className="size-10 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Calendar className="size-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Overdue</p>
+              <p className="text-2xl font-semibold tracking-tight tabular-nums text-destructive">
+                {projectStats?.overduePosts || 0}
+              </p>
+            </div>
+            <div className="size-10 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
+              <Clock className="size-5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Meta & Summary Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Project Meta Card */}
+        <Card className="shadow-2xs">
+          <CardHeader className="pb-3 border-b border-border/50">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Calendar className="size-4 text-primary" />
+              Timeline & Scope
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3 text-xs">
+            <div className="flex items-center justify-between py-1 border-b border-border/40">
+              <span className="text-muted-foreground">Start Date</span>
+              <span className="font-medium text-foreground">
+                {new Date(project.startDate).toLocaleDateString("en-GB")}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-1 border-b border-border/40">
+              <span className="text-muted-foreground">End Date</span>
+              <span className="font-medium text-foreground">
+                {project.endDate ? new Date(project.endDate).toLocaleDateString("en-GB") : "Ongoing"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-muted-foreground">Duration</span>
+              <span className="font-medium text-foreground">
+                {project.endDate
+                  ? `${Math.ceil((new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24))} days`
+                  : "Continuous"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Client Card */}
+        <Card className="shadow-2xs">
+          <CardHeader className="pb-3 border-b border-border/50">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Building2 className="size-4 text-primary" />
+              Client
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
             {project.client ? (
-              <div className="flex items-start space-x-3">
-                <img
-                  src={project.client.avatar ? getMediaUrl(project.client.avatar) : "/default-avatar.png"}
-                  alt={project.client.name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-slate-200 cursor-pointer hover:opacity-80 hover:scale-105 transition-all"
+              <div className="flex items-start gap-3">
+                <Avatar
+                  className="size-10 border border-border/80 cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all shrink-0"
                   onClick={() => {
                     if (project.client.avatar) {
                       setSelectedLogo({
@@ -506,212 +524,336 @@ export default function ProjectDetailsPage() {
                       });
                     }
                   }}
-                  title="Click to view full image"
-                />
-                <div className="space-y-1">
-                  <p className="font-semibold text-slate-900">{project.client.name}</p>
-                  <p className="text-sm text-slate-600">{project.client.company}</p>
-                  <p className="text-sm text-slate-600">{project.client.email}</p>
-                  <p className="text-sm text-slate-600">{project.client.phone}</p>
+                >
+                  {project.client.avatar && <AvatarImage src={getMediaUrl(project.client.avatar)} />}
+                  <AvatarFallback className="text-xs bg-muted font-medium">
+                    {project.client.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-0.5 text-xs truncate">
+                  <p className="font-semibold text-foreground truncate">{project.client.name}</p>
+                  <p className="text-muted-foreground truncate">{project.client.company || "No company name"}</p>
+                  {project.client.email && (
+                    <p className="text-muted-foreground flex items-center gap-1.5 truncate">
+                      <Mail className="size-3 shrink-0" />
+                      <span className="truncate">{project.client.email}</span>
+                    </p>
+                  )}
+                  {project.client.phone && (
+                    <p className="text-muted-foreground flex items-center gap-1.5 truncate">
+                      <Phone className="size-3 shrink-0" />
+                      <span>{project.client.phone}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-slate-500 italic">No client assigned</p>
+              <p className="text-xs text-muted-foreground italic">No client assigned</p>
             )}
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* Manager Details */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Project Manager</h3>
+        {/* Manager Card */}
+        <Card className="shadow-2xs">
+          <CardHeader className="pb-3 border-b border-border/50">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Users className="size-4 text-primary" />
+              Project Manager
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
             {project.manager ? (
-              <div className="flex items-start space-x-3">
-                <img
-                  src={project.manager.avatar ? getMediaUrl(project.manager.avatar) : "/default-avatar.png"}
-                  alt={project.manager.name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-slate-200 cursor-pointer hover:opacity-80 hover:scale-105 transition-all"
-                  onClick={() => {
-                    if (project.manager.avatar) {
-                      setSelectedLogo({
-                        url: getMediaUrl(project.manager.avatar),
-                        filename: project.manager.avatar.split("/").pop() || `${project.manager.name}.jpg`,
-                        type: "image",
-                      });
-                    }
-                  }}
-                  title="Click to view full image"
-                />
-                <div className="space-y-1">
-                  <p className="font-semibold text-slate-900">{project.manager.name}</p>
-                  <p className="text-sm text-slate-600">{project.manager.roleId ? `Role ID: ${project.manager.roleId}` : "Role not specified"}</p>
-                  <p className="text-sm text-slate-600">{project.manager.email}</p>
+              <div className="flex items-start gap-3">
+                <Avatar className="size-10 border border-border/80 shrink-0">
+                  {project.manager.avatar && <AvatarImage src={getMediaUrl(project.manager.avatar)} />}
+                  <AvatarFallback className="text-xs bg-muted font-medium">
+                    {project.manager.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-0.5 text-xs truncate">
+                  <p className="font-semibold text-foreground truncate">{project.manager.name}</p>
+                  <p className="text-muted-foreground truncate">{project.manager.email}</p>
+                  <Badge variant="outline" className="text-[10px] mt-1">
+                    Manager
+                  </Badge>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-slate-500 italic">No manager assigned</p>
+              <p className="text-xs text-muted-foreground italic">No manager assigned</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Post Types Targets Breakdown */}
+      <Card className="shadow-2xs">
+        <CardHeader className="pb-3 border-b border-border/50">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Target className="size-4 text-primary" />
+              Deliverables & Requirements Breakdown
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="border-b border-border/60">
+                <tr className="text-left text-muted-foreground font-medium">
+                  <th className="pb-2">Content Type</th>
+                  <th className="pb-2 text-center">Target (Planned)</th>
+                  <th className="pb-2 text-center">Created</th>
+                  <th className="pb-2 text-center">Completed</th>
+                  <th className="pb-2 text-center">Remaining</th>
+                  <th className="pb-2 text-right">Completion</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {Object.entries(projectStats?.postTypeStats || {}).map(([type, stats]: [string, any]) => {
+                  const IconComponent = getPostTypeIcon(type);
+                  return (
+                    <tr key={type} className="hover:bg-muted/30 transition-colors">
+                      <td className="py-2.5 font-medium">
+                        <div className="flex items-center gap-2 text-foreground">
+                          <IconComponent className="size-3.5 text-muted-foreground" />
+                          <span className="uppercase tracking-wide text-xs">{type}</span>
+                          {!stats.isPlanned && (
+                            <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
+                              Unplanned
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2.5 text-center font-semibold tabular-nums text-foreground">
+                        {stats.planned}
+                      </td>
+                      <td className="py-2.5 text-center font-semibold tabular-nums text-foreground">
+                        {stats.created}
+                      </td>
+                      <td className="py-2.5 text-center font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {stats.completed}
+                      </td>
+                      <td className="py-2.5 text-center font-semibold tabular-nums">
+                        <span className={stats.remaining > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>
+                          {stats.remaining}
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-right tabular-nums">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                stats.status === "completed"
+                                  ? "bg-emerald-500"
+                                  : stats.status === "in-progress"
+                                  ? "bg-primary"
+                                  : "bg-muted-foreground/40"
+                              }`}
+                              style={{ width: `${Math.min(stats.progressPercentage, 100)}%` }}
+                            />
+                          </div>
+                          <span className="font-semibold text-foreground w-8 text-right">
+                            {stats.progressPercentage}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {Object.keys(projectStats?.postTypeStats || {}).length === 0 && (
+              <div className="text-center py-6 text-xs text-muted-foreground">
+                No content deliverables configured for this campaign.
+              </div>
             )}
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Posts Section with Advanced Filtering */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-          <div className="p-6 border-b border-slate-200">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-slate-800 flex items-center">
-                <Users className="w-5 h-5 mr-2" />
-                Posts Management
-              </h2>
-              <p className="text-sm text-slate-600">
-                Showing {filteredAndSortedPosts.length} of {project.posts.length} posts
-              </p>
+      {/* Posts Management Section */}
+      <Card className="shadow-2xs">
+        <CardHeader className="pb-4 border-b border-border/50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <CheckCircle2 className="size-4 text-primary" />
+                Campaign Posts
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Showing {filteredAndSortedPosts.length} of {project.posts?.length || 0} total posts
+              </CardDescription>
             </div>
+            <Button asChild size="sm" className="text-xs self-start sm:self-auto">
+              <Link href={`/dashboard/projects/posts/new?projectId=${id}`}>
+                <Plus className="size-3.5 mr-1.5" />
+                Add Post
+              </Link>
+            </Button>
+          </div>
 
-            {/* Search and Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search posts..."
-                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <select
-                className="px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="">All Statuses</option>
-                {uniqueStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                className="px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-              >
-                <option value="">All Types</option>
-                {uniqueTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                type="date"
-                className="px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
+          {/* Filters Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search posts..."
+                className="pl-8 h-8 text-xs"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
-
-              <div className="flex gap-2">
-                <select
-                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                >
-                  <option value="createdAt">Created Date</option>
-                  <option value="updatedAt">Updated Date</option>
-                  <option value="scheduledAt">Posting Date</option>
-                  <option value="title">Title</option>
-                  <option value="status">Status</option>
-                </select>
-                <button
-                  className="px-3 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 focus:ring-2 focus:ring-indigo-500"
-                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                >
-                  {sortOrder === "asc" ? "↑" : "↓"}
-                </button>
-              </div>
             </div>
 
-            {(searchQuery || statusFilter || dateFilter || typeFilter) && (
-              <button
-                className="mt-4 px-4 py-2 text-sm text-slate-600 hover:text-slate-800 border border-slate-200 rounded-lg hover:bg-slate-50"
+            <select
+              className="h-8 px-2.5 rounded-md border border-input bg-background text-foreground text-xs focus:ring-1 focus:ring-primary outline-hidden"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              {uniqueStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="h-8 px-2.5 rounded-md border border-input bg-background text-foreground text-xs focus:ring-1 focus:ring-primary outline-hidden"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="">All Types</option>
+              {uniqueTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+
+            <Input
+              type="date"
+              className="h-8 text-xs"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+            />
+
+            <div className="flex gap-1.5">
+              <select
+                className="flex-1 h-8 px-2.5 rounded-md border border-input bg-background text-foreground text-xs focus:ring-1 focus:ring-primary outline-hidden"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="createdAt">Created Date</option>
+                <option value="updatedAt">Updated Date</option>
+                <option value="scheduledAt">Posting Date</option>
+                <option value="title">Title</option>
+                <option value="status">Status</option>
+              </select>
+              <Button
+                variant="outline"
+                size="icon-xs"
+                className="h-8 w-8 shrink-0"
+                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                aria-label="Toggle sort order"
+              >
+                <ArrowUpDown className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {(searchQuery || statusFilter || dateFilter || typeFilter) && (
+            <div className="pt-2">
+              <Button
+                variant="ghost"
+                size="xs"
                 onClick={() => {
                   setSearchQuery("");
                   setStatusFilter("");
                   setDateFilter("");
                   setTypeFilter("");
                 }}
+                className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
               >
-                Clear All Filters
-              </button>
-            )}
-          </div>
+                Clear all filters
+              </Button>
+            </div>
+          )}
+        </CardHeader>
 
-          <div className="p-6">
-            {filteredAndSortedPosts.length === 0 ? (
-              <div className="text-center py-12">
-                <Filter className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-slate-900 mb-2">No posts found</h3>
-                <p className="text-slate-600">
-                  {project.posts.length === 0
+        <CardContent className="pt-4">
+          {filteredAndSortedPosts.length === 0 ? (
+            <div className="py-12">
+              <EmptyState
+                icon={Filter}
+                title="No posts found"
+                description={
+                  project.posts?.length === 0
                     ? "No posts have been created for this project yet."
-                    : "Try adjusting your search criteria or filters."}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredAndSortedPosts.map((post) => (
+                    : "Try adjusting your search criteria or clearing filters."
+                }
+                action={
+                  project.posts?.length === 0
+                    ? {
+                        label: "Create First Post",
+                        onClick: () => router.push(`/dashboard/projects/posts/new?projectId=${id}`),
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredAndSortedPosts.map((post) => {
+                const TypeIcon = getPostTypeIcon(post.type);
+                return (
                   <div
                     key={post.id}
-                    className="border border-slate-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 hover:border-slate-300"
+                    className="group border border-border/70 rounded-xl p-4 bg-card hover:bg-muted/30 hover:border-border transition-all flex flex-col justify-between gap-3 shadow-2xs"
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-slate-900 mb-2">{post.title}</h3>
-                        <p className="text-slate-600 mb-3">{post.caption}</p>
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <Link
+                          href={`/dashboard/projects/posts/${post.id}`}
+                          className="font-medium text-xs sm:text-sm text-foreground hover:text-primary transition-colors flex items-center gap-1.5"
+                        >
+                          <span className="line-clamp-1">{post.title || "Untitled Post"}</span>
+                          <ExternalLink className="size-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        </Link>
+                        {getStatusBadge(post.status)}
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(post.status)}`}>
-                        {post.status}
-                      </span>
+
+                      {post.caption && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                          {post.caption}
+                        </p>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="font-medium text-slate-700 mb-1">Type</p>
-                        <p className="text-slate-600">{post.type}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <TypeIcon className="size-3 text-primary" />
+                        <span className="font-medium text-foreground uppercase">{post.type}</span>
                       </div>
 
-                      <div>
-                        <p className="font-medium text-slate-700 mb-1">Created</p>
-                        <p className="text-slate-600">{new Date(post.createdAt).toLocaleDateString('en-GB')}</p>
-                      </div>
-
-                      {post.scheduledAt && (
-                        <div>
-                          <p className="font-medium text-slate-700 mb-1">Posting Date</p>
-                          <p className="text-slate-600">{new Date(post.scheduledAt).toLocaleString()}</p>
-                        </div>
-                      )}
-
-                      {post.postedAt && (
-                        <div>
-                          <p className="font-medium text-slate-700 mb-1">Posted</p>
-                          <p className="text-slate-600">{new Date(post.postedAt).toLocaleString()}</p>
-                        </div>
-                      )}
-
-                      <div>
-                        <p className="font-medium text-slate-700 mb-1">Assigned To</p>
-                        <p className="text-slate-600">{post.assignedToId}</p>
+                      <div className="flex items-center gap-3 tabular-nums">
+                        {post.scheduledAt && (
+                          <span>
+                            Due: {new Date(post.scheduledAt).toLocaleDateString("en-GB")}
+                          </span>
+                        )}
+                        <span>
+                          Created: {new Date(post.createdAt).toLocaleDateString("en-GB")}
+                        </span>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <MediaPopup
         isOpen={!!selectedLogo}

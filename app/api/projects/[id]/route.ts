@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { logAudit } from "@/lib/audit"
 import fs from "fs/promises"
 import path from "path"
+import { deleteLocalFile } from "@/lib/storage"
 
 // Interface for postTypes JSON object
 interface PostTypeCount {
@@ -220,8 +221,14 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     console.log("PUT project - removeImage:", removeImage);
 
     if (removeImage) {
+      if (oldProject.image) {
+        await deleteLocalFile(oldProject.image);
+      }
       imageUrl = null;
     } else if (imageFile && typeof imageFile === "object" && typeof imageFile.arrayBuffer === "function" && imageFile.size > 0) {
+      if (oldProject.image) {
+        await deleteLocalFile(oldProject.image);
+      }
       const buffer = Buffer.from(await imageFile.arrayBuffer());
       const uploadDir = path.join(process.cwd(), "public", "uploads", "projects");
       await fs.mkdir(uploadDir, { recursive: true });
@@ -329,7 +336,15 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
         await prisma.approvalFlow.deleteMany({ where: { id: { in: flowIds } } })
       }
 
-      // Delete post direct relations
+      // Delete post direct relations and physically remove files from disk
+      const assetsToDelete = await prisma.asset.findMany({
+        where: { postId: { in: postIds } },
+        select: { url: true },
+      })
+      for (const a of assetsToDelete) {
+        await deleteLocalFile(a.url)
+      }
+
       await prisma.asset.deleteMany({ where: { postId: { in: postIds } } })
       await prisma.comment.deleteMany({ where: { postId: { in: postIds } } })
       await prisma.postPlatform.deleteMany({ where: { postId: { in: postIds } } })
@@ -356,6 +371,10 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     await prisma.exportLink.deleteMany({
       where: { projectId: id }
     })
+
+    if (project.image) {
+      await deleteLocalFile(project.image);
+    }
 
     await prisma.project.delete({
       where: { id },

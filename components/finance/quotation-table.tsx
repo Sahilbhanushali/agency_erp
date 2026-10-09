@@ -7,9 +7,9 @@ import toast from "react-hot-toast"
 import { Edit, FileText, Loader2, Plus, Search, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,19 +42,26 @@ const STATUS_LABELS: Record<QuotationStatus, string> = {
   CONVERTED: "Invoiced",
 }
 
-/** Colour carries meaning, so the label repeats it for anyone who cannot see the hue. */
-const STATUS_STYLES: Record<QuotationStatus, string> = {
-  DRAFT: "bg-muted text-muted-foreground",
-  SENT: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
-  ACCEPTED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
-  REJECTED: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
-  EXPIRED: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  CONVERTED: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
+const getStatusBadgeVariant = (status: QuotationStatus) => {
+  switch (status) {
+    case "ACCEPTED":
+      return "success";
+    case "SENT":
+      return "info";
+    case "REJECTED":
+      return "destructive";
+    case "EXPIRED":
+      return "warning";
+    case "CONVERTED":
+      return "purple";
+    default:
+      return "neutral";
+  }
 }
 
 export function QuotationStatusBadge({ status }: { status: QuotationStatus }) {
   return (
-    <Badge variant="outline" className={`border-transparent ${STATUS_STYLES[status]}`}>
+    <Badge variant={getStatusBadgeVariant(status)} dot className="text-[10px]">
       {STATUS_LABELS[status]}
     </Badge>
   )
@@ -63,11 +70,6 @@ export function QuotationStatusBadge({ status }: { status: QuotationStatus }) {
 const formatDate = (value: string | null) =>
   value ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"
 
-/**
- * The quotation list. Scoped to one company when `companyId` is given (the company
- * detail page), unscoped on /dashboard/quotations. Filtering and paging happen
- * server-side — the browser never holds the whole table.
- */
 export default function QuotationTable({ companyId }: { companyId?: string }) {
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<string>("ALL")
@@ -115,16 +117,16 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-0 flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             aria-label="Search quotations by number or title"
-            placeholder="Search number or title"
+            placeholder="Search number or title..."
             value={search}
             onChange={(event) => {
               setSearch(event.target.value)
               setPage(1)
             }}
-            className="pl-9"
+            className="pl-9 h-8 text-xs"
           />
         </div>
         <Select
@@ -134,13 +136,13 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
             setPage(1)
           }}
         >
-          <SelectTrigger className="w-[170px]" aria-label="Filter by status">
+          <SelectTrigger className="w-[150px] h-8 text-xs bg-card" aria-label="Filter by status">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All statuses</SelectItem>
+            <SelectItem value="ALL" className="text-xs">All statuses</SelectItem>
             {(Object.keys(STATUS_LABELS) as QuotationStatus[]).map((value) => (
-              <SelectItem key={value} value={value}>
+              <SelectItem key={value} value={value} className="text-xs">
                 {STATUS_LABELS[value]}
               </SelectItem>
             ))}
@@ -148,137 +150,123 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
         </Select>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {isLoading && !data ? (
-            <div className="space-y-3 p-6">
-              {[0, 1, 2].map((row) => (
-                <Skeleton key={row} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : error || data?.error ? (
-            <div className="p-10 text-center">
-              <p className="text-sm text-destructive">{data?.error ?? "Could not load quotations."}</p>
-              <Button variant="outline" className="mt-4" onClick={() => mutate()}>
-                Try again
-              </Button>
-            </div>
-          ) : quotations.length === 0 ? (
-            <div className="p-12 text-center">
-              <FileText className="mx-auto h-10 w-10 text-muted-foreground/50" />
-              <h2 className="mt-4 text-base font-medium">
-                {isFiltered ? "No quotations match those filters" : "No quotations yet"}
-              </h2>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                {isFiltered
-                  ? "Try a different status, number or title."
-                  : "Build one from your line items — it gets a number, GST breakdown and a client link."}
-              </p>
-              {!isFiltered && (
-                <Button asChild className="mt-5">
-                  <Link href={companyId ? `/dashboard/quotations/new?companyId=${companyId}` : "/dashboard/quotations/new"}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New quotation
+      {isLoading && !data ? (
+        <div className="space-y-2 p-4">
+          {[0, 1, 2, 3].map((row) => (
+            <Skeleton key={row} className="h-10 w-full rounded-lg" />
+          ))}
+        </div>
+      ) : error || data?.error ? (
+        <div className="p-8 text-center rounded-xl border border-border/80 bg-card">
+          <p className="text-xs text-destructive font-medium">{data?.error ?? "Could not load quotations."}</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => mutate()}>
+            Try again
+          </Button>
+        </div>
+      ) : quotations.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title={isFiltered ? "No quotations match filters" : "No quotations created yet"}
+          description={isFiltered ? "Try searching for a different number or status." : "Create financial quotations with GST itemization and instant PDF export."}
+          actionLabel={!isFiltered ? "New Quotation" : undefined}
+          actionHref={!isFiltered ? (companyId ? `/dashboard/quotations/new?companyId=${companyId}` : "/dashboard/quotations/new") : undefined}
+          className="my-4"
+        />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Number</TableHead>
+              <TableHead>Client</TableHead>
+              {!companyId && <TableHead className="hidden lg:table-cell">Issued by</TableHead>}
+              <TableHead className="hidden md:table-cell">Valid until</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {quotations.map((quotation) => (
+              <TableRow key={quotation.id}>
+                <TableCell>
+                  <Link
+                    href={`/dashboard/quotations/${quotation.id}`}
+                    className="font-mono text-xs font-semibold text-primary hover:underline"
+                  >
+                    {quotation.number}
                   </Link>
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Number</TableHead>
-                    <TableHead>Client</TableHead>
-                    {!companyId && <TableHead className="hidden lg:table-cell">Issued by</TableHead>}
-                    <TableHead className="hidden md:table-cell">Valid until</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {quotations.map((quotation) => (
-                    <TableRow key={quotation.id}>
-                      <TableCell>
-                        <Link
-                          href={`/dashboard/quotations/${quotation.id}`}
-                          className="font-mono text-sm font-medium hover:underline"
-                        >
-                          {quotation.number}
-                        </Link>
-                        <p className="max-w-[22ch] truncate text-xs text-muted-foreground">
-                          {quotation.title}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {quotation.client.company || quotation.client.name}
-                        {quotation.project && (
-                          <p className="text-xs text-muted-foreground">{quotation.project.name}</p>
-                        )}
-                      </TableCell>
-                      {!companyId && (
-                        <TableCell className="hidden text-sm lg:table-cell">
-                          {quotation.company.name}
-                        </TableCell>
-                      )}
-                      <TableCell className="hidden text-sm tabular-nums md:table-cell">
-                        {formatDate(quotation.validUntil)}
-                      </TableCell>
-                      <TableCell className="text-right text-sm font-medium tabular-nums">
-                        {formatMoney(toNumber(quotation.totalAmount), quotation.currency)}
-                      </TableCell>
-                      <TableCell>
-                        <QuotationStatusBadge status={quotation.status} />
-                        {quotation.invoice && (
-                          <p className="mt-1 font-mono text-xs text-muted-foreground">
-                            {quotation.invoice.number}
-                          </p>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          asChild
-                          aria-label={`Edit ${quotation.number}`}
-                          disabled={quotation.status === "CONVERTED"}
-                        >
-                          <Link href={`/dashboard/quotations/${quotation.id}/edit`}>
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Delete ${quotation.number}`}
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleting(quotation)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <p className="max-w-[22ch] truncate text-[11px] text-muted-foreground">
+                    {quotation.title}
+                  </p>
+                </TableCell>
+                <TableCell className="text-xs">
+                  <span className="font-medium text-foreground">{quotation.client.company || quotation.client.name}</span>
+                  {quotation.project && (
+                    <p className="text-[11px] text-muted-foreground">{quotation.project.name}</p>
+                  )}
+                </TableCell>
+                {!companyId && (
+                  <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
+                    {quotation.company.name}
+                  </TableCell>
+                )}
+                <TableCell className="hidden text-xs tabular-nums text-muted-foreground md:table-cell">
+                  {formatDate(quotation.validUntil)}
+                </TableCell>
+                <TableCell className="text-right text-xs font-bold tabular-nums text-foreground">
+                  {formatMoney(toNumber(quotation.totalAmount), quotation.currency)}
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-0.5">
+                    <QuotationStatusBadge status={quotation.status} />
+                    {quotation.invoice && (
+                      <p className="font-mono text-[10px] text-muted-foreground">
+                        {quotation.invoice.number}
+                      </p>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right whitespace-nowrap">
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    asChild
+                    aria-label={`Edit ${quotation.number}`}
+                    disabled={quotation.status === "CONVERTED"}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Link href={`/dashboard/quotations/${quotation.id}/edit`}>
+                      <Edit className="size-3.5" />
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`Delete ${quotation.number}`}
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleting(quotation)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       {pages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+          <p>
             Page {page} of {pages} · {total} quotation{total === 1 ? "" : "s"}
           </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
+          <div className="flex gap-1.5">
+            <Button variant="outline" size="xs" disabled={page === 1} onClick={() => setPage(page - 1)}>
               Previous
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="xs"
               disabled={page >= pages}
               onClick={() => setPage(page + 1)}
             >
@@ -307,7 +295,7 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isDeleting && <Loader2 className="mr-2 size-4 animate-spin" />}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

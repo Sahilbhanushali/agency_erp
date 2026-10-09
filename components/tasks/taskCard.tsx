@@ -161,23 +161,23 @@ export default function TaskCard({
   const getStatusColor = (status: PostStatus) => {
     switch (status) {
       case PostStatus.DRAFT:
-        return "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600";
+        return "bg-muted text-muted-foreground border-border";
       case PostStatus.SUBMITTED:
-        return "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700";
+        return "bg-info/10 text-info border-info/20";
       case PostStatus.APPROVED:
-        return "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700";
+        return "bg-success/10 text-success border-success/20";
       case PostStatus.REJECTED:
-        return "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-200 dark:border-red-700";
+        return "bg-destructive/10 text-destructive border-destructive/20";
       case PostStatus.NEEDS_MINOR_CHANGE:
-        return "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-700";
+        return "bg-warning/10 text-warning border-warning/20";
       case PostStatus.SCHEDULED:
-        return "bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 border-purple-200 dark:border-purple-700";
+        return "bg-info/10 text-info border-info/20";
       case PostStatus.POSTED:
-        return "bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-700";
+        return "bg-success/10 text-success border-success/20";
       case PostStatus.RESUBMITTED:
-        return "bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-700";
+        return "bg-primary/10 text-primary border-primary/20";
       default:
-        return "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600";
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
@@ -203,15 +203,15 @@ export default function TaskCard({
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
       case "URGENT":
-        return "bg-red-500 text-white";
+        return "bg-destructive text-destructive-foreground";
       case "HIGH":
-        return "bg-orange-500 text-white";
+        return "bg-warning text-foreground";
       case "MEDIUM":
-        return "bg-yellow-500 text-white";
+        return "bg-warning/20 text-warning";
       case "LOW":
-        return "bg-green-500 text-white";
+        return "bg-success text-white";
       default:
-        return "bg-gray-400 text-white";
+        return "bg-muted text-muted-foreground";
     }
   };
 
@@ -345,9 +345,9 @@ export default function TaskCard({
   return (
     <>
       <Card
-        className={`w-full max-w-lg transition-all duration-200 hover:shadow-lg border ${
+        className={`w-full max-w-lg border transition-colors duration-150 ${
           (isOverdue() && showOverdue) || isRejected 
-            ? "ring-2 ring-red-200 dark:ring-red-800 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800" 
+            ? "border-destructive/30 bg-destructive/5 ring-1 ring-destructive/20"
             : "border-border"
         }`}
       >
@@ -493,7 +493,7 @@ export default function TaskCard({
         <CardContent className={`p-3 ${isRejected ? "text-red-800 dark:text-red-200" : ""}`}>
           <div className="space-y-2">
             <h3
-              className={`font-semibold text-sm line-clamp-1 cursor-pointer hover:underline text-blue-500 dark:text-blue-400 ${isRejected ? "text-red-900 dark:text-red-200" : ""}`}
+              className={`line-clamp-1 cursor-pointer text-sm font-semibold text-foreground hover:text-primary hover:underline ${isRejected ? "text-destructive" : ""}`}
               onClick={handleTitleClick}
             >
               {task.title}

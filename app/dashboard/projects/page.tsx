@@ -8,7 +8,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Search, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Search, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -312,7 +312,7 @@ export default function ProjectsPage() {
 
   if (status === "loading" || loading || projectsLoading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6">
         <Skeleton className="h-8 w-32 mb-2" />
         <Card>
           <CardContent className="pt-6">
@@ -332,11 +332,11 @@ export default function ProjectsPage() {
       <div className="space-y-6 max-w-7xl mx-auto">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-4xl mb-4">⚠️</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <AlertTriangle className="mb-4 size-8 text-warning" aria-hidden="true" />
+            <h3 className="mb-2 text-base font-semibold tracking-tight text-foreground">
               {status === "unauthenticated" || !session?.user?.id ? "Unauthorized" : "Error Loading Data"}
             </h3>
-            <p className="text-gray-600 text-center mb-4">
+            <p className="mb-4 max-w-md text-center text-sm text-muted-foreground">
               {status === "unauthenticated" || !session?.user?.id
                 ? "Please sign in to access this page."
                 : error || "An error occurred."}
@@ -424,52 +424,53 @@ export default function ProjectsPage() {
 
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
+    <div className="flex-1 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-800">Projects</h2>
-          <p className="text-muted-foreground mt-1 text-sm md:text-base">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">Projects</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage your clients&apos; social media campaigns.
           </p>
         </div>
         {canManageProjects && (
           <Link href="/dashboard/projects/new">
-            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
+            <Button>
               <Plus className="mr-2 h-4 w-4" /> New Project
             </Button>
           </Link>
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col items-stretch gap-3 xl:flex-row xl:items-center">
+        <div className="relative w-full flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search projects by name or company..."
-            className="pl-9 w-full"
+            aria-label="Search projects by name or company"
+            className="w-full pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden items-center gap-2 md:flex">
           <Button
             variant="outline"
-            className="whitespace-nowrap font-medium text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 cursor-default"
+            className="whitespace-nowrap font-medium text-primary"
           >
             Total Count: {totalTargetPosts}
           </Button>
           <Button
             variant="outline"
-            className="whitespace-nowrap font-medium text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 cursor-default"
+            className="whitespace-nowrap font-medium text-success"
           >
             Total Posts Created: {totalPostsCreated}
           </Button>
         </div>
         
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto">
           <Select value={yearFilter} onValueChange={(val) => setYearFilter(val)}>
-            <SelectTrigger className="w-[110px]">
+            <SelectTrigger aria-label="Filter projects by year" className="w-full min-w-0">
               <SelectValue placeholder="Year" />
             </SelectTrigger>
             <SelectContent>
@@ -481,7 +482,7 @@ export default function ProjectsPage() {
           </Select>
 
           <Select value={monthFilter} onValueChange={(val) => setMonthFilter(val)}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger aria-label="Filter projects by month" className="w-full min-w-0">
               <SelectValue placeholder="Month" />
             </SelectTrigger>
             <SelectContent>
@@ -495,7 +496,7 @@ export default function ProjectsPage() {
           </Select>
 
           <Select value={statusFilter} onValueChange={(value: "All" | "Active" | "Inactive") => setStatusFilter(value)}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger aria-label="Filter projects by status" className="w-full min-w-0">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -506,7 +507,7 @@ export default function ProjectsPage() {
           </Select>
 
           <Select value={clientFilter} onValueChange={setClientFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger aria-label="Filter projects by company" className="w-full min-w-0">
               <SelectValue placeholder="Filter by company" />
             </SelectTrigger>
             <SelectContent>
@@ -522,7 +523,7 @@ export default function ProjectsPage() {
       </div>
 
       {filteredProjects.length > 0 ? (
-        <div className="border rounded-lg overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -569,7 +570,7 @@ export default function ProjectsPage() {
                           <img
                             src={getMediaUrl(project.image)}
                             alt={project.name || "Project"}
-                            className="h-8 w-8 rounded-md object-cover border border-border flex-shrink-0 cursor-pointer hover:opacity-80 hover:scale-105 transition-all"
+                            className="size-9 shrink-0 cursor-pointer rounded-md border border-border object-cover transition-opacity hover:opacity-80"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedLogo({
@@ -588,7 +589,7 @@ export default function ProjectsPage() {
                         <div className="flex flex-col min-w-0 items-start justify-center gap-0.5">
                           <Link
                             href={`/dashboard/projects/posts?projectId=${project.id}`}
-                            className="text-blue-600 hover:underline font-semibold text-sm leading-snug truncate block max-w-[220px]"
+                          className="block max-w-[220px] truncate text-sm font-medium leading-snug text-foreground hover:text-primary hover:underline"
                             onClick={() => console.log("Navigating to PostsPage with projectId:", project.id)}
                             title={project.name || "Unnamed Project"}
                           >
@@ -612,30 +613,30 @@ export default function ProjectsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-semibold dark:bg-purple-950 dark:text-purple-300" title="Design Uploaded">
+                      <Badge variant="outline" className="border-info/20 bg-info/10 font-medium text-info" title="Design Uploaded">
                         {metrics.designUploaded}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-semibold dark:bg-blue-950 dark:text-blue-300" title="Client Approve (CA)">
+                      <Badge variant="outline" className="border-primary/20 bg-primary/10 font-medium text-primary" title="Client Approve (CA)">
                         {metrics.clientApproved}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-semibold dark:bg-amber-950 dark:text-amber-300" title="Scheduled">
+                      <Badge variant="outline" className="border-warning/20 bg-warning/10 font-medium text-warning" title="Scheduled">
                         {metrics.scheduled}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold dark:bg-emerald-950 dark:text-emerald-300" title="Posted">
+                      <Badge variant="outline" className="border-success/20 bg-success/10 font-medium text-success" title="Posted">
                         {metrics.posted}
                       </Badge>
                     </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Link href={`/dashboard/projects/${project.id}`}>
-                        <Button variant="ghost" size="sm" disabled={isToggling === project.id}>
-                          <Eye className="h-4 w-4" />
+                      <Link href={`/dashboard/projects/${project.id}`} aria-label="View project">
+                        <Button variant="ghost" size="icon" className="size-8" aria-label="View project" disabled={isToggling === project.id}>
+                          <Eye className="size-4" />
                         </Button>
                       </Link>
                       {(() => {
@@ -646,14 +647,16 @@ export default function ProjectsPage() {
                         <>
                           <Button 
                             variant="ghost" 
-                            size="sm" 
+                            size="icon"
+                            className="size-8"
+                            aria-label="Edit project"
                             disabled={isToggling === project.id || isDeleting === project.id || isNavigatingToEdit === project.id}
                             onClick={() => handleEditNavigation(project.id)}
                           >
                             {isNavigatingToEdit === project.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="size-4 animate-spin" />
                             ) : (
-                              <Edit className="h-4 w-4" />
+                              <Edit className="size-4" />
                             )}
                           </Button>
                           <form
@@ -665,34 +668,36 @@ export default function ProjectsPage() {
                             <Button
                               type="submit"
                               variant="ghost"
-                              size="sm"
+                              size="icon"
                               className={`${
-                                project.isActive ? "text-green-600 hover:text-green-700" : "text-red-900 hover:text-red-800"
-                              } hover:bg-red-100 transition-colors`}
+                                project.isActive ? "text-success hover:bg-success/10" : "text-destructive hover:bg-destructive/10"
+                              } size-8 transition-colors`}
                               title={project.isActive ? "Deactivate" : "Activate"}
+                              aria-label={project.isActive ? "Deactivate project" : "Activate project"}
                               disabled={isToggling === project.id || isDeleting === project.id || isNavigatingToEdit === project.id}
                             >
                               {isToggling === project.id ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <Loader2 className="size-4 animate-spin" />
                               ) : project.isActive ? (
-                                <ToggleLeft className="h-5 w-5" />
+                                <ToggleLeft className="size-4" />
                               ) : (
-                                <ToggleRight className="h-5 w-5" />
+                                <ToggleRight className="size-4" />
                               )}
                             </Button>
                           </form>
                           <Button
                             variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-100 transition-colors"
+                            size="icon"
+                            className="size-8 text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            aria-label="Delete project"
                             onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
                             title="Delete"
                             disabled={isToggling === project.id || isDeleting === project.id || isNavigatingToEdit === project.id}
                           >
                             {isDeleting === project.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="size-4 animate-spin" />
                             ) : (
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="size-4" />
                             )}
                           </Button>
                         </>
@@ -706,13 +711,13 @@ export default function ProjectsPage() {
           </Table>
         </div>
       ) : (
-        <div className="border rounded-lg p-12 text-center">
+          <div className="rounded-lg border border-border bg-card p-8 text-center sm:p-12">
           <div className="flex flex-col items-center">
-            <Plus className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <Plus className="mb-3 size-9 text-muted-foreground/60" />
+            <h3 className="mb-2 text-base font-semibold tracking-tight text-foreground">
               {roleName === "ADMIN" ? "No projects match your filters" : "No assigned projects match your filters"}
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="mb-4 text-sm text-muted-foreground">
               {roleName === "ADMIN"
                 ? "No projects match the current filters."
                 : "No assigned projects match the current filters."}

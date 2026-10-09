@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import toast from "react-hot-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Upload, X, Image as ImageIcon, FileImage, PenTool } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,7 +21,6 @@ import type { Company } from "@/types/finance"
 interface CompanyFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Present when editing; absent when creating. */
   company?: Company | null
   onSaved: () => void
 }
@@ -34,6 +33,9 @@ const EMPTY: FormState = {
   email: "",
   phone: "",
   website: "",
+  logo: "",
+  letterhead: "",
+  signature: "",
   gstNumber: "",
   panNumber: "",
   hsnNumber: "",
@@ -56,7 +58,7 @@ const EMPTY: FormState = {
 const SECTIONS: { title: string; hint?: string; fields: { key: string; label: string; placeholder?: string }[] }[] = [
   {
     title: "Identity",
-    hint: "Shown at the top of every quotation and invoice this company issues.",
+    hint: "Shown on every quotation and invoice this company issues.",
     fields: [
       { key: "name", label: "Display name", placeholder: "itsmeDezino" },
       { key: "legalName", label: "Legal name", placeholder: "itsmeDezino Media Pvt Ltd" },
@@ -106,6 +108,11 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
   const [values, setValues] = useState<FormState>(EMPTY)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [saving, setSaving] = useState(false)
+  const [uploadingField, setUploadingField] = useState<string | null>(null)
+
+  const letterheadInputRef = useRef<HTMLInputElement>(null)
+  const signatureInputRef = useRef<HTMLInputElement>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -124,6 +131,33 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
 
   const set = (key: string, value: string | boolean) =>
     setValues((current) => ({ ...current, [key]: value }))
+
+  const handleFileUpload = async (file: File, fieldKey: "letterhead" | "signature" | "logo") => {
+    setUploadingField(fieldKey)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("type", fieldKey)
+
+      const response = await fetch("/api/companies/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        toast.error(data.error || "Failed to upload image")
+        return
+      }
+
+      set(fieldKey, data.url)
+      toast.success(`${fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1)} uploaded successfully!`)
+    } catch {
+      toast.error("Network error while uploading")
+    } finally {
+      setUploadingField(null)
+    }
+  }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -168,6 +202,159 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-8 px-4 pb-8">
+          {/* Template Letterhead & Signature Upload Zone */}
+          <fieldset className="space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <legend className="text-sm font-semibold text-primary flex items-center gap-2">
+              <FileImage className="size-4" />
+              Document Branding &amp; Template
+            </legend>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Upload your company letterhead banner and authorised signature to display automatically on all quotation and invoice documents.
+            </p>
+
+            {/* Letterhead Upload */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <FileImage className="size-3.5 text-primary" />
+                  Letterhead Banner
+                </Label>
+                {values.letterhead && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => set("letterhead", "")}
+                    className="text-xs text-destructive hover:bg-destructive/10"
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Appears at the very top of quotations and invoices. Recommended: full width banner, PNG or JPG.
+              </p>
+
+              {values.letterhead ? (
+                <div className="relative rounded-lg border border-border bg-card p-2 overflow-hidden group">
+                  <img
+                    src={String(values.letterhead)}
+                    alt="Letterhead preview"
+                    className="w-full h-24 object-contain rounded bg-white"
+                  />
+                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="truncate max-w-[200px]">{String(values.letterhead)}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => letterheadInputRef.current?.click()}
+                      disabled={uploadingField === "letterhead"}
+                    >
+                      Replace
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => letterheadInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center p-4 rounded-lg border border-dashed border-border bg-card/60 hover:bg-card cursor-pointer transition-colors"
+                >
+                  {uploadingField === "letterhead" ? (
+                    <Loader2 className="size-5 animate-spin text-primary" />
+                  ) : (
+                    <>
+                      <Upload className="size-5 text-muted-foreground mb-1" />
+                      <p className="text-xs font-medium text-foreground">Click to upload Letterhead</p>
+                      <p className="text-[10px] text-muted-foreground">PNG, JPG or WEBP up to 5MB</p>
+                    </>
+                  )}
+                </div>
+              )}
+              <input
+                ref={letterheadInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleFileUpload(file, "letterhead")
+                }}
+              />
+            </div>
+
+            {/* Authorised Signature Upload */}
+            <div className="space-y-2 pt-2 border-t border-border/40">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <PenTool className="size-3.5 text-primary" />
+                  Authorised Signature
+                </Label>
+                {values.signature && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => set("signature", "")}
+                    className="text-xs text-destructive hover:bg-destructive/10"
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Printed in the footer above &quot;Authorised Signatory&quot;. Transparent PNG recommended.
+              </p>
+
+              {values.signature ? (
+                <div className="relative rounded-lg border border-border bg-card p-2 overflow-hidden">
+                  <img
+                    src={String(values.signature)}
+                    alt="Signature preview"
+                    className="h-16 w-auto object-contain mx-auto bg-white/50 rounded"
+                  />
+                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="truncate max-w-[200px]">{String(values.signature)}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => signatureInputRef.current?.click()}
+                      disabled={uploadingField === "signature"}
+                    >
+                      Replace
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => signatureInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center p-3 rounded-lg border border-dashed border-border bg-card/60 hover:bg-card cursor-pointer transition-colors"
+                >
+                  {uploadingField === "signature" ? (
+                    <Loader2 className="size-5 animate-spin text-primary" />
+                  ) : (
+                    <>
+                      <PenTool className="size-4 text-muted-foreground mb-1" />
+                      <p className="text-xs font-medium text-foreground">Click to upload Signature</p>
+                      <p className="text-[10px] text-muted-foreground">Transparent PNG or JPG</p>
+                    </>
+                  )}
+                </div>
+              )}
+              <input
+                ref={signatureInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleFileUpload(file, "signature")
+                }}
+              />
+            </div>
+          </fieldset>
+
           {SECTIONS.map((section) => (
             <fieldset key={section.title} className="space-y-4">
               <legend className="text-sm font-semibold text-foreground">{section.title}</legend>
@@ -231,7 +418,7 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !!uploadingField}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {company ? "Save changes" : "Create company"}
             </Button>

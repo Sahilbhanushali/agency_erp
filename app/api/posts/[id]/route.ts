@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import path from "path";
 import fs from "fs/promises";
+import { deleteLocalFile } from "@/lib/storage";
 
 export const dynamic = 'force-dynamic';
 
@@ -145,7 +146,15 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
           where: { postId: postId },
         });
 
-        // Delete existing relations
+        // Delete existing relations and physically clean up files from disk
+        const assetsToDelete = await tx.asset.findMany({
+          where: { postId: postId },
+          select: { url: true },
+        });
+        for (const a of assetsToDelete) {
+          await deleteLocalFile(a.url);
+        }
+
         await tx.asset.deleteMany({
           where: { postId: postId },
         });
@@ -377,14 +386,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         });
 
         for (const asset of assetsToRemove) {
-          try {
-            const fileToDelete = asset.url ? asset.url.replace('/uploads/', '') : asset.filename;
-            const filePath = path.join(process.cwd(), "public", "uploads", fileToDelete);
-            await fs.unlink(filePath);
-            console.log(`Deleted file: ${fileToDelete}`);
-          } catch (fileError) {
-            console.error(`Failed to delete file ${asset.filename}:`, fileError);
-          }
+          await deleteLocalFile(asset.url);
         }
       }
 

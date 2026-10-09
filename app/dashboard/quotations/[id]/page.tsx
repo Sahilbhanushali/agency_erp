@@ -59,6 +59,10 @@ export default async function QuotationPage({
           status={quotation.status}
           shareToken={quotation.shareToken}
           shareExpiresAt={quotation.shareExpiresAt?.toISOString() ?? null}
+          companyId={quotation.companyId}
+          companyName={quotation.company.name}
+          letterhead={quotation.company.letterhead}
+          signature={quotation.company.signature}
         />
       )}
 

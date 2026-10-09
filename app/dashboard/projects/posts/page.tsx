@@ -234,6 +234,11 @@ export default function PostsPage() {
     setExportLinkOpen(true);
   };
 
+  const handleBulkExport = () => {
+    setExportLinkPostIds(selectedPosts);
+    setExportLinkOpen(true);
+  };
+
   useEffect(() => {
     const projectId = searchParams.get("projectId");
     const status = searchParams.get("status");
@@ -1337,6 +1342,7 @@ export default function PostsPage() {
           handleBulkContentStatusChange={handleBulkContentStatusChange}
           handleBulkDelete={handleBulkDelete}
           setSelectedPosts={setSelectedPosts}
+          onBulkExport={handleBulkExport}
         />
       )}
 

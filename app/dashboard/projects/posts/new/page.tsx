@@ -22,8 +22,8 @@ export default async function NewPostPage({
   
   const projectId = typeof resolvedSearchParams.projectId === 'string' ? resolvedSearchParams.projectId : undefined;
   
-  let projects = []
-  let designers = []
+  let projects: any[] = []
+  let designers: any[] = []
   
   try {
     // Fetch projects

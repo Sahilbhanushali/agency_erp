@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import { AuthShell } from "@/components/auth/auth-shell"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -43,8 +44,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
+    <AuthShell>
+      <Card className="w-full border-border shadow-none">
         <CardHeader>
           <CardTitle>Forgot Password</CardTitle>
           <CardDescription>
@@ -65,14 +66,14 @@ export default function ForgotPasswordPage() {
                   placeholder="Enter your email address"
                 />
               </div>
-              {message && <div className="text-red-500 text-sm">{message}</div>}
+              {message && <div role="alert" className="text-sm text-destructive">{message}</div>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Sending..." : "Send Reset Instructions"}
               </Button>
             </form>
           ) : (
             <div className="text-center space-y-4">
-              <div className="text-green-600 text-sm">{message}</div>
+              <div role="status" className="text-sm text-success">{message}</div>
               <p className="text-sm text-muted-foreground">
                 Check your email for password reset instructions. The link will expire in 1 hour.
               </p>
@@ -80,12 +81,12 @@ export default function ForgotPasswordPage() {
           )}
           <div className="mt-4 text-center text-sm">
             Remember your password?{" "}
-            <Link href="/auth/signin" className="text-blue-600 hover:underline">
+            <Link href="/auth/signin" className="font-medium text-primary hover:underline">
               Sign in
             </Link>
           </div>
         </CardContent>
       </Card>
-    </div>
+    </AuthShell>
   )
 }

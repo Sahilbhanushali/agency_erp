@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, X } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { ArrowLeft, X, Upload, User, Building } from "lucide-react"
 import Link from "next/link"
-import toast, { Toaster } from "react-hot-toast" // react-hot-toast
+import toast from "react-hot-toast"
 
 interface ClientFormProps {
   client?: {
@@ -50,7 +50,7 @@ export function ClientForm({ client }: ClientFormProps) {
 
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
     if (formData.email && !emailRegex.test(formData.email)) {
-      toast.error("Please enter a valid email address (e.g. user@example.com). It cannot end with numbers or invalid extensions.");
+      toast.error("Please enter a valid email address (e.g. user@example.com).");
       return;
     }
 
@@ -95,124 +95,153 @@ export function ClientForm({ client }: ClientFormProps) {
   }
 
   return (
-    <>
-      {/* Toast container – can be moved to root layout */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: { background: "#363636", color: "#fff" },
-          success: { style: { background: "#10b981" } },
-          error: { style: { background: "#ef4444" } },
-        }}
-      />
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center space-x-4">
-            <Link href="/dashboard/clients">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
+    <Card className="max-w-3xl mx-auto shadow-2xs">
+      <CardHeader className="border-b border-border/60 pb-4">
+        <div className="flex items-center gap-3">
+          <Button asChild variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-foreground">
+            <Link href="/dashboard/clients" title="Back to clients">
+              <ArrowLeft className="size-4" />
             </Link>
-            <CardTitle>{client ? "Edit Client" : "New Client"}</CardTitle>
+          </Button>
+          <div>
+            <CardTitle>{client ? "Edit Client" : "New Client Account"}</CardTitle>
+            <CardDescription className="text-xs">
+              {client ? "Update client contact information and organization details." : "Add a new client organization to manage campaigns and approvals."}
+            </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        </div>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Section 1: Basic Information */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-2">
+              <User className="size-3.5 text-primary" />
+              <span>Contact Details</span>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Client Name *</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-medium">Client Name <span className="text-destructive">*</span></Label>
                 <Input
                   id="name"
+                  placeholder="e.g. Acme Corp / Sarah Jenkins"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="h-9 text-xs"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="company">Company</Label>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="company" className="text-xs font-medium">Company / Brand</Label>
                 <Input
                   id="company"
+                  placeholder="e.g. Acme Brands Inc."
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                  className="h-9 text-xs"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-medium">Email Address</Label>
                 <Input
                   id="email"
                   type="email"
+                  placeholder="contact@client.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="h-9 text-xs"
                   pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$"
                   title="Please enter a valid email address (e.g. user@example.com)"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone *</Label>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-xs font-medium">Phone Number <span className="text-destructive">*</span></Label>
                 <Input
                   id="phone"
+                  placeholder="10-digit mobile number"
                   value={formData.phone}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, "").slice(0, 10);
                     setFormData({ ...formData, phone: value });
                   }}
+                  className="h-9 text-xs tabular-nums"
                   maxLength={10}
                   pattern="^(?!([0-9])\1{9})[0-9]{10}$"
-                  title="Phone number must be exactly 10 digits and cannot be all identical numbers (e.g. 1111111111)"
+                  title="Phone number must be exactly 10 digits"
                   required
                 />
               </div>
             </div>
+          </div>
+
+          {/* Section 2: Logo / Media */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-2">
+              <Building className="size-3.5 text-primary" />
+              <span>Branding & Logo</span>
+            </div>
 
             <div className="space-y-2">
-              <Label htmlFor="avatar">Logo / Avatar</Label>
-              <Input
-                id="avatar"
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={(e) => {
-                  setAvatarFile(e.target.files?.[0] || null)
-                  if (e.target.files?.[0]) setRemoveAvatar(false)
-                }}
-              />
+              <Label htmlFor="avatar" className="text-xs font-medium">Client Logo / Avatar</Label>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Input
+                    id="avatar"
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    className="h-9 text-xs file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                    onChange={(e) => {
+                      setAvatarFile(e.target.files?.[0] || null)
+                      if (e.target.files?.[0]) setRemoveAvatar(false)
+                    }}
+                  />
+                </div>
+              </div>
+
               {previewUrl && (
-                <div className="relative inline-block mt-4">
+                <div className="relative inline-flex items-center gap-3 mt-3 p-2 rounded-lg border border-border/60 bg-muted/20">
                   <img
                     src={previewUrl}
                     alt="Client Logo"
-                    className="h-16 w-auto rounded border object-cover"
+                    className="h-12 w-12 rounded-md object-cover border border-border"
                   />
-                  <button
+                  <div className="text-xs">
+                    <p className="font-medium text-foreground">Client Logo Preview</p>
+                    <p className="text-[11px] text-muted-foreground">Will be shown on share portals and invoices</p>
+                  </div>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={handleRemoveImage}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                    className="text-destructive hover:bg-destructive/10 ml-auto"
                     title="Remove Logo"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
+                    <X className="size-4" />
+                  </Button>
                 </div>
               )}
             </div>
+          </div>
 
-            <div className="flex justify-end space-x-4 pt-4">
-              <Link href="/dashboard/clients">
-                <Button variant="outline" disabled={isLoading}>
-                  Cancel
-                </Button>
-              </Link>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Saving..." : client ? "Update Client" : "Create Client"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </>
+          {/* Actions Bar */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/60">
+            <Button asChild variant="outline" size="sm" disabled={isLoading}>
+              <Link href="/dashboard/clients">Cancel</Link>
+            </Button>
+            <Button type="submit" size="sm" loading={isLoading}>
+              {client ? "Update Client" : "Create Client"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   )
 }

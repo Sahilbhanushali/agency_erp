@@ -211,7 +211,7 @@ export default function NewProjectPage() {
   const formattedClients = clients.map((client) => ({
     id: client.id,
     name: client.name,
-    company: client.company,
+    company: client.company || "",
   }));
 
   // Show loading state

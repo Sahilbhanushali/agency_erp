@@ -12,9 +12,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import useSWR from "swr";
-import { Toaster, toast } from "react-hot-toast"; // Import react-hot-toast
+import { Toaster, toast } from "react-hot-toast";
 
 type Festival = {
   id?: number;
@@ -364,7 +365,7 @@ export default function FestivalsPage() {
 
     try {
       const projectDetails = projects?.filter((p: Project) => selectedProjects.includes(p.id)) || [];
-      const promises = projectDetails.map(async (project) => {
+      const promises = projectDetails.map(async (project: any) => {
         const response = await fetch("/api/festival-posts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -431,7 +432,7 @@ export default function FestivalsPage() {
     });
   };
 
-  const years = Array.from({ length: currentYear - 1984 + 1 }, (_, i) => (1985 + i).toString());
+  const years = Array.from({ length: parseInt(currentYear) - 1984 + 1 }, (_, i) => (1985 + i).toString());
 
   const months = [
     { value: 1, label: "Jan" },
@@ -994,20 +995,32 @@ export default function FestivalsPage() {
           )}
 
           {loading ? (
-            <p>Loading festivals...</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="p-4 border border-border/70 rounded-xl space-y-3 bg-card shadow-2xs">
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-1/3" />
+                </div>
+              ))}
+            </div>
           ) : authError ? (
-            <p className="text-red-600">{authError}</p>
+            <div className="p-6 text-center text-xs text-destructive bg-destructive/10 rounded-xl border border-destructive/20">
+              {authError}
+            </div>
           ) : userRole ? (
             <div>
               {viewMode !== "calendar" && (
-                <h2 className="text-xl font-bold mb-4">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground mb-4">
                   Festivals in {getMonthName(selectedMonth)} {selectedYear}
                 </h2>
               )}
               {renderFestivals()}
             </div>
           ) : (
-            <p className="text-red-600">You do not have permission to view festivals.</p>
+            <div className="p-6 text-center text-xs text-destructive bg-destructive/10 rounded-xl border border-destructive/20">
+              You do not have permission to view festivals.
+            </div>
           )}
 
           <Dialog open={festivalDetailOpen} onOpenChange={setFestivalDetailOpen}>

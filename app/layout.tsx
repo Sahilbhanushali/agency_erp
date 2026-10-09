@@ -11,6 +11,9 @@ import "./globals.css"
 export const metadata: Metadata = {
   title: "itsmeDezino Agency ERP",
   description: "Content planning, design approvals and client sign-off.",
+  icons: {
+    icon: "/icon.svg",
+  },
   generator: "v0.app",
 }
 

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Clock, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, ChevronDown, User, Calendar, FolderOpen,
-  Search, Filter, BarChart3, Grid3X3, Table, Zap,
+  Search, Filter, BarChart3, Grid3X3, Table, Zap, Kanban,
   ArrowUpRight, ArrowDownRight, CheckCircle2, Clock4,
   FileText, Eye, Layers, Users, X
 } from "lucide-react";
@@ -21,6 +21,7 @@ import ProjectTasksView from "@/components/tasks/projectTask";
 import TaskStatsGrid from "@/components/tasks/taskStats";
 import ContentWriterTasksPage from "@/components/tasks/ContentWritersTaskPage";
 import StatusTasksView, { StatusFilter } from "@/components/tasks/StatusTasksView";
+import TaskKanbanBoard from "@/components/tasks/TaskKanbanBoard";
 
 enum PostStatus {
   DRAFT = "DRAFT",
@@ -87,7 +88,7 @@ interface ProjectGroup {
   };
 }
 
-type ViewMode = 'cards' | 'table';
+type ViewMode = 'kanban' | 'cards' | 'table';
 type SortBy = 'dueDate' | 'priority' | 'status' | 'name' | 'client';
 type FilterBy = 'all' | 'overdue' | 'thisWeek' | 'draft' | 'pending' | 'approved';
 
@@ -100,13 +101,14 @@ const fetcher = async (url: string) => {
 export default function TasksPage() {
   const { data: session, status } = useSession();
   const userRole = session?.user?.role;
+  const isAdmin = userRole ? ['ADMIN', 'MANAGER', 'SOCIAL MEDIA MANAGER', 'TEAM LEAD', 'TEAM_LEAD'].includes(userRole.toUpperCase()) : false;
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectIdFromUrl = searchParams.get("projectId"); // Get projectId from URL
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projectIdFromUrl);
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('dueDate');
   const [filterBy, setFilterBy] = useState<FilterBy>('all');
@@ -274,8 +276,7 @@ export default function TasksPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="relative">
-            <Clock className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
-            <div className="absolute inset-0 bg-blue-550/20 rounded-full opacity-20 animate-ping" />
+          <Clock className="mx-auto mb-4 size-8 animate-spin text-primary" />
           </div>
           <p className="text-muted-foreground font-medium">Loading your tasks...</p>
           <p className="text-sm text-muted-foreground/80">Organizing by projects</p>
@@ -288,7 +289,7 @@ export default function TasksPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <AlertCircle className="h-8 w-8 mx-auto mb-4 text-red-500" />
+          <AlertCircle className="mx-auto mb-4 size-8 text-destructive" />
           <p className="text-muted-foreground font-medium">Failed to load tasks</p>
           <p className="text-sm text-muted-foreground/80">Please try again later</p>
           <Button onClick={() => mutate()} className="mt-4">
@@ -327,12 +328,12 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">
             My Design Tasks
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Track assignments, deadlines, and progress across {projectGroups.length} project{projectGroups.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -357,23 +358,32 @@ export default function TasksPage() {
             )}
           </div>
 
-          <div className="flex bg-muted rounded-lg p-1">
+          <div className="flex rounded-lg border border-border bg-muted p-1">
+            <Button
+              variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('kanban')}
+              className="gap-1.5"
+            >
+              <Kanban className="size-4 mr-1.5" />
+              Kanban
+            </Button>
             <Button
               variant={viewMode === 'cards' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('cards')}
-              className={viewMode === 'cards' ? 'shadow-sm' : ''}
+              className="gap-1.5"
             >
-              <Grid3X3 className="h-4 w-4 mr-2" />
+              <Grid3X3 className="size-4 mr-1.5" />
               Cards
             </Button>
             <Button
               variant={viewMode === 'table' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('table')}
-              className={viewMode === 'table' ? 'shadow-sm' : ''}
+              className="gap-1.5"
             >
-              <Table className="h-4 w-4 mr-2" />
+              <Table className="size-4 mr-1.5" />
               Table
             </Button>
           </div>
@@ -385,92 +395,104 @@ export default function TasksPage() {
       </div>
       <TaskStatsGrid stats={totalStats} onViewStatus={(s) => setSelectedStatus(s)} />
 
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search projects or clients..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Select value={filterBy} onValueChange={(value) => setFilterBy(value as FilterBy)}>
-                <SelectTrigger className="w-40">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                  <SelectItem value="thisWeek">Due This Week</SelectItem>
-                  <SelectItem value="draft">Has Drafts</SelectItem>
-                  <SelectItem value="pending">Under Review</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dueDate">Due Date</SelectItem>
-                  <SelectItem value="priority">Priority</SelectItem>
-                  <SelectItem value="status">Status</SelectItem>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="client">Client</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-foreground">Your Projects</h2>
-          <Badge variant="outline" className="text-sm bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60">
-            {filteredAndSortedProjects.length} of {projectGroups.length} Project{projectGroups.length !== 1 ? 's' : ''}
-          </Badge>
+      {viewMode === 'kanban' ? (
+        <div className="pt-2">
+          <TaskKanbanBoard
+            tasks={getAllTasks() as any}
+            mutate={mutate}
+            isAdmin={isAdmin}
+          />
         </div>
-        {filteredAndSortedProjects.length === 0 ? (
+      ) : (
+        <>
           <Card>
-            <CardContent className="p-12 text-center">
-              <div className="bg-muted rounded-full p-6 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-                <FolderOpen className="h-12 w-12 text-muted-foreground" />
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search projects or clients..."
+                    aria-label="Search tasks by project or client"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Select value={filterBy} onValueChange={(value) => setFilterBy(value as FilterBy)}>
+                    <SelectTrigger aria-label="Filter projects" className="w-40">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Projects</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
+                      <SelectItem value="thisWeek">Due This Week</SelectItem>
+                      <SelectItem value="draft">Has Drafts</SelectItem>
+                      <SelectItem value="pending">Under Review</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
+                    <SelectTrigger aria-label="Sort projects" className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dueDate">Due Date</SelectItem>
+                      <SelectItem value="priority">Priority</SelectItem>
+                      <SelectItem value="status">Status</SelectItem>
+                      <SelectItem value="name">Name</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <p className="text-muted-foreground font-medium text-lg mb-2">
-                {searchQuery || filterBy !== 'all' ? 'No projects match your criteria' : 'No projects assigned to you'}
-              </p>
-              <p className="text-sm text-muted-foreground/80">
-                {searchQuery || filterBy !== 'all' ? 'Try adjusting your search or filters' : 'Check back later for new assignments!'}
-              </p>
             </CardContent>
           </Card>
-        ) : (
-          <>
-            {viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredAndSortedProjects.map((project: ProjectGroup) => (
-                  <EnhancedProjectCard
-                    key={project.projectId}
-                    project={project}
-                    onSelect={() => handleSelectProject(project.projectId)} // Updated to handle URL
-                  />
-                ))}
-              </div>
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-foreground">Your Projects</h2>
+              <Badge variant="outline" className="text-xs font-medium text-primary">
+                {filteredAndSortedProjects.length} of {projectGroups.length} Project{projectGroups.length !== 1 ? 's' : ''}
+              </Badge>
+            </div>
+            {filteredAndSortedProjects.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-xl bg-muted">
+                    <FolderOpen className="size-8 text-muted-foreground" />
+                  </div>
+                  <p className="mb-2 text-base font-medium text-foreground">
+                    {searchQuery || filterBy !== 'all' ? 'No projects match your criteria' : 'No projects assigned to you'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {searchQuery || filterBy !== 'all' ? 'Try adjusting your search or filters' : 'Check back later for new assignments!'}
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
-              <ProjectTable
-                projects={filteredAndSortedProjects}
-                onSelectProject={handleSelectProject} // Updated to handle URL
-              />
+              <>
+                {viewMode === 'cards' ? (
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                    {filteredAndSortedProjects.map((project: ProjectGroup) => (
+                      <EnhancedProjectCard
+                        key={project.projectId}
+                        project={project}
+                        onSelect={() => handleSelectProject(project.projectId)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <ProjectTable
+                    projects={filteredAndSortedProjects}
+                    onSelectProject={handleSelectProject}
+                  />
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -482,78 +504,73 @@ function EnhancedProjectCard({ project, onSelect }: { project: ProjectGroup; onS
 
   return (
     <Card
-      className={`group relative overflow-hidden transition-all duration-300 cursor-pointer bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 ${
-        hasUrgentIssues
-          ? 'border-red-200 border-l-4 border-l-red-500'
-          : 'border-slate-200 hover:border-blue-200'
+      className={`group relative cursor-pointer overflow-hidden border-l-2 bg-card transition-colors hover:border-primary ${
+        hasUrgentIssues ? 'border-l-destructive' : 'border-l-transparent'
       }`}
       onClick={onSelect}
     >
-      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full -translate-y-12 translate-x-12 opacity-50 group-hover:opacity-100 transition-opacity" />
       <CardHeader className="pb-3 relative">
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
-            <CardTitle className="text-lg font-bold line-clamp-2 text-slate-800 group-hover:text-blue-600 transition-colors mb-1">
+            <CardTitle className="mb-1 line-clamp-2 text-base font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
               {project.projectName}
             </CardTitle>
-            <div className="flex items-center space-x-2">
-              <Users className="h-3 w-3 text-slate-400" />
-              <p className="text-sm text-slate-500">{project.clientName}</p>
+            <div className="flex items-center gap-2">
+              <Users className="size-3.5 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{project.clientName}</p>
             </div>
             <div className="flex items-center space-x-2 mt-2">
-              <div className="bg-blue-50 px-2 py-1 rounded text-xs font-medium text-blue-700 border border-blue-100">
+              <div className="rounded border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
                 {completionRate}% Complete
               </div>
               {hasUrgentIssues && (
-                <div className="bg-red-50 px-2 py-1 rounded text-xs font-medium text-red-600 flex items-center border border-red-100">
-                  <Zap className="h-3 w-3 mr-1" />
+                <div className="flex items-center rounded border border-destructive/20 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
+                  <Zap className="mr-1 size-3" />
                   Urgent
                 </div>
               )}
             </div>
           </div>
           <div className="flex flex-col items-center">
-            <div className="bg-slate-50 rounded-full p-2 shadow-sm group-hover:shadow-md transition-shadow border border-slate-100">
-              <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
+            <div className="rounded-full border border-border bg-muted p-2 transition-colors group-hover:bg-accent">
+              <ChevronRight className="size-4 text-muted-foreground transition-colors group-hover:text-primary" />
             </div>
-            <span className="text-xs text-slate-400 mt-1">{project.stats.total} tasks</span>
+            <span className="mt-1 text-xs tabular-nums text-muted-foreground">{project.stats.total} tasks</span>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1">
-          <div className="w-full bg-slate-100 rounded-full h-2">
+          <div className="h-1.5 w-full rounded-full bg-muted">
             <div
-              className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500"
+              className="h-1.5 rounded-full bg-primary transition-all duration-300"
               style={{ width: `${completionRate}%` }}
             />
           </div>
-          <p className="text-xs text-slate-500">Project Progress</p>
+          <p className="text-xs text-muted-foreground">Project Progress</p>
         </div>
         <div className="grid grid-cols-4 gap-2">
-          <div className="text-center p-2 bg-slate-50 rounded-lg border border-slate-100">
-            <p className="text-sm font-semibold text-slate-700">{project.stats.draft}</p>
-            <p className="text-xs text-slate-500">Draft</p>
+          <div className="rounded-md border border-border bg-muted/60 p-2 text-center">
+            <p className="text-sm font-semibold tabular-nums text-foreground">{project.stats.draft}</p>
+            <p className="text-xs text-muted-foreground">Draft</p>
           </div>
-          <div className="text-center p-2 bg-yellow-50 rounded-lg border border-yellow-100">
-            <p className="text-sm font-semibold text-yellow-700">{project.stats.pending}</p>
-            <p className="text-xs text-yellow-600">Review</p>
+          <div className="rounded-md border border-warning/20 bg-warning/10 p-2 text-center">
+            <p className="text-sm font-semibold tabular-nums text-warning">{project.stats.pending}</p>
+            <p className="text-xs text-warning">Review</p>
           </div>
-          <div className="text-center p-2 bg-green-50 rounded-lg border border-green-100">
-            <p className="text-sm font-semibold text-green-700">{project.stats.approved}</p>
-            <p className="text-xs text-green-600">Done</p>
+          <div className="rounded-md border border-success/20 bg-success/10 p-2 text-center">
+            <p className="text-sm font-semibold tabular-nums text-success">{project.stats.approved}</p>
+            <p className="text-xs text-success">Done</p>
           </div>
-          <div className={`text-center p-2 rounded-lg border ${
-            project.stats.overdue > 0
-              ? 'bg-red-50 border-red-100'
-              : 'bg-slate-50 border-slate-100'
+          <div className={`rounded-md border p-2 text-center ${
+            project.stats.overdue > 0 ? 'border-destructive/20 bg-destructive/10' : 'border-border bg-muted/60'
           }`}>
-            <p className={`text-sm font-semibold ${
-              project.stats.overdue > 0 ? 'text-red-700' : 'text-slate-700'
+            <p className={`text-sm font-semibold tabular-nums ${
+              project.stats.overdue > 0 ? 'text-destructive' : 'text-foreground'
             }`}>
               {project.stats.overdue}
             </p>
-            <p className={`text-xs ${project.stats.overdue > 0 ? 'text-red-600' : 'text-slate-500'}`}>Late</p>
+            <p className={`text-xs ${project.stats.overdue > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>Late</p>
           </div>
         </div>
       </CardContent>
@@ -571,16 +588,16 @@ function ProjectTable({ projects, onSelectProject }: {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-muted/40">
-              <th className="text-left p-4 font-semibold text-foreground">Project</th>
-              <th className="text-left p-4 font-semibold text-foreground">Client</th>
-              <th className="text-center p-4 font-semibold text-foreground">Total</th>
-              <th className="text-center p-4 font-semibold text-foreground">Draft</th>
-              <th className="text-center p-4 font-semibold text-foreground">Review</th>
-              <th className="text-center p-4 font-semibold text-foreground">Done</th>
-              <th className="text-center p-4 font-semibold text-foreground">Overdue</th>
-              <th className="text-center p-4 font-semibold text-foreground">This Week</th>
-              <th className="text-center p-4 font-semibold text-foreground">Progress</th>
-              <th className="text-center p-4 font-semibold text-foreground">Actions</th>
+              <th className="p-3 text-left text-xs font-medium text-muted-foreground">Project</th>
+              <th className="p-3 text-left text-xs font-medium text-muted-foreground">Client</th>
+              <th className="p-3 text-center text-xs font-medium text-muted-foreground">Total</th>
+              <th className="p-3 text-center text-xs font-medium text-muted-foreground">Draft</th>
+              <th className="p-3 text-center text-xs font-medium text-muted-foreground">Review</th>
+              <th className="p-3 text-center text-xs font-medium text-muted-foreground">Done</th>
+              <th className="p-3 text-center text-xs font-medium text-muted-foreground">Overdue</th>
+              <th className="p-3 text-center text-xs font-medium text-muted-foreground">This Week</th>
+              <th className="p-3 text-center text-xs font-medium text-muted-foreground">Progress</th>
+              <th className="p-3 text-center text-xs font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -592,19 +609,19 @@ function ProjectTable({ projects, onSelectProject }: {
                 <tr
                   key={project.projectId}
                   className={`border-b border-border hover:bg-muted/50 transition-colors ${
-                    hasUrgent ? 'bg-red-950/10' : ''
+                    hasUrgent ? 'bg-destructive/5' : ''
                   }`}
                 >
                   <td className="p-4">
                     <div>
-                      <p className="font-semibold text-foreground hover:text-blue-400 cursor-pointer"
+                      <p className="cursor-pointer font-medium text-foreground hover:text-primary"
                          onClick={() => onSelectProject(project.projectId)}>
                         {project.projectName}
                       </p>
                       {hasUrgent && (
                         <div className="flex items-center mt-1">
-                          <AlertCircle className="h-3 w-3 text-red-500 mr-1" />
-                          <span className="text-xs text-red-400">Urgent attention needed</span>
+                          <AlertCircle className="mr-1 size-3.5 text-destructive" />
+                          <span className="text-xs text-destructive">Urgent attention needed</span>
                         </div>
                       )}
                     </div>
@@ -619,12 +636,12 @@ function ProjectTable({ projects, onSelectProject }: {
                     </Badge>
                   </td>
                   <td className="p-4 text-center">
-                    <Badge variant="secondary" className="bg-yellow-95/30 text-yellow-400 border border-yellow-900/60">
+                    <Badge variant="outline" className="border-warning/20 bg-warning/10 text-warning">
                       {project.stats.pending}
                     </Badge>
                   </td>
                   <td className="p-4 text-center">
-                    <Badge variant="secondary" className="bg-green-95/30 text-green-400 border border-green-900/60">
+                    <Badge variant="outline" className="border-success/20 bg-success/10 text-success">
                       {project.stats.approved}
                     </Badge>
                   </td>
@@ -637,7 +654,7 @@ function ProjectTable({ projects, onSelectProject }: {
                     </Badge>
                   </td>
                   <td className="p-4 text-center">
-                    <Badge variant="outline" className="bg-blue-95/30 text-blue-400 border border-blue-900/60">
+                    <Badge variant="outline" className="border-info/20 bg-info/10 text-info">
                       {project.stats.thisWeek}
                     </Badge>
                   </td>
@@ -645,7 +662,7 @@ function ProjectTable({ projects, onSelectProject }: {
                     <div className="flex items-center space-x-2">
                       <div className="w-16 bg-muted rounded-full h-2">
                         <div
-                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                          className="h-1.5 rounded-full bg-primary transition-all duration-300"
                           style={{ width: `${completionRate}%` }}
                         />
                       </div>
@@ -657,7 +674,7 @@ function ProjectTable({ projects, onSelectProject }: {
                       variant="ghost"
                       size="sm"
                       onClick={() => onSelectProject(project.projectId)}
-                      className="hover:bg-blue-95/30 hover:text-blue-400"
+                      className="hover:bg-accent hover:text-primary"
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       View

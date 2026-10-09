@@ -5,9 +5,11 @@ import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { PostForm } from "@/components/forms/post-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useBreadcrumbTitle } from "@/lib/route-labels";
 
 interface PostData {
   id: string;
@@ -86,13 +88,15 @@ interface PostApiResponse {
 
 export default function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = useParams();
-  const id = resolvedParams.id;
+  const id = resolvedParams.id as string;
   const [postData, setPostData] = useState<PostData | null>(null);
   const [projectsData, setProjectsData] = useState<ProjectsApiResponse | null>(null);
   const [designers, setDesigners] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useBreadcrumbTitle(id, postData?.title || "Edit Post");
 
   useEffect(() => {
     async function fetchData() {
@@ -203,15 +207,19 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Card className="shadow-2xs">
+          <CardContent className="p-6 space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-10 w-1/2" />
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -257,9 +265,9 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Edit Post</h1>
-        <p className="text-gray-600">Update and manage your scheduled social media post</p>
+      <div className="border-b border-border/60 pb-4">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Edit Post</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Update and manage your scheduled social media post and design deliverables</p>
       </div>
       <PostForm
         projects={projectsData.projects}

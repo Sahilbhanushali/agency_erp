@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { requirePermission } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { companyUpdateSchema } from "@/lib/validation/company"
+import { deleteLocalFile } from "@/lib/storage"
 
 export const dynamic = "force-dynamic"
 
@@ -41,6 +42,17 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     const existing = await prisma.company.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+    // Clean up replaced or removed assets
+    if (parsed.data.logo !== undefined && parsed.data.logo !== existing.logo && existing.logo) {
+      await deleteLocalFile(existing.logo);
+    }
+    if (parsed.data.letterhead !== undefined && parsed.data.letterhead !== existing.letterhead && existing.letterhead) {
+      await deleteLocalFile(existing.letterhead);
+    }
+    if (parsed.data.signature !== undefined && parsed.data.signature !== existing.signature && existing.signature) {
+      await deleteLocalFile(existing.signature);
+    }
 
     const company = await prisma.company.update({ where: { id }, data: parsed.data })
 
@@ -91,6 +103,10 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
         { status: 409 },
       )
     }
+
+    if (company.logo) await deleteLocalFile(company.logo);
+    if (company.letterhead) await deleteLocalFile(company.letterhead);
+    if (company.signature) await deleteLocalFile(company.signature);
 
     await prisma.company.delete({ where: { id } })
 

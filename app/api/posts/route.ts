@@ -465,7 +465,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const assignedToMe = searchParams.get("assignedToMe") === "true";
     const status = searchParams.get("status");
+    const contentStatus = searchParams.get("contentStatus");
+    const type = searchParams.get("type");
     const projectId = searchParams.get("projectId");
+    const search = searchParams.get("search");
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
+    const formatPaginated = searchParams.get("format") === "paginated";
 
     const whereClause: any = {};
 
@@ -487,12 +493,37 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Project filtering - handle as string (UUID)
+    // Content status filtering
+    if (contentStatus && contentStatus !== "all") {
+      whereClause.contentStatus = contentStatus.toUpperCase();
+    }
+
+    // Type filtering
+    if (type && type !== "all") {
+      whereClause.type = type.toUpperCase();
+    }
+
+    // Project filtering
     if (projectId && projectId !== "all") {
       whereClause.projectId = projectId;
     }
 
-    const posts = await prisma.post.findMany({
+    // Search query across title, caption, project name, client name
+    if (search && search.trim()) {
+      const q = search.trim();
+      whereClause.OR = [
+        { title: { contains: q } },
+        { caption: { contains: q } },
+        { project: { name: { contains: q } } },
+        { project: { client: { name: { contains: q } } } },
+      ];
+    }
+
+    // Pagination parameters
+    const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : null;
+    const limit = limitParam ? Math.max(1, parseInt(limitParam, 10)) : 50;
+
+    const findOptions: any = {
       where: whereClause,
       include: {
         project: { include: { client: true } },
@@ -515,9 +546,44 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: "desc" },
-    });
+    };
 
-    return NextResponse.json(posts);
+    if (page) {
+      findOptions.skip = (page - 1) * limit;
+      findOptions.take = limit;
+    }
+
+    const [posts, totalCount] = await Promise.all([
+      prisma.post.findMany(findOptions),
+      prisma.post.count({ where: whereClause }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const headers = new Headers();
+    headers.set("X-Total-Count", String(totalCount));
+    headers.set("X-Total-Pages", String(totalPages));
+    if (page) {
+      headers.set("X-Current-Page", String(page));
+      headers.set("X-Page-Size", String(limit));
+    }
+
+    if (formatPaginated) {
+      return NextResponse.json(
+        {
+          data: posts,
+          pagination: {
+            total: totalCount,
+            page: page || 1,
+            limit,
+            totalPages,
+          },
+        },
+        { headers }
+      );
+    }
+
+    return NextResponse.json(posts, { headers });
   } catch (error: any) {
     console.error("Error fetching posts:", {
       message: error.message,

@@ -70,9 +70,9 @@ export default function ApprovalDialog({
                                   checked={selectedAssets.includes(asset.id)}
                                   onCheckedChange={(checked) => {
                                     if (checked) {
-                                      setSelectedAssets((prev) => [...prev, asset.id]);
+                                      setSelectedAssets([...selectedAssets, asset.id]);
                                     } else {
-                                      setSelectedAssets((prev) => prev.filter((id) => id !== asset.id));
+                                      setSelectedAssets(selectedAssets.filter((id) => id !== asset.id));
                                     }
                                   }}
                                   className="absolute top-2 left-2 bg-background/80"

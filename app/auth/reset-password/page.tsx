@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import { AuthShell } from "@/components/auth/auth-shell"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -74,8 +75,8 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
+      <AuthShell>
+        <Card className="w-full border-border shadow-none">
           <CardHeader>
             <CardTitle>Invalid Reset Link</CardTitle>
             <CardDescription>This password reset link is invalid or has expired</CardDescription>
@@ -86,13 +87,13 @@ export default function ResetPasswordPage() {
             </Link>
           </CardContent>
         </Card>
-      </div>
+      </AuthShell>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
+    <AuthShell>
+      <Card className="w-full border-border shadow-none">
         <CardHeader>
           <CardTitle>Reset Password</CardTitle>
           <CardDescription>Enter your new password</CardDescription>
@@ -123,7 +124,7 @@ export default function ResetPasswordPage() {
                   placeholder="Confirm new password"
                 />
               </div>
-              {message && <div className={`text-sm ${isSuccess ? "text-green-600" : "text-red-500"}`}>{message}</div>}
+              {message && <div role={isSuccess ? "status" : "alert"} className={`text-sm ${isSuccess ? "text-success" : "text-destructive"}`}>{message}</div>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Resetting..." : "Reset Password"}
               </Button>
@@ -136,6 +137,6 @@ export default function ResetPasswordPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </AuthShell>
   )
 }

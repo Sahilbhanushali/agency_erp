@@ -2,9 +2,9 @@ import { computeTotals, formatMoney, toNumber } from "@/lib/finance"
 import type { Company, TaxType } from "@/types/finance"
 
 /**
- * The printed quotation. A server component with no interactivity, rendered identically
- * for staff and for the client's public link, so what the client sees is the document.
- * "Export PDF" is the browser's print dialog — see the @media print block in globals.css.
+ * The printed quotation or invoice document.
+ * Rendered identically for staff and for the client's public link.
+ * Supports letterhead template banner and authorised signature.
  */
 export interface FinanceDocument {
   number: string
@@ -72,10 +72,23 @@ export default function DocumentView({
 
   return (
     <article className="mx-auto w-full max-w-[820px] bg-white p-6 text-[13px] leading-relaxed text-neutral-900 shadow-sm sm:p-10 print:max-w-none print:p-0 print:shadow-none">
-      {/* Issuer */}
+      {/* Letterhead Header Banner if configured */}
+      {typeof company.letterhead === "string" && company.letterhead ? (
+        <div className="mb-6 -mx-6 sm:-mx-10 -mt-6 sm:-mt-10 overflow-hidden border-b border-neutral-200 print:mb-4 print:mx-0 print:mt-0">
+          {/* eslint-disable-next-line @next/next/no-img-element -- print fidelity: no Next/Image proxy */}
+          <img
+            src={company.letterhead}
+            alt={`${company.name} letterhead`}
+            className="w-full h-auto max-h-44 object-contain mx-auto"
+          />
+        </div>
+      ) : null}
+
+      {/* Issuer & Document Meta */}
       <header className="flex flex-wrap items-start justify-between gap-6 border-b border-neutral-200 pb-6">
         <div className="min-w-0">
-          {typeof company.logo === "string" && company.logo ? (
+          {/* Company Logo (displayed if no letterhead, or as header branding) */}
+          {(!company.letterhead && typeof company.logo === "string" && company.logo) ? (
             // eslint-disable-next-line @next/next/no-img-element -- print fidelity: no Next/Image proxy
             <img
               src={company.logo}
@@ -266,22 +279,25 @@ export default function DocumentView({
           </div>
         )}
 
-        <div className="flex items-end justify-between gap-6 pt-2">
+        <div className="flex items-end justify-between gap-6 pt-4">
           <p className="text-neutral-500">
             This is a computer-generated {kind.toLowerCase()}.
           </p>
-          <div className="text-center">
+          <div className="text-center min-w-[160px]">
             {typeof company.signature === "string" && company.signature ? (
               // eslint-disable-next-line @next/next/no-img-element -- print fidelity: no Next/Image proxy
               <img
                 src={company.signature}
                 alt="Authorised signature"
-                className="mx-auto mb-1 h-12 w-auto object-contain"
+                className="mx-auto mb-1 h-14 max-w-[180px] object-contain"
               />
             ) : (
-              <div className="mb-1 h-12" />
+              <div className="mb-1 h-14" />
             )}
-            <p className="border-t border-neutral-300 pt-1 text-neutral-600">
+            <p className="border-t border-neutral-300 pt-1 text-neutral-700 font-medium">
+              Authorised Signatory
+            </p>
+            <p className="text-[11px] text-neutral-500">
               For {String(company.name || "")}
             </p>
           </div>

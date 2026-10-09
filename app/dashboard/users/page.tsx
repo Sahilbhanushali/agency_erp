@@ -20,10 +20,13 @@ import {
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Trash2, Edit, Plus, Search, AlertCircle, CheckCircle, Mail, RefreshCw } from "lucide-react"
+import { Trash2, Edit, Plus, Search, AlertCircle, CheckCircle, Mail, RefreshCw, FileText } from "lucide-react"
 import SmtpConfigForm from "@/components/SmtpConfigForm"
 import { toast } from "react-hot-toast"
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
+import UserProfileModal from "@/components/users/user-profile-modal"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface User {
   id: string
@@ -81,6 +84,7 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeletingUser, setIsDeletingUser] = useState(false)
+  const [selectedHrUserId, setSelectedHrUserId] = useState<string | null>(null)
 
   // SMTP-specific state
   const [smtpConfigs, setSmtpConfigs] = useState<SmtpConfig[]>([])
@@ -381,10 +385,10 @@ const testSmtpConnection = async (config: SmtpConfig) => {
     }
 
     const result = await response.json();
-    alert(result.message || "Connection test successful!");
+    toast.success(result.message || "Connection test successful!");
     await fetchSmtpConfigs();
   } catch (err: any) {
-    alert("Connection test failed: " + (err.message || "Unknown error"));
+    toast.error("Connection test failed: " + (err.message || "Unknown error"));
   } finally {
     setTestingConnection(null);
   }
@@ -447,17 +451,45 @@ const testSmtpConnection = async (config: SmtpConfig) => {
   }
 
   if (status === "loading") {
-    return <div>Loading...</div>
+    return (
+      <div className="max-w-5xl mx-auto space-y-6 p-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-44 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!session || !session.user.id) {
-    return <div>Access denied. Please log in.</div>
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <EmptyState
+          icon={AlertCircle}
+          title="Sign In Required"
+          description="Please log in to manage team members and system settings."
+        />
+      </div>
+    );
   }
 
   const userRole = session.user.role || "CLIENT"
 
   if (!["ADMIN", "MANAGER", "Manager"].includes(userRole)) {
-    return <div>Access denied. Only admins and managers can manage users and settings.</div>
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <EmptyState
+          icon={AlertCircle}
+          title="Access Denied"
+          description="Only administrators and managers can access user management and system settings."
+        />
+      </div>
+    );
   }
 
   return (
@@ -625,6 +657,16 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => setSelectedHrUserId(user.id)}
+                        className="gap-1.5 text-xs text-primary border-primary/20 hover:bg-primary/5"
+                        title="Manage employee HR profile, salary, offer letter & documents"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">HR & Docs</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => {
                           setEditingUser(user)
                           setFormData({
@@ -700,6 +742,13 @@ const testSmtpConnection = async (config: SmtpConfig) => {
               </form>
             </DialogContent>
           </Dialog>
+
+          <UserProfileModal
+            userId={selectedHrUserId}
+            isOpen={!!selectedHrUserId}
+            onClose={() => setSelectedHrUserId(null)}
+            onUserUpdated={fetchUsers}
+          />
         </TabsContent>
 
         <TabsContent value="roles" className="space-y-4">

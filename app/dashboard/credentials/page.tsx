@@ -305,11 +305,23 @@ export default function CredentialsPage() {
                       <div className="flex flex-col gap-3">
                         {group.platforms.map((p: any) => (
                           <div key={p.id} className="h-10 flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditClick(p)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 shrink-0">
-                              <Edit className="h-4 w-4" />
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              onClick={() => handleEditClick(p)}
+                              className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                              title="Edit credential"
+                            >
+                              <Edit className="size-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0">
-                              <Trash2 className="h-4 w-4" />
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              onClick={() => handleDelete(p.id)}
+                              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              title="Delete credential"
+                            >
+                              <Trash2 className="size-3.5" />
                             </Button>
                           </div>
                         ))}
@@ -318,8 +330,8 @@ export default function CredentialsPage() {
                   </TableRow>
                 )) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
-                      No credentials found. Click "Add Credential" to create one.
+                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground text-xs">
+                      No platform credentials found. Click "Add Credential" to store your first login.
                     </TableCell>
                   </TableRow>
                 )}
