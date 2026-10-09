@@ -39,25 +39,26 @@ export default function ReportsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Reports & Analytics</h1>
-          <p className="text-muted-foreground">Comprehensive insights into your post management performance</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Reports & Analytics</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Comprehensive insights into content workflow, approval rates, and team productivity.</p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Calendar className="size-4 text-muted-foreground" />
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[180px] bg-background">
+            <SelectTrigger className="h-9 w-[180px] bg-card text-xs">
               <SelectValue placeholder="Select timeframe" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="font-medium cursor-pointer">
+              <SelectItem value="all" className="text-xs font-medium cursor-pointer">
                 All Time (Total)
               </SelectItem>
               {monthOptions.map((m) => (
-                <SelectItem key={m.value} value={m.value} className="font-medium cursor-pointer">
+                <SelectItem key={m.value} value={m.value} className="text-xs font-medium cursor-pointer">
                   {m.label}
                 </SelectItem>
               ))}
@@ -68,90 +69,98 @@ export default function ReportsPage() {
               variant="ghost"
               size="sm"
               onClick={() => setSelectedMonth(currentMonthKey)}
-              className="h-9 px-2 text-xs"
+              className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
               title="Reset to current month"
             >
-              <X className="h-4 w-4" />
+              <X className="size-4" />
             </Button>
           )}
         </div>
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total Posts</span>
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Calendar className="size-4" />
+            </div>
+          </div>
+          <div>
             {isLoading ? (
               <Skeleton className="h-8 w-20 my-1" />
             ) : (
-              <div className="text-2xl font-bold">{data?.totalPosts ?? 0}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.totalPosts ?? 0}</div>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground font-medium">
               {selectedMonth === "all" ? "All time total" : "Selected month count"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approval Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Approval Rate</span>
+            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle className="size-4" />
+            </div>
+          </div>
+          <div>
             {isLoading ? (
               <Skeleton className="h-8 w-20 my-1" />
             ) : (
-              <div className="text-2xl font-bold">{data?.approvalRate ?? "0"}%</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.approvalRate ?? "0"}%</div>
             )}
-            <p className="text-xs text-muted-foreground">
-              <TrendingUp className="inline h-3 w-3 mr-1" />
+            <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+              <TrendingUp className="size-3 text-emerald-600" />
               {selectedMonth === "all" ? "All time rate" : "Selected month rate"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Change Rate</CardTitle>
-            <XCircle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Change Rate</span>
+            <div className="flex size-8 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+              <XCircle className="size-4" />
+            </div>
+          </div>
+          <div>
             {isLoading ? (
               <Skeleton className="h-8 w-20 my-1" />
             ) : (
-              <div className="text-2xl font-bold">{data?.rejectionRate ?? "0"}%</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.rejectionRate ?? "0"}%</div>
             )}
-            <p className="text-xs text-muted-foreground">
-              <TrendingDown className="inline h-3 w-3 mr-1" />
+            <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+              <TrendingDown className="size-3 text-rose-600" />
               {selectedMonth === "all" ? "All time rate" : "Selected month rate"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Active Users</span>
+            <div className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <Users className="size-4" />
+            </div>
+          </div>
+          <div>
             {isLoading ? (
               <Skeleton className="h-8 w-20 my-1" />
             ) : (
-              <div className="text-2xl font-bold">{data?.totalUsers ?? 0}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.totalUsers ?? 0}</div>
             )}
-            <p className="text-xs text-muted-foreground">Across {data?.totalClients ?? 0} clients</p>
-          </CardContent>
-        </Card>
+            <p className="text-[11px] text-muted-foreground font-medium">Across {data?.totalClients ?? 0} clients</p>
+          </div>
+        </div>
       </div>
 
       {/* Detailed Metrics */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance Metrics</CardTitle>
+      <Card className="rounded-xl border border-border/70 bg-card shadow-2xs">
+        <CardHeader className="pb-3 pt-5 px-6">
+          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Performance Metrics</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

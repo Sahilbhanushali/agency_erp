@@ -19,32 +19,57 @@ export async function POST(request: NextRequest) {
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string | null;
+    const altPhone = formData.get("altPhone") as string | null;
     const company = formData.get("company") as string | null;
+    const website = formData.get("website") as string | null;
+    const industry = formData.get("industry") as string | null;
+    const status = (formData.get("status") as string) || "ACTIVE";
+    const address = formData.get("address") as string | null;
+    const city = formData.get("city") as string | null;
+    const state = formData.get("state") as string | null;
+    const country = (formData.get("country") as string) || "India";
+    const postalCode = formData.get("postalCode") as string | null;
+    const gstin = formData.get("gstin") as string | null;
+    const panNumber = formData.get("panNumber") as string | null;
+    const notes = formData.get("notes") as string | null;
     const avatarFile = formData.get("avatar") as File | null;
 
-    // if (!name || !email) {
-    //   return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
-    // }
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: "Client name is required" }, { status: 400 });
+    }
 
     let avatarUrl: string | null = null;
-    if (avatarFile) {
+    if (avatarFile && avatarFile.size > 0) {
       const buffer = Buffer.from(await avatarFile.arrayBuffer());
       const uploadDir = path.join(process.cwd(), "public", "uploads", "clients");
       await fs.mkdir(uploadDir, { recursive: true });
 
-      const filename = `${Date.now()}-${avatarFile.name}`;
+      const safeName = avatarFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const filename = `${Date.now()}-${safeName}`;
       const filePath = path.join(uploadDir, filename);
       await fs.writeFile(filePath, buffer);
 
-      avatarUrl = `/uploads/clients/${filename}`; // stored path
+      avatarUrl = `/uploads/clients/${filename}`;
     }
 
     const client = await prisma.client.create({
       data: {
-        name,
-        email,
-        phone,
-        company,
+        name: name.trim(),
+        email: email?.trim() || "",
+        phone: phone?.trim() || null,
+        altPhone: altPhone?.trim() || null,
+        company: company?.trim() || null,
+        website: website?.trim() || null,
+        industry: industry?.trim() || null,
+        status: status || "ACTIVE",
+        address: address?.trim() || null,
+        city: city?.trim() || null,
+        state: state?.trim() || null,
+        country: country?.trim() || "India",
+        postalCode: postalCode?.trim() || null,
+        gstin: gstin?.trim() || null,
+        panNumber: panNumber?.trim() || null,
+        notes: notes?.trim() || null,
         avatar: avatarUrl,
       },
     });

@@ -350,7 +350,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in-50 duration-200">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       {/* Header */}
       <PageHeader
         title="Dashboard Overview"

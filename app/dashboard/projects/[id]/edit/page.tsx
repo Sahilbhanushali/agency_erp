@@ -8,6 +8,10 @@ import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { Toaster, toast } from "react-hot-toast";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
 
@@ -341,14 +345,17 @@ useEffect(() => {
   // Show loading state
   if (status === "loading" || projectLoading || clientsLoading || usersLoading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6 animate-pulse">
         <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-        <Skeleton className="h-8 w-32 mb-2" />
-        <Card>
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-44 rounded-lg" />
+          <Skeleton className="h-4 w-72 rounded-md" />
+        </div>
+        <Card className="shadow-2xs">
           <CardContent className="pt-6">
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
               ))}
             </div>
           </CardContent>
@@ -360,54 +367,45 @@ useEffect(() => {
   // Show error or unauthorized state
   if (status === "unauthenticated" || !session?.user?.id || error || !project) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="py-12">
         <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-4xl mb-4">⚠️</div>
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              {status === "unauthenticated" || !session?.user?.id ? "Unauthorized" : "Error Loading Data"}
-            </h3>
-            <p className="text-muted-foreground text-center mb-4 text-xs">
-              {status === "unauthenticated" || !session?.user?.id
-                ? "Please sign in to access this page."
-                : error || "Project not found or an error occurred."}
-            </p>
-            <Button
-              onClick={() =>
-                status === "unauthenticated" || !session?.user?.id
-                  ? router.push("/auth/signin")
-                  : router.push("/dashboard/projects")
-              }
-            >
-              {status === "unauthenticated" || !session?.user?.id ? "Sign In" : "Back to Projects"}
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={AlertTriangle}
+          title={status === "unauthenticated" || !session?.user?.id ? "Authentication Required" : "Error Loading Project"}
+          description={
+            status === "unauthenticated" || !session?.user?.id
+              ? "Please sign in to edit project campaigns."
+              : error || "Project campaign not found or an unexpected error occurred."
+          }
+          actionLabel={status === "unauthenticated" || !session?.user?.id ? "Sign In" : "Back to Projects"}
+          onAction={() =>
+            status === "unauthenticated" || !session?.user?.id
+              ? router.push("/auth/signin")
+              : router.push("/dashboard/projects")
+          }
+        />
       </div>
     );
   }
 
-  console.log("=== FINAL PROPS BEING PASSED TO PROJECTFORM ===");
-  console.log("Clients:", formattedClients.length);
-  console.log("Managers:", managers.length);
-  console.log("Team Leads:", designerHeads.length);
-  console.log("Content Writers:", contentWriters.length);
-  console.log("Users (Team):", transformedUsers.length);
-  console.log("Project assigned users:", project.assignedUsers?.length || 0);
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-      <div className="mb-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Edit Project</h1>
-        <p className="text-xs text-muted-foreground">Update project details, monthly strategy, and team assignments</p>
-      </div>
+      <PageHeader
+        title={`Edit Project: ${project.name}`}
+        description="Update project details, monthly strategy, and cross-functional team assignments."
+      >
+        <Button variant="outline" size="sm" asChild className="gap-1.5">
+          <Link href={`/dashboard/projects/${id}`}>
+            <ArrowLeft className="size-3.5" />
+            View Project
+          </Link>
+        </Button>
+      </PageHeader>
       <ProjectForm
         clients={formattedClients}
         managers={managers}
         designerHeads={designerHeads}
-
         users={transformedUsers}
         project={project}
         isEditing={true}

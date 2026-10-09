@@ -203,9 +203,9 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
 
         <form onSubmit={handleSubmit} className="space-y-8 px-4 pb-8">
           {/* Template Letterhead & Signature Upload Zone */}
-          <fieldset className="space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
-            <legend className="text-sm font-semibold text-primary flex items-center gap-2">
-              <FileImage className="size-4" />
+          <fieldset className="space-y-4 rounded-xl border border-border/70 bg-muted/20 p-4">
+            <legend className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <FileImage className="size-4 text-muted-foreground" />
               Document Branding &amp; Template
             </legend>
             <p className="text-xs text-muted-foreground -mt-2">
@@ -216,7 +216,7 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <FileImage className="size-3.5 text-primary" />
+                  <FileImage className="size-3.5 text-muted-foreground" />
                   Letterhead Banner
                 </Label>
                 {values.letterhead && (

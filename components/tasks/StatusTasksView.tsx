@@ -279,15 +279,15 @@ function MiniTaskCard({
   return (
     <Link
       href={`/dashboard/projects/posts/${task.id}`}
-      className={`group bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border-l-4 ${accentBorder} p-4 flex flex-col gap-3 cursor-pointer no-underline`}
+      className={`group bg-card border border-border/70 rounded-xl shadow-2xs hover:shadow-sm transition-all duration-200 hover:-translate-y-0.5 border-l-4 ${accentBorder} p-4 flex flex-col gap-3 cursor-pointer no-underline`}
     >
       {/* Title + Status */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-slate-800 line-clamp-2 group-hover:text-blue-600 transition-colors">
+          <h4 className="text-sm font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
             {task.title}
           </h4>
-          <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
+          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
             {task.type}
           </span>
         </div>
@@ -432,46 +432,46 @@ function ProjectSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-border/70 rounded-xl shadow-2xs overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left border-l-4 ${config.accentBorder}`}
+        className={`w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/40 transition-colors text-left border-l-4 ${config.accentBorder}`}
       >
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br ${config.headerGradient} shadow-sm`}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-gradient-to-br ${config.headerGradient} shadow-2xs`}
           >
             <FolderOpen className="h-4 w-4 text-white" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-slate-800 text-sm truncate">
+              <span className="font-semibold text-foreground text-sm truncate">
                 {project.projectName}
               </span>
-              <span className="text-[11px] text-slate-400">•</span>
+              <span className="text-[11px] text-muted-foreground">•</span>
               <div className="flex items-center gap-1">
-                <Users className="h-3 w-3 text-slate-400" />
-                <span className="text-xs text-slate-500 truncate">{project.clientName}</span>
+                <Users className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground truncate">{project.clientName}</span>
               </div>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0 ml-4">
-          <span className={`text-sm font-bold px-3 py-1 rounded-full ${config.chipClass}`}>
+          <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${config.chipClass}`}>
             {tasks.length} task{tasks.length !== 1 ? "s" : ""}
           </span>
           {open ? (
-            <ChevronDown className="h-4 w-4 text-slate-400" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-slate-400" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
       </button>
 
       {/* Tasks */}
       {open && (
-        <div className="px-5 pb-5 pt-3 bg-slate-50/50 border-t border-slate-100">
+        <div className="px-5 pb-5 pt-3 bg-muted/20 border-t border-border/60">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {tasks.map((task) => (
               <MiniTaskCard
@@ -520,27 +520,27 @@ export default function StatusTasksView({
   const totalCount = projectsWithTasks.reduce((s, { tasks }) => s + tasks.length, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       {/* Header */}
       <div className="flex items-start gap-3">
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="mt-0.5 hover:bg-slate-100 rounded-xl"
+          className="mt-0.5 hover:bg-accent rounded-lg"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${config.headerGradient} shadow-md shrink-0`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${config.headerGradient} shadow-2xs shrink-0`}
             >
               {config.icon}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{config.label}</h1>
-              <p className="text-slate-500 text-sm mt-0.5">{config.description}</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{config.label}</h1>
+              <p className="text-muted-foreground text-sm mt-0.5">{config.description}</p>
             </div>
           </div>
         </div>
@@ -548,7 +548,7 @@ export default function StatusTasksView({
 
       {/* Summary gradient bar */}
       <div
-        className={`bg-gradient-to-r ${config.headerGradient} p-5 rounded-2xl text-white shadow-sm`}
+        className={`bg-gradient-to-r ${config.headerGradient} p-5 rounded-xl text-white shadow-2xs`}
       >
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-8">
@@ -580,25 +580,25 @@ export default function StatusTasksView({
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search by project or client..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 rounded-xl border-slate-200 bg-white shadow-sm"
+          className="pl-10 rounded-xl border-border/70 bg-card shadow-2xs text-xs"
         />
       </div>
 
       {/* Project list */}
       {projectsWithTasks.length === 0 ? (
-        <Card className="border-dashed border-2 border-slate-200 bg-slate-50">
+        <Card className="border-dashed border-2 border-border/70 bg-card/50">
           <CardContent className="py-16 flex flex-col items-center gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
-              <FolderOpen className="h-8 w-8 text-slate-400" />
+            <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
+              <FolderOpen className="h-7 w-7 text-muted-foreground" />
             </div>
             <div className="text-center">
-              <p className="text-slate-700 font-semibold text-lg">No tasks found</p>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-foreground font-semibold text-base">No tasks found</p>
+              <p className="text-muted-foreground text-xs mt-1">
                 {searchQuery
                   ? "No projects match your search"
                   : config.emptyMsg}
@@ -609,7 +609,7 @@ export default function StatusTasksView({
                 variant="ghost"
                 size="sm"
                 onClick={() => setSearchQuery("")}
-                className="mt-2 text-slate-500 hover:text-slate-700"
+                className="mt-2 text-xs text-muted-foreground hover:text-foreground"
               >
                 Clear search
               </Button>

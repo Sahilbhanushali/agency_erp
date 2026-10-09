@@ -5,6 +5,10 @@ import { authOptions } from "@/lib/auth"
 import { hasPermission } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { quotationDetailSelect } from "@/lib/finance"
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/ui/page-header"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import QuotationEditor from "@/components/finance/quotation-editor"
 import NoAccess from "@/components/finance/no-access"
@@ -43,15 +47,18 @@ export default async function EditQuotationPage({
   const serialised = JSON.parse(JSON.stringify(quotation)) as QuotationDetail
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Edit <span className="font-mono">{quotation.number}</span>
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Totals are recalculated from the line items when you save.
-        </p>
-      </div>
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title={`Edit Quotation: ${quotation.number}`}
+        description="Totals and GST breakdowns are automatically recalculated from the line items when saved."
+      >
+        <Button variant="outline" size="sm" asChild className="gap-1.5">
+          <Link href={`/dashboard/quotations/${quotation.id}`}>
+            <ArrowLeft className="size-3.5" />
+            View Document
+          </Link>
+        </Button>
+      </PageHeader>
 
       <QuotationEditor quotation={serialised} />
     </div>

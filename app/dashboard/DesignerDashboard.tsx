@@ -153,23 +153,23 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
   // Loading state
   if (status === "loading" || dashboardLoading) {
     return (
-      <div className="space-y-8 p-6 bg-gray-50/30 min-h-screen">
+      <div className="space-y-6 animate-pulse">
         <div className="space-y-2">
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-5 w-64" />
+          <Skeleton className="h-8 w-44 rounded-lg" />
+          <Skeleton className="h-4 w-72 rounded-md" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full" />
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-9 grid grid-cols-1 md:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full" />
+              <Skeleton key={i} className="h-28 w-full rounded-xl" />
             ))}
           </div>
-          <Skeleton className="lg:col-span-3 h-64" />
+          <Skeleton className="lg:col-span-3 h-60 rounded-xl" />
         </div>
       </div>
     );
@@ -185,13 +185,12 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
   // Error state
   if (dashboardError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 px-6">
-            <div className="text-4xl mb-4">⚠️</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Dashboard</h3>
-            <p className="text-gray-600 text-center mb-4">{dashboardError.message}</p>
-            <Button onClick={() => window.location.reload()}>Retry</Button>
+      <div className="py-12 flex items-center justify-center">
+        <Card className="shadow-2xs max-w-md w-full">
+          <CardContent className="flex flex-col items-center justify-center py-10 px-6">
+            <h3 className="text-base font-semibold text-foreground mb-1">Error Loading Dashboard</h3>
+            <p className="text-xs text-muted-foreground text-center mb-4">{dashboardError.message}</p>
+            <Button size="sm" onClick={() => window.location.reload()}>Retry</Button>
           </CardContent>
         </Card>
       </div>
@@ -201,8 +200,8 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
   // No data yet
   if (!dashboardData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-xl font-medium">Loading dashboard...</div>
+      <div className="py-12 flex items-center justify-center text-xs text-muted-foreground">
+        Loading dashboard...
       </div>
     );
   }
@@ -308,18 +307,18 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
   } as const;
 
   return (
-    <div className="space-y-8 p-6 bg-gray-50/30 min-h-screen">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
             <Badge variant="outline" className="text-xs">
               {userRole}
             </Badge>
           </div>
-          <p className="text-gray-600 mt-1">
-            Welcome back, <span className="font-medium">{session.user.name}</span>
+          <p className="text-xs text-muted-foreground mt-1">
+            Welcome back, <span className="font-medium text-foreground">{session.user.name}</span>
           </p>
           {searchParams.festivals && (
             <Badge className="mt-2 bg-blue-50 text-blue-700 border-blue-200">

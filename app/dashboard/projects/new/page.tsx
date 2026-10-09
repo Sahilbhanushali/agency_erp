@@ -8,7 +8,11 @@ import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { toast } from "react-hot-toast"; // Import react-hot-toast
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { AlertTriangle, ShieldAlert, ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 interface User {
   id: string;
@@ -217,13 +221,16 @@ export default function NewProjectPage() {
   // Show loading state
   if (status === "loading" || loading || usersLoading || clientsLoading || projectsLoading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
-        <Skeleton className="h-8 w-32 mb-2" />
-        <Card>
+      <div className="space-y-6 animate-pulse">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-44 rounded-lg" />
+          <Skeleton className="h-4 w-72 rounded-md" />
+        </div>
+        <Card className="shadow-2xs">
           <CardContent className="pt-6">
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
               ))}
             </div>
           </CardContent>
@@ -235,56 +242,56 @@ export default function NewProjectPage() {
   // Show error or unauthorized state
   if (status === "unauthenticated" || !session?.user?.id || error) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-4xl mb-4">⚠️</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {status === "unauthenticated" || !session?.user?.id ? "Unauthorized" : "Error Loading Data"}
-            </h3>
-            <p className="text-gray-600 text-center mb-4">
-              {status === "unauthenticated" || !session?.user?.id
-                ? "Please sign in to access this page."
-                : error || "An error occurred."}
-            </p>
-            <Button
-              onClick={() =>
-                status === "unauthenticated" || !session?.user?.id
-                  ? router.push("/auth/signin")
-                  : window.location.reload()
-              }
-            >
-              {status === "unauthenticated" || !session?.user?.id ? "Sign In" : "Retry"}
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="py-12">
+        <EmptyState
+          icon={AlertTriangle}
+          title={status === "unauthenticated" || !session?.user?.id ? "Authentication Required" : "Error Loading Data"}
+          description={
+            status === "unauthenticated" || !session?.user?.id
+              ? "Please sign in to access project campaign creation."
+              : error || "An unexpected error occurred while loading dependencies."
+          }
+          actionLabel={status === "unauthenticated" || !session?.user?.id ? "Sign In" : "Retry"}
+          onAction={() =>
+            status === "unauthenticated" || !session?.user?.id
+              ? router.push("/auth/signin")
+              : window.location.reload()
+          }
+        />
       </div>
     );
   }
 
-  // NEW: Show permission denied state
+  // Permission denied state
   if (!hasManageProjectsPermission) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-4xl mb-4">🚫</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
-            <p className="text-gray-600 text-center mb-4">
-              You do not have the required permission ("Manage-projects") to create or manage projects.
-              <br />
-              Please contact your administrator for access.
-            </p>
-            <Button onClick={() => router.push("/dashboard")}>Go Back to Dashboard</Button>
-          </CardContent>
-        </Card>
+      <div className="py-12">
+        <EmptyState
+          icon={ShieldAlert}
+          title="Access Restricted"
+          description='You do not have the required permission ("Manage-projects") to create or configure campaigns. Please contact your administrator.'
+          actionLabel="Go Back to Dashboard"
+          onAction={() => router.push("/dashboard")}
+        />
       </div>
     );
   }
 
   // Render the form if all checks pass
   return (
-    <div>
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title="Create New Project"
+        description="Set up a new client campaign with assigned managers, lead designers, and monthly deliverable goals."
+      >
+        <Button variant="outline" size="sm" asChild className="gap-1.5">
+          <Link href="/dashboard/projects">
+            <ArrowLeft className="size-3.5" />
+            Back to Projects
+          </Link>
+        </Button>
+      </PageHeader>
+
       <ProjectForm
         clients={formattedClients}
         managers={managers}

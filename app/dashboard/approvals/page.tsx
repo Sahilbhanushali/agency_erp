@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, AlertCircle, ChevronLeft, ChevronRight, Eye, MoreHorizontal, Download, Edit, Trash2, FileText, SlidersHorizontal } from "lucide-react";
+import { Check, X, AlertCircle, ChevronLeft, ChevronRight, Eye, MoreHorizontal, Download, Edit, Trash2, FileText, SlidersHorizontal, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -498,120 +500,146 @@ const ApprovalTab: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="space-y-8 max-w-7xl mx-auto p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <Skeleton className="h-9 w-40 mb-3 rounded-md" />
-            <Skeleton className="h-5 w-60 rounded-md" />
+      <div className="space-y-6 animate-in fade-in-50 duration-200">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-72 w-full rounded-xl" />
+            ))}
           </div>
         </div>
-        <Card className="border-border rounded-xl">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-80 w-full rounded-xl" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="space-y-8 max-w-7xl mx-auto p-6">
-        <Card className="border-border rounded-xl">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">Error Loading Approvals</h3>
-            <p className="muted-foreground text-sm mb-6 max-w-md text-center">{error.message}</p>
-            <Button 
-              onClick={() => mutate()} 
-            >
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="rounded-xl border border-border/70 bg-card p-12 text-center">
+        <AlertCircle className="size-10 text-destructive mx-auto mb-3" />
+        <h3 className="text-base font-semibold text-foreground mb-1">Error Loading Approvals</h3>
+        <p className="text-xs text-muted-foreground mb-4 max-w-md mx-auto">{error.message}</p>
+        <Button size="sm" onClick={() => mutate()}>
+          Try Again
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto p-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">Design Approvals</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Review and approve design submissions ({filteredApprovals.length} of {approvals.length} total)
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Design Approvals</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review design submissions, mark approvals, and submit visual feedback.
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs font-medium">
+            Showing {filteredApprovals.length} of {approvals.length} submissions
+          </Badge>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-card p-5 rounded-xl shadow-sm border border-border">
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="p-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground text-sm transition-all"
-        >
-          <option value="ALL">All Statuses</option>
-          <option value="DRAFT">Draft</option>
-          <option value="SUBMITTED">Submitted</option>
-          <option value="RESUBMITTED">Resubmitted</option>
-          <option value="APPROVED">I Approve</option>
-          <option value="C_APPROVED">C Approve</option>
-          <option value="REJECTED">Changes</option>
-          <option value="NEEDS_MINOR_CHANGE">Needs Minor Change</option>
-        </select>
-        <select
-          value={filterProject}
-          onChange={(e) => setFilterProject(e.target.value)}
-          className="p-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground text-sm transition-all"
-        >
-          <option value="ALL">All Projects</option>
-          {uniqueProjects.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filterClient}
-          onChange={(e) => setFilterClient(e.target.value)}
-          className="p-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground text-sm transition-all"
-        >
-          <option value="ALL">All Clients</option>
-          {uniqueClients.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filterAssigned}
-          onChange={(e) => setFilterAssigned(e.target.value)}
-          className="p-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground text-sm transition-all"
-        >
-          <option value="ALL">All Assigned</option>
-          {uniqueAssigned.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search title, project, client..."
-          className="p-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground text-sm transition-all"
-        />
+      {/* Filter Toolbar */}
+      <div className="flex flex-col items-stretch gap-2.5 rounded-xl border border-border/70 bg-card p-3 shadow-2xs md:flex-row md:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search title, project, client..."
+            className="h-9 w-full bg-background pl-9 text-xs"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL" className="text-xs">All Statuses</SelectItem>
+              <SelectItem value="DRAFT" className="text-xs">Draft</SelectItem>
+              <SelectItem value="SUBMITTED" className="text-xs">Submitted</SelectItem>
+              <SelectItem value="RESUBMITTED" className="text-xs">Resubmitted</SelectItem>
+              <SelectItem value="APPROVED" className="text-xs">I Approve</SelectItem>
+              <SelectItem value="C_APPROVED" className="text-xs">C Approve</SelectItem>
+              <SelectItem value="REJECTED" className="text-xs">Changes</SelectItem>
+              <SelectItem value="NEEDS_MINOR_CHANGE" className="text-xs">Needs Minor Change</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterProject} onValueChange={setFilterProject}>
+            <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
+              <SelectValue placeholder="Project" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL" className="text-xs">All Projects</SelectItem>
+              {uniqueProjects.map((name) => (
+                <SelectItem key={name} value={name} className="text-xs">
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterClient} onValueChange={setFilterClient}>
+            <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
+              <SelectValue placeholder="Client" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL" className="text-xs">All Clients</SelectItem>
+              {uniqueClients.map((name) => (
+                <SelectItem key={name} value={name} className="text-xs">
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterAssigned} onValueChange={setFilterAssigned}>
+            <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
+              <SelectValue placeholder="Assigned" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL" className="text-xs">All Designers</SelectItem>
+              {uniqueAssigned.map((name) => (
+                <SelectItem key={name} value={name} className="text-xs">
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {(searchTerm || filterStatus !== "ALL" || filterProject !== "ALL" || filterClient !== "ALL" || filterAssigned !== "ALL") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchTerm("");
+                setFilterStatus("ALL");
+                setFilterProject("ALL");
+                setFilterClient("ALL");
+                setFilterAssigned("ALL");
+              }}
+              className="h-9 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Reset
+            </Button>
+          )}
+        </div>
       </div>
 
       {filteredApprovals.length === 0 ? (
-        <Card className="p-8 text-center border-border rounded-xl">
-          <p className="text-muted-foreground text-sm">No matching designs to review.</p>
-        </Card>
+        <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
+          <p className="text-sm text-muted-foreground">No matching design submissions to review.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredApprovals.map((approval: ApprovalFlow) => {

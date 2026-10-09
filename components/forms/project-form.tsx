@@ -618,7 +618,7 @@ export default function ProjectForm({
   }));
 
   return (
-    <Card className="max-w-4xl mx-auto shadow-2xs">
+    <Card className="shadow-2xs border-border/70">
       <CardHeader className="border-b border-border/60 pb-4">
         <div className="flex items-center gap-3">
           <Button

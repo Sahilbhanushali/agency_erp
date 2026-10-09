@@ -19,8 +19,35 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       where: { id: params.id },
       include: {
         projects: {
-          where: { isActive: true },
           orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true,
+            startDate: true,
+            endDate: true,
+            createdAt: true,
+            _count: { select: { posts: true } },
+          },
+        },
+        quotations: {
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
+        invoices: {
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
+        credentials: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            title: true,
+            username: true,
+            url: true,
+            createdAt: true,
+          },
         },
       },
     });
@@ -58,20 +85,47 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string | null;
+    const altPhone = formData.get("altPhone") as string | null;
     const company = formData.get("company") as string | null;
+    const website = formData.get("website") as string | null;
+    const industry = formData.get("industry") as string | null;
+    const status = formData.get("status") as string | null;
+    const address = formData.get("address") as string | null;
+    const city = formData.get("city") as string | null;
+    const state = formData.get("state") as string | null;
+    const country = formData.get("country") as string | null;
+    const postalCode = formData.get("postalCode") as string | null;
+    const gstin = formData.get("gstin") as string | null;
+    const panNumber = formData.get("panNumber") as string | null;
+    const notes = formData.get("notes") as string | null;
     const avatarFile = formData.get("avatar") as File | null;
     const removeAvatar = formData.get("removeAvatar") as string | null;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
     const dataToUpdate: any = {
-      name,
-      email,
-      phone,
-      company,
+      name: name.trim(),
+      email: email?.trim() || "",
+      phone: phone?.trim() || null,
+      altPhone: altPhone?.trim() || null,
+      company: company?.trim() || null,
+      website: website?.trim() || null,
+      industry: industry?.trim() || null,
+      address: address?.trim() || null,
+      city: city?.trim() || null,
+      state: state?.trim() || null,
+      country: country?.trim() || "India",
+      postalCode: postalCode?.trim() || null,
+      gstin: gstin?.trim() || null,
+      panNumber: panNumber?.trim() || null,
+      notes: notes?.trim() || null,
     };
+
+    if (status) {
+      dataToUpdate.status = status;
+    }
 
     if (avatarFile && avatarFile.size > 0) {
       if (existingClient.avatar) {
@@ -79,11 +133,14 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       }
       const bytes = await avatarFile.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      const fileName = `${Date.now()}-${avatarFile.name}`;
-      const filePath = path.join(process.cwd(), "public", "uploads", fileName);
+      const safeName = avatarFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const fileName = `${Date.now()}-${safeName}`;
+      const uploadDir = path.join(process.cwd(), "public", "uploads", "clients");
+      await fs.mkdir(uploadDir, { recursive: true });
+      const filePath = path.join(uploadDir, fileName);
 
       await writeFile(filePath, buffer);
-      dataToUpdate.avatar = `/uploads/${fileName}`;
+      dataToUpdate.avatar = `/uploads/clients/${fileName}`;
     } else if (removeAvatar === "true") {
       if (existingClient.avatar) {
         await deleteLocalFile(existingClient.avatar);

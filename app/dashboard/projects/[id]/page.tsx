@@ -319,7 +319,7 @@ export default function ProjectDetailsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
+      <div className="space-y-6 animate-pulse">
         <div className="flex items-center gap-3">
           <Skeleton className="size-9 rounded-md" />
           <div className="space-y-2">
@@ -339,22 +339,20 @@ export default function ProjectDetailsPage() {
 
   if (!project) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="py-12">
         <EmptyState
           icon={Search}
           title="Project Not Found"
           description="The requested project could not be found or you may not have access."
-          action={{
-            label: "Back to Projects",
-            onClick: () => router.push("/dashboard/projects"),
-          }}
+          actionLabel="Back to Projects"
+          onAction={() => router.push("/dashboard/projects")}
         />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-5">
         <div className="flex items-start sm:items-center gap-3">

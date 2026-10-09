@@ -5,6 +5,7 @@ import { Plus } from "lucide-react"
 import { authOptions } from "@/lib/auth"
 import { hasPermission } from "@/lib/api-auth"
 import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/ui/page-header"
 import QuotationTable from "@/components/finance/quotation-table"
 import NoAccess from "@/components/finance/no-access"
 
@@ -16,23 +17,20 @@ export default async function QuotationsPage() {
   const canManage = await hasPermission(session, "Manage-quotations")
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Quotations</h1>
-          <p className="text-sm text-muted-foreground">
-            Priced proposals your companies issue to clients, with GST and a shareable link.
-          </p>
-        </div>
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title="Quotations & Proposals"
+        description="Formal priced proposals issued to clients with GST tax itemization, shareable links, and letterhead."
+      >
         {canManage && (
-          <Button asChild>
+          <Button asChild size="sm" className="gap-1.5">
             <Link href="/dashboard/quotations/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New quotation
+              <Plus className="size-3.5" />
+              New Quotation
             </Link>
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       <QuotationTable />
     </div>

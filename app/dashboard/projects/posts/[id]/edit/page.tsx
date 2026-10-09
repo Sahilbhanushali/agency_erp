@@ -5,9 +5,12 @@ import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { PostForm } from "@/components/forms/post-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
 
@@ -207,16 +210,16 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="space-y-6 animate-pulse">
         <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-72" />
+          <Skeleton className="h-8 w-48 rounded-lg" />
+          <Skeleton className="h-4 w-72 rounded-md" />
         </div>
         <Card className="shadow-2xs">
           <CardContent className="p-6 space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-10 w-1/2" />
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-28 w-full rounded-lg" />
+            <Skeleton className="h-10 w-1/2 rounded-lg" />
           </CardContent>
         </Card>
       </div>
@@ -225,11 +228,11 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="py-12">
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertTriangle className="size-4" />
+          <AlertTitle>Error Loading Post</AlertTitle>
+          <AlertDescription className="text-xs">{error}</AlertDescription>
         </Alert>
       </div>
     );
@@ -264,11 +267,18 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
   const referenceAssets = postData.assets.filter((asset) => asset.isReference);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="border-b border-border/60 pb-4">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Edit Post</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Update and manage your scheduled social media post and design deliverables</p>
-      </div>
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title={`Edit Post: ${postData.title}`}
+        description="Update deliverable metadata, platform tags, schedule timings, and creative references."
+      >
+        <Button variant="outline" size="sm" asChild className="gap-1.5">
+          <Link href={`/dashboard/projects/posts/${postData.id}`}>
+            <ArrowLeft className="size-3.5" />
+            View Deliverable
+          </Link>
+        </Button>
+      </PageHeader>
       <PostForm
         projects={projectsData.projects}
         designers={designers}

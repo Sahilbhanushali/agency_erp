@@ -860,34 +860,62 @@ export default function FestivalsPage() {
   };
 
   return (
-    <div className="w-full px-2 sm:px-4 lg:px-6">
-      <Toaster position="top-right" toastOptions={{ duration: 3000 }} /> {/* Add Toaster component */}
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       {status === "loading" ? (
-        <p>Loading authentication...</p>
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            ))}
+          </div>
+        </div>
       ) : !session ? (
-        <p className="text-red-600">Please sign in to view festivals.</p>
+        <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
+          <p className="text-sm font-medium text-destructive">Please sign in to view festivals.</p>
+        </div>
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 sm:gap-0">
-            <h1 className="text-2xl font-bold">Festivals</h1>
-            <div className="flex items-center space-x-4 w-full sm:w-auto justify-end">
+          {/* Page Header */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Festivals & Events</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Plan, assign, and publish social media greetings for cultural celebrations and holidays.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
               <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select Year" />
+                <SelectTrigger className="h-9 w-[110px] bg-card text-xs">
+                  <SelectValue placeholder="Year" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px] overflow-y-auto">
                   {years.map((year) => (
-                    <SelectItem key={year} value={year}>
+                    <SelectItem key={year} value={year} className="text-xs">
                       {year}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+
+              <Select value={viewMode} onValueChange={(value: "list" | "grid" | "calendar") => setViewMode(value)}>
+                <SelectTrigger className="h-9 w-[125px] bg-card text-xs">
+                  <SelectValue placeholder="View" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="list" className="text-xs">List View</SelectItem>
+                  <SelectItem value="grid" className="text-xs">Grid View</SelectItem>
+                  <SelectItem value="calendar" className="text-xs">Calendar View</SelectItem>
+                </SelectContent>
+              </Select>
+
               {canManageFestivals && (
                 <Dialog open={formOpen} onOpenChange={setFormOpen}>
                   <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
+                    <Button size="sm" className="gap-1.5 shadow-2xs">
+                      <Plus className="size-3.5" />
                       Add Festival
                     </Button>
                   </DialogTrigger>
@@ -897,64 +925,64 @@ export default function FestivalsPage() {
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Name</label>
+                        <label className="block text-xs font-semibold text-foreground mb-1">Name</label>
                         <Input
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
                           placeholder="Festival Name"
                           required
-                          className={formErrors.name ? "border-red-500" : ""}
+                          className={formErrors.name ? "border-destructive text-xs" : "text-xs"}
                         />
-                        {formErrors.name && <p className="text-red-600 text-sm mt-1">{formErrors.name}</p>}
+                        {formErrors.name && <p className="text-destructive text-xs mt-1">{formErrors.name}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Description</label>
+                        <label className="block text-xs font-semibold text-foreground mb-1">Description</label>
                         <Textarea
                           name="description"
                           value={formData.description}
                           onChange={handleInputChange}
                           placeholder="Festival Description"
                           required
-                          className={formErrors.description ? "border-red-500" : ""}
+                          className={formErrors.description ? "border-destructive text-xs" : "text-xs"}
                         />
-                        {formErrors.description && <p className="text-red-600 text-sm mt-1">{formErrors.description}</p>}
+                        {formErrors.description && <p className="text-destructive text-xs mt-1">{formErrors.description}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Date</label>
+                        <label className="block text-xs font-semibold text-foreground mb-1">Date</label>
                         <Input
                           type="date"
                           name="date"
                           value={formData.date}
                           onChange={handleInputChange}
                           required
-                          className={formErrors.date ? "border-red-500" : ""}
+                          className={formErrors.date ? "border-destructive text-xs" : "text-xs"}
                         />
-                        {formErrors.date && <p className="text-red-600 text-sm mt-1">{formErrors.date}</p>}
+                        {formErrors.date && <p className="text-destructive text-xs mt-1">{formErrors.date}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Primary Type</label>
+                        <label className="block text-xs font-semibold text-foreground mb-1">Primary Type</label>
                         <Select
                           value={formData.primaryType}
                           onValueChange={(value) => handleInputChange({ name: "primaryType", value })}
                         >
-                          <SelectTrigger className={formErrors.primaryType ? "border-red-500" : ""}>
+                          <SelectTrigger className={formErrors.primaryType ? "border-destructive text-xs" : "text-xs"}>
                             <SelectValue placeholder="Select Type" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="National Holiday">National Holiday</SelectItem>
-                            <SelectItem value="Religious Holiday">Religious Holiday</SelectItem>
-                            <SelectItem value="Cultural Festival">Cultural Festival</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                            <SelectItem value="National Holiday" className="text-xs">National Holiday</SelectItem>
+                            <SelectItem value="Religious Holiday" className="text-xs">Religious Holiday</SelectItem>
+                            <SelectItem value="Cultural Festival" className="text-xs">Cultural Festival</SelectItem>
+                            <SelectItem value="Other" className="text-xs">Other</SelectItem>
                           </SelectContent>
                         </Select>
-                        {formErrors.primaryType && <p className="text-red-600 text-sm mt-1">{formErrors.primaryType}</p>}
+                        {formErrors.primaryType && <p className="text-destructive text-xs mt-1">{formErrors.primaryType}</p>}
                       </div>
                       <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setFormOpen(false)}>
                           Cancel
                         </Button>
-                        <Button type="submit">Add Festival</Button>
+                        <Button type="submit" size="sm">Add Festival</Button>
                       </DialogFooter>
                     </form>
                   </DialogContent>
@@ -963,21 +991,8 @@ export default function FestivalsPage() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4 mb-4">
-            <Select value={viewMode} onValueChange={(value: "list" | "grid" | "calendar") => setViewMode(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select View" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="list">List View</SelectItem>
-                <SelectItem value="grid">Grid View</SelectItem>
-                <SelectItem value="calendar">Calendar View</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {viewMode !== "calendar" && (
-            <div className="w-full flex flex-nowrap justify-between mb-4 space-x-1">
+            <div className="w-full flex flex-nowrap overflow-x-auto gap-1 pb-1">
               {months.map((m) => (
                 <Button
                   key={m.value}

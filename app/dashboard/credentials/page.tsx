@@ -16,12 +16,16 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Plus, Eye, EyeOff, Edit, Trash2, Download, Upload } from "lucide-react"
 import * as XLSX from 'xlsx'
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
+
 export default function CredentialsPage() {
   const [credentials, setCredentials] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({})
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editData, setEditData] = useState<any>(null)
+  const [credentialToDelete, setCredentialToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [isDeletingCredential, setIsDeletingCredential] = useState(false)
   
 
   const fetchCredentials = async () => {
@@ -77,19 +81,25 @@ export default function CredentialsPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this credential?")) return;
+  const confirmDeleteCredential = async () => {
+    if (!credentialToDelete) return;
+    setIsDeletingCredential(true);
     try {
-      const res = await fetch(`/api/credentials/${id}`, {
+      const res = await fetch(`/api/credentials/${credentialToDelete.id}`, {
         method: 'DELETE',
       })
       if (res.ok) {
         toast.success("Credential deleted successfully!")
         fetchCredentials()
+        setCredentialToDelete(null)
+      } else {
+        toast.error("Failed to delete credential.")
       }
     } catch (err) {
       console.error(err)
       toast.error("Failed to delete credential.")
+    } finally {
+      setIsDeletingCredential(false)
     }
   }
 
@@ -197,15 +207,15 @@ export default function CredentialsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Password Credentials</h1>
-          <p className="text-muted-foreground mt-1">Manage client and project platform credentials securely.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Password Credentials</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage client, project, and platform account credentials securely.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport} className="border-border">
-            <Download className="mr-2 h-4 w-4" /> Export
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 shadow-2xs">
+            <Download className="size-3.5" /> Export
           </Button>
           <div className="relative">
             <input 
@@ -215,34 +225,34 @@ export default function CredentialsPage() {
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               title="Import Excel"
             />
-            <Button variant="outline" className="border-border w-full">
-              <Upload className="mr-2 h-4 w-4" /> Import
+            <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs">
+              <Upload className="size-3.5" /> Import
             </Button>
           </div>
-          <Button onClick={handleAddNewClick} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Plus className="mr-2 h-4 w-4" /> Add Credential
+          <Button size="sm" onClick={handleAddNewClick} className="gap-1.5 shadow-2xs">
+            <Plus className="size-3.5" /> Add Credential
           </Button>
         </div>
       </div>
 
-      <Card className="border-border bg-card shadow-sm rounded-xl overflow-hidden">
-        <CardHeader className="pb-3 px-6 pt-6">
-          <div className="flex items-center space-x-2 bg-muted/50 rounded-lg px-3 py-2 border border-border w-full max-w-sm">
-            <Search className="h-4 w-4 text-muted-foreground" />
+      <div className="space-y-3">
+        <div className="rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               placeholder="Search clients or projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="border-0 bg-transparent shadow-none focus-visible:ring-0 h-8 px-2 text-sm"
+              className="h-9 w-full bg-background pl-9 text-xs"
             />
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow className="border-border">
-                  <TableHead className="font-semibold text-foreground">Client Name</TableHead>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-border/70 bg-card shadow-2xs">
+          <Table>
+            <TableHeader className="bg-muted/40">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Client Name</TableHead>
                   <TableHead className="font-semibold text-foreground">Project Name</TableHead>
                   <TableHead className="font-semibold text-foreground">Location</TableHead>
                   <TableHead className="font-semibold text-foreground">Contact Number</TableHead>
@@ -317,7 +327,12 @@ export default function CredentialsPage() {
                             <Button
                               variant="ghost"
                               size="icon-xs"
-                              onClick={() => handleDelete(p.id)}
+                              onClick={() =>
+                                setCredentialToDelete({
+                                  id: p.id,
+                                  name: `${p.platform || "Platform"} - ${p.userId || group.clientName}`,
+                                })
+                              }
                               className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                               title="Delete credential"
                             >
@@ -338,14 +353,23 @@ export default function CredentialsPage() {
               </TableBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
       <CredentialFormDialog 
         open={isDialogOpen} 
         onOpenChange={setIsDialogOpen} 
         onSave={handleSave}
         editData={editData}
+      />
+
+      <DeleteConfirmationDialog
+        isOpen={!!credentialToDelete}
+        onClose={() => setCredentialToDelete(null)}
+        onConfirm={confirmDeleteCredential}
+        title="Delete Stored Credential"
+        itemName={credentialToDelete?.name || ""}
+        entityType="credential"
+        isLoading={isDeletingCredential}
       />
     </div>
   )

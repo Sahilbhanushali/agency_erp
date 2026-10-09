@@ -33,7 +33,7 @@ export default async function QuotationPage({
   const canManage = await hasPermission(session, "Manage-quotations")
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       <div className="flex flex-wrap items-start justify-between gap-4 print:hidden">
         <div>
           <Button variant="ghost" size="sm" asChild className="-ml-3 mb-1">

@@ -124,62 +124,62 @@ export default function PostFilters({
   
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Filters</CardTitle>
+    <Card className="rounded-xl border border-border/70 bg-card shadow-2xs">
+      <CardHeader className="pb-3 pt-4 px-4 sm:px-6">
+        <CardTitle className="text-sm font-semibold tracking-tight text-foreground uppercase tracking-wider text-muted-foreground">Filters & Navigation</CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex flex-col sm:flex-row gap-3 items-center">
+      <CardContent className="px-4 pb-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
             <Input
               placeholder="Search posts, captions, or clients..."
-              className="pl-10 h-9 text-sm"
+              className="pl-9 h-9 text-xs bg-background"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[120px] h-9 text-sm">
+              <SelectTrigger className="w-[125px] h-9 text-xs bg-background">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="resubmitted">Re-Submitted</SelectItem>
-                <SelectItem value="approved">I Approve</SelectItem>
-                <SelectItem value="c_approved">C Approve</SelectItem>
-                <SelectItem value="rejected">Changes</SelectItem>
-                <SelectItem value="scheduled">Scheduled</SelectItem>
-                <SelectItem value="posted">Posted</SelectItem>
+                <SelectItem value="all" className="text-xs">All Status</SelectItem>
+                <SelectItem value="pending" className="text-xs">Pending</SelectItem>
+                <SelectItem value="draft" className="text-xs">Draft</SelectItem>
+                <SelectItem value="submitted" className="text-xs">Submitted</SelectItem>
+                <SelectItem value="resubmitted" className="text-xs">Re-Submitted</SelectItem>
+                <SelectItem value="approved" className="text-xs">I Approve</SelectItem>
+                <SelectItem value="c_approved" className="text-xs">C Approve</SelectItem>
+                <SelectItem value="rejected" className="text-xs">Changes</SelectItem>
+                <SelectItem value="scheduled" className="text-xs">Scheduled</SelectItem>
+                <SelectItem value="posted" className="text-xs">Posted</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[120px] h-9 text-sm">
+              <SelectTrigger className="w-[120px] h-9 text-xs bg-background">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="photo">Photo</SelectItem>
-                <SelectItem value="reel">Reel</SelectItem>
-                <SelectItem value="story">Story</SelectItem>
-                <SelectItem value="carousel">Carousel</SelectItem>
-                <SelectItem value="video">Video</SelectItem>
-                <SelectItem value="custom">Custom</SelectItem>
+                <SelectItem value="all" className="text-xs">All Types</SelectItem>
+                <SelectItem value="photo" className="text-xs">Photo</SelectItem>
+                <SelectItem value="reel" className="text-xs">Reel</SelectItem>
+                <SelectItem value="story" className="text-xs">Story</SelectItem>
+                <SelectItem value="carousel" className="text-xs">Carousel</SelectItem>
+                <SelectItem value="video" className="text-xs">Video</SelectItem>
+                <SelectItem value="custom" className="text-xs">Custom</SelectItem>
               </SelectContent>
             </Select>
             {!hideProjectFilter && (
               <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="w-[120px] h-9 text-sm">
+                <SelectTrigger className="w-[130px] h-9 text-xs bg-background">
                   <SelectValue placeholder="Project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
+                  <SelectItem value="all" className="text-xs">All Projects</SelectItem>
                   {uniqueProjects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
+                    <SelectItem key={project.id} value={project.id} className="text-xs">
                       {project.name}
                     </SelectItem>
                   ))}
@@ -187,13 +187,13 @@ export default function PostFilters({
               </Select>
             )}
             <Select value={yearFilter} onValueChange={setYearFilter}>
-              <SelectTrigger className="w-[120px] h-9 text-sm">
+              <SelectTrigger className="w-[110px] h-9 text-xs bg-background">
                 <SelectValue placeholder="Year" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Years</SelectItem>
+                <SelectItem value="all" className="text-xs">All Years</SelectItem>
                 {strategyYears.map((year) => (
-                  <SelectItem key={year} value={year}>
+                  <SelectItem key={year} value={year} className="text-xs">
                     {year}
                   </SelectItem>
                 ))}
@@ -201,41 +201,42 @@ export default function PostFilters({
             </Select>
           </div>
         </div>
-        <div className="mt-3">
+        <div className="mt-3 pt-3 border-t border-border/60">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium">Filter by Month:</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Month Breakdown:</span>
             <Button
               variant={monthFilter === "all" ? "default" : "outline"}
-              size="sm"
+              size="xs"
               onClick={() => setMonthFilter("all")}
-              className={`h-8 min-w-[50px] text-xs ${
+              className={`h-7 px-2.5 text-[11px] font-semibold ${
                 monthFilter === "all"
-                  ? "bg-blue-500 text-white hover:bg-blue-600"
-                  : "hover:bg-blue-100 dark:hover:bg-blue-950/40 dark:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               ALL
             </Button>
           </div>
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
             {MONTHS.map((month) => {
               const plannedPosts = plannedPostsByMonth[month.number] || 0;
               const scheduledPosts = monthPostCounts[month.number] || 0;
+              const isSelected = monthFilter === month.number;
               return (
                 <Button
                   key={month.short}
-                  variant={monthFilter === month.number ? "default" : "outline"}
+                  variant={isSelected ? "default" : "outline"}
                   size="sm"
                   onClick={() => setMonthFilter(month.number)}
-                  className={`h-10 text-xs ${
-                    monthFilter === month.number
-                      ? "bg-blue-500 text-white hover:bg-blue-600"
-                      : "hover:bg-blue-100 dark:hover:bg-blue-950/40 dark:text-foreground"
+                  className={`h-9 px-1 text-xs transition-all ${
+                    isSelected
+                      ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                      : "bg-background/50 hover:bg-muted text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <div className="flex flex-col items-center">
-                    <span>{month.short}</span>
-                    <span className="text-[10px] opacity-70">
+                  <div className="flex flex-col items-center leading-none gap-0.5">
+                    <span className="text-[11px] font-semibold">{month.short}</span>
+                    <span className="text-[9px] opacity-80 tabular-nums">
                       ({scheduledPosts}/{plannedPosts})
                     </span>
                   </div>

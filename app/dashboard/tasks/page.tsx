@@ -327,7 +327,7 @@ export default function TasksPage() {
   const totalStats = getTotalStats();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">

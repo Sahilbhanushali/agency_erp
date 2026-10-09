@@ -5,7 +5,14 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Sliders, Plus, Trash2, Edit, Shield, Check } from "lucide-react";
+import toast from "react-hot-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Utility = {
@@ -123,18 +130,20 @@ export default function UtilitiesPage() {
         const updatedUtility = await res.json();
         if (editingId) {
           setUtilities(utilities.map((u) => (u.id === editingId ? updatedUtility : u)));
+          toast.success("Utility updated successfully");
         } else {
           setUtilities([updatedUtility, ...utilities]);
+          toast.success("Utility created successfully");
         }
         setForm({ name: "", type: "", values: "" });
         setEditingId(null);
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to save utility");
+        toast.error(error.error || "Failed to save utility");
       }
     } catch (err) {
       console.error("Error saving utility:", err);
-      alert("Failed to save utility");
+      toast.error("Failed to save utility");
     } finally {
       setSubmitting(false);
     }
@@ -144,7 +153,7 @@ export default function UtilitiesPage() {
   const handleRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roleForm.name) {
-      alert("Role name is required");
+      toast.error("Role name is required");
       return;
     }
 
@@ -162,13 +171,14 @@ export default function UtilitiesPage() {
         const newRole = await res.json();
         setRoles([...roles, newRole]);
         setRoleForm({ name: "", description: "" });
+        toast.success("Role created successfully");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to create role");
+        toast.error(error.error || "Failed to create role");
       }
     } catch (err) {
       console.error("Error creating role:", err);
-      alert("Failed to create role");
+      toast.error("Failed to create role");
     } finally {
       setSubmitting(false);
     }
@@ -193,12 +203,13 @@ export default function UtilitiesPage() {
       });
       if (res.ok) {
         setUtilities(utilities.filter((u) => u.id !== id));
+        toast.success("Utility deleted");
       } else {
-        alert("Failed to delete utility");
+        toast.error("Failed to delete utility");
       }
     } catch (err) {
       console.error("Error deleting utility:", err);
-      alert("Failed to delete utility");
+      toast.error("Failed to delete utility");
     }
   };
 
@@ -230,155 +241,203 @@ export default function UtilitiesPage() {
           const { [userId]: _, ...rest } = prev;
           return rest;
         });
+        toast.success("User role updated");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to update user role");
+        toast.error(error.error || "Failed to update user role");
       }
     } catch (err) {
       console.error("Error updating user role:", err);
-      alert("Failed to update user role");
+      toast.error("Failed to update user role");
     }
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 p-6">
-      <h1 className="text-3xl font-bold">Utilities</h1>
-      <p className="text-gray-600">Manage global utility values like Platforms, Post Types, and Roles.</p>
-      {error && <p className="text-red-500">{error}</p>}
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title="System Taxonomy & Utilities"
+        description="Manage platform categories, post type dimensions, taxonomy values, and system roles."
+      />
 
-      {/* Add/Edit Utility Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{editingId ? "Edit Utility" : "Add Utility"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Platforms"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
-              <Input
-                id="type"
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-                placeholder="e.g. PLATFORM"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="values">Values (comma separated)</Label>
-              <Input
-                id="values"
-                value={form.values}
-                onChange={(e) => setForm({ ...form, values: e.target.value })}
-                placeholder="e.g. INSTAGRAM, FACEBOOK"
-              />
-            </div>
-            <div className="flex items-end space-x-2">
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : editingId ? "Update" : "Add"}
-              </Button>
-              {editingId && (
-                <Button type="button" variant="outline" onClick={handleCancelEdit}>
-                  Cancel
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Add/Edit Utility Form */}
+        <Card className="shadow-2xs border-border/70">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Sliders className="size-4 text-primary" />
+              {editingId ? "Edit Utility Dimension" : "Add Utility Dimension"}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Configure system dimensions and comma-separated option values.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-medium">Dimension Name</Label>
+                <Input
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. Platforms"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="type" className="text-xs font-medium">Type Identifier</Label>
+                <Input
+                  id="type"
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  placeholder="e.g. PLATFORM"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="values" className="text-xs font-medium">Values (comma separated)</Label>
+                <Input
+                  id="values"
+                  value={form.values}
+                  onChange={(e) => setForm({ ...form, values: e.target.value })}
+                  placeholder="e.g. INSTAGRAM, FACEBOOK, LINKEDIN"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <Button type="submit" size="sm" disabled={submitting} className="gap-1.5">
+                  <Plus className="size-3.5" />
+                  {submitting ? "Saving..." : editingId ? "Update Dimension" : "Add Dimension"}
                 </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                {editingId && (
+                  <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
-      {/* Add Role Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Add Role</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleRoleSubmit} className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="roleName">Role Name</Label>
-              <Input
-                id="roleName"
-                value={roleForm.name}
-                onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
-                placeholder="e.g. ADMIN"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="roleDescription">Description (Optional)</Label>
-              <Input
-                id="roleDescription"
-                value={roleForm.description}
-                onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
-                placeholder="e.g. Administrator role"
-              />
-            </div>
-            <div className="flex items-end space-x-2">
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating..." : "Add Role"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        {/* Add Role Form */}
+        <Card className="shadow-2xs border-border/70">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Shield className="size-4 text-primary" />
+              Create Security Role
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Add new role definition for user permission assignment.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleRoleSubmit} className="space-y-3.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="roleName" className="text-xs font-medium">Role Name</Label>
+                <Input
+                  id="roleName"
+                  value={roleForm.name}
+                  onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+                  placeholder="e.g. Operations Manager"
+                  className="h-8 text-xs"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="roleDescription" className="text-xs font-medium">Description (Optional)</Label>
+                <Input
+                  id="roleDescription"
+                  value={roleForm.description}
+                  onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+                  placeholder="e.g. Manages operations and logistics"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="pt-1">
+                <Button type="submit" size="sm" disabled={submitting} className="gap-1.5">
+                  <Plus className="size-3.5" />
+                  {submitting ? "Creating..." : "Add Security Role"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Utilities Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Utilities</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p>Loading utilities...</p>
-          ) : utilities.length === 0 ? (
-            <p>No utilities found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse border border-gray-200">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border p-2 text-left">Name</th>
-                    <th className="border p-2 text-left">Type</th>
-                    <th className="border p-2 text-left">Values</th>
-                    <th className="border p-2 text-left">Created</th>
-                    <th className="border p-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {utilities.map((u) => (
-                    <tr key={u.id} className="hover:bg-gray-50">
-                      <td className="border p-2">{u.name}</td>
-                      <td className="border p-2">{u.type}</td>
-                      <td className="border p-2">{Array.isArray(u.values) ? u.values.join(", ") : ""}</td>
-                      <td className="border p-2">{new Date(u.createdAt).toLocaleString()}</td>
-                      <td className="border p-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(u)}>
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="ml-2"
-                          onClick={() => handleDelete(u.id)}
-                        >
-                          Delete
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border/70 bg-card overflow-hidden shadow-2xs">
+        {loading ? (
+          <div className="space-y-3 p-6">
+            {[0, 1, 2, 3].map((row) => (
+              <Skeleton key={row} className="h-10 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : utilities.length === 0 ? (
+          <EmptyState
+            icon={Sliders}
+            title="No utilities configured"
+            description="Create your first categorization dimension above to populate select options across modules."
+            className="my-4"
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Dimension Name</TableHead>
+                  <TableHead>Identifier</TableHead>
+                  <TableHead>Defined Values</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {utilities.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium text-xs text-foreground">{u.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono text-[10px]">
+                        {u.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1 max-w-md">
+                        {Array.isArray(u.values) && u.values.map((v, i) => (
+                          <Badge key={i} variant="secondary" className="text-[10px] font-normal">
+                            {v}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground tabular-nums">
+                      {new Date(u.createdAt).toLocaleDateString("en-GB")}
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={`Edit ${u.name}`}
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => handleEdit(u)}
+                      >
+                        <Edit className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={`Delete ${u.name}`}
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(u.id)}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
 
       {/* User Role Management */}
       {/* <Card>

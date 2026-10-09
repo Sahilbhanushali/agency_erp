@@ -118,6 +118,9 @@ export async function POST(request: NextRequest) {
       notes,
       requirements,
       nextFollowUp,
+      website,
+      city,
+      country,
     } = body;
 
     if (!title || !name) {
@@ -129,6 +132,10 @@ export async function POST(request: NextRequest) {
 
     const currentUserId = parseInt(session.user.id, 10);
 
+    const parsedAssignedId = assignedToId && !isNaN(parseInt(assignedToId, 10)) ? parseInt(assignedToId, 10) : null;
+    const parsedEstimatedValue = estimatedValue !== undefined && estimatedValue !== "" && !isNaN(Number(estimatedValue)) ? Number(estimatedValue) : null;
+    const parsedFollowUp = nextFollowUp && !isNaN(new Date(nextFollowUp).getTime()) ? new Date(nextFollowUp) : null;
+
     const lead = await prisma.lead.create({
       data: {
         title,
@@ -138,13 +145,16 @@ export async function POST(request: NextRequest) {
         phone: phone || null,
         source: source || "INBOUND",
         status: status || "NEW",
-        estimatedValue: estimatedValue ? Number(estimatedValue) : null,
+        estimatedValue: parsedEstimatedValue,
         currency: currency || "INR",
-        assignedToId: assignedToId ? parseInt(assignedToId, 10) : null,
+        assignedToId: parsedAssignedId,
         createdById: currentUserId,
         notes: notes || null,
         requirements: requirements || null,
-        nextFollowUp: nextFollowUp ? new Date(nextFollowUp) : null,
+        nextFollowUp: parsedFollowUp,
+        website: website || null,
+        city: city || null,
+        country: country || null,
         activities: {
           create: {
             userId: currentUserId,

@@ -14,6 +14,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getMediaUrl } from "@/lib/utils";
@@ -329,29 +330,22 @@ export default function ProjectsPage() {
 
   if (status === "unauthenticated" || !session?.user?.id || error) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <AlertTriangle className="mb-4 size-8 text-warning" aria-hidden="true" />
-            <h3 className="mb-2 text-base font-semibold tracking-tight text-foreground">
-              {status === "unauthenticated" || !session?.user?.id ? "Unauthorized" : "Error Loading Data"}
-            </h3>
-            <p className="mb-4 max-w-md text-center text-sm text-muted-foreground">
-              {status === "unauthenticated" || !session?.user?.id
-                ? "Please sign in to access this page."
-                : error || "An error occurred."}
-            </p>
-            <Button
-              onClick={() =>
-                status === "unauthenticated" || !session?.user?.id
-                  ? router.push("/auth/signin")
-                  : window.location.reload()
-              }
-            >
-              {status === "unauthenticated" || !session?.user?.id ? "Sign In" : "Retry"}
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="py-12">
+        <EmptyState
+          icon={AlertTriangle}
+          title={status === "unauthenticated" || !session?.user?.id ? "Authentication Required" : "Error Loading Campaigns"}
+          description={
+            status === "unauthenticated" || !session?.user?.id
+              ? "Please sign in to access agency projects and campaigns."
+              : error || "An unexpected error occurred while loading projects."
+          }
+          actionLabel={status === "unauthenticated" || !session?.user?.id ? "Sign In" : "Retry"}
+          onAction={() =>
+            status === "unauthenticated" || !session?.user?.id
+              ? router.push("/auth/signin")
+              : window.location.reload()
+          }
+        />
       </div>
     );
   }
@@ -424,119 +418,162 @@ export default function ProjectsPage() {
 
 
   return (
-    <div className="flex-1 space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">Projects</h2>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Projects</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage your clients&apos; social media campaigns.
+            Manage your clients&apos; social media campaigns and deliverables.
           </p>
         </div>
-        {canManageProjects && (
-          <Link href="/dashboard/projects/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> New Project
-            </Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {canManageProjects && (
+            <Link href="/dashboard/projects/new">
+              <Button size="sm" className="gap-1.5 shadow-2xs">
+                <Plus className="size-4" /> New Project
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col items-stretch gap-3 xl:flex-row xl:items-center">
-        <div className="relative w-full flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search projects by name or company..."
-            aria-label="Search projects by name or company"
-            className="w-full pl-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      {/* KPI Stats Bar & Filters Toolbar */}
+      <div className="space-y-3">
+        {/* Quick Stat Chips */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-fit">
+          <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
+            <div className="size-2 rounded-full bg-primary" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Active Projects</span>
+              <span className="text-base font-bold tabular-nums text-foreground">{filteredProjects.filter(p => p.isActive).length}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
+            <div className="size-2 rounded-full bg-blue-500" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Target Posts</span>
+              <span className="text-base font-bold tabular-nums text-foreground">{totalTargetPosts}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
+            <div className="size-2 rounded-full bg-emerald-500" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Posts Created</span>
+              <span className="text-base font-bold tabular-nums text-foreground">{totalPostsCreated}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
+            <div className="size-2 rounded-full bg-amber-500" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Completion</span>
+              <span className="text-base font-bold tabular-nums text-foreground">
+                {totalTargetPosts > 0 ? Math.round((totalPostsCreated / totalTargetPosts) * 100) : 0}%
+              </span>
+            </div>
+          </div>
         </div>
-        
-        <div className="hidden items-center gap-2 md:flex">
-          <Button
-            variant="outline"
-            className="whitespace-nowrap font-medium text-primary"
-          >
-            Total Count: {totalTargetPosts}
-          </Button>
-          <Button
-            variant="outline"
-            className="whitespace-nowrap font-medium text-success"
-          >
-            Total Posts Created: {totalPostsCreated}
-          </Button>
-        </div>
-        
-        <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto">
-          <Select value={yearFilter} onValueChange={(val) => setYearFilter(val)}>
-            <SelectTrigger aria-label="Filter projects by year" className="w-full min-w-0">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Years</SelectItem>
-              {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 2 + i).map(year => (
-                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
-          <Select value={monthFilter} onValueChange={(val) => setMonthFilter(val)}>
-            <SelectTrigger aria-label="Filter projects by month" className="w-full min-w-0">
-              <SelectValue placeholder="Month" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Months</SelectItem>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                <SelectItem key={month} value={month.toString()}>
-                  {new Date(0, month - 1).toLocaleString('default', { month: 'short' })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Filter Controls Row */}
+        <div className="flex flex-col items-stretch gap-2.5 rounded-xl border border-border/70 bg-card p-3 shadow-2xs md:flex-row md:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search projects by name or company..."
+              aria-label="Search projects by name or company"
+              className="h-9 w-full bg-background pl-9 text-xs"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={yearFilter} onValueChange={(val) => setYearFilter(val)}>
+              <SelectTrigger aria-label="Filter projects by year" className="h-9 w-[110px] bg-background text-xs">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">All Years</SelectItem>
+                {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 2 + i).map(year => (
+                  <SelectItem key={year} value={year.toString()} className="text-xs">{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={statusFilter} onValueChange={(value: "All" | "Active" | "Inactive") => setStatusFilter(value)}>
-            <SelectTrigger aria-label="Filter projects by status" className="w-full min-w-0">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All Statuses</SelectItem>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={monthFilter} onValueChange={(val) => setMonthFilter(val)}>
+              <SelectTrigger aria-label="Filter projects by month" className="h-9 w-[110px] bg-background text-xs">
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">All Months</SelectItem>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                  <SelectItem key={month} value={month.toString()} className="text-xs">
+                    {new Date(0, month - 1).toLocaleString('default', { month: 'short' })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={clientFilter} onValueChange={setClientFilter}>
-            <SelectTrigger aria-label="Filter projects by company" className="w-full min-w-0">
-              <SelectValue placeholder="Filter by company" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All Companies</SelectItem>
-              {companyNames.map((company) => (
-                <SelectItem key={company} value={company}>
-                  {company}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={statusFilter} onValueChange={(value: "All" | "Active" | "Inactive") => setStatusFilter(value)}>
+              <SelectTrigger aria-label="Filter projects by status" className="h-9 w-[115px] bg-background text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All" className="text-xs">All Statuses</SelectItem>
+                <SelectItem value="Active" className="text-xs">Active</SelectItem>
+                <SelectItem value="Inactive" className="text-xs">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger aria-label="Filter projects by company" className="h-9 w-[140px] bg-background text-xs">
+                <SelectValue placeholder="Company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All" className="text-xs">All Companies</SelectItem>
+                {companyNames.map((company) => (
+                  <SelectItem key={company} value={company} className="text-xs">
+                    {company}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {(searchQuery || yearFilter !== String(new Date().getFullYear()) || monthFilter !== String(new Date().getMonth() + 1) || statusFilter !== "Active" || clientFilter !== "All") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setYearFilter(String(new Date().getFullYear()));
+                  setMonthFilter(String(new Date().getMonth() + 1));
+                  setStatusFilter("Active");
+                  setClientFilter("All");
+                }}
+                className="h-9 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Reset
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {filteredProjects.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <div className="overflow-x-auto rounded-xl border border-border/70 bg-card shadow-2xs">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px] text-center">#</TableHead>
-                <TableHead className="min-w-[200px]">Project Name</TableHead>
-                <TableHead className="min-w-[160px]">Company Name</TableHead>
-                <TableHead className="text-center">Target</TableHead>
-                <TableHead className="text-center">Post Created</TableHead>
-                <TableHead className="text-center">Design</TableHead>
-                <TableHead className="text-center">CA</TableHead>
-                <TableHead className="text-center">Scheduled</TableHead>
-                <TableHead className="text-center">Post</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+            <TableHeader className="bg-muted/40">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[50px] text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</TableHead>
+                <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wider text-muted-foreground">Project Name</TableHead>
+                <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wider text-muted-foreground">Company Name</TableHead>
+                <TableHead className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target</TableHead>
+                <TableHead className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Post Created</TableHead>
+                <TableHead className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Design</TableHead>
+                <TableHead className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">CA</TableHead>
+                <TableHead className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Scheduled</TableHead>
+                <TableHead className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Post</TableHead>
+                <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

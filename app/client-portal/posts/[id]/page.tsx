@@ -20,7 +20,7 @@ export default async function ClientPostPage({ params }: ClientPostPageProps) {
 
   // Get client to verify access
   const client = await prisma.client.findFirst({
-    where: { contactEmail: session.user.email },
+    where: { email: session.user.email },
   })
 
   if (!client) {

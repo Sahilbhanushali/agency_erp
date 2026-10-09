@@ -86,31 +86,24 @@ export default function AssetsPage() {
 
   if (status === "loading" || loading || isPermissionsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="h-9 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-              <div className="h-5 w-96 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mt-2" />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, index) => (
-              <div
-                key={index}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-600 p-4"
-              >
-                <div className="h-48 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg mb-4" />
-                <div className="space-y-2">
-                  <div className="h-5 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                  <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                  <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                  <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                  <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                </div>
+      <div className="space-y-6 animate-in fade-in-50 duration-200">
+        <div className="flex flex-col gap-2">
+          <div className="h-8 w-48 bg-muted rounded-md animate-pulse" />
+          <div className="h-4 w-72 bg-muted rounded-md animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, index) => (
+            <div
+              key={index}
+              className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs"
+            >
+              <div className="h-40 w-full bg-muted animate-pulse rounded-lg mb-3" />
+              <div className="space-y-2">
+                <div className="h-4 w-3/4 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-1/2 bg-muted rounded animate-pulse" />
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -118,11 +111,9 @@ export default function AssetsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-600 p-12 text-center">
-          <h3 className="text-lg font-medium text-red-600 dark:text-red-400 mb-2">Error</h3>
-          <p className="text-gray-500 dark:text-gray-400">{error}</p>
-        </div>
+      <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
+        <h3 className="text-base font-semibold text-destructive mb-1">Error Loading Assets</h3>
+        <p className="text-xs text-muted-foreground">{error}</p>
       </div>
     );
   }
@@ -132,26 +123,24 @@ export default function AssetsPage() {
 
   if (!hasManageAssetsPermission) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-600 p-12 text-center">
-          <h3 className="text-lg font-medium text-red-600 dark:text-red-400 mb-2">Access Denied</h3>
-          <p className="text-gray-500 dark:text-gray-400">You do not have permission to manage assets.</p>
-        </div>
+      <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
+        <h3 className="text-base font-semibold text-destructive mb-1">Access Denied</h3>
+        <p className="text-xs text-muted-foreground">You do not have permission to manage assets.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Asset Library</h1>
-            <p className="text-gray-600 dark:text-gray-300">Manage all your media assets and files</p>
-          </div>
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Asset Library</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Central repository for images, video reels, and client campaign files ({assets.length} total).
+          </p>
         </div>
-        <AssetManager assets={assets as any} hasManageAssetsPermission={hasManageAssetsPermission} />
       </div>
+      <AssetManager assets={assets as any} hasManageAssetsPermission={hasManageAssetsPermission} />
     </div>
   );
 }

@@ -27,6 +27,7 @@ import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDia
 import UserProfileModal from "@/components/users/user-profile-modal"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 interface User {
   id: string
@@ -452,14 +453,14 @@ const testSmtpConnection = async (config: SmtpConfig) => {
 
   if (status === "loading") {
     return (
-      <div className="max-w-5xl mx-auto space-y-6 p-6">
+      <div className="space-y-6 animate-in fade-in-50 duration-200">
         <div className="space-y-2">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 w-full rounded-xl" />
+            <Skeleton key={i} className="h-32 w-full rounded-xl" />
           ))}
         </div>
       </div>
@@ -468,7 +469,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
 
   if (!session || !session.user.id) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
         <EmptyState
           icon={AlertCircle}
           title="Sign In Required"
@@ -482,7 +483,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
 
   if (!["ADMIN", "MANAGER", "Manager"].includes(userRole)) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
         <EmptyState
           icon={AlertCircle}
           title="Access Denied"
@@ -493,16 +494,17 @@ const testSmtpConnection = async (config: SmtpConfig) => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 p-6">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       {(error || smtpError) && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
-          <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-          <span className="text-red-700">{error || smtpError}</span>
+        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="size-4 text-destructive shrink-0" />
+            <span className="text-xs font-medium text-destructive">{error || smtpError}</span>
+          </div>
           {smtpError && smtpError !== "Forbidden: Admin access required" && (
             <Button
               variant="outline"
-              size="sm"
-              className="ml-4"
+              size="xs"
               onClick={fetchSmtpConfigs}
             >
               Retry
@@ -510,140 +512,89 @@ const testSmtpConnection = async (config: SmtpConfig) => {
           )}
         </div>
       )}
-      <h1 className="text-2xl font-bold">User Management</h1>
-      <p className="text-muted-foreground">Manage system users, roles, permissions, and SMTP settings</p>
+
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">User Management</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage agency team members, role permissions, HR documentation, and SMTP integrations.
+          </p>
+        </div>
+      </div>
 
       <Tabs defaultValue="users" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="roles">Roles & Permissions</TabsTrigger>
-          <TabsTrigger value="smtp">SMTP Settings</TabsTrigger>
+        <TabsList className="bg-muted/60 p-1 border border-border/60 rounded-lg">
+          <TabsTrigger value="users" className="text-xs">Users ({users.length})</TabsTrigger>
+          <TabsTrigger value="roles" className="text-xs">Roles & Permissions</TabsTrigger>
+          <TabsTrigger value="smtp" className="text-xs">SMTP Settings</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="users" className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <TabsContent value="users" className="space-y-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
               <Input
-                placeholder="Search users..."
+                placeholder="Search users by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-9 h-9 text-xs bg-background"
               />
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Roles</SelectItem>
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={role.name}>
-                    {role.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button disabled={roles.length === 0}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add User
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New User</DialogTitle>
-                  <DialogDescription>Add a new user to the system</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreateUser} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Select
-                      value={formData.role}
-                      onValueChange={(value) => setFormData({ ...formData, role: value })}
-                      disabled={roles.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={roles.length === 0 ? "No roles available" : "Select a role"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roles.map((role) => (
-                          <SelectItem key={role.id} value={role.name}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      required
-                      minLength={8}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={roles.length === 0}>
-                    Create User
+            <div className="flex items-center gap-2">
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[140px] h-9 text-xs bg-background">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL" className="text-xs">All Roles</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.name} className="text-xs">
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" disabled={roles.length === 0} className="gap-1.5 shadow-2xs">
+                    <Plus className="size-3.5" />
+                    Add User
                   </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="grid gap-4">
-            {isLoading ? (
-              <div>Loading users...</div>
-            ) : filteredUsers.length === 0 ? (
-              <div>No users found.</div>
-            ) : (
-              filteredUsers.map((user) => (
-                <Card key={user.id}>
-                  <CardContent className="flex items-center justify-between p-6">
-                    <div className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarImage src={user.avatar || "/placeholder.svg"} />
-                        <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-semibold">{user.name}</h3>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Created: {new Date(user.createdAt).toLocaleDateString('en-GB')}
-                        </p>
-                      </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New User</DialogTitle>
+                    <DialogDescription>Add a new team member to the agency</DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateUser} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                      />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={getRoleBadgeVariant(user.role)}>{user.role ?? "NONE"}</Badge>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Role</Label>
                       <Select
-                        value={user.role || ""}
-                        onValueChange={(value) => handleUpdateUserRole(user.id, value)}
+                        value={formData.role}
+                        onValueChange={(value) => setFormData({ ...formData, role: value })}
                         disabled={roles.length === 0}
                       >
-                        <SelectTrigger className="w-32">
+                        <SelectTrigger>
                           <SelectValue placeholder={roles.length === 0 ? "No roles available" : "Select a role"} />
                         </SelectTrigger>
                         <SelectContent>
@@ -654,40 +605,133 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedHrUserId(user.id)}
-                        className="gap-1.5 text-xs text-primary border-primary/20 hover:bg-primary/5"
-                        title="Manage employee HR profile, salary, offer letter & documents"
-                      >
-                        <FileText className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">HR & Docs</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditingUser(user)
-                          setFormData({
-                            name: user.name,
-                            email: user.email,
-                            role: user.role || "",
-                            password: "",
-                          })
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      {session.user.id !== user.id && (
-                        <Button variant="outline" size="sm" onClick={() => setUserToDelete({ id: user.id, name: user.name })}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required
+                        minLength={8}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={roles.length === 0}>
+                      Create User
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border/70 bg-card shadow-2xs overflow-hidden">
+            {isLoading ? (
+              <div className="p-8 text-center text-xs text-muted-foreground">Loading users...</div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground">No users found.</div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">User</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quick Reassign</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">HR Records</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Created</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id} className="hover:bg-muted/40 transition-colors">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-8 border border-border/60">
+                            <AvatarImage src={user.avatar || "/placeholder.svg"} />
+                            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                              {user.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-xs text-foreground truncate">{user.name}</span>
+                            <span className="text-[11px] text-muted-foreground truncate">{user.email}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(user.role)} className="text-[10px] uppercase font-mono tracking-wider">
+                          {user.role ?? "NONE"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={user.role || ""}
+                          onValueChange={(value) => handleUpdateUserRole(user.id, value)}
+                          disabled={roles.length === 0}
+                        >
+                          <SelectTrigger className="h-8 w-28 text-xs bg-background">
+                            <SelectValue placeholder="Role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roles.map((role) => (
+                              <SelectItem key={role.id} value={role.name} className="text-xs">
+                                {role.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          onClick={() => setSelectedHrUserId(user.id)}
+                          className="gap-1.5 text-xs text-primary border-primary/20 hover:bg-primary/5"
+                          title="Manage employee HR profile, salary, offer letter & documents"
+                        >
+                          <FileText className="size-3.5" />
+                          <span>HR & Docs</span>
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">
+                        {new Date(user.createdAt).toLocaleDateString('en-GB')}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => {
+                              setEditingUser(user)
+                              setFormData({
+                                name: user.name,
+                                email: user.email,
+                                role: user.role || "",
+                                password: "",
+                              })
+                            }}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <Edit className="size-3.5" />
+                          </Button>
+                          {session.user.id !== user.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              onClick={() => setUserToDelete({ id: user.id, name: user.name })}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </div>
 

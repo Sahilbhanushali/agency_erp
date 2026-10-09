@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import useSWR from "swr";
 import toast from "react-hot-toast";
 import {
@@ -67,6 +68,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 
 export type LeadStatus =
   | "NEW"
@@ -147,6 +149,29 @@ export default function LeadsPage() {
     requirements: "",
     nextFollowUp: "",
   });
+
+  // Edit lead state
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    name: "",
+    company: "",
+    email: "",
+    phone: "",
+    source: "INBOUND",
+    status: "NEW" as LeadStatus,
+    estimatedValue: "",
+    currency: "INR",
+    assignedToId: "",
+    notes: "",
+    requirements: "",
+    nextFollowUp: "",
+  });
+  const [isUpdatingLead, setIsUpdatingLead] = useState(false);
+
+  // Delete lead confirmation state
+  const [leadToDelete, setLeadToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isDeletingLead, setIsDeletingLead] = useState(false);
 
   const { data, mutate, isLoading } = useSWR<{
     leads: Lead[];
@@ -312,22 +337,79 @@ export default function LeadsPage() {
     }
   };
 
-  const handleDeleteLead = async (leadId: string) => {
-    if (!confirm("Are you sure you want to delete this lead?")) return;
-    try {
-      const res = await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Could not delete lead");
+  const handleOpenEdit = (lead: Lead) => {
+    setEditingLead(lead);
+    setEditFormData({
+      title: lead.title || "",
+      name: lead.name || "",
+      company: lead.company || "",
+      email: lead.email || "",
+      phone: lead.phone || "",
+      source: lead.source || "INBOUND",
+      status: lead.status || "NEW",
+      estimatedValue: lead.estimatedValue ? String(lead.estimatedValue) : "",
+      currency: lead.currency || "INR",
+      assignedToId: lead.assignedToId ? String(lead.assignedToId) : "",
+      notes: lead.notes || "",
+      requirements: lead.requirements || "",
+      nextFollowUp: lead.nextFollowUp ? lead.nextFollowUp.split("T")[0] : "",
+    });
+  };
 
-      toast.success("Lead deleted");
-      if (selectedLead?.id === leadId) setSelectedLead(null);
+  const handleUpdateLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLead) return;
+    if (!editFormData.title.trim() || !editFormData.name.trim()) {
+      toast.error("Lead title and contact name are required");
+      return;
+    }
+
+    setIsUpdatingLead(true);
+    try {
+      const res = await fetch(`/api/leads/${editingLead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editFormData),
+      });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated.error || "Failed to update lead");
+
+      toast.success("Lead updated successfully");
+      if (selectedLead?.id === editingLead.id) {
+        setSelectedLead(updated);
+      }
+      setEditingLead(null);
+      mutate();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update lead");
+    } finally {
+      setIsUpdatingLead(false);
+    }
+  };
+
+  const confirmDeleteLead = async () => {
+    if (!leadToDelete) return;
+    setIsDeletingLead(true);
+    try {
+      const res = await fetch(`/api/leads/${leadToDelete.id}`, { method: "DELETE" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Could not delete lead");
+
+      toast.success("Lead deleted successfully");
+      if (selectedLead?.id === leadToDelete.id) {
+        setSelectedLead(null);
+      }
+      setLeadToDelete(null);
       mutate();
     } catch (err: any) {
       toast.error(err.message || "Failed to delete lead");
+    } finally {
+      setIsDeletingLead(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -493,12 +575,64 @@ export default function LeadsPage() {
                         onClick={() => setSelectedLead(lead)}
                       >
                         <div className="flex items-start justify-between gap-1">
-                          <h4 className="text-xs font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                          <h4 className="text-xs font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors flex-1">
                             {lead.title}
                           </h4>
-                          <Badge variant="neutral" className="text-[10px] px-1.5 py-0 font-mono shrink-0">
-                            {lead.source || "INBOUND"}
-                          </Badge>
+                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Badge variant="neutral" className="text-[10px] px-1.5 py-0 font-mono">
+                              {lead.source || "INBOUND"}
+                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-xs" className="size-5 p-0 hover:bg-muted" aria-label="Lead actions">
+                                  <MoreHorizontal className="size-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44 text-xs">
+                                <DropdownMenuItem onClick={() => setSelectedLead(lead)}>
+                                  View Quick Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/dashboard/leads/${lead.id}`}>
+                                    <ExternalLink className="size-3.5 mr-2" />
+                                    Open Full Page
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleOpenEdit(lead)}>
+                                  <Edit className="size-3.5 mr-2" />
+                                  Edit Lead
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "QUALIFIED")}>
+                                  Mark Qualified
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "PROPOSAL_SENT")}>
+                                  Proposal Sent
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    handleStatusChange(lead.id, "WON");
+                                    setSelectedLead(lead);
+                                    setIsConvertOpen(true);
+                                  }}
+                                  className="text-emerald-600"
+                                >
+                                  Close as Won
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "LOST")} className="text-rose-600">
+                                  Mark Lost
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => setLeadToDelete({ id: lead.id, title: lead.title })}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="size-3.5 mr-2" />
+                                  Delete Lead
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
 
                         <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
@@ -538,7 +672,7 @@ export default function LeadsPage() {
                             <Button
                               size="xs"
                               variant="default"
-                              className="w-full text-[10px] h-6 bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                              className="w-full text-[10px] h-6 gap-1"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedLead(lead);
@@ -635,7 +769,17 @@ export default function LeadsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44 text-xs">
                             <DropdownMenuItem onClick={() => setSelectedLead(lead)}>
-                              View Details & Activity
+                              View Quick Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/leads/${lead.id}`}>
+                                <ExternalLink className="size-3.5 mr-2" />
+                                Open Full Page
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenEdit(lead)}>
+                              <Edit className="size-3.5 mr-2" />
+                              Edit Lead
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "QUALIFIED")}>
@@ -659,7 +803,7 @@ export default function LeadsPage() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={() => handleDeleteLead(lead.id)}
+                              onClick={() => setLeadToDelete({ id: lead.id, title: lead.title })}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="size-3.5 mr-2" />
@@ -939,7 +1083,7 @@ export default function LeadsPage() {
                     <Button
                       size="sm"
                       onClick={() => setIsConvertOpen(true)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                      className="gap-1.5"
                     >
                       <Sparkles className="size-3.5" />
                       Convert to Client
@@ -1004,15 +1148,37 @@ export default function LeadsPage() {
 
               {/* Footer action */}
               <div className="flex justify-between items-center pt-2 border-t border-border/70">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDeleteLead(selectedLead.id)}
-                  className="gap-1.5"
-                >
-                  <Trash2 className="size-3.5" />
-                  Delete Lead
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    <Link href={`/dashboard/leads/${selectedLead.id}`}>
+                      <ExternalLink className="size-3.5" />
+                      Full Page
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOpenEdit(selectedLead)}
+                    className="gap-1.5"
+                  >
+                    <Edit className="size-3.5" />
+                    Edit Lead
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setLeadToDelete({ id: selectedLead.id, title: selectedLead.title })}
+                    className="gap-1.5"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Delete Lead
+                  </Button>
+                </div>
                 <Button variant="outline" size="sm" onClick={() => setSelectedLead(null)}>
                   Close
                 </Button>
@@ -1021,6 +1187,188 @@ export default function LeadsPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Edit Lead Dialog */}
+      <Dialog open={!!editingLead} onOpenChange={(open) => !open && setEditingLead(null)}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Edit className="size-5 text-primary" />
+              Edit Sales Lead
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Update inquiry details, valuation, follow-up timeline, and requirements.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateLead} className="space-y-3.5 mt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <Label htmlFor="edit-lead-title" className="text-xs">Deal / Opportunity Title *</Label>
+                <Input
+                  id="edit-lead-title"
+                  placeholder="e.g. Nike Social Media Management Retainer"
+                  value={editFormData.title}
+                  onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-lead-contact" className="text-xs">Contact Person Name *</Label>
+                <Input
+                  id="edit-lead-contact"
+                  placeholder="e.g. John Doe"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-lead-company" className="text-xs">Brand / Company Name</Label>
+                <Input
+                  id="edit-lead-company"
+                  placeholder="e.g. Acme Industries"
+                  value={editFormData.company}
+                  onChange={(e) => setEditFormData({ ...editFormData, company: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-lead-email" className="text-xs">Email Address</Label>
+                <Input
+                  id="edit-lead-email"
+                  type="email"
+                  placeholder="contact@brand.com"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-lead-phone" className="text-xs">Phone / WhatsApp</Label>
+                <Input
+                  id="edit-lead-phone"
+                  placeholder="+91 98765 43210"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-lead-val" className="text-xs">Estimated Value (INR)</Label>
+                <Input
+                  id="edit-lead-val"
+                  type="number"
+                  placeholder="e.g. 75000"
+                  value={editFormData.estimatedValue}
+                  onChange={(e) => setEditFormData({ ...editFormData, estimatedValue: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-lead-source" className="text-xs">Lead Source</Label>
+                <Select
+                  value={editFormData.source}
+                  onValueChange={(val) => setEditFormData({ ...editFormData, source: val })}
+                >
+                  <SelectTrigger id="edit-lead-source" className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INBOUND">Inbound Inquiry</SelectItem>
+                    <SelectItem value="WEBSITE">Website Form</SelectItem>
+                    <SelectItem value="INSTAGRAM">Instagram DM</SelectItem>
+                    <SelectItem value="LINKEDIN">LinkedIn Outreach</SelectItem>
+                    <SelectItem value="REFERRAL">Referral</SelectItem>
+                    <SelectItem value="COLD_OUTREACH">Cold Outreach</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-lead-stage" className="text-xs">Pipeline Stage</Label>
+                <Select
+                  value={editFormData.status}
+                  onValueChange={(val) => setEditFormData({ ...editFormData, status: val as LeadStatus })}
+                >
+                  <SelectTrigger id="edit-lead-stage" className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NEW">New Inquiries</SelectItem>
+                    <SelectItem value="CONTACTED">Contacted</SelectItem>
+                    <SelectItem value="QUALIFIED">Qualified</SelectItem>
+                    <SelectItem value="PROPOSAL_SENT">Proposal Sent</SelectItem>
+                    <SelectItem value="WON">Closed Won</SelectItem>
+                    <SelectItem value="LOST">Closed Lost</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-lead-rep" className="text-xs">Assigned Sales Rep</Label>
+                <Select
+                  value={editFormData.assignedToId || "NONE"}
+                  onValueChange={(val) => setEditFormData({ ...editFormData, assignedToId: val === "NONE" ? "" : val })}
+                >
+                  <SelectTrigger id="edit-lead-rep" className="mt-1">
+                    <SelectValue placeholder="Select team member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">Unassigned</SelectItem>
+                    {usersData.map((u: any) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <Label htmlFor="edit-lead-follow" className="text-xs">Next Follow-Up Date</Label>
+                <Input
+                  id="edit-lead-follow"
+                  type="date"
+                  value={editFormData.nextFollowUp}
+                  onChange={(e) => setEditFormData({ ...editFormData, nextFollowUp: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <Label htmlFor="edit-lead-notes" className="text-xs">Requirements & Notes</Label>
+                <Textarea
+                  id="edit-lead-notes"
+                  placeholder="Client requirements, deliverables, budget discussion, remarks..."
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  rows={3}
+                  className="mt-1 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/70">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingLead(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" loading={isUpdatingLead}>
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Convert Lead to Client Modal */}
       <Dialog open={isConvertOpen} onOpenChange={setIsConvertOpen}>
@@ -1064,7 +1412,7 @@ export default function LeadsPage() {
               size="sm"
               loading={isSubmitting}
               onClick={handleConvertLead}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+              className="gap-1.5"
             >
               <CheckCircle2 className="size-3.5" />
               Confirm Conversion
@@ -1072,6 +1420,16 @@ export default function LeadsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={!!leadToDelete}
+        onClose={() => setLeadToDelete(null)}
+        onConfirm={confirmDeleteLead}
+        itemName={leadToDelete?.title || "Lead"}
+        entityType="lead"
+        isLoading={isDeletingLead}
+      />
     </div>
   );
 }

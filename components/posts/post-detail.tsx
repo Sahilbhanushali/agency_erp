@@ -1168,7 +1168,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
   const adjustedScheduledAt = post.scheduledAt ? new Date(post.scheduledAt) : null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button variant="ghost" size="sm" onClick={handleBack}>

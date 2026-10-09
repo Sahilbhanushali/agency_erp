@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, Building2, Mail, Phone, Search, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +25,8 @@ interface Client {
   email: string;
   phone?: string | null;
   company?: string | null;
+  industry?: string | null;
+  status?: string;
   avatar?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -192,44 +195,54 @@ export default function ClientsPage() {
 
   if (isCheckingPermissions || status === "loading") {
     return (
-      <Card>
-        <CardContent className="flex justify-center py-12">
-          <p className="text-sm text-muted-foreground">Loading clients…</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-6 animate-in fade-in-50 duration-200">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:w-fit">
+          <Skeleton className="h-14 w-36 rounded-lg" />
+          <Skeleton className="h-14 w-36 rounded-lg" />
+          <Skeleton className="h-14 w-36 rounded-lg" />
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card p-6">
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-lg" />
+            ))}
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (!session) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-sm text-destructive">Please sign in to view clients.</p>
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border/70 bg-card p-12 text-center">
+        <p className="text-sm font-medium text-destructive">Please sign in to view clients.</p>
+      </div>
     );
   }
 
   if (authError) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-sm text-destructive">{authError}</p>
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-12 text-center">
+        <p className="text-sm font-medium text-destructive">{authError}</p>
+      </div>
     );
   }
 
   if (!canViewClients) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <h3 className="mb-2 text-base font-semibold tracking-tight text-foreground">Access Denied</h3>
-          <p className="text-center text-sm text-muted-foreground">You do not have permission to view clients.</p>
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border/70 bg-card p-12 text-center">
+        <h3 className="mb-2 text-base font-semibold tracking-tight text-foreground">Access Denied</h3>
+        <p className="text-center text-sm text-muted-foreground">You do not have permission to view clients.</p>
+      </div>
     );
   }
+
+  const totalClients = clients.length;
+  const activeProjectsCount = clients.reduce((sum, c) => sum + (c.projects?.filter(p => p.isActive)?.length || 0), 0);
 
   return (
     <>
@@ -244,83 +257,113 @@ export default function ClientsPage() {
         }}
       />
 
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="space-y-6 animate-in fade-in-50 duration-200">
+        {/* Page Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">Clients</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage your client relationships</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Clients</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage client directory, brand accounts, and active retainers.
+            </p>
           </div>
           {canManageClients && (
             <Link href="/dashboard/clients/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
+              <Button size="sm" className="gap-1.5 shadow-2xs">
+                <Plus className="size-4" />
                 Add Client
               </Button>
             </Link>
           )}
         </div>
 
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="min-w-0 flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search clients by name, email, company, or phone..."
-                    aria-label="Search clients by name, email, company, or phone"
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
+        {/* Quick Stat Chips */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:w-fit">
+          <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
+            <div className="size-2 rounded-full bg-primary" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Clients</span>
+              <span className="text-base font-bold tabular-nums text-foreground">{totalClients}</span>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
+            <div className="size-2 rounded-full bg-emerald-500" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Active Projects</span>
+              <span className="text-base font-bold tabular-nums text-foreground">{activeProjectsCount}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
+            <div className="size-2 rounded-full bg-blue-500" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Filtered Results</span>
+              <span className="text-base font-bold tabular-nums text-foreground">{filteredClients.length}</span>
+            </div>
+          </div>
+        </div>
 
-        {isLoading ? (
-          <Card>
-            <CardContent className="flex justify-center py-12">
+        {/* Table & Search Container */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search clients by name, email, company, or phone..."
+                aria-label="Search clients by name, email, company, or phone"
+                className="h-9 w-full bg-background pl-9 text-xs"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchTerm("")}
+                className="h-9 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
               <p className="text-sm text-muted-foreground">Loading clients…</p>
-            </CardContent>
-          </Card>
-        ) : filteredClients.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Building2 className="mb-3 size-9 text-muted-foreground/60" />
-              <h3 className="mb-2 text-base font-semibold tracking-tight text-foreground">
+            </div>
+          ) : filteredClients.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-border/70 bg-card py-16 shadow-2xs">
+              <Building2 className="mb-3 size-10 text-muted-foreground/50" />
+              <h3 className="mb-1 text-base font-semibold tracking-tight text-foreground">
                 {searchTerm ? "No clients match your search" : "No clients found"}
               </h3>
-              <p className="mb-4 max-w-md text-center text-sm text-muted-foreground">
+              <p className="mb-5 max-w-sm text-center text-xs text-muted-foreground">
                 {searchTerm
-                  ? "Try adjusting your search criteria."
-                  : "Get started by adding your first client to the system."}
+                  ? "Try searching with a different term or keyword."
+                  : "Get started by adding your first client to the platform."}
               </p>
               {canManageClients && (
                 <Link href="/dashboard/clients/new">
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
+                  <Button size="sm" className="gap-1.5 shadow-2xs">
+                    <Plus className="size-4" />
                     Add Client
                   </Button>
                 </Link>
               )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead className="text-right">Active Projects</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-border/70 bg-card shadow-2xs">
+              <Table>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Client</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Company</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Projects</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Created</TableHead>
+                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {filteredClients.map((client) => (
                   <TableRow key={client.id}>
@@ -351,7 +394,23 @@ export default function ClientsPage() {
                         <div className="max-w-[220px] truncate font-medium text-foreground" title={client.name}>{client.name}</div>
                       </div>
                     </TableCell>
-                    <TableCell>{client.company || "N/A"}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-foreground">{client.company || "—"}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {client.industry && (
+                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {client.industry}
+                            </span>
+                          )}
+                          {client.status && client.status !== "ACTIVE" && (
+                            <span className="text-[10px] text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium">
+                              {client.status}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Mail className="size-4 shrink-0" />
@@ -419,11 +478,12 @@ export default function ClientsPage() {
                 ))}
               </TableBody>
             </Table>
-          </Card>
+          </div>
         )}
       </div>
+    </div>
 
-      <MediaPopup
+    <MediaPopup
         isOpen={!!selectedLogo}
         onClose={() => setSelectedLogo(null)}
         asset={selectedLogo}

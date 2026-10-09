@@ -1177,36 +1177,36 @@ export default function PostsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
       <Toaster position="top-right" />
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-border/70 bg-card shadow-2xs overflow-hidden">
         {/* Row 1: Title & Post Type Progress */}
-        <div className="px-5 py-4 flex items-center justify-between">
+        <div className="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                   {currentProject ? `${currentProject.client?.company || currentProject.name} Posts` : "All Posts"}
                 </h1>
                 <ProjectTimingBadge posts={filteredPosts as any} />
               </div>
               {currentProject && (
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Project: {currentProject.name}
                 </p>
               )}
             </div>
-            <div className="h-8 w-px bg-gray-200" />
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">Total</span>
-              <span className="text-lg font-bold text-gray-900">
+            <div className="h-8 w-px bg-border hidden sm:block" />
+            <div className="hidden sm:flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">Total</span>
+              <span className="text-lg font-bold text-foreground tabular-nums">
                 {urlProjectId && postTypesToUse ? `${postsMade}/${totalPlannedPosts}` : postsMade}
               </span>
             </div>
           </div>
 
           {urlProjectId && postTypesToUse && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {Object.entries(postTypesToUse).map(([type, total]) => {
                 const made = postsMadeByType[type] || 0;
                 const percent = (total as number) > 0 ? Math.round((made / (total as number)) * 100) : 0;
@@ -1216,17 +1216,17 @@ export default function PostsPage() {
                     key={type}
                     className={`flex flex-col items-center px-3 py-1.5 rounded-lg border min-w-[70px] ${
                       isComplete
-                        ? "bg-green-50 border-green-200"
-                        : "bg-gray-50 border-gray-100"
+                        ? "bg-primary/10 border-primary/30"
+                        : "bg-muted/40 border-border/60"
                     }`}
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{type}</span>
-                    <span className={`text-sm font-bold ${isComplete ? "text-green-700" : "text-gray-800"}`}>
-                      {made}<span className="text-gray-400 font-normal">/{total as number}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{type}</span>
+                    <span className={`text-sm font-bold tabular-nums ${isComplete ? "text-primary" : "text-foreground"}`}>
+                      {made}<span className="text-muted-foreground font-normal">/{total as number}</span>
                     </span>
-                    <div className="w-full h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                    <div className="w-full h-1 bg-muted rounded-full mt-1 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${isComplete ? "bg-green-500" : "bg-blue-500"}`}
+                        className={`h-full rounded-full transition-all ${isComplete ? "bg-primary" : "bg-muted-foreground/60"}`}
                         style={{ width: `${Math.min(percent, 100)}%` }}
                       />
                     </div>
@@ -1239,14 +1239,14 @@ export default function PostsPage() {
 
         {/* Row 2: Action Buttons */}
         {(permissionsData?.includes("Manage-post") || session?.user?.role?.toUpperCase() === "MANAGER") && (
-          <div className="px-5 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+          <div className="px-5 py-2.5 bg-muted/30 border-t border-border/60 flex items-center gap-2 flex-wrap">
             <Link href={urlProjectId ? `/dashboard/projects/posts/new?projectId=${urlProjectId}` : "/dashboard/posts/new"}>
-              <Button size="sm">
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
+              <Button size="sm" className="gap-1.5 shadow-2xs">
+                <Plus className="size-3.5" />
                 Create Post
               </Button>
             </Link>
-            <div className="h-5 w-px bg-gray-300 mx-1" />
+            <div className="h-5 w-px bg-border mx-1" />
             {urlProjectId && (
               <>
                 <Button
@@ -1256,7 +1256,7 @@ export default function PostsPage() {
                   disabled={isDownloadingCatalog}
                   className="text-xs"
                 >
-                  <Download className="mr-1.5 h-3.5 w-3.5" />
+                  <Download className="mr-1.5 size-3.5" />
                   {isDownloadingCatalog ? "Downloading..." : "Strategy"}
                 </Button>
                 <Button
@@ -1266,7 +1266,7 @@ export default function PostsPage() {
                   disabled={isDownloadingSample || yearFilter === "all" || monthFilter === "all"}
                   className="text-xs"
                 >
-                  <Download className="mr-1.5 h-3.5 w-3.5" />
+                  <Download className="mr-1.5 size-3.5" />
                   {isDownloadingSample ? "Downloading..." : "Sample"}
                 </Button>
                 <Button size="sm" variant="outline" className="text-xs" onClick={() => {
@@ -1276,7 +1276,7 @@ export default function PostsPage() {
                     setBulkStep(2);
                   }
                 }}>
-                  <Download className="mr-1.5 h-3.5 w-3.5" />
+                  <Download className="mr-1.5 size-3.5" />
                   Bulk Import
                 </Button>
               </>
@@ -1290,7 +1290,7 @@ export default function PostsPage() {
               const projectText = projectData?.name || "All Projects";
               exportCalendarToExcel(filteredPosts, monthYearText, projectText);
             }}>
-              <Download className="mr-1.5 h-3.5 w-3.5" />
+              <Download className="mr-1.5 size-3.5" />
               Export Calendar
             </Button>
             {urlProjectId && (
@@ -1300,7 +1300,7 @@ export default function PostsPage() {
                 className="text-xs"
                 onClick={() => setExportLinkOpen(true)}
               >
-                <Share2 className="mr-1.5 h-3.5 w-3.5" />
+                <Share2 className="mr-1.5 size-3.5" />
                 Export Link
               </Button>
             )}

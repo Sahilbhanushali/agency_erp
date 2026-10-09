@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ClientForm } from "@/components/forms/client-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Building2 } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { ArrowLeft, Building2 } from "lucide-react";
+import Link from "next/link";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
 
 export default function ClientEditPage() {
@@ -38,35 +41,47 @@ export default function ClientEditPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="space-y-6 animate-pulse">
         <div className="space-y-2">
-          <Skeleton className="h-8 w-44" />
-          <Skeleton className="h-4 w-72" />
+          <Skeleton className="h-8 w-44 rounded-lg" />
+          <Skeleton className="h-4 w-72 rounded-md" />
         </div>
-        <Skeleton className="h-96 w-full rounded-xl" />
+        <Skeleton className="h-96 w-full max-w-3xl rounded-xl" />
       </div>
     );
   }
 
   if (error || !client) {
     return (
-      <div className="max-w-3xl mx-auto py-12">
+      <div className="py-12">
         <EmptyState
           icon={Building2}
           title="Client Not Found"
           description={error || "The client you are trying to edit could not be found."}
-          action={{
-            label: "Back to Clients",
-            onClick: () => router.push("/dashboard/clients"),
-          }}
+          actionLabel="Back to Clients"
+          onAction={() => router.push("/dashboard/clients")}
         />
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <ClientForm client={client} />
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title={`Edit Client: ${client.name}`}
+        description="Update contact information, organization details, and company branding."
+      >
+        <Button variant="outline" size="sm" asChild className="gap-1.5">
+          <Link href={`/dashboard/clients/${client.id}`}>
+            <ArrowLeft className="size-3.5" />
+            View Profile
+          </Link>
+        </Button>
+      </PageHeader>
+
+      <div className="max-w-6xl">
+        <ClientForm client={client} />
+      </div>
     </div>
   );
 }

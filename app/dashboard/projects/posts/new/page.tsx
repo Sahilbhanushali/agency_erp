@@ -2,6 +2,11 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import Link from "next/link"
+import { ArrowLeft, AlertTriangle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/ui/page-header"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { PostForm } from "@/components/forms/post-form"
 
 export default async function NewPostPage({ 
@@ -111,21 +116,29 @@ export default async function NewPostPage({
   }))
   
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Create New Post</h1>
-        <p className="text-gray-600">Design and schedule your social media content across platforms</p>
-      </div>
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title="Create New Post"
+        description="Design and schedule multi-platform content assets, captions, and creative deliverables."
+      >
+        <Button variant="outline" size="sm" asChild className="gap-1.5">
+          <Link href="/dashboard/projects/posts">
+            <ArrowLeft className="size-3.5" />
+            Back to Posts
+          </Link>
+        </Button>
+      </PageHeader>
       
       {formattedProjects.length === 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800">
-            No active projects found. You need at least one active project to create posts.
-            <a href="/dashboard/projects" className="ml-2 text-yellow-900 underline hover:no-underline">
-              Manage Projects
-            </a>
-          </p>
-        </div>
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-xs">
+            No active campaigns found. You need at least one active project to publish deliverables.
+            <Link href="/dashboard/projects/new" className="ml-2 font-medium underline hover:no-underline">
+              Create Campaign
+            </Link>
+          </AlertDescription>
+        </Alert>
       )}
       
       <PostForm 

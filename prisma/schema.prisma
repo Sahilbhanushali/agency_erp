@@ -183,14 +183,26 @@ model User {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  phone     String?
-  company   String?
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  altPhone    String?
+  company     String?
+  website     String?
+  industry    String?
+  status      String   @default("ACTIVE")
+  address     String?  @db.Text
+  city        String?
+  state       String?
+  country     String?  @default("India")
+  postalCode  String?
+  gstin       String?
+  panNumber   String?
+  notes       String?  @db.Text
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
   projects    Project[]
@@ -1067,6 +1079,9 @@ model Lead {
   requirements        String?        @db.Text
   nextFollowUp        DateTime?
   lostReason          String?
+  website             String?
+  city                String?
+  country             String?
   convertedToClientId String?
   convertedAt         DateTime?
   createdAt           DateTime       @default(now())

@@ -173,86 +173,88 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
           className="my-4"
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Number</TableHead>
-              <TableHead>Client</TableHead>
-              {!companyId && <TableHead className="hidden lg:table-cell">Issued by</TableHead>}
-              <TableHead className="hidden md:table-cell">Valid until</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {quotations.map((quotation) => (
-              <TableRow key={quotation.id}>
-                <TableCell>
-                  <Link
-                    href={`/dashboard/quotations/${quotation.id}`}
-                    className="font-mono text-xs font-semibold text-primary hover:underline"
-                  >
-                    {quotation.number}
-                  </Link>
-                  <p className="max-w-[22ch] truncate text-[11px] text-muted-foreground">
-                    {quotation.title}
-                  </p>
-                </TableCell>
-                <TableCell className="text-xs">
-                  <span className="font-medium text-foreground">{quotation.client.company || quotation.client.name}</span>
-                  {quotation.project && (
-                    <p className="text-[11px] text-muted-foreground">{quotation.project.name}</p>
-                  )}
-                </TableCell>
-                {!companyId && (
-                  <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
-                    {quotation.company.name}
-                  </TableCell>
-                )}
-                <TableCell className="hidden text-xs tabular-nums text-muted-foreground md:table-cell">
-                  {formatDate(quotation.validUntil)}
-                </TableCell>
-                <TableCell className="text-right text-xs font-bold tabular-nums text-foreground">
-                  {formatMoney(toNumber(quotation.totalAmount), quotation.currency)}
-                </TableCell>
-                <TableCell>
-                  <div className="space-y-0.5">
-                    <QuotationStatusBadge status={quotation.status} />
-                    {quotation.invoice && (
-                      <p className="font-mono text-[10px] text-muted-foreground">
-                        {quotation.invoice.number}
-                      </p>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right whitespace-nowrap">
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    asChild
-                    aria-label={`Edit ${quotation.number}`}
-                    disabled={quotation.status === "CONVERTED"}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <Link href={`/dashboard/quotations/${quotation.id}/edit`}>
-                      <Edit className="size-3.5" />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={`Delete ${quotation.number}`}
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setDeleting(quotation)}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </TableCell>
+        <div className="rounded-xl border border-border/70 bg-card overflow-hidden shadow-2xs">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Number</TableHead>
+                <TableHead>Client</TableHead>
+                {!companyId && <TableHead className="hidden lg:table-cell">Issued by</TableHead>}
+                <TableHead className="hidden md:table-cell">Valid until</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {quotations.map((quotation) => (
+                <TableRow key={quotation.id}>
+                  <TableCell>
+                    <Link
+                      href={`/dashboard/quotations/${quotation.id}`}
+                      className="font-mono text-xs font-semibold text-primary hover:underline"
+                    >
+                      {quotation.number}
+                    </Link>
+                    <p className="max-w-[22ch] truncate text-[11px] text-muted-foreground">
+                      {quotation.title}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <span className="font-medium text-foreground">{quotation.client.company || quotation.client.name}</span>
+                    {quotation.project && (
+                      <p className="text-[11px] text-muted-foreground">{quotation.project.name}</p>
+                    )}
+                  </TableCell>
+                  {!companyId && (
+                    <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
+                      {quotation.company.name}
+                    </TableCell>
+                  )}
+                  <TableCell className="hidden text-xs tabular-nums text-muted-foreground md:table-cell">
+                    {formatDate(quotation.validUntil)}
+                  </TableCell>
+                  <TableCell className="text-right text-xs font-bold tabular-nums text-foreground">
+                    {formatMoney(toNumber(quotation.totalAmount), quotation.currency)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-0.5">
+                      <QuotationStatusBadge status={quotation.status} />
+                      {quotation.invoice && (
+                        <p className="font-mono text-[10px] text-muted-foreground">
+                          {quotation.invoice.number}
+                        </p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      asChild
+                      aria-label={`Edit ${quotation.number}`}
+                      disabled={quotation.status === "CONVERTED"}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Link href={`/dashboard/quotations/${quotation.id}/edit`}>
+                        <Edit className="size-3.5" />
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={`Delete ${quotation.number}`}
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleting(quotation)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {pages > 1 && (

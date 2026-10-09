@@ -313,11 +313,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                           title={item.name}
                           className={`group flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                             isActive
-                              ? "bg-primary/10 text-primary font-semibold dark:bg-primary/20"
+                              ? "bg-accent text-accent-foreground font-semibold shadow-2xs"
                               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                           }`}
                         >
-                          <item.icon className={`size-4 shrink-0 transition-colors ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                          <item.icon className={`size-4 shrink-0 transition-colors ${isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"}`} />
                           <span className="truncate">{item.name}</span>
                         </Link>
                       </li>
@@ -335,7 +335,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-auto w-full justify-start gap-2.5 p-2 text-left hover:bg-muted/60">
                 <Avatar className="size-7 shrink-0 border border-border/60">
-                  <AvatarFallback className="bg-primary/10 text-[11px] font-bold text-primary">{userInitial}</AvatarFallback>
+                  <AvatarFallback className="bg-muted text-[11px] font-bold text-foreground">{userInitial}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium text-foreground leading-tight">{session.user.name}</p>

@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Trash2, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
-export type DeleteEntityType = "user" | "client" | "project" | "post";
+export type DeleteEntityType = "user" | "client" | "project" | "post" | "lead" | "credential";
 
 interface DeleteConfirmationDialogProps {
   isOpen: boolean;
@@ -21,6 +21,7 @@ interface DeleteConfirmationDialogProps {
   onConfirm: () => Promise<void> | void;
   itemName: string;
   entityType: DeleteEntityType;
+  title?: string;
   isLoading?: boolean;
   extraInfo?: {
     postCount?: number;
@@ -34,6 +35,7 @@ export default function DeleteConfirmationDialog({
   onConfirm,
   itemName,
   entityType,
+  title,
   isLoading = false,
   extraInfo,
 }: DeleteConfirmationDialogProps) {
@@ -41,7 +43,7 @@ export default function DeleteConfirmationDialog({
     switch (entityType) {
       case "user":
         return {
-          title: `Delete User: "${itemName}"?`,
+          title: title || `Delete User: "${itemName}"?`,
           subtitle: "Please review what will happen when this user is deleted:",
           willDelete: [
             "User profile and login access will be permanently removed",
@@ -100,6 +102,33 @@ export default function DeleteConfirmationDialog({
           ],
           dangerLevel: "medium" as const,
         };
+
+      case "lead":
+        return {
+          title: `Delete Lead: "${itemName}"?`,
+          subtitle: "Please review what will happen when this sales lead is deleted:",
+          willDelete: [
+            "This sales inquiry, deal valuation, and contact details will be removed",
+            "All logged activities and call notes for this lead will be deleted",
+          ],
+          willKeep: [
+            "Existing client accounts and ongoing projects will NOT be affected",
+          ],
+          dangerLevel: "medium" as const,
+        };
+
+      case "credential":
+        return {
+          title: `Delete Credential: "${itemName}"?`,
+          subtitle: "Please review what will happen when this credential is deleted:",
+          willDelete: [
+            "The stored platform login, username, and encrypted password will be permanently deleted",
+          ],
+          willKeep: [
+            "The associated client and project accounts will NOT be affected",
+          ],
+          dangerLevel: "low" as const,
+        };
     }
   };
 
@@ -107,7 +136,7 @@ export default function DeleteConfirmationDialog({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && !isLoading && onClose()}>
-      <AlertDialogContent className="max-w-md p-6 bg-white border border-gray-200 shadow-xl rounded-xl">
+      <AlertDialogContent className="max-w-md p-6 bg-card border border-border shadow-xl rounded-xl">
         <AlertDialogHeader className="space-y-3 text-left">
           <div className="flex items-center gap-3">
             <div

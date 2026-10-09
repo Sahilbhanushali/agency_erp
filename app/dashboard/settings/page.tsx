@@ -8,7 +8,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, X, Trash2 } from "lucide-react"
+import { PageHeader } from "@/components/ui/page-header"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import Link from "next/link"
+import { Plus, X, Trash2, Mail, Settings as SettingsIcon } from "lucide-react"
 
 interface Utility {
   id: string
@@ -141,15 +150,15 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6 max-w-5xl mx-auto">
+      <div className="space-y-6 animate-pulse">
         <div className="space-y-2">
-          <Skeleton className="h-8 w-44" />
-          <Skeleton className="h-4 w-72" />
+          <Skeleton className="h-8 w-44 rounded-lg" />
+          <Skeleton className="h-4 w-72 rounded-md" />
         </div>
-        <Card>
+        <Card className="shadow-2xs">
           <CardContent className="p-6 space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-1/3" />
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-10 w-1/3 rounded-lg" />
           </CardContent>
         </Card>
       </div>
@@ -157,44 +166,55 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage system utilities and configurations</p>
-      </div>
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title="System Settings"
+        description="Configure taxonomy utilities, social platform targets, and email delivery credentials."
+      >
+        <Button variant="outline" size="sm" asChild className="gap-1.5">
+          <Link href="/dashboard/settings/smtp">
+            <Mail className="size-3.5" />
+            SMTP Mail Settings
+          </Link>
+        </Button>
+      </PageHeader>
 
       {/* Create New Utility */}
-      <Card>
+      <Card className="shadow-2xs border-border/70">
         <CardHeader>
-          <CardTitle>Create New Utility</CardTitle>
-          <CardDescription>Add a new utility to manage dynamic values</CardDescription>
+          <CardTitle className="text-base font-semibold">Create New Utility</CardTitle>
+          <CardDescription className="text-xs">Add a custom categorization dimension to manage agency deliverables.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="utility-name">Utility Name</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="utility-name" className="text-xs font-medium">Utility Name</Label>
               <Input
                 id="utility-name"
                 value={newUtilityName}
                 onChange={(e) => setNewUtilityName(e.target.value)}
-                placeholder="e.g., Social Platforms"
+                placeholder="e.g. Social Platforms"
+                className="h-9 text-xs"
               />
             </div>
-            <div>
-              <Label htmlFor="utility-type">Type</Label>
-              <select
-                id="utility-type"
+            <div className="space-y-1.5">
+              <Label htmlFor="utility-type" className="text-xs font-medium">Dimension Type</Label>
+              <Select
                 value={newUtilityType}
-                onChange={(e) => setNewUtilityType(e.target.value as "PLATFORM" | "POST_TYPE")}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md"
+                onValueChange={(val) => setNewUtilityType(val as "PLATFORM" | "POST_TYPE")}
               >
-                <option value="PLATFORM">Platform</option>
-                <option value="POST_TYPE">Post Type</option>
-              </select>
+                <SelectTrigger id="utility-type" className="h-9 text-xs bg-card">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PLATFORM" className="text-xs">Platform (e.g. Instagram, LinkedIn)</SelectItem>
+                  <SelectItem value="POST_TYPE" className="text-xs">Post Type (e.g. Reel, Carousel)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={createUtility} className="w-full">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button onClick={createUtility} size="sm" className="w-full h-9 gap-1.5">
+                <Plus className="size-3.5" />
                 Create Utility
               </Button>
             </div>

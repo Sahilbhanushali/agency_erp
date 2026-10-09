@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/ui/page-header"
 import { ClientForm } from "@/components/forms/client-form"
 
 export default async function NewClientPage() {
@@ -14,25 +15,22 @@ export default async function NewClientPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon-xs" asChild>
-          <Link href="/dashboard/clients" title="Back to clients">
-            <ArrowLeft className="size-4" />
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title="Add New Client"
+        description="Create an agency client organization profile for campaign tracking, project deliverables, and invoices."
+      >
+        <Button variant="outline" size="sm" asChild className="gap-1.5">
+          <Link href="/dashboard/clients">
+            <ArrowLeft className="size-3.5" />
+            Back to Clients
           </Link>
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
-            <UserPlus className="size-6 text-primary" />
-            Add New Client
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Create an agency client profile for project tracking and invoices
-          </p>
-        </div>
-      </div>
+      </PageHeader>
 
-      <ClientForm />
+      <div className="max-w-6xl">
+        <ClientForm />
+      </div>
     </div>
   )
 }

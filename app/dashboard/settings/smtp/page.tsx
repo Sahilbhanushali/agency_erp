@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle, Mail, Trash2, RefreshCw, Plus, ArrowLeft, Shi
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -139,12 +140,12 @@ export default function SmtpSettingsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="space-y-6 animate-pulse">
         <div className="flex items-center gap-3">
           <Skeleton className="size-8 rounded-md" />
           <div className="space-y-1.5">
-            <Skeleton className="h-6 w-44" />
-            <Skeleton className="h-4 w-72" />
+            <Skeleton className="h-6 w-44 rounded-lg" />
+            <Skeleton className="h-4 w-72 rounded-md" />
           </div>
         </div>
         <div className="space-y-3">
@@ -157,37 +158,31 @@ export default function SmtpSettingsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-5">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="outline" size="icon-sm">
-            <Link href="/dashboard/settings" title="Back to settings">
-              <ArrowLeft className="size-4" />
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      <PageHeader
+        title="SMTP Mail Delivery"
+        description="Configure outgoing mail delivery servers, credentials, TLS/SSL encryption, and test deliverability."
+      >
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild className="gap-1.5">
+            <Link href="/dashboard/settings">
+              <ArrowLeft className="size-3.5" />
+              Settings
             </Link>
           </Button>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-              SMTP Mail Settings
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Configure outgoing email delivery servers for system notifications and alerts.
-            </p>
-          </div>
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              setShowForm(true);
+              setEditingConfig(null);
+            }}
+          >
+            <Plus className="size-3.5" />
+            Add Configuration
+          </Button>
         </div>
-
-        <Button
-          size="sm"
-          className="text-xs self-start sm:self-auto"
-          onClick={() => {
-            setShowForm(true);
-            setEditingConfig(null);
-          }}
-        >
-          <Plus className="size-3.5 mr-1.5" />
-          Add Configuration
-        </Button>
-      </div>
+      </PageHeader>
 
       {error && error !== "Forbidden: Admin access required" && (
         <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/10 text-destructive text-xs flex items-center gap-2">

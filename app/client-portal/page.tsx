@@ -47,16 +47,16 @@ export default async function ClientPortalPage() {
     )
   }
 
-  const allPosts = client.projects.flatMap((project) =>
-    project.posts.map((post) => ({ ...post, projectName: project.name })),
+  const allPosts = client.projects.flatMap((project: any) =>
+    project.posts.map((post: any) => ({ ...post, projectName: project.name })),
   )
 
   const statusCounts = {
-    draft: allPosts.filter((p) => p.status === "DRAFT").length,
-    submitted: allPosts.filter((p) => p.status === "SUBMITTED").length,
-    approved: allPosts.filter((p) => p.status === "APPROVED").length,
-    scheduled: allPosts.filter((p) => p.status === "SCHEDULED").length,
-    posted: allPosts.filter((p) => p.status === "POSTED").length,
+    draft: allPosts.filter((p: any) => p.status === "DRAFT").length,
+    submitted: allPosts.filter((p: any) => p.status === "SUBMITTED").length,
+    approved: allPosts.filter((p: any) => p.status === "APPROVED").length,
+    scheduled: allPosts.filter((p: any) => p.status === "SCHEDULED").length,
+    posted: allPosts.filter((p: any) => p.status === "POSTED").length,
   }
 
   return (
@@ -110,7 +110,7 @@ export default async function ClientPortalPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {allPosts.slice(0, 10).map((post) => (
+            {allPosts.slice(0, 10).map((post: any) => (
               <div key={post.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">

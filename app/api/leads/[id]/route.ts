@@ -70,6 +70,9 @@ export async function PATCH(
       requirements,
       nextFollowUp,
       lostReason,
+      website,
+      city,
+      country,
       newActivityNote,
     } = body;
 
@@ -80,13 +83,22 @@ export async function PATCH(
     if (email !== undefined) updateData.email = email;
     if (phone !== undefined) updateData.phone = phone;
     if (source !== undefined) updateData.source = source;
-    if (estimatedValue !== undefined) updateData.estimatedValue = estimatedValue ? Number(estimatedValue) : null;
+    if (estimatedValue !== undefined) {
+      updateData.estimatedValue = estimatedValue !== "" && estimatedValue !== null && !isNaN(Number(estimatedValue)) ? Number(estimatedValue) : null;
+    }
     if (currency !== undefined) updateData.currency = currency;
-    if (assignedToId !== undefined) updateData.assignedToId = assignedToId ? parseInt(assignedToId, 10) : null;
+    if (assignedToId !== undefined) {
+      updateData.assignedToId = assignedToId && !isNaN(parseInt(assignedToId, 10)) ? parseInt(assignedToId, 10) : null;
+    }
     if (notes !== undefined) updateData.notes = notes;
     if (requirements !== undefined) updateData.requirements = requirements;
-    if (nextFollowUp !== undefined) updateData.nextFollowUp = nextFollowUp ? new Date(nextFollowUp) : null;
+    if (nextFollowUp !== undefined) {
+      updateData.nextFollowUp = nextFollowUp && !isNaN(new Date(nextFollowUp).getTime()) ? new Date(nextFollowUp) : null;
+    }
     if (lostReason !== undefined) updateData.lostReason = lostReason;
+    if (website !== undefined) updateData.website = website;
+    if (city !== undefined) updateData.city = city;
+    if (country !== undefined) updateData.country = country;
 
     const currentUserId = parseInt(session.user.id, 10);
     const activityCreations: any[] = [];
