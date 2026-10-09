@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Post {{ status }}</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+      color: #333;
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      overflow: hidden;
+      padding: 30px;
+    }
+    .header img {
+      max-width: 150px;
+      margin: 20px auto;
+      display: block;
+    }
+    h1 {
+      color: #111827;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin: 15px 0;
+      text-align: left;
+    }
+    a.button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      background-color: #111827;
+      color: #fff !important;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+    a.button:hover {
+      background-color: #374151;
+    }
+    .footer {
+      font-size: 12px;
+      color: #777;
+      border-top: 1px solid #eee;
+      margin-top: 30px;
+      padding-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="https://automation.rndtechnosoft.com/templates/images/rnd.png" alt="Header Image" />
+    </div>
+
+    <h1>Post {{ statusVerb }}</h1>
+
+    <p>Dear {{ recipientName }},</p>
+    <p>
+      The post <strong>{{ postTitle }}</strong> for the project
+      <strong>{{ projectName }}</strong> has been {{ statusVerb }} by
+      <strong>{{ submittedByName }}</strong>.
+    </p>
+
+    <!--
+    {{ #feedback }}
+    <p><strong>Feedback:</strong> {{ feedback }}</p>
+    {{ /feedback }}
+    <p><strong>Submitted At:</strong> {{ submittedAt }}</p>
+
+    {{ #assetUrl }}
+    <p><strong>Post Image:</strong><br>
+      <a href="{{ assetUrl }}">View Asset</a>
+    </p>
+    {{ /assetUrl }}
+    -->
+
+    <p>Please review the submission in the dashboard and take appropriate actions.</p>
+
+    <p>
+      <a href="{{ dashboardUrl }}" class="button">View Post in Dashboard</a>
+    </p>
+
+    <div class="footer">
+      <p>This is an automated email from Automation.rndtechnosoft.com. Please do not reply directly to this email.</p>
+      <p>&copy; {{ currentYear }} Automation.rndtechnosoft.com. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

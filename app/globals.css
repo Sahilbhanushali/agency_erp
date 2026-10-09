@@ -1,0 +1,270 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  color-scheme: light;
+  
+  /* Neutral scale - Light mode (Linear / Vercel slate neutral) */
+  --neutral-0: #ffffff;
+  --neutral-50: #fafafa;
+  --neutral-100: #f4f4f5;
+  --neutral-200: #e4e4e7;
+  --neutral-300: #d4d4d8;
+  --neutral-400: #a1a1aa;
+  --neutral-500: #71717a;
+  --neutral-600: #52525b;
+  --neutral-700: #3f3f46;
+  --neutral-800: #27272a;
+  --neutral-900: #18181b;
+  --neutral-950: #09090b;
+
+  --background: var(--neutral-50);
+  --foreground: var(--neutral-900);
+  
+  --card: var(--neutral-0);
+  --card-foreground: var(--neutral-900);
+  
+  --popover: var(--neutral-0);
+  --popover-foreground: var(--neutral-900);
+  
+  /* Primary brand color - Modern SaaS (Linear / Vercel monochrome slate) */
+  --primary: var(--neutral-900);
+  --primary-foreground: var(--neutral-0);
+  --primary-hover: var(--neutral-800);
+  --primary-subtle: var(--neutral-100);
+
+  --secondary: var(--neutral-100);
+  --secondary-foreground: var(--neutral-800);
+  
+  --muted: var(--neutral-100);
+  --muted-foreground: var(--neutral-500);
+  
+  --accent: #f4f4f5;
+  --accent-foreground: var(--neutral-900);
+  
+  /* Semantic Status Tokens */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --success-subtle: #ecfdf5;
+  
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+  --warning-subtle: #fffbeb;
+  
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+  --info-subtle: #eff6ff;
+
+  --border: var(--neutral-200);
+  --input: var(--neutral-200);
+  --ring: var(--neutral-400);
+  
+  /* Chart Tokens */
+  --chart-1: #2563eb;
+  --chart-2: #3b82f6;
+  --chart-3: #f59e0b;
+  --chart-4: #ec4899;
+  --chart-5: #8b5cf6;
+
+  --radius: 0.5rem;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--neutral-800);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: var(--neutral-900);
+  --sidebar-border: var(--neutral-200);
+  --sidebar-ring: var(--ring);
+}
+
+.dark {
+  color-scheme: dark;
+  
+  /* Neutral scale - Dark mode */
+  --neutral-0: #09090b;
+  --neutral-50: #121215;
+  --neutral-100: #18181b;
+  --neutral-200: #27272a;
+  --neutral-300: #3f3f46;
+  --neutral-400: #52525b;
+  --neutral-500: #71717a;
+  --neutral-600: #a1a1aa;
+  --neutral-700: #d4d4d8;
+  --neutral-800: #f4f4f5;
+  --neutral-900: #fafafa;
+  --neutral-950: #ffffff;
+
+  --background: var(--neutral-50);
+  --foreground: var(--neutral-900);
+  
+  --card: #141417;
+  --card-foreground: var(--neutral-900);
+  
+  --popover: #141417;
+  --popover-foreground: var(--neutral-900);
+  
+  /* Primary brand color - Modern SaaS (Linear / Vercel dark mode crisp contrast) */
+  --primary: var(--neutral-950);
+  --primary-foreground: var(--neutral-0);
+  --primary-hover: var(--neutral-800);
+  --primary-subtle: var(--neutral-200);
+
+  --secondary: var(--neutral-200);
+  --secondary-foreground: var(--neutral-900);
+  
+  --muted: var(--neutral-200);
+  --muted-foreground: var(--neutral-500);
+  
+  --accent: var(--neutral-200);
+  --accent-foreground: var(--neutral-900);
+  
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  
+  --success: #34d399;
+  --success-foreground: #064e3b;
+  --success-subtle: #064e3b/30;
+  
+  --warning: #fbbf24;
+  --warning-foreground: #78350f;
+  --warning-subtle: #78350f/30;
+  
+  --info: #60a5fa;
+  --info-foreground: #1e3a8a;
+  --info-subtle: #1e3a8a/30;
+
+  --border: #27272a;
+  --input: #27272a;
+  --ring: var(--neutral-500);
+  
+  --chart-1: #818cf8;
+  --chart-2: #34d399;
+  --chart-3: #fbbf24;
+  --chart-4: #f472b6;
+  --chart-5: #60a5fa;
+
+  --sidebar: #0e0e11;
+  --sidebar-foreground: var(--neutral-800);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #1e1e24;
+  --sidebar-accent-foreground: var(--neutral-900);
+  --sidebar-border: #27272a;
+  --sidebar-ring: var(--ring);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border/80 outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  
+  /* Number readability in SaaS tables & stats */
+  .tabular-nums, th, td, [data-tabular] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Headings tight tracking */
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight text-foreground font-semibold;
+  }
+
+  :focus-visible { 
+    @apply outline-2 outline-offset-2 outline-ring; 
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--neutral-300);
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--neutral-200);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Printable finance documents */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+}
