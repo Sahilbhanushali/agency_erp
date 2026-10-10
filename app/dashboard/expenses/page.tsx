@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import useSWR from "swr";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import {
@@ -59,6 +60,7 @@ const CATEGORY_NAMES: Record<string, string> = {
 };
 
 export default function ExpensesPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
@@ -164,16 +166,11 @@ export default function ExpensesPage() {
         title="Expenses & Profitability"
         description="Monitor agency operational costs, direct project expenses, and real-time profit margins."
       >
-        <Button
-          size="sm"
-          className="text-xs"
-          onClick={() => {
-            setSelectedExpense(null);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="size-3.5 mr-1.5" />
-          Log Expense
+        <Button size="sm" asChild className="text-xs">
+          <Link href="/dashboard/expenses/new">
+            <Plus className="size-3.5 mr-1.5" />
+            Log Expense
+          </Link>
         </Button>
       </PageHeader>
 
@@ -329,8 +326,7 @@ export default function ExpensesPage() {
                   description="Log freelancer costs, software tools, or shoot expenses to monitor project profitability."
                   actionLabel="Log First Expense"
                   onAction={() => {
-                    setSelectedExpense(null);
-                    setDialogOpen(true);
+                    router.push("/dashboard/expenses/new");
                   }}
                 />
               ) : (

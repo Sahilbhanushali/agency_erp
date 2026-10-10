@@ -9,8 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Building2, Mail, Phone, Search, Eye, Edit, Trash2, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Building2, Mail, Phone, Search, Eye, Edit, Trash2, Loader2, Filter, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -55,6 +61,9 @@ const fetcher = async (url: string) => {
 export default function ClientsPage() {
   const { data: session, status } = useSession();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [projectFilter, setProjectFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState("NEWEST");
   const [permissions, setPermissions] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [selectedLogo, setSelectedLogo] = useState<{ url: string; filename: string; type: string } | null>(null);
@@ -175,20 +184,50 @@ export default function ClientsPage() {
   const filteredClients = useMemo(() => {
     if (!clients || !Array.isArray(clients)) return [];
 
-    return clients.filter((client) => {
+    let result = clients.filter((client) => {
       const clientName = client.name || "";
       const clientEmail = client.email || "";
       const clientCompany = client.company || "";
       const clientPhone = client.phone || "";
 
-      return (
+      const matchesSearch =
+        !searchTerm.trim() ||
         clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         clientEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
         clientCompany.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        clientPhone.includes(searchTerm)
-      );
+        clientPhone.includes(searchTerm);
+
+      if (!matchesSearch) return false;
+
+      if (statusFilter !== "ALL") {
+        const clientStatus = (client.status || "ACTIVE").toUpperCase();
+        if (clientStatus !== statusFilter) return false;
+      }
+
+      if (projectFilter === "WITH_PROJECTS") {
+        const activeCount = client.projects?.filter((p) => p.isActive)?.length || 0;
+        if (activeCount === 0) return false;
+      } else if (projectFilter === "NO_PROJECTS") {
+        const totalProjects = client.projects?.length || 0;
+        if (totalProjects > 0) return false;
+      }
+
+      return true;
     });
-  }, [clients, searchTerm]);
+
+    return result.sort((a, b) => {
+      if (sortBy === "OLDEST") {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      if (sortBy === "NAME_ASC") {
+        return (a.name || "").localeCompare(b.name || "");
+      }
+      if (sortBy === "NAME_DESC") {
+        return (b.name || "").localeCompare(a.name || "");
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [clients, searchTerm, statusFilter, projectFilter, sortBy]);
 
   const canManageClients = permissions.includes("Manage-clients");
   const canViewClients = permissions.includes("View-clients");
@@ -303,8 +342,8 @@ export default function ClientsPage() {
 
         {/* Table & Search Container */}
         <div className="space-y-3">
-          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
+            <div className="relative min-w-[200px] flex-1">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search clients by name, email, company, or phone..."
@@ -314,14 +353,57 @@ export default function ClientsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {searchTerm && (
+
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL" className="text-xs">All Status</SelectItem>
+                <SelectItem value="ACTIVE" className="text-xs">Active</SelectItem>
+                <SelectItem value="INACTIVE" className="text-xs">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Project Activity Filter */}
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger className="h-9 w-[150px] bg-background text-xs">
+                <SelectValue placeholder="Projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL" className="text-xs">All Projects</SelectItem>
+                <SelectItem value="WITH_PROJECTS" className="text-xs">With Active Projects</SelectItem>
+                <SelectItem value="NO_PROJECTS" className="text-xs">No Projects</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Sort Filter */}
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="h-9 w-[140px] bg-background text-xs">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NEWEST" className="text-xs">Newest First</SelectItem>
+                <SelectItem value="OLDEST" className="text-xs">Oldest First</SelectItem>
+                <SelectItem value="NAME_ASC" className="text-xs">Name (A-Z)</SelectItem>
+                <SelectItem value="NAME_DESC" className="text-xs">Name (Z-A)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(searchTerm || statusFilter !== "ALL" || projectFilter !== "ALL" || sortBy !== "NEWEST") && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSearchTerm("")}
+                onClick={() => {
+                  setSearchTerm("");
+                  setStatusFilter("ALL");
+                  setProjectFilter("ALL");
+                  setSortBy("NEWEST");
+                }}
                 className="h-9 text-xs text-muted-foreground hover:text-foreground"
               >
-                Clear
+                Reset
               </Button>
             )}
           </div>

@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { getMediaUrl } from "@/lib/utils";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -317,21 +318,24 @@ export function ExpenseDialog({
                 <Building2 className="size-3.5 text-muted-foreground" />
                 Linked Client (Optional)
               </Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger className="text-xs h-9">
-                  <SelectValue placeholder="Agency Overhead (No client)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE" className="text-xs">
-                    Agency Overhead (No Client)
-                  </SelectItem>
-                  {clients.map((c: any) => (
-                    <SelectItem key={c.id} value={c.id} className="text-xs">
-                      {c.company || c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={clientId === "NONE" ? "" : clientId}
+                onValueChange={(val) => {
+                  setClientId(val ? val : "NONE");
+                  setProjectId("NONE");
+                }}
+                placeholder="Agency Overhead (No client)"
+                icon={Building2}
+                options={[
+                  { id: "", label: "Agency Overhead (No Client)" },
+                  ...clients.map((c: any) => ({
+                    id: c.id,
+                    label: c.name || "Client",
+                    subLabel: c.company ? `${c.company}` : c.email,
+                  })),
+                ]}
+                maxDisplay={4}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -339,21 +343,23 @@ export function ExpenseDialog({
                 <FolderKanban className="size-3.5 text-muted-foreground" />
                 Linked Project (Optional)
               </Label>
-              <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger className="text-xs h-9">
-                  <SelectValue placeholder="No specific project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE" className="text-xs">
-                    No Specific Project
-                  </SelectItem>
-                  {projects.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id} className="text-xs">
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={projectId === "NONE" ? "" : projectId}
+                onValueChange={(val) => setProjectId(val ? val : "NONE")}
+                placeholder="No specific project"
+                icon={FolderKanban}
+                options={[
+                  { id: "", label: "No Specific Project" },
+                  ...(clientId && clientId !== "NONE"
+                    ? projects.filter((p: any) => p.clientId === clientId)
+                    : projects
+                  ).map((p: any) => ({
+                    id: p.id,
+                    label: p.name,
+                  })),
+                ]}
+                maxDisplay={4}
+              />
             </div>
           </div>
 

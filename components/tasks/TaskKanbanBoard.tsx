@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getMediaUrl } from "@/lib/utils";
+import RejectDialog from "@/components/posts/rejectDialog";
 
 export enum PostStatus {
   DRAFT = "DRAFT",
@@ -180,6 +181,11 @@ export default function TaskKanbanBoard({
   const [selectedType, setSelectedType] = useState<string>("ALL");
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [statusRejectDialog, setStatusRejectDialog] = useState<{
+    postId: string;
+    statusType?: "content" | "design";
+    targetStatus?: string;
+  } | null>(null);
 
   // Extract unique assignees for the Admin assignee dropdown
   const allAssignees = useMemo(() => {
@@ -263,7 +269,7 @@ export default function TaskKanbanBoard({
       });
 
       if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({}));
         toast.error(err.error || "Failed to update task status");
         return;
       }
@@ -278,10 +284,112 @@ export default function TaskKanbanBoard({
     }
   };
 
+  // Initiate status change (intercepts Changes Required to prompt for comment)
+  const handleInitiateStatusChange = (taskId: string, targetStatus: PostStatus) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    // Check if task is already in the column representing targetStatus
+    const targetColumn = COLUMNS.find((col) => col.targetStatus === targetStatus);
+    if (targetColumn && targetColumn.statuses.includes(task.status)) {
+      return;
+    }
+
+    if (targetStatus === PostStatus.REJECTED || targetStatus === PostStatus.NEEDS_MINOR_CHANGE) {
+      if (task.status === PostStatus.DRAFT) {
+        toast.error("Cannot reject or request minor changes for a design that is in Draft status.");
+        return;
+      }
+      setStatusRejectDialog({
+        postId: taskId,
+        statusType: "design",
+        targetStatus: "REJECTED",
+      });
+      return;
+    }
+
+    handleUpdateStatus(taskId, targetStatus);
+  };
+
+  // Handle submit for Changes Required (REJECTED) with mandatory feedback comment
+  const handleRejectSubmit = async (textFeedback: string, audioBlob: Blob | null) => {
+    if (!statusRejectDialog) return;
+    const taskId = statusRejectDialog.postId;
+    const targetStatus = (statusRejectDialog.targetStatus as PostStatus) || PostStatus.REJECTED;
+
+    setMovingTaskId(taskId);
+    try {
+      let finalFeedback = textFeedback.trim();
+
+      if (audioBlob) {
+        try {
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "rejection-audio.webm");
+          formData.append("postId", taskId);
+          formData.append("flowType", "DESIGN");
+
+          const uploadRes = await fetch("/api/approval-attachments", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            if (finalFeedback === "🎙️ Audio feedback recorded" || !finalFeedback) {
+              finalFeedback = `🎙️ Audio feedback: ${uploadData.filename}`;
+            } else {
+              finalFeedback = finalFeedback.replace(
+                "🎙️ Audio feedback recorded",
+                `🎙️ Audio feedback: ${uploadData.filename}`
+              );
+            }
+          }
+        } catch (audioErr) {
+          console.error("Failed to upload audio attachment:", audioErr);
+        }
+      }
+
+      if (!finalFeedback) {
+        toast.error("Comment is required for design status rejection or minor change request");
+        throw new Error("Comment is required for design status rejection or minor change request");
+      }
+
+      const response = await fetch(`/api/posts/${taskId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: targetStatus,
+          feedback: finalFeedback,
+          rejectedAt: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        const msg = err.error || "Failed to update task status";
+        toast.error(msg);
+        throw new Error(msg);
+      }
+
+      toast.success("Task moved to changes required");
+      mutate?.();
+    } catch (err: any) {
+      console.error("Error moving task to changes required:", err);
+      throw err;
+    } finally {
+      setMovingTaskId(null);
+      setDraggedTaskId(null);
+    }
+  };
+
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData("text/plain", taskId);
     setDraggedTaskId(taskId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTaskId(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -292,8 +400,9 @@ export default function TaskKanbanBoard({
     e.preventDefault();
     const taskId = e.dataTransfer.getData("text/plain") || draggedTaskId;
     if (taskId) {
-      handleUpdateStatus(taskId, targetStatus);
+      handleInitiateStatusChange(taskId, targetStatus);
     }
+    setDraggedTaskId(null);
   };
 
   const getTypeIcon = (type: string) => {
@@ -479,6 +588,7 @@ export default function TaskKanbanBoard({
                         key={task.id}
                         draggable
                         onDragStart={(e) => handleDragStart(e, task.id)}
+                        onDragEnd={handleDragEnd}
                         className={`group relative cursor-grab active:cursor-grabbing border border-border/80 bg-card p-3 shadow-2xs hover:border-primary/50 hover:shadow-xs transition-all ${
                           overdue ? "border-l-2 border-l-rose-500" : ""
                         } ${movingTaskId === task.id ? "opacity-50 pointer-events-none" : ""}`}
@@ -527,7 +637,7 @@ export default function TaskKanbanBoard({
                               {COLUMNS.map((col) => (
                                 <DropdownMenuItem
                                   key={col.id}
-                                  onClick={() => handleUpdateStatus(task.id, col.targetStatus)}
+                                  onClick={() => handleInitiateStatusChange(task.id, col.targetStatus)}
                                   className="cursor-pointer text-xs"
                                 >
                                   <ArrowRight className="size-3 mr-2" />
@@ -631,6 +741,21 @@ export default function TaskKanbanBoard({
           );
         })}
       </div>
+
+      {/* Reject / Changes Required Dialog */}
+      <RejectDialog
+        statusRejectDialog={statusRejectDialog}
+        setStatusRejectDialog={setStatusRejectDialog}
+        posts={tasks}
+        customTitle={
+          statusRejectDialog
+            ? `Request Changes: ${tasks.find((p) => p.id === statusRejectDialog.postId)?.title || "Task"}`
+            : undefined
+        }
+        customButtonText="Submit Changes Required"
+        customFeedbackPlaceholder="Enter the changes required (comment is required)..."
+        onSubmitCustom={handleRejectSubmit}
+      />
     </div>
   );
 }

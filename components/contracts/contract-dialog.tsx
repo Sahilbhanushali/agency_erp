@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 export interface ContractData {
   id?: string;
@@ -301,46 +302,37 @@ export function ContractDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Client Account *</Label>
-              <Select
+              <SearchableSelect
                 value={formData.clientId}
                 onValueChange={(val) => setFormData({ ...formData, clientId: val, projectId: "" })}
                 disabled={!!preselectedClientId}
-              >
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="Select client..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c: any) => (
-                    <SelectItem key={c.id} value={c.id} className="text-xs">
-                      {c.name} {c.company ? `(${c.company})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Search client..."
+                icon={Building}
+                options={clients.map((c: any) => ({
+                  id: c.id,
+                  label: c.name || "Client",
+                  subLabel: c.company ? `${c.company} • ${c.email}` : c.email,
+                }))}
+                maxDisplay={4}
+              />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Associated Project / Campaign (Optional)</Label>
-              <Select
-                value={formData.projectId || "none"}
-                onValueChange={(val) =>
-                  setFormData({ ...formData, projectId: val === "none" ? null : val })
-                }
-              >
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="All client deliverables (Default)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none" className="text-xs">
-                    Entire Client Account (No specific project)
-                  </SelectItem>
-                  {filteredProjects.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id} className="text-xs">
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={formData.projectId || ""}
+                onValueChange={(val) => setFormData({ ...formData, projectId: val || null })}
+                placeholder="Select project..."
+                icon={FolderKanban}
+                options={[
+                  { id: "", label: "Entire Client Account (No specific project)" },
+                  ...filteredProjects.map((p: any) => ({
+                    id: p.id,
+                    label: p.name,
+                  })),
+                ]}
+                maxDisplay={4}
+              />
             </div>
           </div>
 

@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import toast from "react-hot-toast"
-import { Edit, FileText, Loader2, Plus, Search, Trash2 } from "lucide-react"
+import { Edit, Eye, FileText, Loader2, Plus, Search, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -228,6 +228,17 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
                     </div>
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      asChild
+                      aria-label={`View ${quotation.number}`}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Link href={`/dashboard/quotations/${quotation.id}`}>
+                        <Eye className="size-3.5" />
+                      </Link>
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon-xs"

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useRef } from "react";
 import { Mic, Square, Trash2, Volume2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface Post {
   id: string;
@@ -79,6 +80,7 @@ export default function RejectDialog({
   if (targetStatus === "REJECTED") {
     dialogTitle = `Request Changes: ${post.title}`;
     feedbackPlaceholder = "Enter the changes required";
+    buttonText = "Request Changes";
     buttonColor = "bg-red-600 hover:bg-red-700";
   } else if (targetStatus === "NEEDS_REVISION") {
     dialogTitle = `Revision Request: ${post.title}`;
@@ -136,7 +138,7 @@ export default function RejectDialog({
       }, 1000);
     } catch (error) {
       console.error("Error starting recording:", error);
-      alert("Could not access microphone. Please check permissions.");
+      toast.error("Could not access microphone. Please check permissions.");
     }
   };
 
@@ -162,11 +164,11 @@ export default function RejectDialog({
 
   const handleSubmit = async () => {
     if (targetStatus === "NEEDS_MINOR_CHANGE" && !actionComment.trim()) {
-      alert("Please provide a text comment for the Needs Minor Change request");
+      toast.error("Please provide a text comment for the Needs Minor Change request");
       return;
     }
     if (!actionComment.trim() && !audioBlob) {
-      alert("Please provide either text feedback or audio feedback");
+      toast.error("Please provide either text feedback or audio feedback");
       return;
     }
 
@@ -178,9 +180,11 @@ export default function RejectDialog({
         await handleStatusReject(statusRejectDialog.statusType || "design", audioBlob);
       }
       setStatusRejectDialog(null);
-    } catch (error) {
+      setActionComment("");
+      setAudioBlob(null);
+    } catch (error: any) {
       console.error("Error submitting status change:", error);
-      alert("Failed to submit status change. Please try again.");
+      toast.error(error?.message || "Failed to submit status change. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

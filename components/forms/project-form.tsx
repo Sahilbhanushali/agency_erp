@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,6 +109,7 @@ const CustomSelect = ({
   icon: Icon,
   options,
   disabled = false,
+  maxDisplay = 4,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -116,12 +117,33 @@ const CustomSelect = ({
   icon: any;
   options: { id: string; label: string }[];
   disabled?: boolean;
+  maxDisplay?: number;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const selectedOption = options.find((option) => option.id === value);
 
+  // Filter based on search query and limit to maxDisplay (bring 3 to 4 records)
+  const filteredOptions = useMemo(() => {
+    let list = options;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = options.filter(
+        (option) =>
+          option.label.toLowerCase().includes(q) || option.id.toLowerCase().includes(q)
+      );
+    }
+    return list.slice(0, maxDisplay);
+  }, [options, searchQuery, maxDisplay]);
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (!open) setSearchQuery("");
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -137,32 +159,58 @@ const CustomSelect = ({
           <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command>
-          <CommandList className="max-h-64 text-xs">
-            <CommandEmpty>No options found.</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[220px] p-0" align="start">
+        <div className="p-2 border-b border-border/60">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Search ${placeholder.toLowerCase()}...`}
+              className="h-8 pl-8 text-xs bg-muted/40 border-border/70"
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="max-h-52 overflow-y-auto p-1 text-xs">
+          {filteredOptions.length === 0 ? (
+            <div className="py-4 text-center text-xs text-muted-foreground">
+              No matching records found.
+            </div>
+          ) : (
+            <>
+              {filteredOptions.map((option: { id: string; label: string }) => (
+                <div
                   key={option.id}
-                  value={option.id}
-                  onSelect={() => {
+                  onClick={() => {
                     onValueChange(option.id);
                     setIsOpen(false);
+                    setSearchQuery("");
                   }}
-                  className="flex items-center gap-2.5 px-3 py-2 cursor-pointer text-xs"
+                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md cursor-pointer text-xs transition-colors hover:bg-accent hover:text-accent-foreground ${
+                    value === option.id ? "bg-accent/60 font-medium" : ""
+                  }`}
                 >
                   <div
-                    className={`size-3.5 rounded-full border flex items-center justify-center ${value === option.id ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground"}`}
+                    className={`size-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                      value === option.id
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : "border-muted-foreground"
+                    }`}
                   >
                     {value === option.id && <Check className="size-2.5" />}
                   </div>
-                  <span>{option.label}</span>
-                </CommandItem>
+                  <span className="truncate">{option.label}</span>
+                </div>
               ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+              {options.length > maxDisplay && (
+                <div className="px-2 py-1.5 text-[10px] text-muted-foreground text-center border-t border-border/40 mt-1">
+                  Showing top {filteredOptions.length} of {options.length} records • Type to search
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

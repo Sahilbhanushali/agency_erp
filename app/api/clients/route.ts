@@ -112,6 +112,6 @@ export async function GET() {
     return NextResponse.json(clients);
   } catch (error) {
     console.error("Error fetching clients:", error);
-    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error", details: (error as any)?.message }, { status: 500 });
   }
 }
