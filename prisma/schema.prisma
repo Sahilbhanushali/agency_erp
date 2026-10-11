@@ -155,6 +155,8 @@ model User {
   createdQuotations   Quotation[]  @relation("CreatedQuotations")
   createdInvoices     Invoice[]    @relation("CreatedInvoices")
   recordedPayments    Payment[]    @relation("RecordedPayments")
+  createdTasks        Task[]       @relation("CreatedTasks")
+  assignedTasks       Task[]       @relation("TaskAssignees")
   createdContracts    Contract[]   @relation("CreatedContracts")
   createdAnnotations  ProofAnnotation[]      @relation("CreatedAnnotations")
   annotationReplies   ProofAnnotationReply[] @relation("UserReplies")
@@ -220,6 +222,7 @@ model Client {
   expenses    Expense[]
 
   @@map("clients")
+  tasks         Task[]
 }
 
 model Project {
@@ -253,6 +256,7 @@ model Project {
   expenses      Expense[]
 
   @@map("projects")
+  tasks         Task[]
 }
 
 model ProjectStrategy {
@@ -336,6 +340,7 @@ model Post {
   approvalChains ApprovalChain[]
 
   @@map("posts")
+  tasks         Task[]
 }
 
 // Junction table for Post-Platform relationship
@@ -758,20 +763,39 @@ model PostAssignment {
 }
 
 // Credentials model for platform logins
+/// A stored login. Attached to a client's project, or standing alone as an internal
+/// credential when clientId and projectId are both null.
 model Credential {
-  id        String   @id @default(cuid())
-  clientId  String
-  projectId String
-  location  String
-  platform  String
-  userId    String
-  password  String
+  id String @id @default(cuid())
+
+  /// What this login is for, e.g. "AWS root", "Canva Pro", "Acme Instagram".
+  label String @default("")
+
+  /// Free-form grouping the agency chooses — "Internal", "Hosting", "Social", "Banking".
+  /// Deliberately not an enum: new kinds of credential appear faster than migrations.
+  category String?
+
+  /// Both null = an internal credential belonging to the agency, not to a client.
+  clientId  String?
+  projectId String?
+
+  location String
+  platform String
+  userId   String
+  /// AES-encrypted at rest via lib/encryption.ts. Never returned by the list endpoint.
+  password String
+  url      String?
+  notes    String? @db.Text
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  client    Client   @relation(fields: [clientId], references: [id])
-  project   Project  @relation(fields: [projectId], references: [id])
+  client  Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  @@index([clientId])
+  @@index([projectId])
+  @@index([category])
   @@map("credentials")
 }
 
@@ -1357,3 +1381,68 @@ model Expense {
   @@map("expenses")
 }
 
+
+// ---------------------------------------------------------------------------
+// Tasks
+//
+// A Task is a unit of work someone owns. It stands alone (an internal to-do) when
+// postId, projectId and clientId are all null, or it hangs off one of those records
+// to become that module's task list.
+//
+// Deliberately ONE way to assign: `assignees`. Post has three overlapping assignment
+// mechanisms (assignedToId, assignedUsers, PostAssignment) that drift out of sync —
+// that mistake is not repeated here.
+// ---------------------------------------------------------------------------
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?      @db.Text
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  /// Ordering within a kanban column.
+  position Int @default(0)
+
+  createdById Int?
+
+  // Optional links. All null = a standalone internal task.
+  // Post cascades: a task about a deleted post is noise. Project and client set null:
+  // the task survives, it just loses its context.
+  postId    String?
+  projectId String?
+  clientId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy User?    @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: SetNull)
+  assignees User[]   @relation("TaskAssignees")
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([dueDate])
+  @@index([postId])
+  @@index([projectId])
+  @@index([clientId])
+  @@map("tasks")
+}

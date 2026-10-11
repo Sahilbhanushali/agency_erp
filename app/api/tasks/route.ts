@@ -1,399 +1,140 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
+import { prisma } from "@/lib/prisma"
+import { requirePermission } from "@/lib/api-auth"
+import { logAuditAction } from "@/lib/audit"
+import { notifyTaskAssignees, taskSelect, validateTaskLinks } from "@/lib/tasks"
+import { TASK_PRIORITIES, TASK_STATUSES, taskSchema } from "@/lib/validation/task"
 
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+export const dynamic = "force-dynamic"
 
-// Define the PostStatus enum to match the Prisma schema
-enum PostStatus {
-  DRAFT = "DRAFT",
-  SUBMITTED = "SUBMITTED",
-  APPROVED = "APPROVED",
-  REJECTED = "REJECTED",
-  SCHEDULED = "SCHEDULED",
-  POSTED = "POSTED",
-  RESUBMITTED = "RESUBMITTED",
-  NEEDS_MINOR_CHANGE = "NEEDS_MINOR_CHANGE",
-}
-
-// Interface for Task to match the frontend expectation
-interface Task {
-  id: string;
-  title: string;
-  caption?: string;
-  type: string;
-  status: PostStatus;
-  scheduledAt?: string;
-  designDueDate?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  project?: {
-    id?: string;
-    name?: string;
-    client?: {
-      name: string;
-      company?: string;
-      avatar?: string;
-    };
-  };
-  assets: Array<{
-    id: string;
-    filename: string;
-    type: string;
-    url: string;
-    createdAt?: string;
-  }>;
-  platforms?: Array<{
-    id: string;
-    platform: string;
-  }>;
-  assignedToId?: number;
-  assignedTo?: {
-    name: string;
-    email: string;
-  };
-  feedback?: string;
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  comments: Array<{
-    id: string;
-    user: {
-      name: string;
-    };
-    content: string;
-    createdAt: string;
-    type: string;
-  }>;
-  tasklogs: Array<{
-    feedback: string;
-  }>;
-  auditLogs: any;
-  approvalFlows?: Array<{
-    status: string;
-    attachments: Array<{
-      type: string;
-      url: string;
-      filename: string;
-      size?: number;
-      duration?: number;
-      mimeType?: string;
-      uploadedAt: string;
-    }>;
-  }>;
-  designRejectionCount?: number;
-}
-
-// Interface for ProjectGroup to match the frontend
-interface ProjectGroup {
-  projectId: string;
-  projectName: string;
-  clientName: string;
-  companyName: string;
-  tasks: Task[];
-  stats: {
-    total: number;
-    draft: number;
-    pending: number;
-    approved: number;
-    overdue: number;
-    thisWeek: number;
-    nextWeek: number;
-    rejected: number; // Added rejected field
-  };
-}
-
-export async function GET(request: Request) {
-  const session = await getServerSession(authOptions) as any;
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const userId = Number(session.user.id);
-  
-  const dbUser = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { role: { select: { name: true } } },
-  });
-  const userRole = dbUser?.role?.name || '';
-
-  const normalizedRole = userRole?.toUpperCase() || (session?.user as any)?.role?.toUpperCase() || '';
-  // Admins and Managers see all assigned tasks (any user assigned)
-  // Designers/others only see their own tasks
-  const isAdminOrManager = ['ADMIN', 'MANAGER', 'SOCIAL MEDIA MANAGER', 'TEAM LEAD', 'TEAM_LEAD'].includes(normalizedRole);
+/**
+ * List tasks. Filters: `?status=`, `?priority=`, `?assigneeId=`, `?postId=`,
+ * `?projectId=`, `?clientId=`, `?search=`, `?mine=1`, `?overdue=1`,
+ * and `?standalone=1` for internal tasks with no linked record.
+ * Paged with `?page=` and `?limit=` (max 200).
+ *
+ * Only View-tasks is required: anyone who can open the module can read the board.
+ */
+export async function GET(request: NextRequest) {
+  const auth = await requirePermission("View-tasks")
+  if (!auth.ok) return auth.response
 
   try {
-    // Build where clause based on role
-    const whereClause: any = isAdminOrManager
-      ? { project: { isActive: true } }  // Admins/Managers see all tasks for active projects
-      : {
-          AND: [
-            { project: { isActive: true } },
-            {
-              OR: [
-                { assignedToId: userId },
-                { assignedUsers: { some: { id: userId } } }
-              ]
-            }
-          ]
-        };
+    const query = request.nextUrl.searchParams
+    const page = Math.max(1, Number(query.get("page")) || 1)
+    const limit = Math.min(200, Math.max(1, Number(query.get("limit")) || 100))
+    const status = query.get("status")
+    const priority = query.get("priority")
+    const assigneeId = Number(query.get("assigneeId"))
+    const search = query.get("search")?.trim()
 
-    // Fetch posts
-    const posts = await prisma.post.findMany({
-      where: whereClause,
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-            client: {
-              select: {
-                name: true,
-                company: true,
-                avatar: true,
-              },
-            },
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        assets: {
-          select: {
-            id: true,
-            filename: true,
-            type: true,
-            url: true,
-            createdAt: true,
-            isReference: true,
-          },
-        },
-        platforms: {
-          select: {
-            id: true,
-            platform: true,
-          },
-        },
-        assignedTo: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-        assignedUsers: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: {
-              select: {
-                name: true,
-              }
-            }
-          },
-        },
-        comments: {
-          select: {
-            id: true,
-            user: { select: { name: true } },
-            content: true,
-            createdAt: true,
-            type: true,
-          },
-        },
-        approvalFlows: {
-          select: {
-            status: true,
-            flowType: true,
-            submissionCount: true,
-            rejectionReason: true,
-            attachments: {
-              select: {
-                type: true,
-                url: true,
-                filename: true,
-                size: true,
-                duration: true,
-                mimeType: true,
-                uploadedAt: true,
-              },
-            },
-          },
-        },
-        taskLogs: {
-          select: {
-            feedback: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          take: 1,
-        },
-      },
-    });
+    const where: Prisma.TaskWhereInput = {
+      ...(status && TASK_STATUSES.includes(status as (typeof TASK_STATUSES)[number])
+        ? { status: status as (typeof TASK_STATUSES)[number] }
+        : {}),
+      ...(priority && TASK_PRIORITIES.includes(priority as (typeof TASK_PRIORITIES)[number])
+        ? { priority: priority as (typeof TASK_PRIORITIES)[number] }
+        : {}),
+      ...(query.get("postId") ? { postId: query.get("postId")! } : {}),
+      ...(query.get("projectId") ? { projectId: query.get("projectId")! } : {}),
+      ...(query.get("clientId") ? { clientId: query.get("clientId")! } : {}),
+      // A standalone task is one with no linked record at all.
+      ...(query.get("standalone") === "1"
+        ? { postId: null, projectId: null, clientId: null }
+        : {}),
+      ...(query.get("mine") === "1"
+        ? { assignees: { some: { id: auth.userId } } }
+        : Number.isFinite(assigneeId) && assigneeId > 0
+          ? { assignees: { some: { id: assigneeId } } }
+          : {}),
+      // Overdue means past due and not yet finished — a done task is never overdue.
+      ...(query.get("overdue") === "1"
+        ? { dueDate: { lt: new Date() }, status: { notIn: ["DONE", "CANCELLED"] } }
+        : {}),
+      ...(search
+        ? { OR: [{ title: { contains: search } }, { description: { contains: search } }] }
+        : {}),
+    }
 
-    // Filter for admins: only show posts that have at least one assignee
-    const filteredPosts = isAdminOrManager
-      ? posts.filter((p: any) => p.assignedToId || (p.assignedUsers && p.assignedUsers.length > 0))
-      : posts;
+    const [tasks, total] = await Promise.all([
+      prisma.task.findMany({
+        where,
+        select: taskSelect,
+        // Board order: column position first, then soonest due, then newest.
+        orderBy: [{ position: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.task.count({ where }),
+    ])
 
-    // Map Prisma posts to Task interface
-    const tasks: Task[] = posts.map((post: any) => {
-      const designRejections = (post.approvalFlows || [])
-        .filter((flow: any) => flow.flowType === 'DESIGN' && flow.status === 'REJECTED')
-        .length;
-
-      return {
-        id: post.id,
-        title: post.title,
-        caption: post.caption ?? undefined,
-        type: post.type,
-        status: post.status,
-        contentStatus: post.contentStatus,
-        scheduledAt: post.scheduledAt?.toISOString() ?? undefined,
-        designDueDate: post.designDueDate?.toISOString() ?? undefined,
-        createdAt: post.createdAt?.toISOString() ?? undefined,
-        updatedAt: post.updatedAt?.toISOString() ?? undefined,
-        createdBy: post.createdBy?.name || 'Unknown',
-        project: {
-          id: post.project?.id,
-          name: post.project?.name,
-          client: {
-            name: post.project?.client?.name ?? 'No Client',
-            company: post.project?.client?.company ?? 'No Company',
-            avatar: post.project?.client?.avatar ?? 'No Avatar',
-          },
-        },
-        assets: post.assets || [],
-        customData: post.customData,
-        platforms: post.platforms || [],
-        assignedToId: post.assignedToId ?? undefined,
-        assignedTo: post.assignedTo ?? undefined,
-        assignedUsers: post.assignedUsers || [],
-        feedback: post.taskLogs?.[0]?.feedback ?? undefined,
-        priority: post.customData?.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' | undefined,
-        comments: post.comments || [],
-        tasklogs: post.taskLogs || [],
-        auditLogs: post.auditLogs || [],
-        approvalFlows: post.approvalFlows?.map((flow: any) => ({
-          status: flow.status,
-          attachments: (flow.attachments || []).map((attachment: any) => ({
-            type: attachment.type,
-            url: attachment.url,
-            filename: attachment.filename,
-            size: attachment.size ?? undefined,
-            duration: attachment.duration ?? undefined,
-            mimeType: attachment.mimeType ?? undefined,
-            uploadedAt: attachment.uploadedAt?.toISOString(),
-          })),
-        })) ?? undefined,
-        designRejectionCount: designRejections,
-      };
-    });
-
-    // Group tasks by project
-    const grouped = groupTasksByProject(tasks);
-
-    return NextResponse.json(grouped);
-  } catch (error: any) {
-    console.error('Error fetching tasks:', {
-      message: error.message,
-      code: error.code,
-      meta: error.meta,
-      stack: error.stack?.split('\n').slice(0, 5).join('\n'),
-    });
-    return NextResponse.json({ 
-      error: 'Failed to fetch tasks',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    }, { status: 500 });
+    return NextResponse.json({ tasks, total, page, limit })
+  } catch (error) {
+    console.error("[tasks] list failed:", error)
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
   }
 }
 
-function groupTasksByProject(tasks: Task[]): ProjectGroup[] {
-  const grouped: Record<string, Task[]> = tasks.reduce((acc: Record<string, Task[]>, task) => {
-    const projectId = task.project?.id || 'unassigned';
-    if (!acc[projectId]) {
-      acc[projectId] = [];
+export async function POST(request: NextRequest) {
+  const auth = await requirePermission("Manage-tasks")
+  if (!auth.ok) return auth.response
+
+  try {
+    const parsed = taskSchema.safeParse(await request.json())
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: parsed.error.flatten().fieldErrors },
+        { status: 422 },
+      )
     }
-    acc[projectId].push(task);
-    return acc;
-  }, {});
+    const input = parsed.data
 
-  return Object.entries(grouped).map(([projectId, projectTasks]) => {
-    const firstTask = projectTasks[0];
-    const projectName = firstTask?.project?.name || 'Unassigned Tasks';
-    const clientName = firstTask?.project?.client?.name || 'No Client';
-    const companyName = firstTask?.project?.client?.company || 'No Company';
+    // Every reference from an untrusted caller is checked before the write, so a bad id
+    // becomes a 422 instead of a foreign-key 500.
+    const problem = await validateTaskLinks(input)
+    if (problem) return NextResponse.json({ error: problem }, { status: 422 })
 
-    // Calculate stats
-    const stats = calculateProjectStats(projectTasks);
+    // New tasks go to the top of their column.
+    const first = await prisma.task.findFirst({
+      where: { status: input.status },
+      orderBy: { position: "asc" },
+      select: { position: true },
+    })
 
-    return {
-      projectId,
-      projectName,
-      clientName,
-      companyName,
-      tasks: projectTasks,
-      stats,
-    };
-  }).sort((a, b) => {
-    // Sort by overdue tasks first, then by total tasks
-    if (a.stats.overdue !== b.stats.overdue) {
-      return b.stats.overdue - a.stats.overdue;
-    }
-    return b.stats.total - a.stats.total;
-  });
-}
+    const task = await prisma.task.create({
+      data: {
+        title: input.title,
+        description: input.description,
+        status: input.status,
+        priority: input.priority,
+        dueDate: input.dueDate,
+        completedAt: input.status === "DONE" ? new Date() : null,
+        position: (first?.position ?? 0) - 1,
+        createdById: auth.userId,
+        postId: input.postId,
+        projectId: input.projectId,
+        clientId: input.clientId,
+        assignees: { connect: input.assigneeIds.map((id) => ({ id })) },
+      },
+      select: taskSelect,
+    })
 
-function calculateProjectStats(tasks: Task[]) {
-  const today = new Date();
+    await notifyTaskAssignees(input.assigneeIds, task.id, task.title, auth.userId)
 
-  return {
-    total: tasks.length,
-    draft: tasks.filter(task => task.status === PostStatus.DRAFT).length,
-    pending: tasks.filter(task =>
-      [PostStatus.SUBMITTED, PostStatus.RESUBMITTED].includes(task.status)
-    ).length,
-    approved: tasks.filter(task =>
-      [PostStatus.APPROVED, PostStatus.SCHEDULED, PostStatus.POSTED].includes(task.status)
-    ).length,
-    approvedOnly: tasks.filter(task => task.status === PostStatus.APPROVED).length,
-    postedOnly: tasks.filter(task =>
-      [PostStatus.SCHEDULED, PostStatus.POSTED].includes(task.status)
-    ).length,
-    overdue: tasks.filter(task => {
-      if (!task.designDueDate) return false;
-      const designDueDate = new Date(task.designDueDate);
-      return designDueDate < today && [PostStatus.DRAFT, PostStatus.REJECTED, PostStatus.NEEDS_MINOR_CHANGE].includes(task.status);
-    }).length,
-    thisWeek: tasks.filter(task => {
-      let designDueDate = task.designDueDate ? new Date(task.designDueDate) : null;
-      if (!designDueDate && task.scheduledAt) {
-        designDueDate = new Date(task.scheduledAt);
-        designDueDate.setDate(designDueDate.getDate() - 7);
-      }
-      if (!designDueDate) return false;
-      const weekFromNow = new Date();
-      weekFromNow.setDate(today.getDate() + 7);
-      return designDueDate >= today && designDueDate <= weekFromNow;
-    }).length,
-    nextWeek: tasks.filter(task => {
-      let designDueDate = task.designDueDate ? new Date(task.designDueDate) : null;
-      if (!designDueDate && task.scheduledAt) {
-        designDueDate = new Date(task.scheduledAt);
-        designDueDate.setDate(designDueDate.getDate() - 7);
-      }
-      if (!designDueDate) return false;
-      const weekFromNow = new Date();
-      weekFromNow.setDate(today.getDate() + 7);
-      const twoWeeksFromNow = new Date();
-      twoWeeksFromNow.setDate(today.getDate() + 14);
-      return designDueDate > weekFromNow && designDueDate <= twoWeeksFromNow;
-    }).length,
-    rejected: tasks.filter(task =>
-      [PostStatus.REJECTED, PostStatus.NEEDS_MINOR_CHANGE].includes(task.status)
-    ).length,
-  };
+    await logAuditAction({
+      userId: String(auth.userId),
+      action: "CREATE",
+      entityType: "Task",
+      entityId: task.id,
+      newValues: JSON.stringify({ title: task.title, assignees: input.assigneeIds }),
+      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      userAgent: request.headers.get("user-agent") || "unknown",
+    })
+
+    return NextResponse.json({ task }, { status: 201 })
+  } catch (error) {
+    console.error("[tasks] create failed:", error)
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
+  }
 }

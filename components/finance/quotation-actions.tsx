@@ -15,6 +15,7 @@ import {
   Printer,
   Send,
   X,
+  Receipt,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -67,6 +68,7 @@ export default function QuotationActions({
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<QuotationStatus | null>(null)
+  const [confirmConvert, setConfirmConvert] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [brandingOpen, setBrandingOpen] = useState(false)
 
@@ -146,11 +148,48 @@ export default function QuotationActions({
     }
   }
 
+  /**
+   * Convert to an invoice. Offered only while ACCEPTED — the API enforces the same
+   * rule, and refuses a second attempt with the invoice that already exists.
+   */
+  const convert = async () => {
+    setBusy("convert")
+    try {
+      const response = await fetch(`/api/quotations/${id}/convert`, { method: "POST" })
+      const data = await response.json()
+      if (!response.ok) {
+        toast.error(data.error ?? "Could not convert the quotation")
+        // Already invoiced: send them to the invoice rather than leaving them stuck.
+        if (data.invoiceId) router.push(`/dashboard/invoices/${data.invoiceId}`)
+        return
+      }
+      toast.success(`${number} invoiced as ${data.invoice.number}`)
+      router.push(`/dashboard/invoices/${data.invoice.id}`)
+      router.refresh()
+    } catch {
+      toast.error("Network error — please try again")
+    } finally {
+      setBusy(null)
+      setConfirmConvert(false)
+    }
+  }
+
   const available = QUOTATION_TRANSITIONS[status].filter((next) => next in STATUS_ACTIONS)
 
   return (
     <div className="space-y-3 print:hidden">
       <div className="flex flex-wrap items-center gap-2">
+        {status === "ACCEPTED" && (
+          <Button size="sm" disabled={!!busy} onClick={() => setConfirmConvert(true)}>
+            {busy === "convert" ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Receipt className="mr-2 h-4 w-4" />
+            )}
+            Convert to invoice
+          </Button>
+        )}
+
         {available.map((next) => {
           const action = STATUS_ACTIONS[next]!
           const Icon = action.icon
@@ -261,6 +300,33 @@ export default function QuotationActions({
           onSuccess={() => router.refresh()}
         />
       )}
+
+      <AlertDialog open={confirmConvert} onOpenChange={setConfirmConvert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convert {number} to an invoice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A draft invoice is created with this quotation&apos;s lines and figures copied
+              across, and {number} is marked converted. The copy is a snapshot, so editing
+              the quotation afterwards will not change what the client was billed. A
+              quotation can only ever produce one invoice.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!busy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                convert()
+              }}
+              disabled={!!busy}
+            >
+              {busy === "convert" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create invoice
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!confirming} onOpenChange={(open) => !open && setConfirming(null)}>
         <AlertDialogContent>

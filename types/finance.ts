@@ -104,3 +104,75 @@ export interface QuotationDetail extends QuotationRow {
   createdBy: { id: number; name: string | null } | null
   lineItems: QuotationLineItem[]
 }
+
+export interface Payment {
+  id: string
+  amount: Money
+  method: PaymentMethod
+  reference: string | null
+  notes: string | null
+  paidAt: string
+  createdAt: string
+  recordedBy: { id: number; name: string | null } | null
+}
+
+/** What an invoice list row renders. */
+export interface InvoiceRow {
+  id: string
+  number: string
+  title: string
+  status: InvoiceStatus
+  currency: string
+  totalAmount: Money
+  issueDate: string
+  dueDate: string | null
+  createdAt: string
+  shareToken: string | null
+  company: { id: string; name: string }
+  client: { id: string; name: string; company: string | null }
+  project: { id: string; name: string } | null
+  quotation: { id: string; number: string } | null
+  /** Summed server-side from the invoice's payments. */
+  paid: Money
+  balance: Money
+}
+
+export interface InvoiceDetail extends Omit<InvoiceRow, "paid" | "balance"> {
+  companyId: string
+  clientId: string
+  projectId: string | null
+  quotationId: string | null
+  subtotal: Money
+  discountPercent: Money
+  taxType: TaxType
+  taxPercent: Money
+  terms: string | null
+  notes: string | null
+  shareExpiresAt: string | null
+  sentAt: string | null
+  updatedAt: string
+  company: Company
+  createdBy: { id: number; name: string | null } | null
+  lineItems: QuotationLineItem[]
+  payments: Payment[]
+  paid: Money
+  balance: Money
+}
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  DRAFT: "Draft",
+  SENT: "Sent",
+  PARTIAL: "Part paid",
+  PAID: "Paid",
+  OVERDUE: "Overdue",
+  CANCELLED: "Cancelled",
+}
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  BANK_TRANSFER: "Bank transfer",
+  UPI: "UPI",
+  CASH: "Cash",
+  CHEQUE: "Cheque",
+  CARD: "Card",
+  OTHER: "Other",
+}
