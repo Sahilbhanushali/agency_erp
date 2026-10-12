@@ -23,6 +23,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 
 export interface ApprovalStep {
   id: string;
@@ -79,6 +80,8 @@ export function ApprovalChainStepper({
   } | null>(null);
   const [feedback, setFeedback] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   if (!chain || !chain.steps) return null;
 
@@ -119,17 +122,20 @@ export function ApprovalChainStepper({
     }
   };
 
-  const handleResetChain = async () => {
-    if (!confirm("Reset all stages for a fresh round of review?")) return;
+  const confirmResetChain = async () => {
+    setIsResetting(true);
     try {
       const res = await fetch(`/api/posts/${postId}/approval-chain`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to reset chain");
       toast.success("Approval chain reset for re-review");
+      setShowResetConfirm(false);
       onRefresh();
     } catch (err: any) {
       toast.error(err.message || "Failed to reset");
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -170,7 +176,7 @@ export function ApprovalChainStepper({
               size="sm"
               variant="outline"
               className="text-xs h-7"
-              onClick={handleResetChain}
+              onClick={() => setShowResetConfirm(true)}
             >
               <RotateCcw className="size-3 mr-1" /> Reset Chain
             </Button>
@@ -350,6 +356,15 @@ export function ApprovalChainStepper({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmationDialog
+        isOpen={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        onConfirm={confirmResetChain}
+        title="Reset Approval Chain?"
+        itemName="Approval Stages"
+        isLoading={isResetting}
+      />
     </div>
   );
 }

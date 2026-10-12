@@ -1,0 +1,1133 @@
+"use client";
+
+import React, { useState } from "react";
+import useSWR from "swr";
+import { useSession } from "next-auth/react";
+import { toast } from "react-hot-toast";
+import {
+  Banknote,
+  DollarSign,
+  Users,
+  FileCheck2,
+  TrendingUp,
+  Download,
+  Plus,
+  RefreshCw,
+  Eye,
+  CheckCircle2,
+  Lock,
+  Clock,
+  ShieldCheck,
+  Settings,
+  Calendar,
+  AlertCircle,
+  AlertTriangle,
+  FileText,
+  ChevronRight,
+  ExternalLink,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import PayslipModal from "@/components/payroll/payslip-modal";
+import RunReviewModal from "@/components/payroll/run-review-modal";
+import EmployeeSelfService from "@/components/payroll/employee-self-service";
+import StatutoryReportsTab from "@/components/payroll/statutory-reports-tab";
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+function formatInr(minorUnits: number): string {
+  const rupees = (minorUnits || 0) / 100;
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(rupees);
+}
+
+export default function PayrollPage() {
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role || "";
+  const isHRorAdmin = ["ADMIN", "MANAGER", "HR", "FINANCE"].includes(userRole);
+
+  const [activeTab, setActiveTab] = useState("runs");
+
+  // Selected run for detailed view
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+
+  // New Payroll Run modal
+  const [isCreateRunOpen, setIsCreateRunOpen] = useState(false);
+  const [runMonth, setRunMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [runYear, setRunYear] = useState<string>(String(new Date().getFullYear()));
+  const [runType, setRunType] = useState<string>("REGULAR");
+  const [runNotes, setRunNotes] = useState("");
+  const [isCreatingRun, setIsCreatingRun] = useState(false);
+
+  // Payroll Readiness Pre-flight state
+  const [readinessReport, setReadinessReport] = useState<any | null>(null);
+  const [isLoadingReadiness, setIsLoadingReadiness] = useState(false);
+
+  const fetchReadiness = async (m: string, y: string) => {
+    try {
+      setIsLoadingReadiness(true);
+      const res = await fetch(`/api/payroll/readiness?month=${m}&year=${y}`);
+      if (res.ok) {
+        const data = await res.json();
+        setReadinessReport(data);
+      }
+    } catch {
+      // Non-critical check
+    } finally {
+      setIsLoadingReadiness(false);
+    }
+  };
+
+  // Salary Structure Modal
+  const [editingSalaryUser, setEditingSalaryUser] = useState<any | null>(null);
+  const [salaryGross, setSalaryGross] = useState<number>(50000); // rupees
+  const [salaryBasic, setSalaryBasic] = useState<number>(25000);
+  const [salaryHra, setSalaryHra] = useState<number>(12500);
+  const [salarySpecial, setSalarySpecial] = useState<number>(12500);
+  const [salaryPf, setSalaryPf] = useState<boolean>(true);
+  const [salaryEsi, setSalaryEsi] = useState<boolean>(false);
+  const [salaryPt, setSalaryPt] = useState<boolean>(true);
+  const [salaryTds, setSalaryTds] = useState<number>(0);
+  const [isSavingSalary, setIsSavingSalary] = useState(false);
+
+  // Adjustment Modal
+  const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
+  const [adjUserId, setAdjUserId] = useState<string>("");
+  const [adjType, setAdjType] = useState<string>("BONUS");
+  const [adjTitle, setAdjTitle] = useState("");
+  const [adjAmount, setAdjAmount] = useState<string>("");
+  const [adjNotes, setAdjNotes] = useState("");
+  const [isSavingAdj, setIsSavingAdj] = useState(false);
+
+  // Selected payslip for printable view
+  const [selectedPayslip, setSelectedPayslip] = useState<any | null>(null);
+
+  // SWR Fetches
+  const { data: runs = [], mutate: mutateRuns, isLoading: runsLoading } = useSWR(
+    isHRorAdmin ? "/api/payroll/runs" : null,
+    fetcher
+  );
+
+  const { data: selectedRun, mutate: mutateSelectedRun } = useSWR(
+    selectedRunId ? `/api/payroll/runs/${selectedRunId}` : null,
+    fetcher
+  );
+
+  const { data: users = [] } = useSWR(
+    isHRorAdmin ? "/api/users" : null,
+    fetcher
+  );
+
+  const { data: adjustments = [], mutate: mutateAdjustments } = useSWR(
+    isHRorAdmin ? `/api/payroll/adjustments?year=${new Date().getFullYear()}` : null,
+    fetcher
+  );
+
+  const { data: myPayslips = [] } = useSWR(
+    !isHRorAdmin ? "/api/payroll/payslips" : null,
+    fetcher
+  );
+
+  const { data: settings, mutate: mutateSettings } = useSWR(
+    isHRorAdmin ? "/api/payroll/settings" : null,
+    fetcher
+  );
+
+  const safeRuns = Array.isArray(runs) ? runs : [];
+  const safeUsers = Array.isArray(users) ? users : [];
+  const safeAdjustments = Array.isArray(adjustments) ? adjustments : [];
+  const safeMyPayslips = Array.isArray(myPayslips) ? myPayslips : [];
+
+  // Quick stats
+  const latestRun = safeRuns.length > 0 ? safeRuns[0] : null;
+  const totalPayout = latestRun ? latestRun.totalNetPay : 0;
+  const totalHeadcount = latestRun ? latestRun.totalHeadcount : 0;
+  const totalDeductions = latestRun ? latestRun.totalDeductions : 0;
+
+  // Handlers
+  const handleCreateRun = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsCreatingRun(true);
+      const res = await fetch("/api/payroll/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month: Number(runMonth),
+          year: Number(runYear),
+          runType,
+          notes: runNotes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create payroll run");
+      toast.success(`Payroll calculated for ${MONTH_NAMES[Number(runMonth) - 1]} ${runYear}!`);
+      setIsCreateRunOpen(false);
+      setRunNotes("");
+      mutateRuns();
+      setSelectedRunId(data.id);
+    } catch (err: any) {
+      toast.error(err.message || "Calculation failed");
+    } finally {
+      setIsCreatingRun(false);
+    }
+  };
+
+  const handleStatusTransition = async (runId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/payroll/runs/${runId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Status update failed");
+      toast.success(`Payroll run status updated to ${newStatus}.`);
+      mutateRuns();
+      if (selectedRunId === runId) mutateSelectedRun();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update status");
+    }
+  };
+
+  const handleRecalculate = async (runId: string) => {
+    try {
+      const res = await fetch(`/api/payroll/runs/${runId}/recalculate`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Recalculation failed");
+      toast.success("Payroll run recalculated with latest attendance and adjustments.");
+      mutateRuns();
+      if (selectedRunId === runId) mutateSelectedRun();
+    } catch (err: any) {
+      toast.error(err.message || "Recalculation failed");
+    }
+  };
+
+  const handleOpenSalaryModal = async (u: any) => {
+    setEditingSalaryUser(u);
+    try {
+      const res = await fetch(`/api/payroll/salary/${u.id}`);
+      const data = await res.json();
+      if (data.active) {
+        const grossRupees = data.active.monthlyGross / 100;
+        setSalaryGross(grossRupees);
+        setSalaryBasic(data.active.basicSalary / 100);
+        setSalaryHra(data.active.hra / 100);
+        setSalarySpecial(data.active.specialAllowance / 100);
+        setSalaryPf(data.active.pfDeduction);
+        setSalaryEsi(data.active.esiDeduction);
+        setSalaryPt(data.active.professionalTax);
+        setSalaryTds((data.active.tdsMonthly || 0) / 100);
+      } else {
+        // Defaults: Gross 50k => Basic 50%, HRA 25%, Special 25%
+        setSalaryGross(50000);
+        setSalaryBasic(25000);
+        setSalaryHra(12500);
+        setSalarySpecial(12500);
+        setSalaryPf(true);
+        setSalaryEsi(false);
+        setSalaryPt(true);
+        setSalaryTds(0);
+      }
+    } catch {
+      setSalaryGross(50000);
+      setSalaryBasic(25000);
+      setSalaryHra(12500);
+      setSalarySpecial(12500);
+    }
+  };
+
+  const handleSaveSalary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSalaryUser) return;
+    try {
+      setIsSavingSalary(true);
+      const res = await fetch(`/api/payroll/salary/${editingSalaryUser.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          basicSalary: Math.round(salaryBasic * 100),
+          hra: Math.round(salaryHra * 100),
+          specialAllowance: Math.round(salarySpecial * 100),
+          pfDeduction: salaryPf,
+          esiDeduction: salaryEsi,
+          professionalTax: salaryPt,
+          tdsMonthly: Math.round(salaryTds * 100),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update salary");
+      toast.success(`Salary structure updated for ${editingSalaryUser.name}!`);
+      setEditingSalaryUser(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save salary");
+    } finally {
+      setIsSavingSalary(false);
+    }
+  };
+
+  const handleSaveAdjustment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjUserId || !adjTitle.trim() || !adjAmount) {
+      toast.error("Please fill all required adjustment fields.");
+      return;
+    }
+    try {
+      setIsSavingAdj(true);
+      const res = await fetch("/api/payroll/adjustments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: adjUserId,
+          month: Number(runMonth),
+          year: Number(runYear),
+          type: adjType,
+          title: adjTitle.trim(),
+          amount: Math.round(parseFloat(adjAmount) * 100), // convert rupees to paise
+          notes: adjNotes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save adjustment");
+      toast.success("Adjustment saved successfully!");
+      setIsAdjustmentModalOpen(false);
+      setAdjTitle("");
+      setAdjAmount("");
+      setAdjNotes("");
+      mutateAdjustments();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save adjustment");
+    } finally {
+      setIsSavingAdj(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "CALCULATED":
+        return <Badge variant="warning" className="text-[10px] py-0">Calculated</Badge>;
+      case "UNDER_REVIEW":
+        return <Badge variant="info" className="text-[10px] py-0">Under Review</Badge>;
+      case "APPROVED":
+        return <Badge variant="success" className="text-[10px] py-0">Approved</Badge>;
+      case "PAID":
+        return <Badge variant="success" className="text-[10px] py-0">Paid & Published</Badge>;
+      case "LOCKED":
+        return <Badge variant="neutral" className="text-[10px] py-0 gap-1"><Lock className="size-2.5" /> Locked</Badge>;
+      default:
+        return <Badge variant="neutral" className="text-[10px] py-0">{status}</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in-50 duration-200">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Banknote className="size-6 text-primary" />
+            Payroll & Compensation
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Calculate monthly runs, statutory deductions, download bank transfer CSVs, and generate branded payslips.
+          </p>
+        </div>
+        {isHRorAdmin && (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => setIsCreateRunOpen(true)}
+              className="gap-1.5 shadow-2xs text-xs font-semibold"
+            >
+              <Plus className="size-3.5" />
+              New Payroll Run
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* KPI Cards (for Admin/HR) */}
+      {isHRorAdmin && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="shadow-2xs">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Latest Net Payout
+                </p>
+                <h3 className="text-2xl font-black text-foreground mt-1">
+                  {formatInr(totalPayout)}
+                </h3>
+              </div>
+              <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <DollarSign className="size-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-2xs">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Employees Processed
+                </p>
+                <h3 className="text-2xl font-black text-foreground mt-1">
+                  {totalHeadcount}
+                </h3>
+              </div>
+              <div className="size-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                <Users className="size-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-2xs">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Statutory Deductions
+                </p>
+                <h3 className="text-2xl font-black text-foreground mt-1 text-red-600">
+                  {formatInr(totalDeductions)}
+                </h3>
+              </div>
+              <div className="size-10 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center">
+                <TrendingUp className="size-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-2xs">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Payroll Cycle Status
+                </p>
+                <div className="mt-1">
+                  {latestRun ? getStatusBadge(latestRun.status) : <Badge variant="neutral">No Runs</Badge>}
+                </div>
+              </div>
+              <div className="size-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                <FileCheck2 className="size-5" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Main Tabs */}
+      {isHRorAdmin ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="bg-muted/60 p-1 border border-border/60 rounded-lg flex-wrap">
+            <TabsTrigger value="runs" className="text-xs">Payroll Runs</TabsTrigger>
+            <TabsTrigger value="salaries" className="text-xs">Salary Structures</TabsTrigger>
+            <TabsTrigger value="adjustments" className="text-xs">Monthly Adjustments</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs">Rules & Settings</TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs">Statutory & Reports</TabsTrigger>
+            <TabsTrigger value="self-service" className="text-xs">My Self-Service</TabsTrigger>
+          </TabsList>
+
+          {/* TAB 1: PAYROLL RUNS */}
+          <TabsContent value="runs" className="space-y-4">
+            <Card className="shadow-2xs overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs font-semibold">Pay Period</TableHead>
+                    <TableHead className="text-xs font-semibold">Headcount</TableHead>
+                    <TableHead className="text-xs font-semibold">Gross Payout</TableHead>
+                    <TableHead className="text-xs font-semibold">Deductions</TableHead>
+                    <TableHead className="text-xs font-semibold">Net Disbursement</TableHead>
+                    <TableHead className="text-xs font-semibold">Status</TableHead>
+                    <TableHead className="text-right text-xs font-semibold">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {runsLoading ? (
+                    [1, 2, 3].map((i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : safeRuns.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-10 text-xs text-muted-foreground">
+                        No payroll runs created yet. Click &quot;New Payroll Run&quot; to calculate this month&apos;s payout.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    safeRuns.map((r: any) => (
+                      <TableRow key={r.id} className="hover:bg-muted/30">
+                        <TableCell className="font-bold text-xs text-foreground">
+                          {MONTH_NAMES[r.month - 1]} {r.year}
+                        </TableCell>
+                        <TableCell className="text-xs">{r.totalHeadcount} Staff</TableCell>
+                        <TableCell className="text-xs font-mono">{formatInr(r.totalGross)}</TableCell>
+                        <TableCell className="text-xs font-mono text-red-600">
+                          {formatInr(r.totalDeductions)}
+                        </TableCell>
+                        <TableCell className="text-xs font-mono font-bold text-emerald-600">
+                          {formatInr(r.totalNetPay)}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(r.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => setSelectedRunId(r.id)}
+                              className="gap-1 text-xs"
+                            >
+                              <Eye className="size-3.5" />
+                              View Breakdown
+                            </Button>
+
+                            {/* Export Toolbar */}
+                            <a href={`/api/payroll/runs/${r.id}/export/bank-csv`} download>
+                              <Button variant="ghost" size="icon-xs" title="Download Bank Transfer CSV">
+                                <Download className="size-3.5" />
+                              </Button>
+                            </a>
+
+                            {/* Status transitions */}
+                            {r.status === "CALCULATED" && (
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                onClick={() => handleStatusTransition(r.id, "UNDER_REVIEW")}
+                                className="text-blue-600"
+                              >
+                                Send for Review
+                              </Button>
+                            )}
+
+                            {r.status === "UNDER_REVIEW" && (
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                onClick={() => handleStatusTransition(r.id, "APPROVED")}
+                                className="text-emerald-600"
+                              >
+                                Approve Run
+                              </Button>
+                            )}
+
+                            {r.status === "APPROVED" && (
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                onClick={() => handleStatusTransition(r.id, "PAID")}
+                                className="text-emerald-600 font-bold"
+                              >
+                                Mark as Paid
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+
+            {/* Run Review & Variance Audit Modal */}
+            {selectedRunId && (
+              <RunReviewModal
+                runId={selectedRunId}
+                onClose={() => setSelectedRunId(null)}
+                userRole={userRole}
+                onRunUpdated={mutateRuns}
+              />
+            )}
+          </TabsContent>
+
+          {/* TAB 2: SALARY STRUCTURES */}
+          <TabsContent value="salaries" className="space-y-4">
+            <Card className="shadow-2xs overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs font-semibold">Employee</TableHead>
+                    <TableHead className="text-xs font-semibold">Role / Designation</TableHead>
+                    <TableHead className="text-xs font-semibold">Configured Salary (CTC)</TableHead>
+                    <TableHead className="text-xs font-semibold">Bank Info</TableHead>
+                    <TableHead className="text-right text-xs font-semibold">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {safeUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-xs text-muted-foreground">
+                        No employee profiles found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    safeUsers.map((u: any) => (
+                      <TableRow key={u.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="size-7">
+                            <AvatarImage src={u.avatar} />
+                            <AvatarFallback className="text-[10px]">{u.name?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">{u.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{u.email}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">{u.designation || u.role || "Member"}</TableCell>
+                      <TableCell className="text-xs font-mono font-bold text-emerald-700">
+                        {u.currentSalary ? `₹${Number(u.currentSalary).toLocaleString("en-IN")}/mo` : "Not Configured"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono">
+                        {u.bankAccountNumber ? `A/C: ••••${u.bankAccountNumber.slice(-4)}` : "Missing A/C"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          onClick={() => handleOpenSalaryModal(u)}
+                          className="gap-1 text-xs"
+                        >
+                          <Settings className="size-3.5" />
+                          Configure Salary
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 3: MONTHLY ADJUSTMENTS */}
+          <TabsContent value="adjustments" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-muted-foreground">
+                One-time bonuses, travel reimbursements, and deductions applied to monthly payroll.
+              </p>
+              <Button size="xs" onClick={() => setIsAdjustmentModalOpen(true)} className="gap-1.5">
+                <Plus className="size-3.5" />
+                Add Adjustment
+              </Button>
+            </div>
+
+            <Card className="shadow-2xs overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs font-semibold">Employee</TableHead>
+                    <TableHead className="text-xs font-semibold">Type</TableHead>
+                    <TableHead className="text-xs font-semibold">Title</TableHead>
+                    <TableHead className="text-xs font-semibold">Amount</TableHead>
+                    <TableHead className="text-xs font-semibold">Cycle</TableHead>
+                    <TableHead className="text-xs font-semibold">Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {safeAdjustments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-xs text-muted-foreground">
+                        No variable adjustments recorded for this cycle.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    safeAdjustments.map((a: any) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="font-bold text-xs">{a.user?.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={a.type.includes("DEDUCTION") ? "destructive" : "success"} className="text-[10px] py-0">
+                            {a.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs font-medium">{a.title}</TableCell>
+                        <TableCell className="text-xs font-mono font-bold">
+                          {formatInr(a.amount)}
+                        </TableCell>
+                        <TableCell className="text-xs font-mono">{a.month}/{a.year}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{a.notes || "-"}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 4: SETTINGS */}
+          <TabsContent value="settings" className="space-y-4">
+            {settings && (
+              <Card className="shadow-2xs">
+                <CardHeader>
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Settings className="size-4 text-primary" /> Agency Payroll Calculation Rules
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-3 rounded-lg border border-border bg-muted/20">
+                      <span className="font-bold block text-foreground">Pay Period Divisor</span>
+                      <span className="text-muted-foreground">{settings.payPeriodType}</span>
+                    </div>
+                    <div className="p-3 rounded-lg border border-border bg-muted/20">
+                      <span className="font-bold block text-foreground">Overtime Multiplier</span>
+                      <span className="text-muted-foreground">{settings.overtimeHourlyRateMultiplier}x hourly rate</span>
+                    </div>
+                    <div className="p-3 rounded-lg border border-border bg-muted/20">
+                      <span className="font-bold block text-foreground">Late Mark Penalty</span>
+                      <span className="text-muted-foreground">{settings.lateMarksForHalfDayPenalty} late marks = 0.5 day penalty</span>
+                    </div>
+                    <div className="p-3 rounded-lg border border-border bg-muted/20">
+                      <span className="font-bold block text-foreground">PF Employee Rate</span>
+                      <span className="text-muted-foreground">{settings.pfEmployeeRate}% (Ceiling: ₹15,000)</span>
+                    </div>
+                    <div className="p-3 rounded-lg border border-border bg-muted/20">
+                      <span className="font-bold block text-foreground">ESI Employee Rate</span>
+                      <span className="text-muted-foreground">{settings.esiEmployeeRate}% (Ceiling: ₹21,000)</span>
+                    </div>
+                    <div className="p-3 rounded-lg border border-border bg-muted/20">
+                      <span className="font-bold block text-foreground">Standard Work Hours</span>
+                      <span className="text-muted-foreground">{settings.standardWorkHours} Hours / Day</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* TAB 5: STATUTORY & FINANCIAL REPORTS */}
+          <TabsContent value="reports" className="space-y-4">
+            <StatutoryReportsTab runs={safeRuns} />
+          </TabsContent>
+
+          {/* TAB 6: EMPLOYEE SELF SERVICE */}
+          <TabsContent value="self-service" className="space-y-4">
+            <EmployeeSelfService />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        /* Regular Employee Self-Service View */
+        <EmployeeSelfService />
+      )}
+
+      {/* ================= MODAL: CREATE PAYROLL RUN ================= */}
+      {isCreateRunOpen && (
+        <Dialog open={isCreateRunOpen} onOpenChange={setIsCreateRunOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base flex items-center gap-2">
+                <Plus className="size-5 text-primary" /> Calculate New Payroll Run
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Auto-calculates gross, payable days, statutory deductions, and net salary for all active employees.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateRun} className="space-y-4 py-2">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs font-medium">Month</Label>
+                  <Select value={runMonth} onValueChange={setRunMonth}>
+                    <SelectTrigger className="mt-1 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTH_NAMES.map((m, idx) => (
+                        <SelectItem key={idx} value={String(idx + 1)} className="text-xs">
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium">Year</Label>
+                  <Input
+                    type="number"
+                    value={runYear}
+                    onChange={(e) => setRunYear(e.target.value)}
+                    className="mt-1 h-8 text-xs font-mono"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium">Cycle Type</Label>
+                  <Select value={runType} onValueChange={setRunType}>
+                    <SelectTrigger className="mt-1 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="REGULAR" className="text-xs">Regular Monthly</SelectItem>
+                      <SelectItem value="OFF_CYCLE" className="text-xs">Off-Cycle</SelectItem>
+                      <SelectItem value="BONUS" className="text-xs">Bonus Run</SelectItem>
+                      <SelectItem value="FN_F" className="text-xs">Full & Final (F&F)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Pre-Flight Readiness Check */}
+              <div className="space-y-2 pt-1 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Pre-Flight Readiness Check
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => fetchReadiness(runMonth, runYear)}
+                    loading={isLoadingReadiness}
+                    className="h-6 text-[11px] gap-1 text-primary hover:bg-primary/10"
+                  >
+                    <RefreshCw className="size-3" /> Check Readiness
+                  </Button>
+                </div>
+
+                {readinessReport && (
+                  <div className="space-y-2">
+                    {readinessReport.blockers?.length > 0 && (
+                      <div className="p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-600 text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold">
+                          <AlertTriangle className="size-3.5" />
+                          <span>{readinessReport.blockers.length} Blocker(s) Found</span>
+                        </div>
+                        {readinessReport.blockers.map((b: any, idx: number) => (
+                          <p key={idx} className="text-[11px] text-red-600/90 pl-5">
+                            • {b.title}: {b.description}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    {readinessReport.warnings?.length > 0 && (
+                      <div className="p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 font-semibold">
+                          <AlertCircle className="size-3.5" />
+                          <span>{readinessReport.warnings.length} Warning(s)</span>
+                        </div>
+                        {readinessReport.warnings.map((w: any, idx: number) => (
+                          <p key={idx} className="text-[11px] text-amber-700/90 pl-5">
+                            • {w.title}: {w.description}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    {readinessReport.blockers?.length === 0 && readinessReport.warnings?.length === 0 && (
+                      <div className="p-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 text-xs flex items-center gap-2">
+                        <CheckCircle2 className="size-3.5" />
+                        <span>All pre-flight checks passed! Ready for calculation.</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0 mt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCreateRunOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  loading={isCreatingRun}
+                  disabled={readinessReport?.blockers?.length > 0}
+                  className={readinessReport?.blockers?.length > 0 ? "opacity-50 cursor-not-allowed" : ""}
+                >
+                  Run Calculation
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ================= MODAL: CONFIGURE SALARY STRUCTURE ================= */}
+      {editingSalaryUser && (
+        <Dialog open={!!editingSalaryUser} onOpenChange={() => setEditingSalaryUser(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-base flex items-center gap-2">
+                <Settings className="size-5 text-primary" /> Configure Salary Structure
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Set monthly compensation components for {editingSalaryUser.name}. Preserves version history.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSaveSalary} className="space-y-3 py-2">
+              <div>
+                <Label className="text-xs font-semibold">Monthly Gross Salary (₹)</Label>
+                <Input
+                  type="number"
+                  value={salaryGross}
+                  onChange={(e) => {
+                    const gross = parseFloat(e.target.value) || 0;
+                    setSalaryGross(gross);
+                    // Automatic split: 50% Basic, 25% HRA, 25% Special
+                    setSalaryBasic(Math.round(gross * 0.5));
+                    setSalaryHra(Math.round(gross * 0.25));
+                    setSalarySpecial(Math.round(gross * 0.25));
+                  }}
+                  className="mt-1 h-9 font-mono font-bold text-sm"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border">
+                <div>
+                  <Label className="text-[11px] font-medium">Basic (50%)</Label>
+                  <Input
+                    type="number"
+                    value={salaryBasic}
+                    onChange={(e) => setSalaryBasic(parseFloat(e.target.value) || 0)}
+                    className="mt-1 h-8 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-medium">HRA (25%)</Label>
+                  <Input
+                    type="number"
+                    value={salaryHra}
+                    onChange={(e) => setSalaryHra(parseFloat(e.target.value) || 0)}
+                    className="mt-1 h-8 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-medium">Special (25%)</Label>
+                  <Input
+                    type="number"
+                    value={salarySpecial}
+                    onChange={(e) => setSalarySpecial(parseFloat(e.target.value) || 0)}
+                    className="mt-1 h-8 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-border">
+                <Label className="text-xs font-semibold block">Statutory Deductions & TDS</Label>
+                <div className="flex items-center gap-4 text-xs">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={salaryPf}
+                      onChange={(e) => setSalaryPf(e.target.checked)}
+                    />
+                    <span>PF (12%)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={salaryEsi}
+                      onChange={(e) => setSalaryEsi(e.target.checked)}
+                    />
+                    <span>ESI</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={salaryPt}
+                      onChange={(e) => setSalaryPt(e.target.checked)}
+                    />
+                    <span>Prof. Tax</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-[11px] font-medium">Monthly TDS Deduction (₹)</Label>
+                <Input
+                  type="number"
+                  value={salaryTds}
+                  onChange={(e) => setSalaryTds(parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  className="mt-1 h-8 text-xs font-mono"
+                />
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0 mt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingSalaryUser(null)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" loading={isSavingSalary}>
+                  Save Structure
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ================= MODAL: ADD ADJUSTMENT ================= */}
+      {isAdjustmentModalOpen && (
+        <Dialog open={isAdjustmentModalOpen} onOpenChange={setIsAdjustmentModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base flex items-center gap-2">
+                <Plus className="size-5 text-primary" /> Add Variable Adjustment
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Add a bonus, reimbursement, or loan recovery for this month&apos;s payroll.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSaveAdjustment} className="space-y-3 py-2">
+              <div>
+                <Label className="text-xs font-medium">Employee</Label>
+                <Select value={adjUserId} onValueChange={setAdjUserId}>
+                  <SelectTrigger className="mt-1 h-8 text-xs">
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {safeUsers.map((u: any) => (
+                      <SelectItem key={u.id} value={String(u.id)} className="text-xs">
+                        {u.name} ({u.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-medium">Type</Label>
+                  <Select value={adjType} onValueChange={setAdjType}>
+                    <SelectTrigger className="mt-1 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BONUS" className="text-xs">Bonus</SelectItem>
+                      <SelectItem value="REIMBURSEMENT" className="text-xs">Reimbursement</SelectItem>
+                      <SelectItem value="ONE_TIME_EARNING" className="text-xs">One-Time Earning</SelectItem>
+                      <SelectItem value="LOAN_ADVANCE" className="text-xs">Loan / Advance Recovery</SelectItem>
+                      <SelectItem value="DEDUCTION" className="text-xs">Other Deduction</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium">Amount (₹)</Label>
+                  <Input
+                    type="number"
+                    value={adjAmount}
+                    onChange={(e) => setAdjAmount(e.target.value)}
+                    placeholder="e.g. 5000"
+                    className="mt-1 h-8 text-xs font-mono"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium">Title *</Label>
+                <Input
+                  value={adjTitle}
+                  onChange={(e) => setAdjTitle(e.target.value)}
+                  placeholder="e.g. Client Travel Allowance"
+                  className="mt-1 h-8 text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium">Notes (Optional)</Label>
+                <Input
+                  value={adjNotes}
+                  onChange={(e) => setAdjNotes(e.target.value)}
+                  placeholder="e.g. Approved by Director"
+                  className="mt-1 h-8 text-xs"
+                />
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0 mt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAdjustmentModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" loading={isSavingAdj}>
+                  Save Adjustment
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ================= BRANDED PAYSLIP PRINTABLE MODAL ================= */}
+      {selectedPayslip && (
+        <PayslipModal
+          isOpen={!!selectedPayslip}
+          onClose={() => setSelectedPayslip(null)}
+          payslip={selectedPayslip}
+          agencyName={settings?.companyName || "Marketing Agency"}
+        />
+      )}
+    </div>
+  );
+}

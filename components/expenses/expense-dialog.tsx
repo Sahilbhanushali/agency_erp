@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
@@ -17,11 +17,18 @@ import {
   Building2,
   FolderKanban,
   CreditCard,
+  RefreshCw,
+  Eye,
+  Trash2,
+  Sparkles,
+  Tag,
+  ArrowRight,
 } from "lucide-react";
 
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -30,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -37,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { getMediaUrl } from "@/lib/utils";
 
@@ -52,13 +61,13 @@ interface ExpenseDialogProps {
 }
 
 const CATEGORIES = [
-  { value: "SOFTWARE_TOOL", label: "Software & SaaS Subscriptions" },
-  { value: "CONTRACTOR_FREELANCER", label: "Contractor & Freelancer Fees" },
-  { value: "AD_SPEND", label: "Ad Spend (Meta, Google, LinkedIn)" },
-  { value: "SHOOT_PRODUCTION", label: "Shoot, Studio & Production" },
-  { value: "OFFICE_TRAVEL", label: "Travel & Client Entertainment" },
-  { value: "HARDWARE_EQUIPMENT", label: "Hardware & Tech Equipment" },
-  { value: "OTHER", label: "Other Operational Expense" },
+  { value: "SOFTWARE_TOOL", label: "Software & SaaS Subscriptions", icon: "💻" },
+  { value: "CONTRACTOR_FREELANCER", label: "Contractor & Freelancer Fees", icon: "👥" },
+  { value: "AD_SPEND", label: "Ad Spend (Meta, Google, LinkedIn)", icon: "📈" },
+  { value: "SHOOT_PRODUCTION", label: "Shoot, Studio & Production", icon: "🎬" },
+  { value: "OFFICE_TRAVEL", label: "Travel & Client Entertainment", icon: "✈️" },
+  { value: "HARDWARE_EQUIPMENT", label: "Hardware & Tech Equipment", icon: "🖥️" },
+  { value: "OTHER", label: "Other Operational Expense", icon: "📁" },
 ];
 
 const PAYMENT_METHODS = [
@@ -69,6 +78,13 @@ const PAYMENT_METHODS = [
   { value: "CHEQUE", label: "Cheque" },
   { value: "OTHER", label: "Other Payment Method" },
 ];
+
+const STATUS_VARIANTS: Record<string, { label: string; variant: "success" | "warning" | "info" | "destructive" }> = {
+  APPROVED: { label: "Approved / Paid", variant: "success" },
+  PENDING: { label: "Pending Review", variant: "warning" },
+  REIMBURSED: { label: "Reimbursed", variant: "info" },
+  REJECTED: { label: "Rejected", variant: "destructive" },
+};
 
 export function ExpenseDialog({
   open,
@@ -94,37 +110,40 @@ export function ExpenseDialog({
   const [receiptName, setReceiptName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch clients for selection
-  const { data: clientsData } = useSWR("/api/clients", fetcher);
-  const clients = clientsData?.clients || clientsData || [];
+  const { data: clientsData } = useSWR(open ? "/api/clients" : null, fetcher);
+  const clients = Array.isArray(clientsData) ? clientsData : clientsData?.clients || [];
 
   // Fetch projects for selection
-  const { data: projectsData } = useSWR("/api/projects", fetcher);
+  const { data: projectsData } = useSWR(open ? "/api/projects" : null, fetcher);
   const projects = Array.isArray(projectsData) ? projectsData : projectsData?.projects || [];
 
   useEffect(() => {
     if (expense) {
       setTitle(expense.title || "");
       setCategory(expense.category || "OTHER");
-      setAmount(String(expense.amount || ""));
+      setAmount(expense.amount ? String(expense.amount) : "");
       setCurrency(expense.currency || "INR");
       setDate(
         expense.date
           ? format(new Date(expense.date), "yyyy-MM-dd")
           : format(new Date(), "yyyy-MM-dd")
       );
-      setIsBillable(Boolean(expense.isBillable));
+      setIsBillable(!!expense.isBillable);
       setStatus(expense.status || "APPROVED");
       setPaymentMethod(expense.paymentMethod || "BANK_TRANSFER");
       setNotes(expense.notes || "");
-      setClientId(expense.clientId || preselectedClientId || "NONE");
-      setProjectId(expense.projectId || preselectedProjectId || "NONE");
+      setClientId(expense.clientId || "NONE");
+      setProjectId(expense.projectId || "NONE");
       setReceiptUrl(expense.receiptUrl || null);
-      setReceiptName(expense.receiptName || null);
+      setReceiptName(
+        expense.receiptUrl ? expense.receiptUrl.split("/").pop() || "Receipt" : null
+      );
     } else {
       setTitle("");
-      setCategory("OTHER");
+      setCategory("SOFTWARE_TOOL");
       setAmount("");
       setCurrency("INR");
       setDate(format(new Date(), "yyyy-MM-dd"));
@@ -137,32 +156,30 @@ export function ExpenseDialog({
       setReceiptUrl(null);
       setReceiptName(null);
     }
-  }, [expense, open, preselectedClientId, preselectedProjectId]);
+  }, [expense, preselectedClientId, preselectedProjectId, open]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    if (receiptUrl) {
-      formData.append("oldUrl", receiptUrl);
-    }
-
     try {
-      const res = await fetch("/api/expenses/upload", {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
+
+      if (!res.ok) throw new Error("File upload failed");
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
 
       setReceiptUrl(data.url);
-      setReceiptName(data.filename);
-      toast.success("Receipt uploaded successfully");
+      setReceiptName(file.name);
+      toast.success("Receipt invoice attached successfully");
     } catch (err: any) {
-      toast.error(err.message || "Could not upload receipt");
+      toast.error(err.message || "Failed to upload receipt");
     } finally {
       setUploading(false);
     }
@@ -170,12 +187,14 @@ export function ExpenseDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!title.trim()) {
-      toast.error("Please enter an expense title");
+      toast.error("Expense title is required");
       return;
     }
+
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      toast.error("Please enter a valid expense amount");
+      toast.error("Please enter a valid expense amount greater than 0");
       return;
     }
 
@@ -184,17 +203,16 @@ export function ExpenseDialog({
       const payload = {
         title: title.trim(),
         category,
-        amount: Number(amount),
+        amount: parseFloat(amount),
         currency,
         date: new Date(date).toISOString(),
         isBillable,
         status,
         paymentMethod,
         notes: notes.trim() || null,
-        clientId: clientId !== "NONE" ? clientId : null,
-        projectId: projectId !== "NONE" ? projectId : null,
+        clientId: clientId && clientId !== "NONE" ? clientId : null,
+        projectId: projectId && projectId !== "NONE" ? projectId : null,
         receiptUrl: receiptUrl || null,
-        receiptName: receiptName || null,
       };
 
       const url = expense ? `/api/expenses/${expense.id}` : "/api/expenses";
@@ -207,7 +225,7 @@ export function ExpenseDialog({
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save expense");
+      if (!res.ok) throw new Error(data.error || "Failed to save expense record");
 
       toast.success(
         expense ? "Expense updated successfully" : "Expense recorded successfully"
@@ -221,31 +239,53 @@ export function ExpenseDialog({
     }
   };
 
+  const statusConfig = STATUS_VARIANTS[status] || STATUS_VARIANTS.APPROVED;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <Receipt className="size-5 text-primary" />
-            <DialogTitle className="text-base font-semibold">
-              {expense ? "Edit Expense" : "Log New Expense"}
-            </DialogTitle>
+      <DialogContent className="max-w-3xl max-h-[92vh] flex flex-col p-0 overflow-hidden shadow-2xl rounded-2xl">
+        {/* Modal Header */}
+        <DialogHeader className="p-6 pb-4 border-b border-border/60 bg-muted/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="size-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Receipt className="size-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
+                  {expense ? "Edit Commercial Expense" : "Log New Agency Expense"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Track vendor bills, software tools, production costs, and associate them to client margins.
+                </DialogDescription>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5">
+                {CATEGORIES.find((c) => c.value === category)?.label.split(" ")[0] || category}
+              </Badge>
+              <Badge
+                variant={statusConfig.variant}
+                className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5"
+              >
+                {statusConfig.label}
+              </Badge>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Track direct project costs, freelancer contractor payments, tools, and calculate net margins.
-          </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          {/* Title & Category */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* Section 1: Core Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Expense Title *</Label>
               <Input
-                placeholder="e.g. Midjourney Annual License / Voiceover Artist"
+                placeholder="e.g. Midjourney Annual License / Voiceover Artist Fee"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="text-xs h-9"
+                className="text-xs h-10"
                 required
               />
             </div>
@@ -253,12 +293,13 @@ export function ExpenseDialog({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Expense Category *</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="text-xs h-9">
+                <SelectTrigger className="text-xs h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((cat) => (
                     <SelectItem key={cat.value} value={cat.value} className="text-xs">
+                      <span className="mr-1.5">{cat.icon}</span>
                       {cat.label}
                     </SelectItem>
                   ))}
@@ -267,124 +308,143 @@ export function ExpenseDialog({
             </div>
           </div>
 
-          {/* Amount & Date & Payment Method */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Amount (₹) *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="text-xs h-9"
-                required
-              />
+          {/* Section 2: Financials & Dates */}
+          <div className="p-4 rounded-xl border border-border/70 bg-muted/20 space-y-4">
+            <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+              <DollarSign className="size-4 text-emerald-600" />
+              <span>Financial Value & Payment Channel</span>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Date Incurred *</Label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="text-xs h-9"
-                required
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Amount (₹) *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                    ₹
+                  </span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="text-xs h-10 font-mono font-bold pl-7"
+                    required
+                  />
+                </div>
+              </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Payment Method</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger className="text-xs h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((pm) => (
-                    <SelectItem key={pm.value} value={pm.value} className="text-xs">
-                      {pm.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Date Incurred *</Label>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="text-xs h-10"
+                    required
+                  />
+                </div>
+              </div>
 
-          {/* Attribution: Client & Project Links */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg border border-border/60 bg-muted/20">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold flex items-center gap-1.5">
-                <Building2 className="size-3.5 text-muted-foreground" />
-                Linked Client (Optional)
-              </Label>
-              <SearchableSelect
-                value={clientId === "NONE" ? "" : clientId}
-                onValueChange={(val) => {
-                  setClientId(val ? val : "NONE");
-                  setProjectId("NONE");
-                }}
-                placeholder="Agency Overhead (No client)"
-                icon={Building2}
-                options={[
-                  { id: "", label: "Agency Overhead (No Client)" },
-                  ...clients.map((c: any) => ({
-                    id: c.id,
-                    label: c.name || "Client",
-                    subLabel: c.company ? `${c.company}` : c.email,
-                  })),
-                ]}
-                maxDisplay={4}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold flex items-center gap-1.5">
-                <FolderKanban className="size-3.5 text-muted-foreground" />
-                Linked Project (Optional)
-              </Label>
-              <SearchableSelect
-                value={projectId === "NONE" ? "" : projectId}
-                onValueChange={(val) => setProjectId(val ? val : "NONE")}
-                placeholder="No specific project"
-                icon={FolderKanban}
-                options={[
-                  { id: "", label: "No Specific Project" },
-                  ...(clientId && clientId !== "NONE"
-                    ? projects.filter((p: any) => p.clientId === clientId)
-                    : projects
-                  ).map((p: any) => ({
-                    id: p.id,
-                    label: p.name,
-                  })),
-                ]}
-                maxDisplay={4}
-              />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Payment Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger className="text-xs h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((pm) => (
+                      <SelectItem key={pm.value} value={pm.value} className="text-xs">
+                        {pm.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
-          {/* Billable Toggle & Approval Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-            <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/60 bg-muted/10">
-              <input
-                type="checkbox"
-                id="isBillable"
+          {/* Section 3: Commercial Attribution (Client & Project) */}
+          <div className="p-4 rounded-xl border border-border/70 bg-card space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                <Building2 className="size-4 text-primary" />
+                <span>Client & Project Profit Margin Allocation</span>
+              </div>
+              <Badge variant="outline" className="text-[10px]">
+                {clientId !== "NONE" ? "Direct Client Cost" : "Agency Overhead"}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Attributed Client Account</Label>
+                <SearchableSelect
+                  value={clientId === "NONE" ? "" : clientId}
+                  onValueChange={(val) => {
+                    setClientId(val ? val : "NONE");
+                    setProjectId("NONE");
+                  }}
+                  placeholder="Select Client (or Overhead)..."
+                  icon={Building2}
+                  options={[
+                    { id: "", label: "🏢 Agency Overhead (Not Client-Billed)" },
+                    ...clients.map((c: any) => ({
+                      id: c.id,
+                      label: c.name || "Client",
+                      subLabel: c.company ? `${c.company}` : c.email,
+                    })),
+                  ]}
+                  maxDisplay={4}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Attributed Project Campaign</Label>
+                <SearchableSelect
+                  value={projectId === "NONE" ? "" : projectId}
+                  onValueChange={(val) => setProjectId(val ? val : "NONE")}
+                  placeholder="Select Project Campaign..."
+                  icon={FolderKanban}
+                  options={[
+                    { id: "", label: "No Specific Project" },
+                    ...(clientId && clientId !== "NONE"
+                      ? projects.filter((p: any) => p.clientId === clientId)
+                      : projects
+                    ).map((p: any) => ({
+                      id: p.id,
+                      label: p.name,
+                    })),
+                  ]}
+                  maxDisplay={4}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Rebillable Toggle & Approval Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/15 flex items-center justify-between">
+              <div className="space-y-0.5 pr-2">
+                <Label className="text-xs font-bold text-foreground block">
+                  Rebillable to Client
+                </Label>
+                <p className="text-[11px] text-muted-foreground leading-tight">
+                  Pass through this cost directly on the client's next invoice.
+                </p>
+              </div>
+              <Switch
                 checked={isBillable}
-                onChange={(e) => setIsBillable(e.target.checked)}
-                className="rounded border-border text-primary focus:ring-primary size-4"
+                onCheckedChange={setIsBillable}
               />
-              <label htmlFor="isBillable" className="text-xs cursor-pointer select-none">
-                <span className="font-semibold block text-foreground">Rebillable to Client</span>
-                <span className="text-[11px] text-muted-foreground">
-                  Can be rebilled or attached to client's next invoice
-                </span>
-              </label>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Expense Status</Label>
+              <Label className="text-xs font-semibold">Approval / Settlement Status</Label>
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="text-xs h-9">
+                <SelectTrigger className="text-xs h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -405,73 +465,123 @@ export function ExpenseDialog({
             </div>
           </div>
 
-          {/* Receipt Upload */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Receipt / Tax Invoice Upload</Label>
+          {/* Section 5: Receipt Upload */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Receipt / Tax Invoice Document</Label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.docx"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+
             {receiptUrl ? (
-              <div className="flex items-center justify-between p-2.5 rounded-lg border border-border/60 bg-muted/30">
-                <div className="flex items-center gap-2 text-xs truncate">
-                  <FileText className="size-4 text-primary shrink-0" />
-                  <a
-                    href={getMediaUrl(receiptUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline font-medium text-foreground truncate"
-                  >
-                    {receiptName || "Uploaded Receipt"}
-                  </a>
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-card shadow-xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-9 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                    <FileText className="size-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <a
+                      href={getMediaUrl(receiptUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold hover:underline truncate text-foreground block"
+                    >
+                      {receiptName || "Uploaded Receipt"}
+                    </a>
+                    <span className="text-[10px] text-muted-foreground">Document attached</span>
+                  </div>
                 </div>
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="ghost"
-                  className="size-7 text-destructive"
-                  onClick={() => {
-                    setReceiptUrl(null);
-                    setReceiptName(null);
-                  }}
-                >
-                  <X className="size-3.5" />
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="text-xs h-8"
+                  >
+                    Replace
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setReceiptUrl(null);
+                      setReceiptName(null);
+                    }}
+                    className="text-destructive hover:bg-destructive/10 size-8"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Input
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,.docx"
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="text-xs file:text-xs file:h-7 file:rounded file:border-0 file:bg-primary/10 file:text-primary file:font-medium"
-                />
-                {uploading && <span className="text-xs text-muted-foreground animate-pulse">Uploading...</span>}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="cursor-pointer border-2 border-dashed border-border/80 hover:border-primary/50 hover:bg-muted/15 transition-all rounded-xl p-6 text-center space-y-1.5"
+              >
+                <div className="size-9 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                  <Upload className="size-4" />
+                </div>
+                <p className="text-xs font-bold text-foreground">
+                  {uploading ? "Uploading receipt document..." : "Click to attach receipt or invoice voucher"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  PDF, PNG, JPG, or DOCX up to 15MB
+                </p>
               </div>
             )}
           </div>
 
-          {/* Notes */}
+          {/* Section 6: Notes */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Notes & Description</Label>
+            <Label className="text-xs font-semibold">Commercial Notes & Description</Label>
             <Textarea
-              placeholder="Vendor details, PO reference, or commercial justifications..."
+              placeholder="Vendor details, commercial justifications, PO number, or disbursement notes..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="text-xs min-h-[70px] resize-none"
+              className="text-xs min-h-[75px] resize-none"
             />
           </div>
 
-          <DialogFooter className="gap-2 pt-2 border-t border-border/50">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="text-xs"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" className="text-xs" disabled={submitting || uploading}>
-              {submitting ? "Saving..." : expense ? "Update Expense" : "Record Expense"}
-            </Button>
+          {/* Sticky Modal Footer */}
+          <DialogFooter className="pt-3 border-t border-border/60 flex items-center justify-between">
+            <div className="text-[11px] text-muted-foreground hidden sm:block">
+              {amount ? `Total: ₹${Number(amount).toLocaleString("en-IN")}` : "Enter amount"}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs h-9"
+                onClick={() => onOpenChange(false)}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="text-xs h-9 px-4 font-bold"
+                disabled={submitting || uploading}
+              >
+                {submitting ? (
+                  <>
+                    <RefreshCw className="mr-2 size-3.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : expense ? (
+                  "Update Expense Record"
+                ) : (
+                  "Record Expense"
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

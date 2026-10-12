@@ -46,6 +46,7 @@ import { getMediaUrl } from "@/lib/utils";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
 import { ContractDialog } from "@/components/contracts/contract-dialog";
 import { ExpenseDialog } from "@/components/expenses/expense-dialog";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import toast from "react-hot-toast";
 
 interface Client {
@@ -258,29 +259,24 @@ export default function ClientIdPage() {
     }
   };
 
-  const handleDeleteContract = async (contractId: string) => {
-    if (!confirm("Are you sure you want to remove this contract / agreement?")) return;
-    try {
-      const res = await fetch(`/api/contracts/${contractId}`, { method: "DELETE" });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || "Failed to delete");
-      toast.success("Contract removed successfully");
-      fetchClient();
-    } catch (err: any) {
-      toast.error(err.message || "Could not delete contract");
-    }
-  };
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string; type: "contract" | "expense" } | null>(null);
+  const [isDeletingItem, setIsDeletingItem] = useState(false);
 
-  const handleDeleteClientExpense = async (expenseId: string) => {
-    if (!confirm("Are you sure you want to delete this expense record?")) return;
+  const confirmDeleteItem = async () => {
+    if (!itemToDelete) return;
+    setIsDeletingItem(true);
     try {
-      const res = await fetch(`/api/expenses/${expenseId}`, { method: "DELETE" });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || "Failed to delete");
-      toast.success("Expense removed successfully");
+      const endpoint = itemToDelete.type === "contract" ? `/api/contracts/${itemToDelete.id}` : `/api/expenses/${itemToDelete.id}`;
+      const res = await fetch(endpoint, { method: "DELETE" });
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resData.error || `Failed to delete ${itemToDelete.type}`);
+      toast.success(resData.message || `${itemToDelete.type === "contract" ? "Contract" : "Expense"} removed successfully`);
+      setItemToDelete(null);
       fetchClient();
     } catch (err: any) {
-      toast.error(err.message || "Could not delete expense");
+      toast.error(err.message || `Could not delete ${itemToDelete.type}`);
+    } finally {
+      setIsDeletingItem(false);
     }
   };
 
@@ -1018,7 +1014,7 @@ export default function ClientIdPage() {
                                       variant="ghost"
                                       className="size-7 text-destructive hover:text-destructive"
                                       title="Delete"
-                                      onClick={() => handleDeleteContract(cnt.id)}
+                                      onClick={() => setItemToDelete({ id: cnt.id, name: cnt.title, type: "contract" })}
                                     >
                                       <Trash2 className="size-3.5" />
                                     </Button>
@@ -1217,7 +1213,13 @@ export default function ClientIdPage() {
                                 variant="ghost"
                                 className="size-7 text-destructive hover:text-destructive"
                                 title="Delete"
-                                onClick={() => handleDeleteClientExpense(exp.id)}
+                                onClick={() =>
+                                  setItemToDelete({
+                                    id: exp.id,
+                                    name: `₹${Number(exp.amount || 0).toLocaleString("en-IN")} (${exp.category})`,
+                                    type: "expense",
+                                  })
+                                }
                               >
                                 <Trash2 className="size-3.5" />
                               </Button>
@@ -1304,6 +1306,16 @@ export default function ClientIdPage() {
         expense={selectedExpense}
         preselectedClientId={client.id}
         onSaved={fetchClient}
+      />
+
+      {/* Delete Confirmation Alert */}
+      <DeleteConfirmationDialog
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={confirmDeleteItem}
+        itemName={itemToDelete?.name || ""}
+        entityType={itemToDelete?.type || "item"}
+        isLoading={isDeletingItem}
       />
     </div>
   );

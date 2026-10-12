@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +42,9 @@ import {
   AlertCircle,
   ExternalLink,
   Plus,
+  Sparkles,
 } from "lucide-react";
+import HrDocumentsModal from "./hr-documents-modal";
 
 interface UserDocument {
   id: string;
@@ -74,6 +77,7 @@ export default function UserProfileModal({
   const [activeTab, setActiveTab] = useState("employment");
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
 
   // New doc upload form state
   const [docTitle, setDocTitle] = useState("");
@@ -189,21 +193,26 @@ export default function UserProfileModal({
     }
   };
 
-  const handleDeleteDocument = async (docId: string) => {
-    if (!confirm("Are you sure you want to delete this document? The local file will also be permanently removed.")) {
-      return;
-    }
+  const [docToDelete, setDocToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeletingDoc, setIsDeletingDoc] = useState(false);
 
+  const confirmDeleteDocument = async () => {
+    if (!docToDelete) return;
+    setIsDeletingDoc(true);
     try {
-      const res = await fetch(`/api/users/${userId}/documents/${docId}`, {
+      const res = await fetch(`/api/users/${userId}/documents/${docToDelete.id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to delete document");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to delete document");
 
-      toast.success("Document and local file deleted");
+      toast.success(data.message || "Document and local file deleted");
+      setDocToDelete(null);
       mutate();
     } catch (err: any) {
       toast.error(err.message || "Failed to delete document");
+    } finally {
+      setIsDeletingDoc(false);
     }
   };
 
@@ -227,7 +236,7 @@ export default function UserProfileModal({
                 {user?.name || "Employee Profile"}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                {user?.email} • Role: {user?.role?.name || "User"}
+                {user?.email} • Role: {typeof user?.role === "object" ? user?.role?.name : (user?.role || "User")}
               </DialogDescription>
             </div>
             {user?.designation && (
@@ -547,11 +556,38 @@ export default function UserProfileModal({
 
           {/* Tab 4: Documents Vault */}
           <TabsContent value="documents" className="space-y-4 pt-3">
-            {/* Upload Document Box */}
+            {/* Banner to launch full HR Documents Vault */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <FileText className="size-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    HR Documents Vault
+                    <Sparkles className="size-3 text-primary" />
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground">
+                    Multi-file drag & drop, inline preview lightbox, verification approval, and categories.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsDocsModalOpen(true)}
+                className="gap-1.5 shadow-2xs text-xs font-semibold shrink-0"
+              >
+                <Upload className="size-3.5" />
+                Open Document Vault ({documents.length})
+              </Button>
+            </div>
+
+            {/* Quick Upload Document Box */}
             <form onSubmit={handleUploadDocument} className="rounded-xl border border-dashed border-border p-4 bg-muted/20">
               <h4 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
                 <Plus className="size-3.5 text-primary" />
-                Upload New Employee Document
+                Quick Upload Document
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
@@ -561,55 +597,66 @@ export default function UserProfileModal({
                     placeholder="e.g. Offer Letter 2024, Aadhaar Card"
                     value={docTitle}
                     onChange={(e) => setDocTitle(e.target.value)}
-                    className="mt-1"
+                    className="mt-1 h-8 text-xs bg-background"
                   />
                 </div>
                 <div>
                   <Label htmlFor="doc-cat" className="text-xs">Category</Label>
                   <Select value={docCategory} onValueChange={setDocCategory}>
-                    <SelectTrigger id="doc-cat" className="mt-1">
+                    <SelectTrigger id="doc-cat" className="mt-1 h-8 text-xs bg-background">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="OFFER_LETTER">Joining Offer Letter</SelectItem>
-                      <SelectItem value="CONTRACT">Employment Contract / NDA</SelectItem>
-                      <SelectItem value="ID_PROOF">ID Proof (Aadhaar / PAN)</SelectItem>
-                      <SelectItem value="EXPERIENCE">Relieving / Experience Letter</SelectItem>
-                      <SelectItem value="SALARY_SLIP">Salary Slip / Appraisal</SelectItem>
-                      <SelectItem value="RESUME">Resume / Portfolio</SelectItem>
+                      <SelectItem value="IDENTITY">Identity Proofs</SelectItem>
+                      <SelectItem value="EDUCATION">Education & Certificates</SelectItem>
+                      <SelectItem value="EMPLOYMENT">Employment & Offers</SelectItem>
+                      <SelectItem value="BANK_TAX">Bank & Tax</SelectItem>
+                      <SelectItem value="CONTRACTS">Contracts & Agreements</SelectItem>
                       <SelectItem value="OTHER">Other Document</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="doc-file" className="text-xs">Select File (PDF, Image, Doc)</Label>
+                  <Label htmlFor="doc-file" className="text-xs">Select File</Label>
                   <Input
                     id="doc-file"
                     type="file"
                     onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="mt-1"
+                    className="mt-1 h-8 text-xs bg-background"
                   />
                 </div>
               </div>
               <div className="flex justify-end mt-3">
                 <Button
                   type="submit"
-                  size="sm"
+                  size="xs"
                   loading={uploadingDoc}
                   disabled={!selectedFile}
                   className="gap-1.5"
                 >
-                  <Upload className="size-3.5" />
-                  Upload Document
+                  <Upload className="size-3" />
+                  Upload
                 </Button>
               </div>
             </form>
 
             {/* Uploaded Documents List */}
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Attached Documents ({documents.length})
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Attached Documents ({documents.length})
+                </h4>
+                {documents.length > 0 && (
+                  <Button
+                    variant="link"
+                    size="xs"
+                    onClick={() => setIsDocsModalOpen(true)}
+                    className="text-xs text-primary p-0 h-auto"
+                  >
+                    View All in Vault →
+                  </Button>
+                )}
+              </div>
               {documents.length === 0 ? (
                 <div className="text-center py-8 rounded-lg border border-border/70 bg-card">
                   <FileText className="size-8 text-muted-foreground/40 mx-auto mb-2" />
@@ -617,7 +664,7 @@ export default function UserProfileModal({
                 </div>
               ) : (
                 <div className="divide-y divide-border/60 rounded-lg border border-border bg-card overflow-hidden">
-                  {documents.map((doc) => (
+                  {documents.map((doc: any) => (
                     <div key={doc.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -627,8 +674,23 @@ export default function UserProfileModal({
                           <div className="flex items-center gap-2">
                             <p className="text-xs font-medium text-foreground truncate">{doc.title}</p>
                             <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
-                              {doc.category.replace(/_/g, " ")}
+                              {(doc.category || "OTHER").replace(/_/g, " ")}
                             </Badge>
+                            {doc.status === "VERIFIED" && (
+                              <Badge variant="success" className="text-[10px] py-0">
+                                Verified
+                              </Badge>
+                            )}
+                            {doc.status === "PENDING" && (
+                              <Badge variant="warning" className="text-[10px] py-0">
+                                Pending
+                              </Badge>
+                            )}
+                            {doc.status === "REJECTED" && (
+                              <Badge variant="destructive" className="text-[10px] py-0">
+                                Rejected
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-[11px] text-muted-foreground">
                             {doc.fileName} • {formatFileSize(doc.fileSize)} • {new Date(doc.uploadedAt).toLocaleDateString()}
@@ -647,7 +709,7 @@ export default function UserProfileModal({
                         <Button
                           variant="ghost"
                           size="icon-xs"
-                          onClick={() => handleDeleteDocument(doc.id)}
+                          onClick={() => setDocToDelete({ id: doc.id, name: doc.name })}
                           className="text-destructive hover:text-destructive"
                           title="Delete document and remove local file"
                         >
@@ -661,7 +723,30 @@ export default function UserProfileModal({
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Dedicated Full HR Documents Vault Modal */}
+        {isDocsModalOpen && (
+          <HrDocumentsModal
+            userId={userId}
+            isOpen={isDocsModalOpen}
+            onClose={() => {
+              setIsDocsModalOpen(false);
+              mutate();
+            }}
+            user={user}
+            onUpdate={mutate}
+          />
+        )}
       </DialogContent>
+
+      <DeleteConfirmationDialog
+        isOpen={!!docToDelete}
+        onClose={() => setDocToDelete(null)}
+        onConfirm={confirmDeleteDocument}
+        itemName={docToDelete?.name || "Document"}
+        title={docToDelete?.name ? `Delete Document: "${docToDelete.name}"?` : "Delete Document?"}
+        isLoading={isDeletingDoc}
+      />
     </Dialog>
   );
 }

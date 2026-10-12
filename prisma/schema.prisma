@@ -183,9 +183,50 @@ model User {
   emergencyContactPhone String?
   emergencyContactRelation String?
   offerLetterUrl       String?
-  documents            UserDocument[]
+  documents            UserDocument[]       @relation("EmployeeDocuments")
+  uploadedDocuments    UserDocument[]       @relation("UploadedUserDocuments")
+  verifiedDocuments    UserDocument[]       @relation("VerifiedUserDocuments")
   assignedLeads        Lead[]               @relation("AssignedLeads")
   createdLeads         Lead[]               @relation("CreatedLeads")
+
+  // Attendance & Leave Relations
+  attendances             Attendance[]
+  attendanceCorrections   Attendance[]        @relation("AttendanceCorrections")
+  regularizationRequests  AttendanceRegularization[] @relation("RegularizationUser")
+  reviewedRegularizations AttendanceRegularization[] @relation("RegularizationReviewer")
+  approvedRegularizations Attendance[]        @relation("RegularizationApproverUser")
+  leaveBalances           LeaveBalance[]
+  leaveRequests           LeaveRequest[]      @relation("EmployeeLeaves")
+  reviewedLeaves          LeaveRequest[]      @relation("LeaveApprover")
+  leaveLedgers            LeaveLedger[]       @relation("UserLeaveLedgers")
+  compOffs                CompOff[]           @relation("UserCompOffs")
+  reviewedCompOffs        CompOff[]           @relation("ApproverCompOffs")
+
+  // Salary & Payroll Relations
+  salaryStructures        SalaryStructure[]   @relation("EmployeeSalaryStructure")
+  salaryRevisions         SalaryRevision[]    @relation("UserSalaryRevisions")
+  approvedSalaryRevisions SalaryRevision[]    @relation("ApproverSalaryRevisions")
+  salaryAdjustments       SalaryAdjustment[]
+  payrollAdjustments      PayrollAdjustment[] @relation("UserAdjustments")
+  createdAdjustments      PayrollAdjustment[] @relation("CreatedAdjustments")
+  approvedAdjustments     PayrollAdjustment[] @relation("ApprovedAdjustments")
+  loanAdvances            LoanAdvance[]       @relation("UserLoanAdvances")
+  fnfSettlements          FullAndFinalSettlement[] @relation("UserFnfSettlements")
+  payslips                Payslip[]           @relation("EmployeePayslips")
+  approvedPayrollRuns     PayrollRun[]        @relation("PayrollApprover")
+  lockedPayrollRuns       PayrollRun[]        @relation("PayrollLocker")
+  payrollAuditLogs        PayrollAuditLog[]   @relation("PayrollAuditActor")
+
+  shiftId                 String?
+  shift                   Shift?              @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  weeklyOffPatternId      String?
+  weeklyOffPattern        WeeklyOffPattern?   @relation(fields: [weeklyOffPatternId], references: [id], onDelete: SetNull)
+  pfNumber                String?
+  uanNumber               String?
+  esicNumber              String?
+  taxRegime               String?             @default("NEW")
+  exitDate                DateTime?
+  exitStatus              String?             @default("ACTIVE")
 
   @@map("users")
 }
@@ -1085,20 +1126,30 @@ enum LeadStatus {
 }
 
 model UserDocument {
-  id          String   @id @default(cuid())
-  userId      Int
-  title       String
-  category    String   @default("OTHER") // OFFER_LETTER, ID_PROOF, CONTRACT, EXPERIENCE, SALARY_SLIP, OTHER
-  fileUrl     String
-  fileName    String
-  fileSize    Int?
-  fileType    String?
-  uploadedAt  DateTime @default(now())
-  notes       String?  @db.Text
+  id              String    @id @default(cuid())
+  userId          Int
+  title           String
+  category        String    @default("OTHER") // IDENTITY, EDUCATION, EMPLOYMENT, BANK_TAX, CONTRACTS, OTHER
+  status          String    @default("PENDING") // PENDING, VERIFIED, REJECTED, EXPIRED
+  fileUrl         String
+  fileName        String
+  fileSize        Int?
+  fileType        String?
+  expiryDate      DateTime?
+  uploadedAt      DateTime  @default(now())
+  uploadedById    Int?
+  verifiedAt      DateTime?
+  verifiedById    Int?
+  rejectionReason String?   @db.Text
+  notes           String?   @db.Text
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User      @relation("EmployeeDocuments", fields: [userId], references: [id], onDelete: Cascade)
+  uploadedBy      User?     @relation("UploadedUserDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
+  verifiedBy      User?     @relation("VerifiedUserDocuments", fields: [verifiedById], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([uploadedById])
+  @@index([verifiedById])
   @@map("user_documents")
 }
 
@@ -1331,6 +1382,7 @@ enum ExpenseCategory {
   SHOOT_PRODUCTION
   OFFICE_TRAVEL
   HARDWARE_EQUIPMENT
+  PAYROLL_SALARY
   OTHER
 }
 
@@ -1362,12 +1414,14 @@ model Expense {
   userId        Int?            // Member who incurred the expense
   recordedById  Int?            // Finance/Admin who recorded/approved
   invoiceId     String?         // Linked client invoice if re-billed
+  payrollRunId  String?         // Linked payroll run if payroll expense
 
   project       Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
   client        Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
   user          User?           @relation("UserExpenses", fields: [userId], references: [id], onDelete: SetNull)
   recordedBy    User?           @relation("RecordedExpenses", fields: [recordedById], references: [id], onDelete: SetNull)
   invoice       Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  payrollRun    PayrollRun?     @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
 
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -1378,6 +1432,7 @@ model Expense {
   @@index([category])
   @@index([status])
   @@index([date])
+  @@index([payrollRunId])
   @@map("expenses")
 }
 
@@ -1445,4 +1500,761 @@ model Task {
   @@index([projectId])
   @@index([clientId])
   @@map("tasks")
+}
+
+// =============================================================================
+// ATTENDANCE & LEAVES (API-Ready Adapter, Regularization, Balance Tracking)
+// =============================================================================
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LATE
+  ON_LEAVE
+  HOLIDAY
+  WEEKLY_OFF
+}
+
+enum AttendanceSource {
+  API
+  MANUAL
+  BIOMETRIC
+  SYSTEM
+}
+
+enum RegularizationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  CALCULATED
+  UNDER_REVIEW
+  APPROVED
+  PAID
+  LOCKED
+}
+
+model Attendance {
+  id                         String            @id @default(cuid())
+  userId                     Int
+  user                       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                       DateTime          // Stored at midnight UTC for each day
+  checkIn                    DateTime?
+  checkOut                   DateTime?
+  totalHours                 Float             @default(0)
+  workedMinutes              Int               @default(0)
+  status                     AttendanceStatus  @default(PRESENT)
+  lateMinutes                Int               @default(0)
+  earlyExitMinutes           Int               @default(0)
+  overtimeHours              Float             @default(0)
+  source                     AttendanceSource  @default(API)
+  externalRef                String?
+  isCorrected                Boolean           @default(false)
+  correctionReason           String?           @db.Text
+  correctedById              Int?
+  correctedBy                User?             @relation("AttendanceCorrections", fields: [correctedById], references: [id], onDelete: SetNull)
+  correctedAt                DateTime?
+
+  regularizationReason       String?           @db.Text
+  regularizationApprovedById Int?
+  regularizationApprovedBy   User?             @relation("RegularizationApproverUser", fields: [regularizationApprovedById], references: [id], onDelete: SetNull)
+
+  shiftId                    String?
+  shift                      Shift?            @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
+  regularizations            AttendanceRegularization[]
+
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+  @@map("attendances")
+}
+
+model AttendanceRegularization {
+  id                String               @id @default(cuid())
+  attendanceId      String?
+  attendance        Attendance?          @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  userId            Int
+  user              User                 @relation("RegularizationUser", fields: [userId], references: [id], onDelete: Cascade)
+  date              DateTime
+  requestedCheckIn  DateTime?
+  requestedCheckOut DateTime?
+  requestedStatus   AttendanceStatus     @default(PRESENT)
+  reason            String               @db.Text
+  status            RegularizationStatus @default(PENDING)
+  reviewedById      Int?
+  reviewedBy        User?                @relation("RegularizationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewerRemarks   String?              @db.Text
+  reviewedAt        DateTime?
+
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+  @@map("attendance_regularizations")
+}
+
+model AttendanceSyncLog {
+  id            String   @id @default(cuid())
+  provider      String   // "MOCK", "MANUAL_CSV", "BIOMETRIC_API"
+  batchId       String
+  syncDateStart DateTime
+  syncDateEnd   DateTime
+  status        String   // "SUCCESS", "PARTIAL", "FAILED"
+  totalRecords  Int      @default(0)
+  syncedCount   Int      @default(0)
+  errorCount    Int      @default(0)
+  errorMessage  String?  @db.Text
+  detailsJson   String?  @db.Text
+  triggeredById Int?
+  createdAt     DateTime @default(now())
+
+  @@index([provider])
+  @@index([createdAt])
+  @@map("attendance_sync_logs")
+}
+
+model Shift {
+  id             String       @id @default(cuid())
+  name           String       // "General Shift", "Morning", "Night"
+  startTime      String       // "09:30"
+  endTime        String       // "18:30"
+  graceMinutes   Int          @default(15)
+  halfDayMinutes Int          @default(240)
+  fullDayMinutes Int          @default(480)
+  isNightShift   Boolean      @default(false)
+  isActive       Boolean      @default(true)
+
+  users          User[]
+  attendances    Attendance[]
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("shifts")
+}
+
+model WeeklyOffPattern {
+  id          String   @id @default(cuid())
+  name        String   // "Sunday Off", "Alternate Saturdays & Sundays", "5-Day Week"
+  patternJson String   // e.g. {"0": true, "6": [2, 4]}
+  isDefault   Boolean  @default(false)
+  description String?
+
+  users       User[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("weekly_off_patterns")
+}
+
+model LeaveType {
+  id                String         @id @default(cuid())
+  name              String
+  code              String         @unique // "CL", "SL", "PL", "UL", "COMP"
+  yearlyQuota       Float          @default(12)
+  isPaid            Boolean        @default(true)
+  carryForwardLimit Float          @default(0)
+  description       String?        @db.Text
+  isActive          Boolean        @default(true)
+
+  requests          LeaveRequest[]
+  balances          LeaveBalance[]
+  ledgers           LeaveLedger[]
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@map("leave_types")
+}
+
+model LeaveBalance {
+  id          String    @id @default(cuid())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  year        Int
+  totalQuota  Float
+  usedDays    Float     @default(0)
+  pendingDays Float     @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, leaveTypeId, year])
+  @@index([userId])
+  @@index([year])
+  @@map("leave_balances")
+}
+
+model LeavePolicy {
+  id                    String    @id @default(cuid())
+  name                  String
+  effectiveFrom         DateTime
+  effectiveTo           DateTime?
+  sandwichRuleEnabled   Boolean   @default(false)
+  allowNegativeBalance  Boolean   @default(false)
+  probationLeaveAllowed Boolean   @default(false)
+  encashmentAllowed     Boolean   @default(true)
+  maxCarryForwardDays   Float     @default(15)
+  accrualFrequency      String    @default("YEARLY")
+  prorateForNewJoiners  Boolean   @default(true)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("leave_policies")
+}
+
+model LeaveLedger {
+  id            String    @id @default(cuid())
+  userId        Int
+  user          User      @relation("UserLeaveLedgers", fields: [userId], references: [id], onDelete: Cascade)
+  leaveTypeId   String
+  leaveType     LeaveType @relation(fields: [leaveTypeId], references: [id])
+  entryType     String    // ACCRUAL, USAGE, ENCASHMENT, LAPSE, ADJUSTMENT, REVERSAL
+  days          Float
+  balanceAfter  Float
+  referenceId   String?
+  notes         String?
+  effectiveDate DateTime
+
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, leaveTypeId])
+  @@index([effectiveDate])
+  @@map("leave_ledgers")
+}
+
+model LeaveRequest {
+  id                  String      @id @default(cuid())
+  userId              Int
+  user                User        @relation("EmployeeLeaves", fields: [userId], references: [id], onDelete: Cascade)
+  leaveTypeId         String
+  leaveType           LeaveType   @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  startDate           DateTime
+  endDate             DateTime
+  totalDays           Float
+  isHalfDay           Boolean     @default(false)
+  halfDaySession      String?     // FIRST_HALF | SECOND_HALF
+  isSandwichDeduction Boolean     @default(false)
+  reason              String      @db.Text
+  attachmentUrl       String?
+  status              LeaveStatus @default(PENDING)
+  approverId          Int?
+  approver            User?       @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  approverRemarks     String?     @db.Text
+  approvedAt          DateTime?
+  appliedAt           DateTime    @default(now())
+
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([startDate])
+  @@index([status])
+  @@map("leave_requests")
+}
+
+model CompOff {
+  id           String    @id @default(cuid())
+  userId       Int
+  user         User      @relation("UserCompOffs", fields: [userId], references: [id], onDelete: Cascade)
+  workedDate   DateTime
+  hoursWorked  Float     @default(8.0)
+  status       String    @default("PENDING") // PENDING, APPROVED, EXPIRED, AVAILED
+  reason       String    @db.Text
+  approvedById Int?
+  approvedBy   User?     @relation("ApproverCompOffs", fields: [approvedById], references: [id], onDelete: SetNull)
+  expiresAt    DateTime
+  availedAt    DateTime?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("comp_offs")
+}
+
+model Holiday {
+  id         String   @id @default(cuid())
+  name       String
+  date       DateTime
+  year       Int
+  isOptional Boolean  @default(false)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([date])
+  @@index([year])
+  @@map("holidays")
+}
+
+enum ComponentType {
+  EARNING
+  DEDUCTION
+  EMPLOYER_CONTRIBUTION
+  REIMBURSEMENT
+}
+
+enum CalculationType {
+  FLAT_AMOUNT
+  PERCENTAGE_OF_BASIC
+  PERCENTAGE_OF_GROSS
+  FORMULA
+}
+
+model SalaryComponent {
+  id              String          @id @default(cuid())
+  code            String          @unique // e.g. "BASIC", "HRA", "SPECIAL_ALLOWANCE", "PF_EE", "PF_ER", "ESI_EE", "PT", "TDS"
+  name            String
+  type            ComponentType
+  calculationType CalculationType
+  isTaxable       Boolean         @default(true)
+  isStatutory     Boolean         @default(false)
+  includeInCtc    Boolean         @default(true)
+  isProrated      Boolean         @default(true)
+  displayOrder    Int             @default(0)
+  isActive        Boolean         @default(true)
+
+  structureItems  SalaryStructureItem[]
+  payslipLines    PayslipLine[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("salary_components")
+}
+
+model SalaryStructure {
+  id               String                @id @default(cuid())
+  userId           Int
+  user             User                  @relation("EmployeeSalaryStructure", fields: [userId], references: [id], onDelete: Cascade)
+  version          Int                   @default(1)
+  basicSalary      Int                   // minor units (paise)
+  hra              Int                   // minor units
+  specialAllowance Int                   // minor units
+  otherAllowances  Int                   @default(0) // minor units
+  fixedBonus       Int                   @default(0) // minor units
+  variablePay      Int                   @default(0) // minor units
+  monthlyGross     Int                   // minor units
+  ctcMonthly       Int                   // minor units
+  ctcAnnual        Int                   @default(0) // minor units
+  pfDeduction      Boolean               @default(true)
+  esiDeduction     Boolean               @default(false)
+  professionalTax  Boolean               @default(true)
+  tdsMonthly       Int                   @default(0) // minor units
+  status           String                @default("ACTIVE") // ACTIVE, SUPERSEDED
+  revisionReason   String?
+  effectiveFrom    DateTime              @default(now())
+  effectiveTo      DateTime?
+
+  items            SalaryStructureItem[]
+  revisions        SalaryRevision[]
+
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("salary_structures")
+}
+
+model SalaryStructureItem {
+  id                String          @id @default(cuid())
+  salaryStructureId String
+  salaryStructure   SalaryStructure @relation(fields: [salaryStructureId], references: [id], onDelete: Cascade)
+  componentId       String
+  component         SalaryComponent @relation(fields: [componentId], references: [id])
+  monthlyAmount     Int             // minor units (paise)
+  percentageValue   Float?
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([salaryStructureId, componentId])
+  @@map("salary_structure_items")
+}
+
+model SalaryRevision {
+  id                String          @id @default(cuid())
+  userId            Int
+  user              User            @relation("UserSalaryRevisions", fields: [userId], references: [id], onDelete: Cascade)
+  salaryStructureId String
+  salaryStructure   SalaryStructure @relation(fields: [salaryStructureId], references: [id], onDelete: Cascade)
+  previousCtc       Int             // minor units (paise)
+  newCtc            Int             // minor units
+  effectiveDate     DateTime
+  reason            String
+  arrearsCalculated Boolean         @default(false)
+  approvedById      Int?
+  approvedBy        User?           @relation("ApproverSalaryRevisions", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt        DateTime?
+
+  createdAt         DateTime        @default(now())
+
+  @@index([userId])
+  @@map("salary_revisions")
+}
+
+model StatutoryConfig {
+  id                 String    @id @default(cuid())
+  country            String    @default("IN")
+  state              String    @default("ALL")
+  effectiveFrom      DateTime
+  effectiveTo        DateTime?
+  version            Int       @default(1)
+
+  // PF breakdown
+  pfEmployeeRate     Float     @default(12.0)
+  pfEmployerEpfRate  Float     @default(3.67)
+  pfEmployerEpsRate  Float     @default(8.33)
+  pfEmployerEdliRate Float     @default(0.50)
+  pfAdminChargesRate Float     @default(0.50)
+  pfWageCeiling      Int       @default(1500000) // ₹15,000 in paise
+
+  // ESI
+  esiEmployeeRate    Float     @default(0.75)
+  esiEmployerRate    Float     @default(3.25)
+  esiWageCeiling     Int       @default(2100000) // ₹21,000 in paise
+
+  // Professional Tax, LWF, and TDS slabs/config JSON
+  ptSlabsJson        String    @db.Text
+  lwfConfigJson      String?   @db.Text
+  tdsConfigJson      String?   @db.Text
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([country, state])
+  @@index([effectiveFrom, effectiveTo])
+  @@map("statutory_configs")
+}
+
+model PayrollSettings {
+  id                           String   @id @default("default")
+  companyName                  String   @default("Marketing Agency")
+  currency                     String   @default("INR")
+  payPeriodType                String   @default("CALENDAR_DAYS") // CALENDAR_DAYS | FIXED_30 | FIXED_26 | WORKING_DAYS
+  payCycle                     String   @default("MONTHLY")
+  roundingRule                 String   @default("ROUND_HALF_UP") // ROUND_NEAREST_RUPEE, ROUND_UP, ROUND_DOWN
+  financialYearStartMonth      Int      @default(4) // April
+  payDateDay                   Int      @default(1) // 1st of month
+  attendanceCutoffDay          Int      @default(0) // 0 = month end, or 25 = 25th
+  salaryVisibilityRoles        String   @default("[\"ADMIN\",\"HR\",\"FINANCE\"]")
+  lopRule                      String   @default("PRORATE_GROSS")
+  weeklyOffDays                String   @default("[0]") // Sunday=0 JSON array
+  standardWorkHours            Float    @default(8.0)
+  enableOvertime               Boolean  @default(true)
+  overtimeHourlyRateMultiplier Float    @default(1.5)
+  lateMarkGraceMinutes         Int      @default(15)
+  lateMarksForHalfDayPenalty   Int      @default(3)
+  pfEmployeeRate               Float    @default(12.0)
+  pfEmployerRate               Float    @default(12.0)
+  pfWageCeiling                Int      @default(1500000) // ₹15,000 in minor units (paise)
+  esiEmployeeRate              Float    @default(0.75)
+  esiEmployerRate              Float    @default(3.25)
+  esiWageCeiling               Int      @default(2100000) // ₹21,000 in minor units (paise)
+  ptRulesJson                  String   @db.Text
+
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  @@map("payroll_settings")
+}
+
+model SalaryAdjustment {
+  id         String   @id @default(cuid())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month      Int      // 1-12
+  year       Int
+  type       String   // REIMBURSEMENT, BONUS, ONE_TIME_EARNING, DEDUCTION, LOAN_ADVANCE
+  title      String
+  amount     Int      // minor units
+  notes      String?  @db.Text
+  isApproved Boolean  @default(true)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([month, year])
+  @@map("salary_adjustments")
+}
+
+model PayrollAdjustment {
+  id           String    @id @default(cuid())
+  userId       Int
+  user         User      @relation("UserAdjustments", fields: [userId], references: [id], onDelete: Cascade)
+  month        Int       // 1-12
+  year         Int
+  type         String    // REIMBURSEMENT, BONUS, INCENTIVE, ARREARS, ONE_TIME_EARNING, DEDUCTION, LOAN_ADVANCE, RECOVERY
+  title        String
+  amount       Int       // minor units (paise)
+  reason       String    @db.Text
+  isTaxable    Boolean   @default(true)
+  status       String    @default("PENDING") // PENDING, APPROVED, REJECTED, PROCESSED
+  createdById  Int?
+  createdBy    User?     @relation("CreatedAdjustments", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedById Int?
+  approvedBy   User?     @relation("ApprovedAdjustments", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt   DateTime?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([month, year])
+  @@map("payroll_adjustments")
+}
+
+model LoanAdvance {
+  id              String            @id @default(cuid())
+  userId          Int
+  user            User              @relation("UserLoanAdvances", fields: [userId], references: [id], onDelete: Cascade)
+  principalAmount Int               // minor units (paise)
+  disbursedAmount Int
+  totalRepaid     Int               @default(0)
+  balanceAmount   Int
+  installmentEmi  Int
+  totalTenure     Int               // months
+  status          String            @default("ACTIVE") // ACTIVE, COMPLETED, PAUSED
+  reason          String
+  disbursedAt     DateTime          @default(now())
+
+  installments    LoanInstallment[]
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([userId])
+  @@map("loan_advances")
+}
+
+model LoanInstallment {
+  id            String      @id @default(cuid())
+  loanAdvanceId String
+  loanAdvance   LoanAdvance @relation(fields: [loanAdvanceId], references: [id], onDelete: Cascade)
+  month         Int
+  year          Int
+  expectedEmi   Int         // minor units
+  deductedEmi   Int         @default(0)
+  status        String      @default("SCHEDULED") // SCHEDULED, RECOVERED, SKIPPED, PARTIAL
+  recoveredAt   DateTime?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([loanAdvanceId])
+  @@index([month, year])
+  @@map("loan_installments")
+}
+
+model FullAndFinalSettlement {
+  id                   String    @id @default(cuid())
+  userId               Int
+  user                 User      @relation("UserFnfSettlements", fields: [userId], references: [id], onDelete: Cascade)
+  resignationDate      DateTime
+  lastWorkingDate      DateTime
+  noticePeriodDays     Int
+  servedNoticeDays     Int
+  shortfallDays        Int       @default(0)
+  noticeRecoveryAmount Int       @default(0) // minor units
+  leaveEncashmentDays  Float     @default(0)
+  leaveEncashmentAmount Int      @default(0)
+  gratuityAmount       Int       @default(0)
+  pendingSalaryAmount  Int       @default(0)
+  otherDeductions      Int       @default(0)
+  netSettlementAmount  Int       // minor units
+  status               String    @default("DRAFT") // DRAFT, REVIEWED, APPROVED, DISBURSED
+  notes                String?   @db.Text
+  approvedById         Int?
+  approvedAt           DateTime?
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("full_and_final_settlements")
+}
+
+model PayrollRun {
+  id                String           @id @default(cuid())
+  month             Int              // 1-12
+  year              Int
+  runType           String           @default("REGULAR") // REGULAR, OFF_CYCLE, BONUS, FN_F
+  payPeriodStart    DateTime
+  payPeriodEnd      DateTime
+  status            PayrollRunStatus @default(DRAFT)
+  version           Int              @default(1) // Optimistic locking
+
+  totalHeadcount    Int              @default(0)
+  totalGross        Int              @default(0) // minor units
+  totalDeductions   Int              @default(0)
+  totalNetPay       Int              @default(0)
+  totalEmployerCost Int              @default(0)
+  currency          String           @default("INR")
+
+  settingsSnapshot  String?          @db.Text
+  statutorySnapshot String?          @db.Text
+
+  notes             String?          @db.Text
+  approvedById      Int?
+  approvedBy        User?            @relation("PayrollApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt        DateTime?
+  lockedById        Int?
+  lockedBy          User?            @relation("PayrollLocker", fields: [lockedById], references: [id], onDelete: SetNull)
+  lockedAt          DateTime?
+  paidAt            DateTime?
+
+  expenses          Expense[]
+  payslips          Payslip[]
+  auditLogs         PayrollAuditLog[]
+  payments          PayrollPayment[]
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([month, year, runType])
+  @@index([status])
+  @@map("payroll_runs")
+}
+
+model Payslip {
+  id                String        @id @default(cuid())
+  payrollRunId      String
+  payrollRun        PayrollRun    @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  userId            Int
+  user              User          @relation("EmployeePayslips", fields: [userId], references: [id], onDelete: Cascade)
+  month             Int
+  year              Int
+
+  calendarDays      Int           @default(30)
+  workingDays       Int
+  payableDays       Float
+  lopDays           Float         @default(0)
+  paidLeaveDays     Float         @default(0)
+  absentDays        Float         @default(0)
+  holidayDays       Int           @default(0)
+  weeklyOffDays     Int           @default(0)
+  overtimeHours     Float         @default(0)
+  lateDeductionDays Float         @default(0)
+
+  grossSalary       Int           // minor units
+  totalEarnings     Int           @default(0)
+  netSalary         Int
+  totalDeductions   Int
+  employerCost      Int
+
+  employeeName      String?
+  designation       String?
+  department        String?
+  panNumberMasked   String?
+  bankAccountMasked String?
+  bankIfsc          String?
+  bankName          String?
+
+  status            String        @default("CALCULATED") // CALCULATED, ON_HOLD, APPROVED, PAID, REVERSED
+  holdReason        String?
+  breakdownJson     String        @db.Text
+  pdfUrl            String?
+  isPublished       Boolean       @default(false)
+  paymentStatus     String        @default("PENDING") // PENDING, PAID
+  paymentRef        String?
+
+  lines             PayslipLine[]
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([payrollRunId, userId])
+  @@index([userId])
+  @@index([month, year])
+  @@map("payslips")
+}
+
+model PayslipLine {
+  id              String           @id @default(cuid())
+  payslipId       String
+  payslip         Payslip          @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  componentId     String?
+  component       SalaryComponent? @relation(fields: [componentId], references: [id], onDelete: SetNull)
+  code            String           // e.g. "BASIC", "HRA", "PF_EE", "ESI_EE", "PT", "TDS"
+  name            String
+  type            ComponentType
+  rate            Int              // Fixed base rate in paise
+  earnedAmount    Int              // Earned/deducted in paise
+  calculationNote String?          // Explanatory breakdown text
+  order           Int              @default(0)
+
+  createdAt       DateTime         @default(now())
+
+  @@index([payslipId])
+  @@index([code])
+  @@map("payslip_lines")
+}
+
+model PayrollPayment {
+  id              String     @id @default(cuid())
+  payrollRunId    String
+  payrollRun      PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  batchNumber     String     @unique
+  totalAmount     Int        // minor units
+  totalCount      Int
+  bankFormat      String     @default("HDFC_NEFT")
+  status          String     @default("GENERATED")
+  utrReference    String?
+  paidDate        DateTime?
+  responseFileUrl String?
+  notes           String?
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([payrollRunId])
+  @@map("payroll_payments")
+}
+
+model PayrollAuditLog {
+  id            String      @id @default(cuid())
+  payrollRunId  String?
+  payrollRun    PayrollRun? @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  userId        Int?
+  user          User?       @relation("PayrollAuditActor", fields: [userId], references: [id], onDelete: SetNull)
+  entity        String?     @default("PAYROLL_RUN") // "PAYROLL_RUN", "PAYSLIP", "SALARY_STRUCTURE", "ADJUSTMENT", "LOAN"
+  entityId      String?
+  action        String      // CREATE_RUN, CALCULATE, ADJUSTMENT, APPROVE, LOCK, MARK_PAID, SALARY_UPDATE, ATTENDANCE_CORRECTION
+  details       String?     @db.Text
+  previousState String?     @db.Text
+  newState      String?     @db.Text
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt     DateTime    @default(now())
+
+  @@index([payrollRunId])
+  @@index([userId])
+  @@index([entity, entityId])
+  @@map("payroll_audit_logs")
 }

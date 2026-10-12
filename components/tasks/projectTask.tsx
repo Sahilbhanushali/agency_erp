@@ -10,6 +10,7 @@ import TaskStatsGrid from "./taskStats";
 import TaskGrid from "./taskGrid";
 import TaskTable from "./taskTable";
 import { format, startOfMonth, addMonths, subMonths, isSameMonth } from "date-fns";
+import toast from "react-hot-toast";
 
 
 enum PostStatus {
@@ -247,7 +248,10 @@ export default function ProjectTasksView({ project, onBack, mutate }: ProjectTas
             return (
               <button
                 key={monthKey}
-                onClick={() => setSelectedMonth(month)}
+                onClick={() => {
+                  setSelectedMonth(month);
+                  toast.success(`Timeline filtered to ${format(month, "MMMM yyyy")}`);
+                }}
                 className={`flex-shrink-0 relative overflow-hidden rounded-xl px-4 py-2 min-w-[110px] transition-all duration-300 text-left cursor-pointer border ${
                   isSelected
                     ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-md shadow-blue-500/10 -translate-y-0.5"

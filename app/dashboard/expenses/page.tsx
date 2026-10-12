@@ -43,6 +43,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getMediaUrl } from "@/lib/utils";
 import { ExpenseDialog } from "@/components/expenses/expense-dialog";
@@ -113,16 +114,24 @@ export default function ExpensesPage() {
     );
   }, [expenses, search]);
 
-  const handleDeleteExpense = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this expense record?")) return;
+  const [expenseToDelete, setExpenseToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isDeletingExpense, setIsDeletingExpense] = useState(false);
+
+  const confirmDeleteExpense = async () => {
+    if (!expenseToDelete) return;
+    setIsDeletingExpense(true);
     try {
-      const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete expense");
-      toast.success("Expense deleted successfully");
+      const res = await fetch(`/api/expenses/${expenseToDelete.id}`, { method: "DELETE" });
+      const resJson = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resJson.error || "Failed to delete expense");
+      toast.success(resJson.message || "Expense deleted successfully");
+      setExpenseToDelete(null);
       mutateExpenses();
       mutateReport();
     } catch (err: any) {
       toast.error(err.message || "Error deleting expense");
+    } finally {
+      setIsDeletingExpense(false);
     }
   };
 
@@ -444,7 +453,12 @@ export default function ExpensesPage() {
                                 variant="ghost"
                                 className="size-7 text-destructive hover:text-destructive"
                                 title="Delete"
-                                onClick={() => handleDeleteExpense(exp.id)}
+                                onClick={() =>
+                                  setExpenseToDelete({
+                                    id: exp.id,
+                                    title: `${formatCurrency(exp.amount)} (${exp.category})`,
+                                  })
+                                }
                               >
                                 <Trash2 className="size-3.5" />
                               </Button>
@@ -651,6 +665,16 @@ export default function ExpensesPage() {
           mutateExpenses();
           mutateReport();
         }}
+      />
+
+      {/* Delete Confirmation Alert */}
+      <DeleteConfirmationDialog
+        isOpen={!!expenseToDelete}
+        onClose={() => setExpenseToDelete(null)}
+        onConfirm={confirmDeleteExpense}
+        itemName={expenseToDelete?.title || "Expense"}
+        entityType="expense"
+        isLoading={isDeletingExpense}
       />
     </div>
   );

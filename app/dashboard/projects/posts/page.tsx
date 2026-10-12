@@ -27,7 +27,7 @@ import CommentsDialog from "@/components/posts/commentsDialog";
 import ViewModeSelector from "@/components/posts/viewModeSelector";
 import BulkActions from "@/components/posts/bulkActions";
 import useSWR from "swr";
-import { Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { exportCalendarToExcel } from "@/utils/exportToExcel";
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import { ProjectTimingBadge } from "@/components/posts/postTimingBadge";
@@ -576,13 +576,12 @@ export default function PostsPage() {
       setIsDeletingPost(false);
     }
   };
-  const handleBulkDelete = async () => {
-    if (!permissionsData?.includes("Manage-post")) {
-      toast.error("You do not have permission to delete posts");
-      return;
-    }
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  const confirmBulkDelete = async () => {
     if (selectedPosts.length === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedPosts.length} post(s)? This action cannot be undone.`)) return;
+    setIsBulkDeleting(true);
     try {
       await Promise.all(
         selectedPosts.map(async (postId) => {
@@ -594,17 +593,29 @@ export default function PostsPage() {
           if (!response.ok) throw new Error(`Failed to delete post ${postId}`);
         })
       );
-      mutatePosts(); // Revalidate posts data
-      setSelectedPosts([]);
+      mutatePosts();
       toast.success(`${selectedPosts.length} post(s) deleted successfully`);
+      setSelectedPosts([]);
+      setShowBulkDeleteConfirm(false);
     } catch (err) {
       console.error("Error deleting posts:", err);
       toast.error("Failed to delete one or more posts");
+    } finally {
+      setIsBulkDeleting(false);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!permissionsData?.includes("Manage-post")) {
+      toast.error("You do not have permission to delete posts");
+      return;
+    }
+    if (selectedPosts.length === 0) return;
+    setShowBulkDeleteConfirm(true);
   };
   const handleFileUpload = async (postId: string, files: FileList) => {
     if (!permissionsData?.includes("Manage-post")) {
-      alert("You do not have permission to upload files");
+      toast.error("You do not have permission to upload files");
       return;
     }
     if (!files.length) return;
@@ -646,7 +657,7 @@ export default function PostsPage() {
 
   const handleBulkStatusChange = async (newStatus: string) => {
     if (!permissionsData?.includes("Manage-post")) {
-      alert("You do not have permission to update post status");
+      toast.error("You do not have permission to update post status");
       return;
     }
     if (selectedPosts.length === 0) return;
@@ -684,12 +695,12 @@ export default function PostsPage() {
   };
   const handleBulkContentStatusChange = async (newContentStatus: string) => {
     if (!permissionsData?.includes("Manage-content") && !permissionsData?.includes("Manage-design")) {
-      alert("You do not have permission to update content status");
+      toast.error("You do not have permission to update content status");
       return;
     }
     if (selectedPosts.length === 0) return;
     if (newContentStatus.toUpperCase() === ContentStatus.REJECTED || newContentStatus.toUpperCase() === ContentStatus.NEEDS_REVISION) {
-      alert("Bulk changes request or needs revision requires feedback. Please use individual post updates for comments.");
+      toast.error("Bulk changes request or needs revision requires feedback. Please use individual post updates for comments.");
       return;
     }
     try {
@@ -719,7 +730,7 @@ export default function PostsPage() {
       setSelectedPosts([]);
     } catch (err) {
       console.error("Error updating content statuses:", err);
-      alert("Failed to update content statuses");
+      toast.error("Failed to update content statuses");
     }
   }
 
@@ -731,7 +742,7 @@ export default function PostsPage() {
 
   const handleDownloadCatalog = async () => {
     if (!urlProjectId || !catalogYear || !catalogMonth) {
-      alert("Please select a valid project, year, and month to download the catalog.");
+      toast.error("Please select a valid project, year, and month to download the catalog.");
       return;
     }
     setIsDownloadingCatalog(true);
@@ -759,7 +770,7 @@ export default function PostsPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Error downloading catalog:", err);
-      alert("Failed to download catalog. Please try again.");
+      toast.error("Failed to download catalog. Please try again.");
     } finally {
       setIsDownloadingCatalog(false);
     }
@@ -767,7 +778,7 @@ export default function PostsPage() {
 
   const handleDownloadSample = async () => {
     if (!urlProjectId) {
-      alert("Please select a valid project.");
+      toast.error("Please select a valid project.");
       return;
     }
     setIsDownloadingSample(true);
@@ -794,7 +805,7 @@ export default function PostsPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Error downloading sample:", err);
-      alert("Failed to download sample. Please try again.");
+      toast.error("Failed to download sample. Please try again.");
     } finally {
       setIsDownloadingSample(false);
     }
@@ -817,12 +828,12 @@ export default function PostsPage() {
 
   const openApprovalDialog = (postId: string, action: "approve" | "reject") => {
     if (!permissionsData?.includes("Manage-post")) {
-      alert("You do not have permission to change post status");
+      toast.error("You do not have permission to change post status");
       return;
     }
     const post = postsData?.find((p) => p.id === postId);
     if (action === "reject" && post && post.status === "DRAFT") {
-      alert("Cannot reject a design that is in Draft status.");
+      toast.error("Cannot reject a design that is in Draft status.");
       return;
     }
     setApprovalDialog({ postId, action });
@@ -882,7 +893,7 @@ export default function PostsPage() {
     if (statusType === "design" && ["REJECTED", "NEEDS_MINOR_CHANGE"].includes(targetStatus)) {
       const post = postsData?.find((p) => p.id === postId);
       if (post && post.status === "DRAFT") {
-        alert("Cannot reject or request minor changes for a design that is in Draft status.");
+        toast.error("Cannot reject or request minor changes for a design that is in Draft status.");
         return;
       }
     }
@@ -952,7 +963,7 @@ export default function PostsPage() {
 
     // Check if we have either text or audio feedback
     if (!actionComment.trim() && !customAudioBlob) {
-      alert("Please provide either text feedback or audio feedback");
+      toast.error("Please provide either text feedback or audio feedback");
       return;
     }
 
@@ -1178,7 +1189,6 @@ export default function PostsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
-      <Toaster position="top-right" />
       <div className="rounded-xl border border-border/70 bg-card shadow-2xs overflow-hidden">
         {/* Row 1: Title & Post Type Progress */}
         <div className="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1640,6 +1650,15 @@ export default function PostsPage() {
         itemName={postToDelete?.title || "Post"}
         entityType="post"
         isLoading={isDeletingPost}
+      />
+
+      <DeleteConfirmationDialog
+        isOpen={showBulkDeleteConfirm}
+        onClose={() => setShowBulkDeleteConfirm(false)}
+        onConfirm={confirmBulkDelete}
+        itemName={`${selectedPosts.length} selected post(s)`}
+        entityType="post"
+        isLoading={isBulkDeleting}
       />
 
       {urlProjectId && (

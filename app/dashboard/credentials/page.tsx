@@ -74,9 +74,13 @@ export default function CredentialsPage() {
             password: platformData.password,
           })
         })
+        const resJson = await res.json().catch(() => ({}))
         if (res.ok) {
           toast.success("Credential updated successfully!")
+          setIsDialogOpen(false)
           fetchCredentials()
+        } else {
+          toast.error(resJson.error || "Failed to update credential.")
         }
       } else {
         // Add mode (POST)
@@ -85,14 +89,18 @@ export default function CredentialsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         })
+        const resJson = await res.json().catch(() => ({}))
         if (res.ok) {
           toast.success("Credentials created successfully!")
+          setIsDialogOpen(false)
           fetchCredentials()
+        } else {
+          toast.error(resJson.error || "Failed to create credentials.")
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      toast.error("Something went wrong.")
+      toast.error(err?.message || "Something went wrong.")
     }
   }
 
@@ -103,16 +111,17 @@ export default function CredentialsPage() {
       const res = await fetch(`/api/credentials/${credentialToDelete.id}`, {
         method: 'DELETE',
       })
+      const resJson = await res.json().catch(() => ({}))
       if (res.ok) {
-        toast.success("Credential deleted successfully!")
+        toast.success(resJson.message || "Credential deleted successfully!")
         fetchCredentials()
         setCredentialToDelete(null)
       } else {
-        toast.error("Failed to delete credential.")
+        toast.error(resJson.error || "Failed to delete credential.")
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      toast.error("Failed to delete credential.")
+      toast.error(err?.message || "Failed to delete credential.")
     } finally {
       setIsDeletingCredential(false)
     }

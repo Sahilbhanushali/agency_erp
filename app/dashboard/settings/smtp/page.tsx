@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import toast from "react-hot-toast";
 
 interface SmtpConfig {
@@ -62,22 +63,30 @@ export default function SmtpSettingsPage() {
       .catch(() => {});
   }, []);
 
-  const handleDelete = async (id: number) => {
+  const [configToDelete, setConfigToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [isDeletingConfig, setIsDeletingConfig] = useState(false);
+
+  const confirmDeleteSmtp = async () => {
+    if (!configToDelete) return;
+    setIsDeletingConfig(true);
     try {
-      const response = await fetch(`/api/smtp-config?id=${id}`, {
+      const response = await fetch(`/api/smtp-config?id=${configToDelete.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
 
+      const errorData = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorData = await response.json();
         throw new Error(errorData.error || "Failed to delete SMTP configuration");
       }
 
       toast.success("SMTP configuration deleted");
+      setConfigToDelete(null);
       await fetchSmtpConfigs();
     } catch (err: any) {
       toast.error(err.message || "Failed to delete configuration");
+    } finally {
+      setIsDeletingConfig(false);
     }
   };
 
@@ -298,7 +307,12 @@ export default function SmtpSettingsPage() {
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    onClick={() => handleDelete(config.id)}
+                    onClick={() =>
+                      setConfigToDelete({
+                        id: config.id,
+                        name: `${config.host}:${config.port} (${config.username})`,
+                      })
+                    }
                     title="Delete configuration"
                     className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   >
@@ -345,6 +359,16 @@ export default function SmtpSettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Alert */}
+      <DeleteConfirmationDialog
+        isOpen={!!configToDelete}
+        onClose={() => setConfigToDelete(null)}
+        onConfirm={confirmDeleteSmtp}
+        itemName={configToDelete?.name || "SMTP Config"}
+        entityType="smtp"
+        isLoading={isDeletingConfig}
+      />
     </div>
   );
 }

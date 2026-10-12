@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Sliders, Plus, Trash2, Edit, Shield, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 
 type Utility = {
   id: string;
@@ -195,21 +196,29 @@ export default function UtilitiesPage() {
   };
 
   // Handle utility delete
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this utility?")) return;
+  const [utilityToDelete, setUtilityToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeletingUtility, setIsDeletingUtility] = useState(false);
+
+  const confirmDeleteUtility = async () => {
+    if (!utilityToDelete) return;
+    setIsDeletingUtility(true);
     try {
-      const res = await fetch(`/api/utilities/${id}`, {
+      const res = await fetch(`/api/utilities/${utilityToDelete.id}`, {
         method: "DELETE",
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        setUtilities(utilities.filter((u) => u.id !== id));
-        toast.success("Utility deleted");
+        setUtilities(utilities.filter((u) => u.id !== utilityToDelete.id));
+        toast.success(data.message || "Utility deleted successfully");
+        setUtilityToDelete(null);
       } else {
-        toast.error("Failed to delete utility");
+        toast.error(data.error || "Failed to delete utility");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error deleting utility:", err);
-      toast.error("Failed to delete utility");
+      toast.error(err.message || "Failed to delete utility");
+    } finally {
+      setIsDeletingUtility(false);
     }
   };
 
@@ -426,7 +435,7 @@ export default function UtilitiesPage() {
                         size="icon-xs"
                         aria-label={`Delete ${u.name}`}
                         className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(u.id)}
+                        onClick={() => setUtilityToDelete({ id: u.id, name: `${u.name} (${u.type})` })}
                       >
                         <Trash2 className="size-3.5" />
                       </Button>
@@ -497,6 +506,16 @@ export default function UtilitiesPage() {
           )}
         </CardContent>
       </Card> */}
+
+      {/* Delete Confirmation Alert */}
+      <DeleteConfirmationDialog
+        isOpen={!!utilityToDelete}
+        onClose={() => setUtilityToDelete(null)}
+        onConfirm={confirmDeleteUtility}
+        itemName={utilityToDelete?.name || "Utility"}
+        entityType="utility"
+        isLoading={isDeletingUtility}
+      />
     </div>
   );
 }

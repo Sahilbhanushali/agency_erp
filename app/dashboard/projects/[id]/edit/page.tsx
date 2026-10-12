@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
 
 interface User {
@@ -346,7 +346,6 @@ useEffect(() => {
   if (status === "loading" || projectLoading || clientsLoading || usersLoading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
         <div className="space-y-2">
           <Skeleton className="h-8 w-44 rounded-lg" />
           <Skeleton className="h-4 w-72 rounded-md" />
@@ -368,7 +367,6 @@ useEffect(() => {
   if (status === "unauthenticated" || !session?.user?.id || error || !project) {
     return (
       <div className="py-12">
-        <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
         <EmptyState
           icon={AlertTriangle}
           title={status === "unauthenticated" || !session?.user?.id ? "Authentication Required" : "Error Loading Project"}
@@ -390,7 +388,6 @@ useEffect(() => {
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
-      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       <PageHeader
         title={`Edit Project: ${project.name}`}
         description="Update project details, monthly strategy, and cross-functional team assignments."

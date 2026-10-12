@@ -24,6 +24,7 @@ import MediaWithFallback from '@/components/MediaWithFallback';
 import ImageModal from '@/components/ImageModal';
 import AssetsDialog from '@/components/posts/assetsDialog';
 import { ProofingApprovalDialog } from "@/components/approvals/proofing-approval-dialog";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import useSWR, { mutate as globalMutate } from 'swr';
 import { useSession } from 'next-auth/react';
 import { getMediaUrl } from '@/lib/utils';
@@ -200,20 +201,28 @@ const ApprovalTab: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+  const [postToDelete, setPostToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isDeletingPost, setIsDeletingPost] = useState(false);
+
+  const confirmDeletePost = async () => {
+    if (!postToDelete) return;
+    setIsDeletingPost(true);
     try {
-      const response = await fetch(`/api/posts/${postId}`, {
+      const response = await fetch(`/api/posts/${postToDelete.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
-      if (!response.ok) throw new Error("Failed to delete post");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Failed to delete post");
       mutate();
-      toast.success("Post deleted successfully");
-    } catch (err) {
+      toast.success(data.message || "Post deleted successfully");
+      setPostToDelete(null);
+    } catch (err: any) {
       console.error("Error deleting post:", err);
-      toast.error("Failed to delete post");
+      toast.error(err.message || "Failed to delete post");
+    } finally {
+      setIsDeletingPost(false);
     }
   };
 
@@ -333,7 +342,7 @@ const ApprovalTab: React.FC = () => {
       const approval = approvals.find((a: ApprovalFlow) => a.post.id === postId);
       const postStatus = approval?.post?.status;
       if (postStatus === "DRAFT") {
-        alert("Cannot reject or request minor changes for a design that is in Draft status.");
+        toast.error("Cannot reject or request minor changes for a design that is in Draft status.");
         return;
       }
     }
@@ -370,7 +379,7 @@ const ApprovalTab: React.FC = () => {
       // Handle other status types (content, design) as in the original code
     } catch (err) {
       console.error(`Error updating ${statusType} status:`, err);
-      alert(`Failed to update ${statusType} status`);
+      toast.error(`Failed to update ${statusType} status`);
     }
   };
 
@@ -379,7 +388,7 @@ const ApprovalTab: React.FC = () => {
     const postId = statusRejectDialog.postId;
 
     if (!actionComment.trim() && !audioBlob) {
-      alert("Please provide either text feedback or audio feedback");
+      toast.error("Please provide either text feedback or audio feedback");
       return;
     }
     
@@ -452,10 +461,10 @@ const ApprovalTab: React.FC = () => {
       setActionComment("");
       setAudioBlob(null);
 
-      alert(`Post ${statusType} successfully rejected with feedback`);
+      toast.success(`Post ${statusType} successfully rejected with feedback`);
     } catch (err) {
       console.error("Error rejecting post:", err);
-      alert("Failed to reject post. Please try again.");
+      toast.error("Failed to reject post. Please try again.");
     }
   };
 
@@ -489,7 +498,7 @@ const ApprovalTab: React.FC = () => {
     if (statusType === "designerHead" && ["REJECTED", "NEEDS_MINOR_CHANGE"].includes(status)) {
       const postStatus = approval.post.status;
       if (postStatus === "DRAFT") {
-        alert("Cannot reject or request minor changes for a design that is in Draft status.");
+        toast.error("Cannot reject or request minor changes for a design that is in Draft status.");
         return;
       }
     }
@@ -811,7 +820,7 @@ const ApprovalTab: React.FC = () => {
                         </DropdownMenuItem>
 
                         <DropdownMenuItem
-                          onClick={() => handleDeletePost(approval.post.id)}
+                          onClick={() => setPostToDelete({ id: approval.post.id, title: approval.post.title })}
                           className="text-red-600 dark:text-red-400 cursor-pointer"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -1029,6 +1038,16 @@ const ApprovalTab: React.FC = () => {
           }}
         />
       )}
+
+      {/* Delete Confirmation Alert */}
+      <DeleteConfirmationDialog
+        isOpen={!!postToDelete}
+        onClose={() => setPostToDelete(null)}
+        onConfirm={confirmDeletePost}
+        itemName={postToDelete?.title || "Post"}
+        entityType="post"
+        isLoading={isDeletingPost}
+      />
     </div>
   );
 };

@@ -861,7 +861,6 @@ export default function FestivalsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
-      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       {status === "loading" ? (
         <div className="space-y-4">
           <Skeleton className="h-8 w-40" />

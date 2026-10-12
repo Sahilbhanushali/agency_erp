@@ -20,7 +20,7 @@ import { Plus, Building2, Mail, Phone, Search, Eye, Edit, Trash2, Loader2, Filte
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import toast, { Toaster } from "react-hot-toast"; // react-hot-toast
+import toast from "react-hot-toast";
 import { getMediaUrl } from "@/lib/utils";
 import MediaPopup from "@/components/mediaPopup";
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
@@ -152,25 +152,21 @@ export default function ClientsPage() {
 
   // Delete with toast confirmation
   const handleDelete = async (clientId: string, clientName: string) => {
-    const promise = async () => {
+    try {
       const res = await fetch(`/api/clients/${clientId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to delete client");
       }
       await mutate("/api/clients");
-      return { name: clientName };
-    };
-
-    toast.promise(promise(), {
-      loading: `Deleting ${clientName}...`,
-      success: (data) => `${data.name} deleted successfully!`,
-      error: (err) => err.message || "Failed to delete client",
-    });
+      toast.success(`${clientName} deleted successfully!`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete client");
+    }
   };
 
   const handleEditNavigation = (clientId: string) => {
@@ -285,17 +281,6 @@ export default function ClientsPage() {
 
   return (
     <>
-      {/* Toast container */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: { background: "var(--neutral-800)", color: "var(--neutral-0)" },
-          success: { style: { background: "var(--success)" } },
-          error: { style: { background: "var(--destructive)" } },
-        }}
-      />
-
       <div className="space-y-6 animate-in fade-in-50 duration-200">
         {/* Page Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

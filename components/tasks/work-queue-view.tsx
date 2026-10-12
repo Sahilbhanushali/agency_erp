@@ -8,6 +8,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation"; // Import Next.js hooks
 import useSWR from "swr";
+import { toast } from "react-hot-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -353,7 +354,10 @@ export default function WorkQueueView() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSelectedMonth(currentMonthKey)}
+                onClick={() => {
+                  setSelectedMonth(currentMonthKey);
+                  toast.success("Timeline reset to current month");
+                }}
                 className="h-9 px-2 text-xs"
                 title="Reset to current month"
               >
@@ -714,7 +718,9 @@ function MonthPicker({
   
   const handleSelect = (monthIndex: number) => {
     const value = `${viewYear}-${String(monthIndex + 1).padStart(2, '0')}`;
+    const label = `${months[monthIndex]} ${viewYear}`;
     onChange(value);
+    toast.success(`Timeline switched to ${label}`);
     setIsOpen(false);
   };
 

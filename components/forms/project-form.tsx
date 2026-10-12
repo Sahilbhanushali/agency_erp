@@ -566,7 +566,7 @@ export default function ProjectForm({
       setIsLoading(true);
       setIsSubmitting(true);
 
-      toast.loading(isEditing ? "Updating Project..." : "Creating Project...");
+      const toastId = toast.loading(isEditing ? "Updating Project..." : "Creating Project...");
 
       try {
         const url = isEditing ? `/api/projects/${project?.id}` : "/api/projects";
@@ -627,21 +627,18 @@ export default function ProjectForm({
         let projectId = isEditing ? project?.id : result.id;
 
         if (projectId && uniqueAssignedUserIds.length > 0) {
-          const emailResults = await sendAssignmentEmails(projectId.toString(), uniqueAssignedUserIds);
-          if (emailResults.successful > 0 && emailResults.failed === 0) {
-            toast.success(`Notifications sent to all ${emailResults.successful} team member(s).`);
-          }
+          await sendAssignmentEmails(projectId.toString(), uniqueAssignedUserIds);
         }
 
-        toast.success(`Project "${formData.name}" ${isEditing ? "updated" : "created"} successfully.`);
+        toast.success(`Project "${formData.name}" ${isEditing ? "updated" : "created"} successfully.`, { id: toastId });
 
         setTimeout(() => {
           router.push("/dashboard/projects");
           router.refresh();
-        }, 1200);
+        }, 800);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Something went wrong. Please try again.";
-        toast.error(errorMessage);
+        toast.error(errorMessage, { id: toastId });
       } finally {
         setIsLoading(false);
         setIsSubmitting(false);
