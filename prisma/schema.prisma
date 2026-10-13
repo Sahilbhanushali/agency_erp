@@ -228,6 +228,20 @@ model User {
   exitDate                DateTime?
   exitStatus              String?             @default("ACTIVE")
 
+  // Recruitment & HRMS Relations
+  jobOpeningsManaged      HrmsJobOpening[]            @relation("JobHiringManager")
+  jobOpeningsRecruiting   HrmsJobOpening[]            @relation("JobRecruiter")
+  candidateActivities     HrmsCandidateActivity[]     @relation("CandidateActivityActor")
+  createdInterviews       HrmsInterview[]             @relation("InterviewCreator")
+  interviewParticipations HrmsInterviewInterviewer[]  @relation("InterviewerUser")
+  createdTemplates        HrmsOfferTemplate[]         @relation("OfferTemplateCreator")
+  offersManaging          HrmsOffer[]                 @relation("OfferReportingManager")
+  createdOffers           HrmsOffer[]                 @relation("OfferCreator")
+  approvedOffers          HrmsOffer[]                 @relation("OfferApprover")
+  offerRevisions          HrmsOfferRevision[]         @relation("OfferReviser")
+  onboardingBuddies       HrmsOnboarding[]            @relation("OnboardingBuddy")
+  convertedFromCandidate  HrmsOnboarding?             @relation("ConvertedEmployee")
+
   @@map("users")
 }
 
@@ -2257,4 +2271,326 @@ model PayrollAuditLog {
   @@index([userId])
   @@index([entity, entityId])
   @@map("payroll_audit_logs")
+}
+
+// ==========================================
+// HRMS & RECRUITMENT MODULE MODELS
+// ==========================================
+
+model HrmsJobOpening {
+  id                String            @id @default(cuid())
+  title             String
+  code              String            @unique
+  department        String
+  location          String
+  employmentType    String            @default("FULL_TIME") // FULL_TIME, PART_TIME, CONTRACT, INTERN
+  status            String            @default("ACTIVE") // DRAFT, ACTIVE, PAUSED, CLOSED, ARCHIVED
+  openingsCount     Int               @default(1)
+  experienceMin     Int               @default(0)
+  experienceMax     Int?
+  salaryMin         Decimal?          @db.Decimal(12, 2)
+  salaryMax         Decimal?          @db.Decimal(12, 2)
+  currency          String            @default("INR")
+  description       String?           @db.Text
+  requirements      String?           @db.Text
+  benefits          String?           @db.Text
+  hiringManagerId   Int?
+  hiringManager     User?             @relation("JobHiringManager", fields: [hiringManagerId], references: [id], onDelete: SetNull)
+  recruiterId       Int?
+  recruiter         User?             @relation("JobRecruiter", fields: [recruiterId], references: [id], onDelete: SetNull)
+  targetDate        DateTime?
+  closedAt          DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  applications      HrmsApplication[]
+  interviews        HrmsInterview[]
+  offers            HrmsOffer[]
+  onboardingRecords HrmsOnboarding[]
+
+  @@map("hrms_job_openings")
+}
+
+model HrmsCandidate {
+  id                String                  @id @default(cuid())
+  name              String
+  email             String
+  phone             String?
+  currentCompany    String?
+  currentTitle      String?
+  experienceYears   Decimal?                @db.Decimal(4, 1)
+  currentSalary     Decimal?                @db.Decimal(12, 2)
+  expectedSalary    Decimal?                @db.Decimal(12, 2)
+  noticePeriodDays  Int?
+  resumeUrl         String?
+  resumeFileName    String?
+  portfolioUrl      String?
+  linkedinUrl       String?
+  source            String                  @default("DIRECT") // LINKEDIN, REFERRAL, CAREER_SITE, JOB_BOARD, DIRECT, AGENCY
+  address           String?                 @db.Text
+  city              String?
+  state             String?
+  country           String?                 @default("India")
+  notes             String?                 @db.Text
+  tags              String?
+  rating            Int?                    @default(0)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  applications      HrmsApplication[]
+  interviews        HrmsInterview[]
+  offers            HrmsOffer[]
+  activities        HrmsCandidateActivity[]
+  onboardingRecords HrmsOnboarding[]
+
+  @@index([email])
+  @@map("hrms_candidates")
+}
+
+model HrmsApplication {
+  id               String                  @id @default(cuid())
+  candidateId      String
+  candidate        HrmsCandidate           @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobOpeningId     String
+  jobOpening       HrmsJobOpening          @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
+  stage            String                  @default("Applied")
+  status           String                  @default("IN_PROGRESS") // IN_PROGRESS, HIRED, REJECTED, WITHDRAWN
+  rating           Int?                    @default(0)
+  rejectionReason  String?
+  withdrawalReason String?
+  notes            String?                 @db.Text
+  appliedDate      DateTime                @default(now())
+  stageUpdatedAt   DateTime                @default(now())
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  interviews       HrmsInterview[]
+  offers           HrmsOffer[]
+  activities       HrmsCandidateActivity[]
+
+  @@unique([candidateId, jobOpeningId])
+  @@index([stage])
+  @@index([candidateId])
+  @@index([jobOpeningId])
+  @@map("hrms_applications")
+}
+
+model HrmsCandidateActivity {
+  id            String           @id @default(cuid())
+  candidateId   String
+  candidate     HrmsCandidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  applicationId String?
+  application   HrmsApplication? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  action        String           // STAGE_CHANGE, INTERVIEW_SCHEDULED, INTERVIEW_COMPLETED, OFFER_CREATED, OFFER_SENT, OFFER_ACCEPTED, REJECTED, WITHDRAWN, NOTE_ADDED
+  fromStage     String?
+  toStage       String?
+  title         String
+  notes         String?          @db.Text
+  performedById Int?
+  performedBy   User?            @relation("CandidateActivityActor", fields: [performedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime         @default(now())
+
+  @@index([candidateId])
+  @@index([applicationId])
+  @@map("hrms_candidate_activities")
+}
+
+model HrmsInterview {
+  id                 String                     @id @default(cuid())
+  applicationId      String
+  application        HrmsApplication            @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  candidateId        String
+  candidate          HrmsCandidate              @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobOpeningId       String
+  jobOpening         HrmsJobOpening             @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
+  title              String
+  roundNumber        Int                        @default(1)
+  type               String                     @default("ONLINE") // ONLINE, TELEPHONE, IN_PERSON
+  status             String                     @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, MISSED, RESCHEDULED
+  scheduledDate      DateTime
+  startTime          String
+  endTime            String
+  timeZone           String                     @default("Asia/Kolkata")
+  meetingLink        String?
+  location           String?
+  instructions       String?                    @db.Text
+  feedback           String?                    @db.Text
+  rating             Int?
+  recommendation     String?                    // STRONG_HIRE, HIRE, MAYBE, NO_HIRE, STRONG_NO_HIRE
+  cancellationReason String?
+  createdById        Int?
+  createdBy          User?                      @relation("InterviewCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  interviewers       HrmsInterviewInterviewer[]
+
+  @@index([applicationId])
+  @@index([candidateId])
+  @@index([jobOpeningId])
+  @@index([scheduledDate])
+  @@map("hrms_interviews")
+}
+
+model HrmsInterviewInterviewer {
+  id          String        @id @default(cuid())
+  interviewId String
+  interview   HrmsInterview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User          @relation("InterviewerUser", fields: [userId], references: [id], onDelete: Cascade)
+  isLead      Boolean       @default(false)
+  feedback    String?       @db.Text
+  rating      Int?
+
+  @@unique([interviewId, userId])
+  @@map("hrms_interview_interviewers")
+}
+
+model HrmsLetterhead {
+  id             String              @id @default(cuid())
+  name           String
+  companyName    String
+  logoUrl        String?
+  address        String?             @db.Text
+  city           String?
+  state          String?
+  country        String?             @default("India")
+  postalCode     String?
+  email          String?
+  phone          String?
+  website        String?
+  headerHtml     String?             @db.Text
+  footerHtml     String?             @db.Text
+  primaryColor   String              @default("#1e40af")
+  secondaryColor String              @default("#64748b")
+  fontFamily     String              @default("Helvetica, Arial, sans-serif")
+  marginTop      Int                 @default(30)
+  marginBottom   Int                 @default(25)
+  marginLeft     Int                 @default(20)
+  marginRight    Int                 @default(20)
+  watermarkText  String?
+  watermarkUrl   String?
+  status         String              @default("ACTIVE") // DRAFT, ACTIVE, ARCHIVED
+  isDefault      Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  templates      HrmsOfferTemplate[]
+  offers         HrmsOffer[]
+
+  @@map("hrms_letterheads")
+}
+
+model HrmsOfferTemplate {
+  id             String          @id @default(cuid())
+  name           String
+  description    String?
+  category       String          @default("STANDARD") // STANDARD, EXECUTIVE, CONTRACTOR, INTERNSHIP
+  department     String?
+  employmentType String?         @default("FULL_TIME")
+  status         String          @default("ACTIVE") // DRAFT, ACTIVE, ARCHIVED
+  version        Int             @default(1)
+  contentHtml    String          @db.Text
+  letterheadId   String?
+  letterhead     HrmsLetterhead? @relation(fields: [letterheadId], references: [id], onDelete: SetNull)
+  createdById    Int?
+  createdBy      User?           @relation("OfferTemplateCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  offers         HrmsOffer[]
+
+  @@map("hrms_offer_templates")
+}
+
+model HrmsOffer {
+  id                    String              @id @default(cuid())
+  offerNumber           String              @unique
+  applicationId         String
+  application           HrmsApplication     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  candidateId           String
+  candidate             HrmsCandidate       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobOpeningId          String
+  jobOpening            HrmsJobOpening      @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
+  templateId            String?
+  template              HrmsOfferTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  letterheadId          String?
+  letterhead            HrmsLetterhead?     @relation(fields: [letterheadId], references: [id], onDelete: SetNull)
+  jobTitle              String
+  department            String
+  reportingManagerId    Int?
+  reportingManager      User?               @relation("OfferReportingManager", fields: [reportingManagerId], references: [id], onDelete: SetNull)
+  employmentType        String              @default("FULL_TIME")
+  workLocation          String
+  joiningDate           DateTime
+  probationPeriodMonths Int                 @default(3)
+  validityDate          DateTime
+  annualCtc             Decimal             @db.Decimal(12, 2)
+  monthlyGross          Decimal             @db.Decimal(12, 2)
+  salaryBreakdown       String?             @db.Text
+  benefits              String?             @db.Text
+  additionalTerms       String?             @db.Text
+  status                String              @default("DRAFT") // DRAFT, PENDING_APPROVAL, READY_TO_SEND, SENT, ACCEPTED, REJECTED, EXPIRED, WITHDRAWN, ARCHIVED
+  version               Int                 @default(1)
+  documentSnapshotHtml  String?             @db.Text
+  generatedDocumentUrl  String?
+  sentAt                DateTime?
+  acceptedAt            DateTime?
+  rejectedAt            DateTime?
+  withdrawnAt           DateTime?
+  withdrawalReason      String?
+  createdById           Int?
+  createdBy             User?               @relation("OfferCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedById          Int?
+  approvedBy            User?               @relation("OfferApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  revisions             HrmsOfferRevision[]
+  onboarding            HrmsOnboarding?
+
+  @@index([applicationId])
+  @@index([candidateId])
+  @@index([status])
+  @@map("hrms_offers")
+}
+
+model HrmsOfferRevision {
+  id                   String    @id @default(cuid())
+  offerId              String
+  offer                HrmsOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  version              Int
+  annualCtc            Decimal   @db.Decimal(12, 2)
+  monthlyGross         Decimal   @db.Decimal(12, 2)
+  joiningDate          DateTime
+  changeReason         String?   @db.Text
+  documentSnapshotHtml String?   @db.Text
+  revisedById          Int?
+  revisedBy            User?     @relation("OfferReviser", fields: [revisedById], references: [id], onDelete: SetNull)
+  createdAt            DateTime  @default(now())
+
+  @@map("hrms_offer_revisions")
+}
+
+model HrmsOnboarding {
+  id              String          @id @default(cuid())
+  candidateId     String
+  candidate       HrmsCandidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  offerId         String?         @unique
+  offer           HrmsOffer?      @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  jobOpeningId    String?
+  jobOpening      HrmsJobOpening? @relation(fields: [jobOpeningId], references: [id], onDelete: SetNull)
+  status          String          @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  joiningDate     DateTime
+  assignedBuddyId Int?
+  assignedBuddy   User?           @relation("OnboardingBuddy", fields: [assignedBuddyId], references: [id], onDelete: SetNull)
+  checklistJson   String?         @db.Text
+  convertedUserId Int?            @unique
+  convertedUser   User?           @relation("ConvertedEmployee", fields: [convertedUserId], references: [id], onDelete: SetNull)
+  completedAt     DateTime?
+  notes           String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("hrms_onboarding")
 }

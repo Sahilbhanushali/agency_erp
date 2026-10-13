@@ -138,7 +138,7 @@ export default function EmployeeSelfService() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="shadow-2xs border border-border/60">
             <CardContent className="p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -211,7 +211,7 @@ export default function EmployeeSelfService() {
           </CardHeader>
           <CardContent className="p-4">
             {leaveBalances && leaveBalances.length > 0 ? (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {leaveBalances.map((lb: any) => (
                   <div key={lb.id} className="p-3 rounded-lg border border-border/60 bg-muted/20 text-center">
                     <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">
@@ -245,7 +245,7 @@ export default function EmployeeSelfService() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               <div className="p-2.5 rounded-lg border border-border/50 bg-emerald-500/10">
                 <span className="text-[10px] uppercase font-semibold text-emerald-700 dark:text-emerald-400 block">
                   Present
@@ -293,68 +293,70 @@ export default function EmployeeSelfService() {
             </span>
           </CardTitle>
         </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs font-semibold">Pay Period</TableHead>
-              <TableHead className="text-xs font-semibold">Payable Days</TableHead>
-              <TableHead className="text-xs font-semibold">Gross Salary</TableHead>
-              <TableHead className="text-xs font-semibold">Total Deductions</TableHead>
-              <TableHead className="text-xs font-semibold">Net Take-Home</TableHead>
-              <TableHead className="text-xs font-semibold">Status</TableHead>
-              <TableHead className="text-right text-xs font-semibold">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {payslips.length === 0 ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-xs text-muted-foreground">
-                  No published payslips found yet. Once payroll is processed and published by HR, your payslips will appear here.
-                </TableCell>
+                <TableHead className="text-xs font-semibold">Pay Period</TableHead>
+                <TableHead className="text-xs font-semibold">Payable Days</TableHead>
+                <TableHead className="text-right text-xs font-semibold">Gross Salary</TableHead>
+                <TableHead className="text-right text-xs font-semibold">Total Deductions</TableHead>
+                <TableHead className="text-right text-xs font-semibold">Net Take-Home</TableHead>
+                <TableHead className="text-xs font-semibold">Status</TableHead>
+                <TableHead className="text-right text-xs font-semibold">Actions</TableHead>
               </TableRow>
-            ) : (
-              payslips.map((p: any) => (
-                <TableRow key={p.id} className="hover:bg-muted/30">
-                  <TableCell className="font-bold text-xs text-foreground">
-                    {MONTH_NAMES[p.month - 1]} {p.year}
-                  </TableCell>
-                  <TableCell className="text-xs">{p.payableDays} Days</TableCell>
-                  <TableCell className="text-xs font-mono">{formatInr(p.grossSalary)}</TableCell>
-                  <TableCell className="text-xs font-mono text-red-600">
-                    {formatInr(p.totalDeductions)}
-                  </TableCell>
-                  <TableCell className="text-xs font-mono font-bold text-emerald-600">
-                    {formatInr(p.netSalary)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="success" className="text-[10px]">
-                      {p.paymentStatus || "PAID"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={() => setSelectedPayslip(p)}
-                        className="gap-1 text-xs"
-                      >
-                        <Eye className="size-3" />
-                        View
-                      </Button>
-                      <a href={`/api/payroll/payslips/${p.id}/pdf`} download>
-                        <Button size="xs" variant="outline" className="gap-1 text-xs">
-                          <Download className="size-3" />
-                          PDF
-                        </Button>
-                      </a>
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {payslips.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-10 text-xs text-muted-foreground">
+                    No published payslips found yet. Once payroll is processed and published by HR, your payslips will appear here.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                payslips.map((p: any) => (
+                  <TableRow key={p.id} className="hover:bg-muted/30">
+                    <TableCell className="font-bold text-xs text-foreground">
+                      {MONTH_NAMES[p.month - 1]} {p.year}
+                    </TableCell>
+                    <TableCell className="text-xs">{p.payableDays} Days</TableCell>
+                    <TableCell className="text-right text-xs font-mono">{formatInr(p.grossSalary)}</TableCell>
+                    <TableCell className="text-right text-xs font-mono text-red-600">
+                      {formatInr(p.totalDeductions)}
+                    </TableCell>
+                    <TableCell className="text-right text-xs font-mono font-bold text-emerald-600">
+                      {formatInr(p.netSalary)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="success" className="text-[10px]">
+                        {p.paymentStatus || "PAID"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => setSelectedPayslip(p)}
+                          className="gap-1 text-xs"
+                        >
+                          <Eye className="size-3" />
+                          View
+                        </Button>
+                        <a href={`/api/payroll/payslips/${p.id}/pdf`} download>
+                          <Button size="xs" variant="outline" className="gap-1 text-xs">
+                            <Download className="size-3" />
+                            PDF
+                          </Button>
+                        </a>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       {/* Modal for detailed payslip view */}

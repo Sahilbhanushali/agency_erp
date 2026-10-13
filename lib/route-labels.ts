@@ -22,6 +22,7 @@ const breadcrumbCache: Record<string, string> = {
   credentials: "Credentials",
   approvals: "Approvals",
   utilities: "Utilities",
+  hrms: "Recruitment & HRMS",
   new: "Create New",
   edit: "Edit",
   posts: "Posts & Content",
