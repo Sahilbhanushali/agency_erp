@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getMediaUrl } from "@/lib/utils";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 
 export interface ProofAnnotationReply {
   id: string;
@@ -81,6 +82,8 @@ export function VisualProofingCanvas({
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [pinToDelete, setPinToDelete] = useState<string | null>(null);
+  const [isDeletingPin, setIsDeletingPin] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -165,18 +168,22 @@ export function VisualProofingCanvas({
     }
   };
 
-  const handleDeleteAnnotation = async (annotationId: string) => {
-    if (!confirm("Delete this feedback pin?")) return;
+  const confirmDeleteAnnotation = async () => {
+    if (!pinToDelete) return;
+    setIsDeletingPin(true);
     try {
-      const res = await fetch(`/api/posts/${postId}/annotations/${annotationId}`, {
+      const res = await fetch(`/api/posts/${postId}/annotations/${pinToDelete}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Could not delete");
       toast.success("Annotation removed");
-      if (activePinId === annotationId) setActivePinId(null);
+      if (activePinId === pinToDelete) setActivePinId(null);
+      setPinToDelete(null);
       fetchAnnotations();
     } catch (err: any) {
       toast.error(err.message || "Error deleting annotation");
+    } finally {
+      setIsDeletingPin(false);
     }
   };
 
@@ -476,7 +483,7 @@ export function VisualProofingCanvas({
                     variant="ghost"
                     className="size-7 text-destructive hover:text-destructive"
                     title="Delete Pin"
-                    onClick={() => handleDeleteAnnotation(activeAnnotation.id)}
+                    onClick={() => setPinToDelete(activeAnnotation.id)}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
@@ -605,6 +612,15 @@ export function VisualProofingCanvas({
           )}
         </div>
       </div>
+
+      <DeleteConfirmationDialog
+        isOpen={!!pinToDelete}
+        onClose={() => setPinToDelete(null)}
+        onConfirm={confirmDeleteAnnotation}
+        title="Delete Feedback Pin?"
+        itemName="Feedback Pin"
+        isLoading={isDeletingPin}
+      />
     </div>
   );
 }

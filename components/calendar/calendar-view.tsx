@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import toast from "react-hot-toast";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -142,23 +143,44 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
     fetchShootEvents();
   }, []);
 
+  const handleDayClick = (day: Date) => {
+    const dateStr = format(day, "yyyy-MM-dd");
+    setNewEvent({
+      name: "",
+      location: "",
+      date: dateStr,
+      time: "10:00",
+    });
+    setIsAddEventOpen(true);
+  };
+
   const handleAddEvent = async () => {
-    if (newEvent.name && newEvent.date) {
-      try {
-        const res = await fetch("/api/shoot-events", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newEvent),
-        });
-        if (res.ok) {
-          const created = await res.json();
-          setShootEvents([...shootEvents, created]);
-          setNewEvent({ name: "", location: "", date: "", time: "" });
-          setIsAddEventOpen(false);
+    if (!newEvent.name || !newEvent.date) {
+      toast.error("Please provide both an event name and date");
+      return;
+    }
+    try {
+      const res = await fetch("/api/shoot-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newEvent),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setShootEvents(prev => [...prev, created]);
+        setNewEvent({ name: "", location: "", date: "", time: "10:00" });
+        setIsAddEventOpen(false);
+        toast.success("Event created successfully");
+        if (activeTab !== "shoot") {
+          setActiveTab("shoot");
         }
-      } catch (e) {
-        console.error(e);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to create event");
       }
+    } catch (e) {
+      console.error(e);
+      toast.error("Error creating event");
     }
   };
 
@@ -175,9 +197,13 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
           setShootEvents(shootEvents.map(e => e.id === updated.id ? updated : e));
           setIsEditEventOpen(false);
           setEditingEvent(null);
+          toast.success("Event updated");
+        } else {
+          toast.error("Failed to update event");
         }
       } catch (e) {
         console.error(e);
+        toast.error("Error updating event");
       }
     }
   };
@@ -192,9 +218,13 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
           setShootEvents(shootEvents.filter(e => e.id !== editingEvent.id));
           setIsEditEventOpen(false);
           setEditingEvent(null);
+          toast.success("Event deleted");
+        } else {
+          toast.error("Failed to delete event");
         }
       } catch (e) {
         console.error(e);
+        toast.error("Error deleting event");
       }
     }
   };
@@ -396,11 +426,15 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
 
             {/* Filters */}
             <div className="flex items-center gap-3">
-              {activeTab === "shoot" && (
-                <Button onClick={() => setIsAddEventOpen(true)} className="bg-teal-600 hover:bg-teal-700 text-white gap-2 rounded-xl">
-                  <Plus className="h-4 w-4" /> Add Event
-                </Button>
-              )}
+              <Button 
+                onClick={() => {
+                  setNewEvent({ name: "", location: "", date: format(new Date(), "yyyy-MM-dd"), time: "10:00" });
+                  setIsAddEventOpen(true);
+                }} 
+                className="bg-teal-600 hover:bg-teal-700 text-white gap-2 rounded-xl"
+              >
+                <Plus className="h-4 w-4" /> Add Event
+              </Button>
               <Filter className="h-5 w-5 text-muted-foreground" />
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger className="w-[200px] rounded-xl border-border focus:ring-2 focus:ring-blue-500">
@@ -437,12 +471,12 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
         {/* Calendar Grid with Modern Design */}
         <div className="rounded-2xl bg-card border border-border shadow-xl overflow-hidden">
           {/* Weekday Headers */}
-          <div className="grid grid-cols-7 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800">
+          <div className="grid grid-cols-7 bg-muted/60 border-b border-border">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => (
               <div 
                 key={day} 
-                className={`p-4 text-center text-sm font-semibold text-white ${
-                  i === 0 || i === 6 ? 'bg-slate-800/50' : ''
+                className={`py-3 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground ${
+                  i === 0 || i === 6 ? 'bg-muted/40 text-muted-foreground/80' : ''
                 }`}
               >
                 {day}
@@ -470,41 +504,70 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
               return (
                 <div
                   key={day.toISOString()}
-                  className={`h-[180px] flex flex-col p-3 border-b border-r border-border transition-all duration-200 hover:bg-muted/10 relative group
-                    ${!isCurrentMonth ? "bg-muted/5" : "bg-card"}
+                  onClick={() => handleDayClick(day)}
+                  className={`h-[180px] flex flex-col p-3 border-b border-r border-border transition-all duration-200 hover:bg-muted/20 cursor-pointer relative group
+                    ${!isCurrentMonth ? "bg-muted/5 opacity-70" : "bg-card"}
                     ${isWeekend ? "bg-muted/10" : ""}
-                    ${isToday ? "bg-gradient-to-br from-blue-950/20 to-indigo-950/20 ring-2 ring-blue-400 ring-inset" : ""}
+                    ${isToday ? "bg-gradient-to-br from-blue-950/20 to-indigo-950/20 ring-2 ring-blue-500 ring-inset" : ""}
                     ${actualIndex % 7 === 6 ? "border-r-0" : ""}
-                    ${hasShoot ? "bg-teal-50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800/50" : ""}
+                    ${hasShoot ? "bg-teal-50/50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800/50" : ""}
                   `}
                 >
-                  {/* Date Number */}
+                  {/* Date Number and Quick Add Button */}
                   <div className="flex items-center justify-between mb-2">
-                    <div className={`
-                      flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold transition-all duration-200
-                      ${isToday 
-                        ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg scale-110" 
-                        : isCurrentMonth 
-                          ? "text-foreground group-hover:bg-muted" 
-                          : "text-muted-foreground"
-                      }
-                    `}>
-                      {format(day, "d")}
-                    </div>
-                    {clientCount > 0 && (
-                      <div 
-                        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 border border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors z-10"
+                    <div className="flex items-center gap-1.5">
+                      <div className={`
+                        flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold transition-all duration-200
+                        ${isToday 
+                          ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg scale-110" 
+                          : isCurrentMonth 
+                            ? "text-foreground group-hover:bg-muted" 
+                            : "text-muted-foreground"
+                        }
+                      `}>
+                        {format(day, "d")}
+                      </div>
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedDay(day);
-                          setAllClientsForDay(clients);
-                          setShowAllClients(true);
+                          handleDayClick(day);
                         }}
+                        title="Add event on this date"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
                       >
-                        <Sparkles className="h-3 w-3 text-blue-600" />
-                        <span className="text-xs font-semibold text-blue-700">{clientCount}</span>
-                      </div>
-                    )}
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {activeTab !== "shoot" && dayShoots.length > 0 && (
+                        <div 
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/50 border border-teal-200 dark:border-teal-800 cursor-pointer hover:bg-teal-200 transition-colors z-10"
+                          title={`${dayShoots.length} shoot event(s). Click to view in Shoot tab.`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveTab("shoot");
+                          }}
+                        >
+                          <span className="text-[10px] font-semibold text-teal-700 dark:text-teal-300">🎬 {dayShoots.length}</span>
+                        </div>
+                      )}
+                      {clientCount > 0 && (
+                        <div 
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-200 transition-colors z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDay(day);
+                            setAllClientsForDay(clients);
+                            setShowAllClients(true);
+                          }}
+                        >
+                          <Sparkles className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                          <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">{clientCount}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Client Badges */}
@@ -851,9 +914,9 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
 
         {/* Upcoming Posts Section */}
         <div className="rounded-2xl bg-card border border-border shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 px-6 py-4">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+          <div className="bg-muted/40 border-b border-border px-6 py-4 flex items-center justify-between">
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
               Upcoming Posts
             </h3>
           </div>
@@ -916,7 +979,7 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
         <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Add Shoot Event</DialogTitle>
+              <DialogTitle>Add Calendar Event</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">

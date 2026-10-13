@@ -79,6 +79,7 @@ export async function PATCH(
       where: { id },
       data: {
         ...data,
+        deliverableQuota: data.deliverableQuota !== undefined ? (data.deliverableQuota as any) : undefined,
         startDate: data.startDate ? new Date(data.startDate) : undefined,
         endDate: data.endDate ? new Date(data.endDate) : undefined,
         renewalDate: data.renewalDate ? new Date(data.renewalDate) : undefined,

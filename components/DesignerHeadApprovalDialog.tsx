@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, Square, Trash2, Volume2 } from "lucide-react";
 import { useState, useRef } from "react";
-import { Post } from "@/types/post"; // Adjust import based on your project structure
+import toast from "react-hot-toast";
+import { Post } from "@/types/post";
 
 interface DesignerHeadApprovalRejectDialogProps {
   statusRejectDialog: { postId: string; statusType: "designerHead" } | null;
@@ -79,7 +80,7 @@ export default function DesignerHeadApprovalRejectDialog({
       }, 1000);
     } catch (error) {
       console.error("Error starting recording:", error);
-      alert("Could not access microphone. Please check permissions.");
+      toast.error("Could not access microphone. Please check permissions.");
     }
   };
 
@@ -105,11 +106,11 @@ export default function DesignerHeadApprovalRejectDialog({
 
   const handleSubmit = async () => {
     if (isNeedsMinorChange && !actionComment.trim()) {
-      alert("Please provide text comment explaining the required minor change.");
+      toast.error("Please provide text comment explaining the required minor change.");
       return;
     }
     if (!isNeedsMinorChange && !actionComment.trim() && !audioBlob) {
-      alert("Please provide either text feedback or audio feedback");
+      toast.error("Please provide either text feedback or audio feedback");
       return;
     }
 
@@ -119,7 +120,7 @@ export default function DesignerHeadApprovalRejectDialog({
       setStatusRejectDialog(null);
     } catch (error) {
       console.error("Error submitting Team Lead rejection:", error);
-      alert("Failed to submit changes. Please try again.");
+      toast.error("Failed to submit changes. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

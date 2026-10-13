@@ -30,7 +30,26 @@ export default function RootLayout({
             <SessionProvider>{children}</SessionProvider>
           </ThemeProvider>
         </Suspense>
-        <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+        <Toaster
+          position="top-right"
+          containerStyle={{ zIndex: 99999, position: "fixed" }}
+          toastOptions={{
+            duration: 3500,
+            className: "text-xs font-medium shadow-lg border border-border bg-card text-foreground",
+            success: {
+              iconTheme: {
+                primary: "#10b981",
+                secondary: "#ffffff",
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: "#ef4444",
+                secondary: "#ffffff",
+              },
+            },
+          }}
+        />
       </body>
     </html>
   )

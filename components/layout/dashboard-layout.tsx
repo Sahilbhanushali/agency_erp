@@ -33,6 +33,8 @@ import {
   Users,
   UtilityPole,
   X,
+  CalendarClock,
+  Banknote,
 } from "lucide-react"
 import { useBreadcrumbs } from "@/lib/route-labels"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -79,7 +81,10 @@ const navigation: NavigationItem[] = [
   { name: "Expenses & Margins", href: "/dashboard/expenses", icon: Receipt, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
   { name: "Companies", href: "/dashboard/companies", icon: Building2, permissions: ["Manage-companies", "View-companies"] },
   { name: "Quotations", href: "/dashboard/quotations", icon: FileText, permissions: ["Manage-quotations", "View-quotations"] },
+  { name: "Invoices", href: "/dashboard/invoices", icon: Receipt, permissions: ["Manage-invoices", "View-invoices"] },
   { name: "User Management", href: "/dashboard/users", icon: UserCog, permissions: ["Manage-User"], allowedRoles: ["ADMIN", "MANAGER"] },
+  { name: "Attendance & Leaves", href: "/dashboard/attendance", icon: CalendarClock },
+  { name: "Payroll", href: "/dashboard/payroll", icon: Banknote },
   { name: "Utilities", href: "/dashboard/utilities", icon: UtilityPole, permissions: ["View-utilities"] },
   { name: "Credentials", href: "/dashboard/credentials", icon: Key, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
   { name: "Settings", href: "/dashboard/settings", icon: Settings, permissions: ["Manage-settings"] },
@@ -88,7 +93,7 @@ const navigation: NavigationItem[] = [
 const navigationGroups = [
   { label: "Overview", names: ["Dashboard"] },
   { label: "Delivery", names: ["My Tasks", "Projects", "Project Summary", "Calendar", "Pending Approvals", "Assets", "Reports"] },
-  { label: "Agency", names: ["Leads Pipeline", "Clients", "Contracts & SOW", "Expenses & Margins", "Companies", "Quotations", "User Management", "Utilities", "Credentials"] },
+  { label: "Agency", names: ["Leads Pipeline", "Clients", "Contracts & SOW", "Expenses & Margins", "Companies", "Quotations", "Invoices", "User Management", "Attendance & Leaves", "Payroll", "Utilities", "Credentials"] },
   { label: "Preferences", names: ["Settings"] },
 ]
 

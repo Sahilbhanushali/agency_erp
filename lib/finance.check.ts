@@ -67,3 +67,55 @@ assert.match(formatMoney(3717, "INR"), /3,717/)
 assert.equal(formatMoney(10, "NOT_A_CURRENCY"), "NOT_A_CURRENCY 10.00")
 
 console.log("finance.check.ts — all assertions passed")
+
+// ---------------------------------------------------------------------------
+// Invoice payment arithmetic
+// ---------------------------------------------------------------------------
+import { isInvoiceOverdue, paymentSummary } from "./finance"
+
+// Nothing paid on a sent invoice: full balance, status untouched.
+const unpaid = paymentSummary(1000, [], "SENT")
+assert.equal(unpaid.paid, 0)
+assert.equal(unpaid.balance, 1000)
+assert.equal(unpaid.status, "SENT")
+
+// Part paid becomes PARTIAL and the balance is the remainder.
+const part = paymentSummary(1000, [{ amount: 250 }, { amount: 100.5 }], "SENT")
+assert.equal(part.paid, 350.5)
+assert.equal(part.balance, 649.5)
+assert.equal(part.status, "PARTIAL")
+
+// Paid to the paisa is PAID, not PARTIAL — a float comparison must not leave 0.01 behind.
+const exact = paymentSummary(105.05, [{ amount: 100.05 }, { amount: 5 }], "PARTIAL")
+assert.equal(exact.paid, 105.05)
+assert.equal(exact.balance, 0)
+assert.equal(exact.status, "PAID")
+
+// Overpayment is still PAID, and the balance goes negative rather than being clamped —
+// a credit the agency owes back is real information, not something to hide.
+const over = paymentSummary(1000, [{ amount: 1200 }], "SENT")
+assert.equal(over.balance, -200)
+assert.equal(over.status, "PAID")
+
+// A cancelled invoice is closed: money arriving does not reopen it.
+assert.equal(paymentSummary(1000, [{ amount: 1000 }], "CANCELLED").status, "CANCELLED")
+// A draft has not been issued, so it is not reinterpreted either.
+assert.equal(paymentSummary(1000, [{ amount: 1000 }], "DRAFT").status, "DRAFT")
+
+// Deleting the last payment must walk a PAID invoice back, not leave it PAID.
+assert.equal(paymentSummary(1000, [], "PAID").status, "SENT")
+
+// A zero-total invoice is not automatically PAID.
+assert.equal(paymentSummary(0, [], "SENT").status, "SENT")
+
+// Overdue: only while money is still owed, and only once issued.
+const past = "2020-01-01"
+assert.equal(isInvoiceOverdue({ dueDate: past, status: "SENT" }, 500), true)
+assert.equal(isInvoiceOverdue({ dueDate: past, status: "PARTIAL" }, 500), true)
+assert.equal(isInvoiceOverdue({ dueDate: past, status: "SENT" }, 0), false)
+assert.equal(isInvoiceOverdue({ dueDate: past, status: "PAID" }, 0), false)
+assert.equal(isInvoiceOverdue({ dueDate: past, status: "DRAFT" }, 500), false)
+assert.equal(isInvoiceOverdue({ dueDate: null, status: "SENT" }, 500), false)
+assert.equal(isInvoiceOverdue({ dueDate: "2099-01-01", status: "SENT" }, 500), false)
+
+console.log("finance.check.ts — invoice payment assertions passed")

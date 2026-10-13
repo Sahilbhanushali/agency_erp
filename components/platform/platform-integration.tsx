@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Instagram, Facebook, Settings, CheckCircle, AlertCircle, Youtube, Twitter, Linkedin } from "lucide-react"
+import toast from "react-hot-toast"
 
 interface PlatformIntegrationProps {
   postId: string
@@ -38,13 +39,13 @@ export function PlatformIntegration({ postId, platforms, status }: PlatformInteg
       })
 
       if (response.ok) {
-        alert(`Successfully published to ${platform}!`)
+        toast.success(`Successfully published to ${platform}!`)
       } else {
-        alert(`Failed to publish to ${platform}`)
+        toast.error(`Failed to publish to ${platform}`)
       }
     } catch (error) {
       console.error("Error publishing:", error)
-      alert("Error publishing post")
+      toast.error("Error publishing post")
     } finally {
       setIsPublishing(false)
     }

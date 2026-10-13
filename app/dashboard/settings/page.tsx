@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select"
 import Link from "next/link"
 import { Plus, X, Trash2, Mail, Settings as SettingsIcon } from "lucide-react"
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
 
 interface Utility {
   id: string
@@ -132,19 +133,29 @@ export default function SettingsPage() {
     }
   }
 
-  const deleteUtility = async (utilityId: string) => {
+  const [utilityToDelete, setUtilityToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [isDeletingUtility, setIsDeletingUtility] = useState(false)
+
+  const confirmDeleteUtility = async () => {
+    if (!utilityToDelete) return
+    setIsDeletingUtility(true)
     try {
-      const response = await fetch(`/api/utilities/${utilityId}`, {
+      const response = await fetch(`/api/utilities/${utilityToDelete.id}`, {
         method: "DELETE",
       })
-
+      const data = await response.json().catch(() => ({}))
       if (response.ok) {
-        setUtilities(utilities.filter((u) => u.id !== utilityId))
-        toast.success("Utility deleted successfully")
+        setUtilities(utilities.filter((u) => u.id !== utilityToDelete.id))
+        toast.success(data.message || "Utility deleted successfully")
+        setUtilityToDelete(null)
+      } else {
+        toast.error(data.error || "Failed to delete utility")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete utility:", error)
-      toast.error("Failed to delete utility")
+      toast.error(error.message || "Failed to delete utility")
+    } finally {
+      setIsDeletingUtility(false)
     }
   }
 
@@ -236,7 +247,16 @@ export default function SettingsPage() {
                   {utility.values.length} values • Created {new Date(utility.createdAt).toLocaleDateString('en-GB')}
                 </CardDescription>
               </div>
-              <Button variant="destructive" size="sm" onClick={() => deleteUtility(utility.id)}>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() =>
+                  setUtilityToDelete({
+                    id: utility.id,
+                    name: `${utility.name} (${utility.type})`,
+                  })
+                }
+              >
                 <Trash2 className="w-4 h-4" />
               </Button>
             </CardHeader>
@@ -292,6 +312,16 @@ export default function SettingsPage() {
           </Card>
         )}
       </div>
+
+      {/* Delete Confirmation Alert */}
+      <DeleteConfirmationDialog
+        isOpen={!!utilityToDelete}
+        onClose={() => setUtilityToDelete(null)}
+        onConfirm={confirmDeleteUtility}
+        itemName={utilityToDelete?.name || "Utility"}
+        entityType="utility"
+        isLoading={isDeletingUtility}
+      />
     </div>
   )
 }

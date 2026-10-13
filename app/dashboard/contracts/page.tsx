@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import useSWR from "swr";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { format, differenceInDays } from "date-fns";
 import {
@@ -16,6 +17,7 @@ import {
   RotateCw,
   Mail,
   Edit,
+  Eye,
   Trash2,
   FileCheck,
   CheckCircle,
@@ -58,6 +60,7 @@ import { ContractDialog } from "@/components/contracts/contract-dialog";
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ContractsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -184,16 +187,11 @@ export default function ContractsPage() {
           </Badge>
         }
       >
-        <Button
-          size="sm"
-          className="gap-1.5 shadow-2xs"
-          onClick={() => {
-            setSelectedContract(null);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="size-3.5" />
-          New Agreement
+        <Button size="sm" asChild className="gap-1.5 shadow-2xs">
+          <Link href="/dashboard/contracts/new">
+            <Plus className="size-3.5" />
+            New Agreement
+          </Link>
         </Button>
       </PageHeader>
 
@@ -300,8 +298,7 @@ export default function ContractsPage() {
             onAction={
               !search
                 ? () => {
-                    setSelectedContract(null);
-                    setDialogOpen(true);
+                    router.push("/dashboard/contracts/new");
                   }
                 : undefined
             }
@@ -465,6 +462,19 @@ export default function ContractsPage() {
                             title="Send Renewal Reminder Email to Client"
                           >
                             <Mail className="size-3.5" />
+                          </Button>
+
+                          {/* View Contract Details */}
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            asChild
+                            className="text-muted-foreground hover:text-foreground"
+                            title="View Agreement Details"
+                          >
+                            <Link href={`/dashboard/contracts/${c.id}`}>
+                              <Eye className="size-3.5" />
+                            </Link>
                           </Button>
 
                           {/* Edit Contract */}

@@ -450,7 +450,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
       }, 1000);
     } catch (error) {
       console.error("Error starting comment recording:", error);
-      alert("Could not access microphone. Please check permissions.");
+      toast.error("Could not access microphone. Please check permissions.");
     }
   };
 

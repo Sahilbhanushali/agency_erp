@@ -20,11 +20,12 @@ import {
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Trash2, Edit, Plus, Search, AlertCircle, CheckCircle, Mail, RefreshCw, FileText, Clock, Send } from "lucide-react"
+import { Trash2, Edit, Plus, Search, AlertCircle, CheckCircle, Mail, RefreshCw, FileText, Clock, Send, Folder } from "lucide-react"
 import SmtpConfigForm from "@/components/SmtpConfigForm"
 import { toast } from "react-hot-toast"
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
 import UserProfileModal from "@/components/users/user-profile-modal"
+import HrDocumentsModal from "@/components/users/hr-documents-modal"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -88,6 +89,7 @@ export default function UsersPage() {
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeletingUser, setIsDeletingUser] = useState(false)
   const [selectedHrUserId, setSelectedHrUserId] = useState<string | null>(null)
+  const [selectedDocUserId, setSelectedDocUserId] = useState<string | null>(null)
   const [resendingInviteId, setResendingInviteId] = useState<string | null>(null)
 
   // SMTP-specific state
@@ -271,7 +273,7 @@ export default function UsersPage() {
 
       await fetchUsers()
       setEditingUser(null)
-      setFormData({ name: "", email: "", role: roles[0]?.name || "", password: "" })
+      setFormData({ name: "", email: "", role: roles[0]?.name || "", password: "", sendInvite: true })
       toast.success("User updated successfully")
     } catch (error: any) {
       console.error(error)
@@ -375,25 +377,28 @@ export default function UsersPage() {
     }
   }
 
-  const handleSmtpDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this SMTP configuration?")) return
+  const [smtpToDelete, setSmtpToDelete] = useState<{ id: number; name: string } | null>(null)
+  const [isDeletingSmtp, setIsDeletingSmtp] = useState(false)
 
+  const confirmDeleteSmtp = async () => {
+    if (!smtpToDelete) return
+    setIsDeletingSmtp(true)
     try {
-      const response = await fetch(`/api/smtp-config?id=${id}`, {
+      const response = await fetch(`/api/smtp-config?id=${smtpToDelete.id}`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       })
-
+      const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to delete SMTP configuration")
+        throw new Error(data.error || "Failed to delete SMTP configuration")
       }
-
+      toast.success("SMTP configuration deleted")
+      setSmtpToDelete(null)
       await fetchSmtpConfigs()
     } catch (err: any) {
-      setSmtpError(err.message || "An error occurred")
+      toast.error(err.message || "Failed to delete SMTP configuration")
+    } finally {
+      setIsDeletingSmtp(false)
     }
   }
 
@@ -755,16 +760,28 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                         </Select>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() => setSelectedHrUserId(user.id)}
-                          className="gap-1.5 text-xs text-primary border-primary/20 hover:bg-primary/5"
-                          title="Manage employee HR profile, salary, offer letter & documents"
-                        >
-                          <FileText className="size-3.5" />
-                          <span>HR & Docs</span>
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => setSelectedHrUserId(user.id)}
+                            className="gap-1 text-xs text-primary border-primary/20 hover:bg-primary/5"
+                            title="Manage employee HR profile, compensation & details"
+                          >
+                            <FileText className="size-3.5" />
+                            <span>HR Profile</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => setSelectedDocUserId(user.id)}
+                            className="gap-1 text-xs text-foreground border-border/80 hover:bg-muted/50"
+                            title="Open dedicated HR Documents Vault with verification, previews and drag & drop"
+                          >
+                            <Folder className="size-3.5 text-primary" />
+                            <span>Docs</span>
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground tabular-nums">
                         {new Date(user.createdAt).toLocaleDateString('en-GB')}
@@ -876,6 +893,14 @@ const testSmtpConnection = async (config: SmtpConfig) => {
             isOpen={!!selectedHrUserId}
             onClose={() => setSelectedHrUserId(null)}
             onUserUpdated={fetchUsers}
+          />
+
+          <HrDocumentsModal
+            userId={selectedDocUserId}
+            isOpen={!!selectedDocUserId}
+            onClose={() => setSelectedDocUserId(null)}
+            user={users.find((u) => u.id === selectedDocUserId)}
+            onUpdate={fetchUsers}
           />
         </TabsContent>
 
@@ -1124,7 +1149,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleSmtpDelete(config.id)}
+                              onClick={() => setSmtpToDelete({ id: config.id, name: `${config.host}:${config.port} (${config.username})` })}
                               title="Delete Configuration"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1176,6 +1201,15 @@ const testSmtpConnection = async (config: SmtpConfig) => {
         itemName={userToDelete?.name || "User"}
         entityType="user"
         isLoading={isDeletingUser}
+      />
+
+      <DeleteConfirmationDialog
+        isOpen={!!smtpToDelete}
+        onClose={() => setSmtpToDelete(null)}
+        onConfirm={confirmDeleteSmtp}
+        itemName={smtpToDelete?.name || "SMTP Config"}
+        entityType="smtp"
+        isLoading={isDeletingSmtp}
       />
     </div>
   )

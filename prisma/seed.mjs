@@ -36,9 +36,12 @@ const PERMISSIONS = [
   ["Manage-festival", "Create and edit festivals"],
   ["View-festivals", "View the festival calendar"],
   ["View-calender", "View the content calendar"],
-  ["View-tasks", "View assigned tasks"],
+  ["View-tasks", "View tasks assigned to you and your team"],
+  ["Manage-tasks", "Create, edit, assign and delete tasks"],
   ["View-reports", "View reports and analytics"],
   ["View-utilities", "View utility lists"],
+  ["Manage-credentials", "Create, edit and remove stored credentials"],
+  ["View-credentials", "View stored credentials and reveal their passwords"],
   ["Manage-companies", "Create, edit and remove billing companies"],
   ["View-companies", "View billing companies and their details"],
   ["Manage-quotations", "Create, edit, send and delete quotations"],
@@ -91,3 +94,5 @@ main()
     process.exit(1)
   })
   .finally(() => prisma.$disconnect())
+
+  

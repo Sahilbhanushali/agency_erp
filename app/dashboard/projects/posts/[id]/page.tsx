@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, FolderOpen } from "lucide-react";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
+import TaskPanel from "@/components/tasks/task-panel";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: "no-store" });
@@ -68,5 +69,15 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  return <PostDetail post={post} />;
+  return (
+    <div className="space-y-6">
+      <PostDetail post={post} />
+      {/* Work on this post that is not the post itself — revisions, approvals chasing,
+          asset sourcing. Pre-linked to the post and its project. */}
+      <TaskPanel
+        link={{ postId: id, projectId: post.projectId ?? undefined }}
+        title="Tasks on this post"
+      />
+    </div>
+  );
 }

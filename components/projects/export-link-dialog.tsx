@@ -35,6 +35,7 @@ import {
   MessageCircle,
 } from "lucide-react"
 import { toast } from "sonner"
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
 
 interface ExportLinkDialogProps {
   isOpen: boolean
@@ -128,6 +129,7 @@ export function ExportLinkDialog({
   const [isCreatingNew, setIsCreatingNew] = useState(false)
   const [isRegeneratingPassword, setIsRegeneratingPassword] = useState(false)
   const [showEmailConfirm, setShowEmailConfirm] = useState(false)
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false)
 
   // Expiration presets
   const [linkExpiryPreset, setLinkExpiryPreset] = useState<string>("30d")
@@ -296,9 +298,6 @@ export function ExportLinkDialog({
 
   const handleRevokeLink = async () => {
     if (!linkData?.id) return
-    if (!confirm("Are you sure you want to revoke this link? Customers with this URL will no longer be able to access the confirmation page.")) {
-      return
-    }
 
     setActionLoading(true)
     try {
@@ -312,6 +311,7 @@ export function ExportLinkDialog({
 
       setLinkData(null)
       setIsCreatingNew(true)
+      setShowRevokeConfirm(false)
       toast.success("Export link revoked successfully")
     } catch (err: any) {
       toast.error(err.message || "Failed to revoke link")
@@ -1034,7 +1034,7 @@ export function ExportLinkDialog({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleRevokeLink}
+                onClick={() => setShowRevokeConfirm(true)}
                 disabled={actionLoading}
                 className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-8 px-2"
               >
@@ -1066,6 +1066,15 @@ export function ExportLinkDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <DeleteConfirmationDialog
+        isOpen={showRevokeConfirm}
+        onClose={() => setShowRevokeConfirm(false)}
+        onConfirm={handleRevokeLink}
+        title="Revoke Customer Export Link?"
+        itemName="Client Export Link"
+        isLoading={actionLoading}
+      />
     </Dialog>
   )
 }

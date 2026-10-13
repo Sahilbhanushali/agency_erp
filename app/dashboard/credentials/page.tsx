@@ -13,15 +13,29 @@ import {
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Search, Plus, Eye, EyeOff, Edit, Trash2, Download, Upload } from "lucide-react"
+import { Copy, Download, Edit, Eye, EyeOff, Loader2, Plus, Search, Trash2, Upload } from "lucide-react"
 import * as XLSX from 'xlsx'
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
 
 export default function CredentialsPage() {
   const [credentials, setCredentials] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [scope, setScope] = useState<"all" | "internal" | "client">("all")
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({})
+  const [categories, setCategories] = useState<string[]>([])
+  // Passwords are no longer part of the list payload. Each one is fetched on demand
+  // from the audited reveal endpoint and held only for this page view.
+  const [revealed, setRevealed] = useState<Record<string, string>>({})
+  const [revealing, setRevealing] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editData, setEditData] = useState<any>(null)
   const [credentialToDelete, setCredentialToDelete] = useState<{ id: string; name: string } | null>(null)
@@ -33,7 +47,8 @@ export default function CredentialsPage() {
       const res = await fetch("/api/credentials")
       if (res.ok) {
         const data = await res.json()
-        setCredentials(data)
+        setCredentials(Array.isArray(data) ? data : (data.credentials ?? []))
+        if (!Array.isArray(data)) setCategories(data.categories ?? [])
       }
     } catch (err) {
       console.error("Error fetching credentials:", err)
@@ -59,9 +74,13 @@ export default function CredentialsPage() {
             password: platformData.password,
           })
         })
+        const resJson = await res.json().catch(() => ({}))
         if (res.ok) {
           toast.success("Credential updated successfully!")
+          setIsDialogOpen(false)
           fetchCredentials()
+        } else {
+          toast.error(resJson.error || "Failed to update credential.")
         }
       } else {
         // Add mode (POST)
@@ -70,14 +89,18 @@ export default function CredentialsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         })
+        const resJson = await res.json().catch(() => ({}))
         if (res.ok) {
           toast.success("Credentials created successfully!")
+          setIsDialogOpen(false)
           fetchCredentials()
+        } else {
+          toast.error(resJson.error || "Failed to create credentials.")
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      toast.error("Something went wrong.")
+      toast.error(err?.message || "Something went wrong.")
     }
   }
 
@@ -88,16 +111,17 @@ export default function CredentialsPage() {
       const res = await fetch(`/api/credentials/${credentialToDelete.id}`, {
         method: 'DELETE',
       })
+      const resJson = await res.json().catch(() => ({}))
       if (res.ok) {
-        toast.success("Credential deleted successfully!")
+        toast.success(resJson.message || "Credential deleted successfully!")
         fetchCredentials()
         setCredentialToDelete(null)
       } else {
-        toast.error("Failed to delete credential.")
+        toast.error(resJson.error || "Failed to delete credential.")
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      toast.error("Failed to delete credential.")
+      toast.error(err?.message || "Failed to delete credential.")
     } finally {
       setIsDeletingCredential(false)
     }
@@ -113,12 +137,22 @@ export default function CredentialsPage() {
     setIsDialogOpen(true)
   }
 
-  const filteredCredentials = credentials.filter(c => 
-    c.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.project?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.platform?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.userId?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Search across everything that identifies a credential, not just the client —
+  // an internal login has no client to match on.
+  const filteredCredentials = credentials.filter((c) => {
+    const needle = searchTerm.trim().toLowerCase()
+    const matchesSearch =
+      !needle ||
+      [c.label, c.category, c.platform, c.userId, c.location, c.url, c.client?.name, c.project?.name]
+        .filter(Boolean)
+        .some((field: string) => field.toLowerCase().includes(needle))
+
+    const matchesScope =
+      scope === "all" || (scope === "internal" ? !c.clientId : !!c.clientId)
+    const matchesCategory = categoryFilter === "all" || c.category === categoryFilter
+
+    return matchesSearch && matchesScope && matchesCategory
+  })
 
   const handleExport = () => {
     const exportData = credentials.map(cred => ({
@@ -128,7 +162,8 @@ export default function CredentialsPage() {
       "Contact Number": cred.client?.phone || "-",
       "Platform": cred.platform,
       "User Id": cred.userId,
-      "Password": cred.password
+      // Deliberately omitted: an export is a file that leaves the app.
+      "Password": "(revealed in app only)"
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -181,37 +216,39 @@ export default function CredentialsPage() {
     e.target.value = "";
   }
 
-  const groupedCredentials: any[] = Object.values(
-    filteredCredentials.reduce((acc, cred) => {
-      const key = `${cred.clientId}-${cred.projectId}-${cred.location}`;
-      if (!acc[key]) {
-        acc[key] = {
-          id: key,
-          clientName: cred.client?.name || "Unknown Client",
-          projectName: cred.project?.name || "Unknown Project",
-          location: cred.location || "-",
-          phone: cred.client?.phone || "-",
-          platforms: []
-        };
-      }
-      acc[key].platforms.push(cred);
-      return acc;
-    }, {} as Record<string, any>)
-  );
 
-  const togglePasswordVisibility = (id: string) => {
-    setVisiblePasswords(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }))
+  const togglePasswordVisibility = async (id: string) => {
+    if (visiblePasswords[id]) {
+      setVisiblePasswords((prev) => ({ ...prev, [id]: false }))
+      return
+    }
+    if (!revealed[id]) {
+      setRevealing(id)
+      try {
+        const res = await fetch(`/api/credentials/${id}/reveal`)
+        const data = await res.json()
+        if (!res.ok) {
+          toast.error(data.error ?? "Could not reveal this password")
+          return
+        }
+        setRevealed((prev) => ({ ...prev, [id]: data.password }))
+      } catch {
+        toast.error("Network error — please try again")
+        return
+      } finally {
+        setRevealing(null)
+      }
+    }
+    setVisiblePasswords((prev) => ({ ...prev, [id]: true }))
   }
+
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Password Credentials</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage client, project, and platform account credentials securely.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Every login the agency holds \u2014 websites, apps, mailboxes, hosting, banking and client platforms.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 shadow-2xs">
@@ -240,113 +277,201 @@ export default function CredentialsPage() {
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Search clients or projects..."
+              placeholder="Search label, platform, username, client…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="h-9 w-full bg-background pl-9 text-xs"
             />
           </div>
+
+          <Select value={scope} onValueChange={(v) => setScope(v as typeof scope)}>
+            <SelectTrigger className="h-9 w-[150px] text-xs" aria-label="Filter by scope">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All credentials</SelectItem>
+              <SelectItem value="internal">Internal only</SelectItem>
+              <SelectItem value="client">Client only</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {categories.length > 0 && (
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-9 w-[170px] text-xs" aria-label="Filter by category">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any category</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-border/70 bg-card shadow-2xs">
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Client Name</TableHead>
-                  <TableHead className="font-semibold text-foreground">Project Name</TableHead>
-                  <TableHead className="font-semibold text-foreground">Location</TableHead>
-                  <TableHead className="font-semibold text-foreground">Contact Number</TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">What it is for</TableHead>
+                  <TableHead className="font-semibold text-foreground">Category</TableHead>
                   <TableHead className="font-semibold text-foreground">Platform</TableHead>
-                  <TableHead className="font-semibold text-foreground">User Id</TableHead>
+                  <TableHead className="font-semibold text-foreground">Username</TableHead>
                   <TableHead className="font-semibold text-foreground">Password</TableHead>
+                  <TableHead className="font-semibold text-foreground">Belongs to</TableHead>
                   <TableHead className="font-semibold text-foreground text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {groupedCredentials.length > 0 ? groupedCredentials.map((group: any) => (
-                  <TableRow key={group.id} className="border-border hover:bg-muted/20">
-                    <TableCell className="font-medium align-top py-4">{group.clientName}</TableCell>
-                    <TableCell className="align-top py-4">{group.projectName}</TableCell>
-                    <TableCell className="text-muted-foreground align-top py-4">{group.location}</TableCell>
-                    <TableCell className="text-muted-foreground align-top py-4">{group.phone}</TableCell>
-                    <TableCell className="align-top py-4">
-                      <div className="flex flex-col gap-3">
-                        {group.platforms.map((p: any) => (
-                          <div key={p.id} className="h-10 flex items-center">
-                            <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded-md">
-                              {p.platform}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm align-top py-4">
-                      <div className="flex flex-col gap-3">
-                        {group.platforms.map((p: any) => (
-                          <div key={p.id} className="h-10 flex items-center">
-                            {p.userId}
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="align-top py-4">
-                      <div className="flex flex-col gap-3">
-                        {group.platforms.map((p: any) => (
-                          <div key={p.id} className="h-10 flex items-center gap-2">
-                            <Input 
-                              type={visiblePasswords[p.id] ? "text" : "password"} 
-                              value={p.password} 
-                              readOnly 
-                              className="h-8 w-32 bg-transparent border-border text-sm font-mono"
-                            />
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
-                              onClick={() => togglePasswordVisibility(p.id)}
-                            >
-                              {visiblePasswords[p.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right align-top py-4">
-                      <div className="flex flex-col gap-3">
-                        {group.platforms.map((p: any) => (
-                          <div key={p.id} className="h-10 flex items-center justify-end gap-1">
+                {filteredCredentials.length > 0 ? (
+                  filteredCredentials.map((c: any) => (
+                    <TableRow key={c.id} className="border-border hover:bg-muted/20">
+                      <TableCell className="py-3 font-medium">
+                        {c.label || c.platform}
+                        {c.url && (
+                          <a
+                            href={c.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-0.5 block max-w-[24ch] truncate text-xs font-normal text-muted-foreground hover:underline"
+                          >
+                            {c.url}
+                          </a>
+                        )}
+                        {c.notes && (
+                          <p className="max-w-[28ch] truncate text-xs font-normal text-muted-foreground">
+                            {c.notes}
+                          </p>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="py-3">
+                        {c.category ? (
+                          <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
+                            {c.category}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="py-3">
+                        <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                          {c.platform}
+                        </span>
+                      </TableCell>
+
+                      <TableCell className="py-3 font-mono text-sm">{c.userId}</TableCell>
+
+                      <TableCell className="py-3">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type={visiblePasswords[c.id] ? "text" : "password"}
+                            value={visiblePasswords[c.id] ? (revealed[c.id] ?? "") : "••••••••"}
+                            readOnly
+                            aria-label={`Password for ${c.label || c.platform}`}
+                            className="h-8 w-32 border-border bg-transparent font-mono text-sm"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                            onClick={() => togglePasswordVisibility(c.id)}
+                            disabled={revealing === c.id}
+                            aria-label={
+                              visiblePasswords[c.id]
+                                ? `Hide password for ${c.label || c.platform}`
+                                : `Reveal password for ${c.label || c.platform}`
+                            }
+                          >
+                            {revealing === c.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : visiblePasswords[c.id] ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                          {visiblePasswords[c.id] && revealed[c.id] && (
                             <Button
                               variant="ghost"
-                              size="icon-xs"
-                              onClick={() => handleEditClick(p)}
-                              className="text-muted-foreground hover:text-foreground hover:bg-muted"
-                              title="Edit credential"
+                              size="icon"
+                              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                              aria-label={`Copy password for ${c.label || c.platform}`}
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(revealed[c.id])
+                                  toast.success("Password copied")
+                                } catch {
+                                  toast.error("Could not reach the clipboard")
+                                }
+                              }}
                             >
-                              <Edit className="size-3.5" />
+                              <Copy className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={() =>
-                                setCredentialToDelete({
-                                  id: p.id,
-                                  name: `${p.platform || "Platform"} - ${p.userId || group.clientName}`,
-                                })
-                              }
-                              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              title="Delete credential"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )) : (
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* An internal credential belongs to the agency, not a client. */}
+                      <TableCell className="py-3 text-sm">
+                        {c.clientId ? (
+                          <>
+                            {c.client?.company || c.client?.name}
+                            {c.project?.name && (
+                              <p className="text-xs text-muted-foreground">{c.project.name}</p>
+                            )}
+                            {c.location && (
+                              <p className="text-xs text-muted-foreground">{c.location}</p>
+                            )}
+                          </>
+                        ) : (
+                          <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                            Internal
+                          </span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="py-3 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => handleEditClick(c)}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={`Edit ${c.label || c.platform}`}
+                        >
+                          <Edit className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() =>
+                            setCredentialToDelete({ id: c.id, name: c.label || c.platform })
+                          }
+                          className="text-destructive hover:text-destructive"
+                          aria-label={`Delete ${c.label || c.platform}`}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground text-xs">
-                      No platform credentials found. Click "Add Credential" to store your first login.
+                    <TableCell colSpan={7} className="py-12 text-center">
+                      <p className="text-sm font-medium">
+                        {searchTerm || scope !== "all" || categoryFilter !== "all"
+                          ? "No credentials match those filters"
+                          : "No credentials stored yet"}
+                      </p>
+                      <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                        {searchTerm || scope !== "all" || categoryFilter !== "all"
+                          ? "Try a different search, scope or category."
+                          : "Store a website, app, mailbox, hosting panel or client platform login — anything with a username and password."}
+                      </p>
                     </TableCell>
                   </TableRow>
                 )}
@@ -355,7 +480,8 @@ export default function CredentialsPage() {
           </div>
         </div>
 
-      <CredentialFormDialog 
+      <CredentialFormDialog
+        categories={categories} 
         open={isDialogOpen} 
         onOpenChange={setIsDialogOpen} 
         onSave={handleSave}

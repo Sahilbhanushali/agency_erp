@@ -1,4 +1,4 @@
-import type { Prisma, QuotationStatus, TaxType } from "@prisma/client"
+import type { InvoiceStatus, Prisma, QuotationStatus, TaxType } from "@prisma/client"
 
 /**
  * One money/tax engine for quotations and invoices so the two can never disagree.
@@ -127,3 +127,109 @@ export const QUOTATION_TRANSITIONS: Record<QuotationStatus, QuotationStatus[]> =
   EXPIRED: ["DRAFT", "SENT"],
   CONVERTED: [],
 }
+
+/**
+ * What an invoice is owed, derived from its payments rather than stored, so a recorded
+ * or deleted payment can never drift out of step with the balance.
+ */
+export interface PaymentSummary {
+  paid: number
+  balance: number
+  /** The status the payments imply. CANCELLED and DRAFT are never overridden. */
+  status: InvoiceStatus
+}
+
+export function paymentSummary(
+  totalAmount: unknown,
+  payments: { amount: unknown }[],
+  currentStatus: InvoiceStatus,
+): PaymentSummary {
+  const total = round2(toNumber(totalAmount))
+  const paid = round2(payments.reduce((sum, p) => sum + toNumber(p.amount), 0))
+  const balance = round2(total - paid)
+
+  // A cancelled invoice is closed, and a draft has not been issued yet — neither is
+  // reinterpreted by whatever money happens to have arrived.
+  if (currentStatus === "CANCELLED" || currentStatus === "DRAFT") {
+    return { paid, balance, status: currentStatus }
+  }
+  if (total > 0 && paid >= total) return { paid, balance, status: "PAID" }
+  if (paid > 0) return { paid, balance, status: "PARTIAL" }
+  return { paid, balance, status: currentStatus === "PAID" ? "SENT" : currentStatus }
+}
+
+/**
+ * OVERDUE is computed for display, never stored: storing it would need a nightly job
+ * to flip invoices the moment they age past their due date.
+ * ponytail: derive at read time; add a cron only if OVERDUE ever has to be queryable.
+ */
+export function isInvoiceOverdue(invoice: {
+  dueDate: Date | string | null
+  status: InvoiceStatus
+}, balance: number): boolean {
+  if (!invoice.dueDate || balance <= 0) return false
+  if (invoice.status !== "SENT" && invoice.status !== "PARTIAL") return false
+  return new Date(invoice.dueDate) < new Date(new Date().toDateString())
+}
+
+/**
+ * Where an invoice may go next. PAID and PARTIAL are reached by recording payments,
+ * never chosen by hand, so they are absent from every list here.
+ */
+export const INVOICE_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
+  DRAFT: ["SENT", "CANCELLED"],
+  SENT: ["DRAFT", "CANCELLED"],
+  PARTIAL: ["CANCELLED"],
+  PAID: [],
+  OVERDUE: ["SENT", "CANCELLED"],
+  CANCELLED: ["DRAFT"],
+}
+
+/** Every field a rendered invoice needs — staff view, printable sheet and client link. */
+export const invoiceDetailSelect = {
+  id: true,
+  number: true,
+  title: true,
+  status: true,
+  currency: true,
+  subtotal: true,
+  discountPercent: true,
+  taxType: true,
+  taxPercent: true,
+  totalAmount: true,
+  issueDate: true,
+  dueDate: true,
+  terms: true,
+  notes: true,
+  shareToken: true,
+  shareExpiresAt: true,
+  sentAt: true,
+  createdAt: true,
+  updatedAt: true,
+  companyId: true,
+  clientId: true,
+  projectId: true,
+  quotationId: true,
+  company: true,
+  client: { select: { id: true, name: true, email: true, phone: true, company: true } },
+  project: { select: { id: true, name: true } },
+  quotation: { select: { id: true, number: true } },
+  createdBy: { select: { id: true, name: true } },
+  lineItems: {
+    orderBy: { position: "asc" },
+    select: { id: true, description: true, quantity: true, unit: true, unitPrice: true, position: true },
+  },
+  payments: {
+    orderBy: { paidAt: "desc" },
+    select: {
+      id: true,
+      amount: true,
+      method: true,
+      reference: true,
+      notes: true,
+      paidAt: true,
+      createdAt: true,
+      recordedBy: { select: { id: true, name: true } },
+    },
+  },
+} satisfies Prisma.InvoiceSelect

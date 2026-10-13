@@ -1,98 +1,46 @@
-import { PrismaClient } from '@prisma/client';
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { prisma } from '@/lib/prisma';
+import { requirePermission, requireSession } from '@/lib/api-auth';
 
-const prisma = new PrismaClient();
-
-// GET /api/users/permissions?id={userId}
-export async function GET(request: Request) {
-  // Validate session
-  const session = await getServerSession();
-  console.log('GET Session:', JSON.stringify(session, null, 2));
-
-//   if (!session?.user?.id) {
-//     console.log('Unauthorized: No session or user.id');
-//     return NextResponse.json({ error: 'Unauthorized', details: 'No valid session or user ID' }, { status: 401 });
-//   }
-
-  // Extract userId from query parameters
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get('id');
-  console.log('userId:', userId, 'typeof userId:', typeof userId);
-
-  if (!userId) {
-    return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-  }
+/**
+ * GET /api/users/permissions — the CALLER's own permission names.
+ *
+ * The `?id=` parameter is deliberately ignored: this used to accept any user id with
+ * its session check commented out, which handed any user's permission set to anyone
+ * who asked. Both existing callers only ever passed their own id, so scoping it to the
+ * session is backward compatible.
+ */
+export async function GET() {
+  const auth = await requireSession();
+  if (!auth.ok) return auth.response;
 
   try {
-    // Fetch user with their role and permissions
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-      include: {
+      where: { id: auth.userId },
+      select: {
         role: {
-          include: {
-            permissions: {
-              select: {
-                permission: {
-                  select: { name: true },
-                },
-              },
-            },
+          select: {
+            name: true,
+            permissions: { select: { permission: { select: { name: true } } } },
           },
         },
       },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+    if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Extract permission names
-    const permissions = user.role?.permissions.map((rp) => rp.permission.name) || [];
-    console.log('Fetched permissions for user', userId, ':', permissions);
-
-    return NextResponse.json({ permissions }, { status: 200 });
+    const permissions = user.role?.permissions.map((rp) => rp.permission.name) ?? [];
+    return NextResponse.json({ permissions, role: user.role?.name ?? null });
   } catch (error) {
-    console.error('Error fetching user permissions:', error);
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
-  } finally {
-    // await prisma.$disconnect(); // Commented out for serverless compatibility
+    console.error('[users/permissions] read failed:', error);
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
 }
 
 // PATCH /api/users/permissions?id={userId}
 export async function PATCH(request: Request) {
-  // Validate session
-  const session = await getServerSession();
-  console.log('PATCH Session:', JSON.stringify(session, null, 2));
-
-  if (!session?.user?.id) {
-    console.log('Unauthorized: No session or user.id');
-    return NextResponse.json({ error: 'Unauthorized', details: 'No valid session or user ID' }, { status: 401 });
-  }
-
-  // Check if the requesting user has Manage-User permission
-  const requestingUser = await prisma.user.findUnique({
-    where: { id: parseInt(session.user.id) },
-    include: {
-      role: {
-        include: {
-          permissions: {
-            select: {
-              permission: {
-                select: { name: true },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!requestingUser || !requestingUser.role?.permissions.some((rp) => rp.permission.name === 'Manage-User')) {
-    console.log('Forbidden: Manage-User permission missing for user', session.user.id);
-    return NextResponse.json({ error: 'Forbidden: Manage-User permission required' }, { status: 403 });
-  }
+  const auth = await requirePermission('Manage-User');
+  if (!auth.ok) return auth.response;
 
   try {
     // Extract userId from query parameters and permissions from body

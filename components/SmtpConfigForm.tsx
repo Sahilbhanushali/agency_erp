@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Mail, Settings, FlaskConical, Eye, EyeOff } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import toast from 'react-hot-toast';
 interface User {
   id: string | number;
   name: string;
@@ -68,16 +69,11 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
   }, [initialData]);
 
   // Auto-load existing SMTP configuration for selected user
-useEffect(() => {
-  if (formData.userId && !initialData && smtpConfigs) {
-    const existingConfig = smtpConfigs.find(config => config.userId === formData.userId);
-    
-    if (existingConfig) {
-      const shouldLoad = window.confirm(
-        `This user already has an SMTP configuration. Would you like to load it?`
-      );
+  useEffect(() => {
+    if (formData.userId && !initialData && smtpConfigs) {
+      const existingConfig = smtpConfigs.find(config => config.userId === formData.userId);
       
-      if (shouldLoad) {
+      if (existingConfig) {
         setFormData({
           host: existingConfig.host,
           port: existingConfig.port,
@@ -91,10 +87,10 @@ useEffect(() => {
           type: 'success', 
           text: 'Loaded existing configuration for this user. You can update it.' 
         });
+        toast.success('Loaded existing configuration for this user.');
       }
     }
-  }
-}, [formData.userId, initialData, smtpConfigs]);
+  }, [formData.userId, initialData, smtpConfigs]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

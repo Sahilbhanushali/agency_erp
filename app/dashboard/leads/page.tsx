@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import toast from "react-hot-toast";
@@ -173,6 +173,11 @@ export default function LeadsPage() {
   const [leadToDelete, setLeadToDelete] = useState<{ id: string; title: string } | null>(null);
   const [isDeletingLead, setIsDeletingLead] = useState(false);
 
+  // Drag-and-drop state for Kanban pipeline
+  const isDraggingRef = useRef(false);
+  const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<LeadStatus | null>(null);
+
   const { data, mutate, isLoading } = useSWR<{
     leads: Lead[];
     metrics: {
@@ -272,13 +277,33 @@ export default function LeadsPage() {
   };
 
   const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
+    const currentLead = leads.find((l) => l.id === leadId);
+    if (!currentLead || currentLead.status === newStatus) return;
+
+    // Optimistically update local SWR state
+    const previousData = data;
+    if (data) {
+      mutate(
+        {
+          ...data,
+          leads: data.leads.map((item) =>
+            item.id === leadId ? { ...item, status: newStatus } : item
+          ),
+        },
+        false
+      );
+    }
+
     try {
       const res = await fetch(`/api/leads/${leadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) throw new Error("Could not update stage");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Could not update stage");
+      }
 
       toast.success(`Moved to ${newStatus.replace(/_/g, " ")}`);
       mutate();
@@ -287,7 +312,52 @@ export default function LeadsPage() {
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to update stage");
+      // Rollback to previous data on failure
+      if (previousData) {
+        mutate(previousData, false);
+      } else {
+        mutate();
+      }
     }
+  };
+
+  const handleDragStart = (e: React.DragEvent, leadId: string) => {
+    isDraggingRef.current = true;
+    e.dataTransfer.setData("text/plain", leadId);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedLeadId(leadId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedLeadId(null);
+    setDragOverColumn(null);
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 150);
+  };
+
+  const handleDragOver = (e: React.DragEvent, status: LeadStatus) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverColumn !== status) {
+      setDragOverColumn(status);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, status: LeadStatus) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    if (dragOverColumn === status) {
+      setDragOverColumn(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetStatus: LeadStatus) => {
+    e.preventDefault();
+    setDragOverColumn(null);
+    const leadId = e.dataTransfer.getData("text/plain") || draggedLeadId;
+    if (!leadId) return;
+    setDraggedLeadId(null);
+    handleStatusChange(leadId, targetStatus);
   };
 
   const handleAddActivityNote = async (e: React.FormEvent) => {
@@ -542,7 +612,14 @@ export default function LeadsPage() {
             return (
               <div
                 key={col.id}
-                className="flex flex-col rounded-xl border border-border/80 bg-muted/30 p-2.5 min-w-[240px]"
+                onDragOver={(e) => handleDragOver(e, col.id)}
+                onDragLeave={(e) => handleDragLeave(e, col.id)}
+                onDrop={(e) => handleDrop(e, col.id)}
+                className={`flex flex-col rounded-xl border p-2.5 min-w-[240px] transition-all duration-150 ${
+                  dragOverColumn === col.id
+                    ? "border-primary/80 bg-primary/5 ring-2 ring-primary/20 shadow-inner"
+                    : "border-border/80 bg-muted/30"
+                }`}
               >
                 {/* Column Header */}
                 <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
@@ -564,21 +641,41 @@ export default function LeadsPage() {
                 {/* Column Cards */}
                 <div className="space-y-2.5 flex-1 min-h-[200px]">
                   {columnLeads.length === 0 ? (
-                    <div className="h-28 flex items-center justify-center rounded-lg border border-dashed border-border/60 text-[11px] text-muted-foreground/60">
-                      Empty stage
+                    <div
+                      className={`h-28 flex items-center justify-center rounded-lg border border-dashed text-[11px] transition-colors ${
+                        dragOverColumn === col.id
+                          ? "border-primary text-primary font-medium bg-primary/10"
+                          : "border-border/60 text-muted-foreground/60"
+                      }`}
+                    >
+                      {dragOverColumn === col.id ? "Drop lead here" : "Empty stage"}
                     </div>
                   ) : (
                     columnLeads.map((lead) => (
                       <Card
                         key={lead.id}
-                        className="p-3 bg-card hover:border-primary/40 transition-shadow cursor-pointer shadow-sm relative group"
-                        onClick={() => setSelectedLead(lead)}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, lead.id)}
+                        onDragEnd={handleDragEnd}
+                        className={`p-3 bg-card hover:border-primary/40 transition-all cursor-grab active:cursor-grabbing shadow-sm relative group select-none ${
+                          draggedLeadId === lead.id
+                            ? "opacity-40 scale-[0.98] ring-2 ring-primary/40 shadow-none"
+                            : "hover:shadow-md"
+                        }`}
+                        onClick={() => {
+                          if (isDraggingRef.current) return;
+                          setSelectedLead(lead);
+                        }}
                       >
                         <div className="flex items-start justify-between gap-1">
                           <h4 className="text-xs font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors flex-1">
                             {lead.title}
                           </h4>
-                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <div
+                            className="flex items-center gap-1 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
                             <Badge variant="neutral" className="text-[10px] px-1.5 py-0 font-mono">
                               {lead.source || "INBOUND"}
                             </Badge>
@@ -673,6 +770,7 @@ export default function LeadsPage() {
                               size="xs"
                               variant="default"
                               className="w-full text-[10px] h-6 gap-1"
+                              onMouseDown={(e) => e.stopPropagation()}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedLead(lead);
@@ -692,6 +790,12 @@ export default function LeadsPage() {
                         )}
                       </Card>
                     ))
+                  )}
+
+                  {columnLeads.length > 0 && dragOverColumn === col.id && (
+                    <div className="h-10 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 flex items-center justify-center text-[11px] font-medium text-primary animate-pulse">
+                      Drop here to move to {col.title}
+                    </div>
                   )}
                 </div>
               </div>

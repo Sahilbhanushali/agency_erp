@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { writeFile } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { deleteLocalFile } from "@/lib/storage";
 
@@ -43,9 +43,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
           orderBy: { createdAt: "desc" },
           select: {
             id: true,
-            title: true,
-            username: true,
-            url: true,
+            location: true,
+            platform: true,
+            userId: true,
             createdAt: true,
           },
         },
@@ -68,7 +68,19 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    return NextResponse.json(client);
+    const formattedClient = {
+      ...client,
+      credentials: client.credentials.map((cred) => ({
+        id: cred.id,
+        title: cred.platform || cred.location || "Login Credential",
+        username: cred.userId,
+        location: cred.location,
+        platform: cred.platform,
+        createdAt: cred.createdAt,
+      })),
+    };
+
+    return NextResponse.json(formattedClient);
   } catch (error: any) {
     console.error("Error fetching client:", error);
     return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
@@ -148,7 +160,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       const safeName = avatarFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const fileName = `${Date.now()}-${safeName}`;
       const uploadDir = path.join(process.cwd(), "public", "uploads", "clients");
-      await fs.mkdir(uploadDir, { recursive: true });
+      await mkdir(uploadDir, { recursive: true });
       const filePath = path.join(uploadDir, fileName);
 
       await writeFile(filePath, buffer);

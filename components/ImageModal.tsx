@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { X, ZoomIn, ZoomOut, RotateCw, PenTool, Eraser, Download, Save, Type } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -196,7 +197,7 @@ export default function ImageModal({
       const canvas = canvasRef.current;
       const image = imageRef.current;
       if (!canvas || !image) {
-        alert("Cannot save: Image not loaded");
+        toast.error("Cannot save: Image not loaded");
         return;
       }
 
@@ -224,7 +225,7 @@ export default function ImageModal({
         // before opening the change-request dialog.
       } catch (error) {
         console.error("Error saving annotation:", error);
-        alert(error instanceof Error ? error.message : "Failed to save annotation");
+        toast.error(error instanceof Error ? error.message : "Failed to save annotation");
       } finally {
         setIsSaving(false);
       }
@@ -232,14 +233,14 @@ export default function ImageModal({
     }
 
     if (!postId || !assetId) {
-      alert("Cannot save: Missing post or asset information");
+      toast.error("Cannot save: Missing post or asset information");
       return;
     }
 
     const canvas = canvasRef.current;
     const image = imageRef.current;
     if (!canvas || !image) {
-      alert("Cannot save: Image not loaded");
+      toast.error("Cannot save: Image not loaded");
       return;
     }
 
@@ -280,7 +281,7 @@ export default function ImageModal({
         throw new Error(error.error || "Failed to save image");
       }
 
-      alert("Image saved successfully!");
+      toast.success("Image saved successfully!");
       
       if (onSaveSuccess) {
         onSaveSuccess();
@@ -289,7 +290,7 @@ export default function ImageModal({
       onClose();
     } catch (error) {
       console.error("Error saving image:", error);
-      alert(error instanceof Error ? error.message : "Failed to save image");
+      toast.error(error instanceof Error ? error.message : "Failed to save image");
     } finally {
       setIsSaving(false);
     }

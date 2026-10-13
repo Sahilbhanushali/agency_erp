@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import TaskPanel from "@/components/tasks/task-panel";
 
 type Post = {
   id: string;
@@ -852,6 +853,9 @@ export default function ProjectDetailsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Project-level work that is not a post: briefs, reporting, client calls. */}
+      <TaskPanel link={{ projectId: id }} title="Project tasks" />
 
       <MediaPopup
         isOpen={!!selectedLogo}

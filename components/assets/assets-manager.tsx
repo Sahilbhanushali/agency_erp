@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Eye, Search, Download, XCircle, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import MediaPopup from "../mediaPopup";
 import { getMediaUrl } from "@/lib/utils";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
+import toast from "react-hot-toast";
 
 // Type definitions
 type Asset = {
@@ -63,6 +65,8 @@ export function AssetManager({ assets, hasManageAssetsPermission }: AssetManager
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [assetToDelete, setAssetToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Number of assets per page (3x3 grid = 9 assets)
   const assetsPerPage = 9;
@@ -148,21 +152,26 @@ export function AssetManager({ assets, hasManageAssetsPermission }: AssetManager
   };
 
   // Handle delete
-  const handleDelete = async (assetId: string) => {
-    if (confirm("Are you sure you want to delete this asset? This action cannot be undone.")) {
-      try {
-        const response = await fetch(`/api/assets/${assetId}`, {
-          method: "DELETE",
-        });
-        if (response.ok) {
-          window.location.reload();
-        } else {
-          alert("Failed to delete asset. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error deleting asset:", error);
-        alert("Error deleting asset. Please check your connection and try again.");
+  const confirmDeleteAsset = async () => {
+    if (!assetToDelete) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/assets/${assetToDelete.id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        toast.success("Asset deleted successfully");
+        setAssetToDelete(null);
+        window.location.reload();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.error || "Failed to delete asset. Please try again.");
       }
+    } catch (error) {
+      console.error("Error deleting asset:", error);
+      toast.error("Error deleting asset. Please check your connection and try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -335,7 +344,7 @@ export function AssetManager({ assets, hasManageAssetsPermission }: AssetManager
                             size="sm"
                             variant="outline"
                             className="h-7 text-xs px-2 text-red-400 border border-red-850 hover:bg-red-950/30"
-                            onClick={() => handleDelete(asset.id)}
+                            onClick={() => setAssetToDelete({ id: asset.id, name: asset.filename || "Asset" })}
                           >
                             <XCircle className="mr-1 h-3 w-3" />
                             Delete
@@ -385,6 +394,15 @@ export function AssetManager({ assets, hasManageAssetsPermission }: AssetManager
         isOpen={isPopupOpen}
         onClose={() => setIsPopupOpen(false)}
         asset={selectedAsset}
+      />
+
+      <DeleteConfirmationDialog
+        isOpen={!!assetToDelete}
+        onClose={() => setAssetToDelete(null)}
+        onConfirm={confirmDeleteAsset}
+        entityType="asset"
+        itemName={assetToDelete?.name || "Asset"}
+        isLoading={isDeleting}
       />
     </div>
   );

@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
         autoRenew: data.autoRenew,
         noticePeriodDays: data.noticePeriodDays,
         retainerHours: data.retainerHours,
-        deliverableQuota: data.deliverableQuota || null,
+        deliverableQuota: data.deliverableQuota ? (data.deliverableQuota as any) : undefined,
         documentUrl: data.documentUrl,
         signedAt: data.signedAt ? new Date(data.signedAt) : null,
         signedBy: data.signedBy,

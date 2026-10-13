@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Clock } from "lucide-react"
+import toast from "react-hot-toast"
 
 interface QuickScheduleModalProps {
   postId: string
@@ -39,14 +40,16 @@ export function QuickScheduleModal({ postId, currentSchedule, onScheduleUpdate }
       })
 
       if (response.ok) {
+        toast.success("Schedule updated successfully")
         setIsOpen(false)
         onScheduleUpdate()
       } else {
-        alert("Error updating schedule")
+        const errData = await response.json().catch(() => ({}))
+        toast.error(errData.error || "Error updating schedule")
       }
     } catch (error) {
       console.error("Error:", error)
-      alert("Error updating schedule")
+      toast.error("Error updating schedule")
     } finally {
       setIsLoading(false)
     }
