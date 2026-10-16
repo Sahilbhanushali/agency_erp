@@ -213,17 +213,42 @@ Next.js build worker exited with code: null and signal: SIGKILL
 That is the Linux **OOM killer**, not a build error. Nothing in the code is wrong; the
 machine ran out of memory and the kernel killed the worker.
 
-**Measured on this codebase** (62 pages, 165 route handlers, 83 Prisma models, plus
-`exceljs`, `xlsx`, `recharts` and `jspdf`):
+**Measured on this codebase** (62 pages, 165 route handlers, 227 routes, 83 Prisma
+models, plus `exceljs`, `xlsx`, `recharts` and `jspdf`), on an 8-core machine:
 
-| | wall time | peak RSS |
+| Build variant | Wall | Peak RSS |
 |---|---|---|
-| `npm run build`, 8 cores | 190 s | **1.86 GiB** |
-| `npm run build:vps` (1 GB heap cap), 8 cores | 135 s | **1.71 GiB** |
+| `next build` — webpack, as it was | 190 s | 1.86 GiB |
+| webpack + 1 GB heap cap | 135–170 s | **1.71 GiB** |
+| webpack, `cpus: 1` removed | 147 s | 2.28 GiB |
+| **`next build --turbopack`** — now the default | **61–72 s** | 2.00–2.08 GiB |
 
-So the build needs roughly **1.7–1.9 GiB on its own**, before the OS, MySQL and PM2.
-On a 2 GB VPS with no swap it cannot finish — which is exactly what you are seeing.
-Expect several times the wall time on 1 vCPU.
+### Why it was slow
+
+Two things, and only one of them was what you would guess:
+
+- **`next build` used webpack.** `npm run dev` has had `--turbopack` all along, but the
+  production build did not. Turbopack cuts compilation from 95 s to 33 s — the single
+  biggest win, and why `build` now passes `--turbopack`.
+- **`experimental.cpus: 1` was *not* the bottleneck.** Removing it took compilation from
+  95 s to 89 s — 6 %, while peak memory rose by 0.6 GiB. It is a memory/speed trade that
+  is worth keeping on a small VPS, so it stays.
+
+Roughly 28 s of what remains is not compilation at all: *Collecting page data*,
+*Generating static pages (97)*, *Finalizing* and *Collecting build traces*. Next
+executes each of the 33 prerendered pages at build time, and traces dependencies for all
+227 routes. That floor shrinks only by having fewer routes, not by faster tooling.
+
+### Memory, and the trade you have to pick
+
+Turbopack is native code, so a V8 heap cap does not constrain it — `--max-old-space-size`
+leaves its peak unchanged at ~2.0 GiB. That gives you two options:
+
+- **With swap (recommended):** `npm run build` — Turbopack, ~3x faster.
+- **Tightest memory, no swap:** `npm run build:vps` — webpack with a 1 GB heap cap, the
+  lowest peak measured at 1.71 GiB, but slower.
+
+Neither fits in 2 GB of RAM with nothing else running, so add swap regardless.
 
 #### 1. Check what you actually have
 
@@ -250,12 +275,15 @@ killed. This alone resolves the `SIGKILL`.
 
 ```bash
 pm2 stop all          # frees a few hundred MB during the build
-npm run build:vps     # NODE_OPTIONS=--max-old-space-size=1024 next build
+npm run build         # Turbopack — fastest, needs swap
+# or, if you cannot add swap:
+npm run build:vps     # webpack + 1 GB heap cap — lowest peak, slower
 pm2 start all
 ```
 
 The cap makes V8 collect garbage instead of growing until the kernel intervenes. It is
-worth about 150 MB of peak and, more importantly, makes the ceiling predictable.
+worth about 150 MB of peak on the webpack path and makes the ceiling predictable. It has
+no effect on the Turbopack path, whose memory sits outside the V8 heap.
 
 #### 4. Better on a small VPS: do not build on it at all
 
