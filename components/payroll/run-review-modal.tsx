@@ -562,7 +562,7 @@ export default function RunReviewModal({
             </div>
 
             {/* Top Metric & MoM Variance Bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Net Disbursement */}
               <div className="p-3 rounded-xl border border-border bg-muted/30">
                 <div className="flex items-center justify-between text-muted-foreground text-[11px]">
@@ -720,141 +720,143 @@ export default function RunReviewModal({
 
               {/* TAB 1: EMPLOYEES TABLE */}
               <TabsContent value="employees" className="flex-1 overflow-y-auto m-0 border border-border rounded-xl">
-                <Table>
-                  <TableHeader className="sticky top-0 bg-card z-10 shadow-2xs">
-                    <TableRow>
-                      <TableHead className="text-xs font-semibold">Employee</TableHead>
-                      <TableHead className="text-xs font-semibold">Payable Days</TableHead>
-                      <TableHead className="text-xs font-semibold">Earned Gross</TableHead>
-                      <TableHead className="text-xs font-semibold">Deductions</TableHead>
-                      <TableHead className="text-xs font-semibold">Net Pay</TableHead>
-                      <TableHead className="text-xs font-semibold">Variance & Reasons</TableHead>
-                      <TableHead className="text-xs font-semibold">Status</TableHead>
-                      <TableHead className="text-right text-xs font-semibold">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSlips.length === 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-card z-10 shadow-2xs">
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
-                          No employees matched the selected filter.
-                        </TableCell>
+                        <TableHead className="text-xs font-semibold">Employee</TableHead>
+                        <TableHead className="text-right text-xs font-semibold">Payable Days</TableHead>
+                        <TableHead className="text-right text-xs font-semibold">Earned Gross</TableHead>
+                        <TableHead className="text-right text-xs font-semibold">Deductions</TableHead>
+                        <TableHead className="text-right text-xs font-semibold">Net Pay</TableHead>
+                        <TableHead className="text-xs font-semibold">Variance & Reasons</TableHead>
+                        <TableHead className="text-xs font-semibold">Status</TableHead>
+                        <TableHead className="text-right text-xs font-semibold">Actions</TableHead>
                       </TableRow>
-                    ) : (
-                      filteredSlips.map((slip) => {
-                        const v = varianceMap.get(slip.userId);
-                        const isHeld = slip.status === "ON_HOLD";
-                        return (
-                          <TableRow key={slip.id} className="hover:bg-muted/30">
-                            <TableCell>
-                              <div>
-                                <p className="text-xs font-bold text-foreground">
-                                  {slip.user?.name || slip.employeeName}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {slip.user?.designation || slip.designation} • {slip.user?.department || slip.department}
-                                </p>
-                              </div>
-                            </TableCell>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSlips.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
+                            No employees matched the selected filter.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredSlips.map((slip) => {
+                          const v = varianceMap.get(slip.userId);
+                          const isHeld = slip.status === "ON_HOLD";
+                          return (
+                            <TableRow key={slip.id} className="hover:bg-muted/30">
+                              <TableCell>
+                                <div>
+                                  <p className="text-xs font-bold text-foreground">
+                                    {slip.user?.name || slip.employeeName}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {slip.user?.designation || slip.designation} • {slip.user?.department || slip.department}
+                                  </p>
+                                </div>
+                              </TableCell>
 
-                            <TableCell className="text-xs font-mono font-medium">
-                              {slip.payableDays} d
-                            </TableCell>
+                              <TableCell className="text-right text-xs font-mono font-medium">
+                                {slip.payableDays} d
+                              </TableCell>
 
-                            <TableCell className="text-xs font-mono">
-                              {formatInr(slip.grossSalary)}
-                            </TableCell>
+                              <TableCell className="text-right text-xs font-mono">
+                                {formatInr(slip.grossSalary)}
+                              </TableCell>
 
-                            <TableCell className="text-xs font-mono text-red-600">
-                              {formatInr(slip.totalDeductions)}
-                            </TableCell>
+                              <TableCell className="text-right text-xs font-mono text-red-600">
+                                {formatInr(slip.totalDeductions)}
+                              </TableCell>
 
-                            <TableCell className="text-xs font-mono font-bold text-emerald-600">
-                              {formatInr(slip.netSalary)}
-                            </TableCell>
+                              <TableCell className="text-right text-xs font-mono font-bold text-emerald-600">
+                                {formatInr(slip.netSalary)}
+                              </TableCell>
 
-                            {/* MoM Variance & Operational Reasons */}
-                            <TableCell>
-                              <div className="flex flex-col gap-1 items-start">
-                                {v?.previousGross !== null && v ? (
-                                  <span
-                                    className={`text-[11px] font-mono font-bold flex items-center gap-0.5 ${
-                                      v.percentDelta >= 0 ? "text-emerald-600" : "text-amber-600"
-                                    }`}
-                                  >
-                                    {v.percentDelta >= 0 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
-                                    {v.percentDelta > 0 ? `+${v.percentDelta}%` : `${v.percentDelta}%`}
-                                  </span>
+                              {/* MoM Variance & Operational Reasons */}
+                              <TableCell>
+                                <div className="flex flex-col gap-1 items-start">
+                                  {v?.previousGross !== null && v ? (
+                                    <span
+                                      className={`text-[11px] font-mono font-bold flex items-center gap-0.5 ${
+                                        v.percentDelta >= 0 ? "text-emerald-600" : "text-amber-600"
+                                      }`}
+                                    >
+                                      {v.percentDelta >= 0 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
+                                      {v.percentDelta > 0 ? `+${v.percentDelta}%` : `${v.percentDelta}%`}
+                                    </span>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[10px] py-0">
+                                      New Joiner
+                                    </Badge>
+                                  )}
+
+                                  {v?.reasons && v.reasons.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                      {v.reasons.slice(0, 2).map((r: string, idx: number) => (
+                                        <span
+                                          key={idx}
+                                          className="text-[9px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground truncate"
+                                          title={r}
+                                        >
+                                          {r}
+                                        </span>
+                                      ))}
+                                      {v.reasons.length > 2 && (
+                                        <span className="text-[9px] text-muted-foreground">
+                                          +{v.reasons.length - 2} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+
+                              {/* Status pill */}
+                              <TableCell>
+                                {isHeld ? (
+                                  <Badge variant="destructive" className="text-[10px] py-0" title={slip.holdReason}>
+                                    On Hold
+                                  </Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-[10px] py-0">
-                                    New Joiner
+                                  <Badge variant="neutral" className="text-[10px] py-0">
+                                    Ready
                                   </Badge>
                                 )}
+                              </TableCell>
 
-                                {v?.reasons && v.reasons.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                    {v.reasons.slice(0, 2).map((r: string, idx: number) => (
-                                      <span
-                                        key={idx}
-                                        className="text-[9px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground truncate"
-                                        title={r}
-                                      >
-                                        {r}
-                                      </span>
-                                    ))}
-                                    {v.reasons.length > 2 && (
-                                      <span className="text-[9px] text-muted-foreground">
-                                        +{v.reasons.length - 2} more
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
+                              {/* Actions */}
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Button
+                                    variant="outline"
+                                    size="xs"
+                                    onClick={() => setDrawerSlip(slip)}
+                                    className="gap-1 text-xs"
+                                  >
+                                    <Eye className="size-3" />
+                                    Compare
+                                  </Button>
 
-                            {/* Status pill */}
-                            <TableCell>
-                              {isHeld ? (
-                                <Badge variant="destructive" className="text-[10px] py-0" title={slip.holdReason}>
-                                  On Hold
-                                </Badge>
-                              ) : (
-                                <Badge variant="neutral" className="text-[10px] py-0">
-                                  Ready
-                                </Badge>
-                              )}
-                            </TableCell>
-
-                            {/* Actions */}
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <Button
-                                  variant="outline"
-                                  size="xs"
-                                  onClick={() => setDrawerSlip(slip)}
-                                  className="gap-1 text-xs"
-                                >
-                                  <Eye className="size-3" />
-                                  Compare
-                                </Button>
-
-                                <Button
-                                  variant="ghost"
-                                  size="xs"
-                                  onClick={() => setPrintableSlip(slip)}
-                                  className="gap-1 text-xs"
-                                >
-                                  <FileText className="size-3" />
-                                  Payslip
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+                                  <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    onClick={() => setPrintableSlip(slip)}
+                                    className="gap-1 text-xs"
+                                  >
+                                    <FileText className="size-3" />
+                                    Payslip
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </TabsContent>
 
               {/* TAB 2: AUDIT TRAIL & HISTORY */}

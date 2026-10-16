@@ -88,10 +88,10 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Payroll Period:</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Payroll Period:</span>
             <Select value={selectedRunId} onValueChange={setSelectedRunId}>
-              <SelectTrigger className="w-52 h-9 text-xs">
+              <SelectTrigger className="w-full sm:w-56 h-9 text-xs">
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
               <SelectContent>

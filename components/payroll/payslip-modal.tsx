@@ -154,9 +154,9 @@ export default function PayslipModal({
         </div>
 
         {/* Scrollable Printable Payslip Body */}
-        <div ref={printRef} className="flex-1 overflow-y-auto p-8 space-y-6 bg-white text-slate-900 print:p-0 print:overflow-visible">
+        <div ref={printRef} className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 bg-white text-slate-900 print:p-0 print:overflow-visible">
           {/* Branded Header */}
-          <div className="flex items-start justify-between border-b-2 border-slate-900 pb-5">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b-2 border-slate-900 pb-5 gap-3">
             <div>
               <h1 className="text-xl font-black uppercase tracking-tight text-slate-900">
                 {agencyName}
@@ -168,7 +168,7 @@ export default function PayslipModal({
                 Ref ID: PAY-{payslip.id.slice(-8).toUpperCase()}
               </p>
             </div>
-            <div className="text-right">
+            <div className="sm:text-right">
               <div className="inline-block bg-slate-900 text-white text-xs font-bold px-3 py-1 rounded">
                 PAYSLIP FOR {monthLabel.toUpperCase()}
               </div>
@@ -179,7 +179,7 @@ export default function PayslipModal({
           </div>
 
           {/* Employee & Bank Info Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs">
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-semibold">Employee Name</span>
               <span className="font-bold text-slate-900">{payslip.user.name}</span>

@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,7 +21,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Trash2, Edit, Plus, Search, AlertCircle, CheckCircle, Mail, RefreshCw, FileText, Clock, Send, Folder } from "lucide-react"
+import { Trash2, Edit, Plus, Search, AlertCircle, CheckCircle, Mail, RefreshCw, FileText, Clock, Send, Folder, Briefcase } from "lucide-react"
 import SmtpConfigForm from "@/components/SmtpConfigForm"
 import { toast } from "react-hot-toast"
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
@@ -223,8 +224,16 @@ export default function UsersPage() {
       
       if (data.inviteSent) {
         toast.success(`User invited! Setup link sent to ${formData.email}`)
+      } else if (data.inviteError) {
+        // The account exists but the person has no way in yet. Saying "created
+        // successfully" here is how a silently broken mail setup went unnoticed.
+        toast.error(
+          `${formData.name} was created, but the invitation email could not be sent: ${data.inviteError}. Fix SMTP in Settings, then use Resend invite.`,
+          { duration: 12000 },
+        )
+        setError(`Invitation email failed: ${data.inviteError}`)
       } else {
-        toast.success("User created successfully")
+        toast.success("User created with a password set — no invitation was sent.")
       }
     } catch (error: any) {
       console.error(error)
@@ -558,6 +567,12 @@ const testSmtpConnection = async (config: SmtpConfig) => {
             Manage agency team members, role permissions, HR documentation, and SMTP integrations.
           </p>
         </div>
+        <Link href="/dashboard/hrms">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/5 font-semibold">
+            <Briefcase className="size-3.5" />
+            <span>Recruitment & HRMS Workspace</span>
+          </Button>
+        </Link>
       </div>
 
       <Tabs defaultValue="users" className="space-y-4">
