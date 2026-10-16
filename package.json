@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build --turbopack",
     "dev": "next dev --turbopack",
     "lint": "next lint",
     "start": "next start -p $PORT",
@@ -11,7 +11,8 @@
     "db:push": "prisma db push",
     "check:finance": "tsc lib/finance.ts lib/finance.check.ts --outDir node_modules/.cache/finance-check --module commonjs --target es2022 --esModuleInterop --strict && node node_modules/.cache/finance-check/finance.check.js",
     "db:fresh": "prisma db push --force-reset && node prisma/seed.mjs",
-    "build:vps": "NODE_OPTIONS=--max-old-space-size=1024 next build"
+    "build:vps": "NODE_OPTIONS=--max-old-space-size=1024 next build",
+    "build:webpack": "next build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
