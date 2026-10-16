@@ -1,55 +1,14 @@
-import nodemailer from "nodemailer"
-import { prisma } from "@/lib/prisma"
+import { resolveSmtp } from "@/lib/smtp"
 
-const defaultTransporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === "true",
-  auth: {
-    user: process.env.SMTP_USER || "pbind4545@gmail.com",
-    pass: process.env.SMTP_PASSWORD || "eptg xytk wsxe waet",
-  },
-})
-
+/**
+ * Transactional emails. Every sender resolves SMTP through lib/smtp.ts, which decrypts
+ * the stored password and throws when nothing is configured — the previous version
+ * passed the ciphertext to nodemailer and fell back to credentials hardcoded here, so
+ * invitations silently went nowhere.
+ */
 async function getTransporter() {
-  try {
-    // Check if there is a verified admin SMTP configuration in the database
-    const adminSmtp = await prisma.smtpDetails.findFirst({
-      where: {
-        isActive: true,
-        isVerified: true,
-      },
-      include: {
-        user: {
-          select: { role: { select: { name: true } } },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-    })
-
-    if (adminSmtp) {
-      return {
-        transporter: nodemailer.createTransport({
-          host: adminSmtp.host,
-          port: adminSmtp.port,
-          secure: adminSmtp.encryption === "SSL",
-          auth: {
-            user: adminSmtp.username,
-            pass: adminSmtp.password,
-          },
-          tls: adminSmtp.encryption === "TLS" ? { ciphers: "SSLv3" } : undefined,
-        }),
-        fromEmail: adminSmtp.username,
-      }
-    }
-  } catch (err) {
-    console.warn("Could not load database SMTP details, using default transporter:", err)
-  }
-
-  return {
-    transporter: defaultTransporter,
-    fromEmail: process.env.FROM_EMAIL || "pbind4545@gmail.com",
-  }
+  const { transporter, fromEmail } = await resolveSmtp()
+  return { transporter, fromEmail }
 }
 
 export async function sendPasswordResetEmail(email: string, resetToken: string) {

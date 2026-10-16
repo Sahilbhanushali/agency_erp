@@ -1,5 +1,6 @@
 import nodemailer, { Transporter } from 'nodemailer';
 import {prisma} from '@/lib/prisma';
+import { decryptSmtpPassword } from '@/lib/smtp';
 
 interface EmailOptions {
   to: string;
@@ -57,16 +58,22 @@ export function createEmailService(userId: number) {
           throw new Error('Incomplete SMTP details: host, port, username, and password are required');
         }
 
-        // Create NodeMailer transporter
+        // The stored password is encrypted at rest; handing the ciphertext to
+        // nodemailer is why every send failed authentication.
+        const plainPassword = decryptSmtpPassword(password);
+
+        // `secure` means implicit TLS on connect, which is port 465 only. Setting it
+        // for STARTTLS on 587 — as this did for encryption === 'TLS' — makes the
+        // handshake hang rather than upgrade.
         transporter = nodemailer.createTransport({
           host,
           port,
-          secure: encryption === 'SSL' || encryption === 'TLS',
+          secure: encryption === 'SSL' || port === 465,
           auth: {
             user: username,
-            pass: password,
+            pass: plainPassword,
           },
-          tls: encryption === 'TLS' ? { ciphers: 'SSLv3' } : undefined,
+          ...(encryption === 'TLS' ? { requireTLS: true } : {}),
         });
 
         // Verify SMTP connection

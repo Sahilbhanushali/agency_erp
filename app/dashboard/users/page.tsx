@@ -224,8 +224,16 @@ export default function UsersPage() {
       
       if (data.inviteSent) {
         toast.success(`User invited! Setup link sent to ${formData.email}`)
+      } else if (data.inviteError) {
+        // The account exists but the person has no way in yet. Saying "created
+        // successfully" here is how a silently broken mail setup went unnoticed.
+        toast.error(
+          `${formData.name} was created, but the invitation email could not be sent: ${data.inviteError}. Fix SMTP in Settings, then use Resend invite.`,
+          { duration: 12000 },
+        )
+        setError(`Invitation email failed: ${data.inviteError}`)
       } else {
-        toast.success("User created successfully")
+        toast.success("User created with a password set — no invitation was sent.")
       }
     } catch (error: any) {
       console.error(error)
