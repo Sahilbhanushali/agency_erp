@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Copy, Download, Edit, Eye, EyeOff, Loader2, Plus, Search, Trash2, Upload } from "lucide-react"
-import * as XLSX from 'xlsx'
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
 
 export default function CredentialsPage() {
@@ -154,7 +153,7 @@ export default function CredentialsPage() {
     return matchesSearch && matchesScope && matchesCategory
   })
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const exportData = credentials.map(cred => ({
       "Client Name": cred.client?.name || "",
       "Project Name": cred.project?.name || "",
@@ -166,6 +165,8 @@ export default function CredentialsPage() {
       "Password": "(revealed in app only)"
     }));
 
+    // Loaded on demand — see the note on the removed top-level import.
+    const XLSX = await import("xlsx");
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Credentials");
@@ -180,6 +181,7 @@ export default function CredentialsPage() {
     reader.onload = async (evt) => {
       try {
         const bstr = evt.target?.result;
+        const XLSX = await import("xlsx");
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];

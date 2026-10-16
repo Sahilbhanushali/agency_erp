@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { DateTime } from "luxon"; // Import luxon
 import { Eye, Edit, MoreHorizontal, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, AlertCircle, Link as LinkIcon, Instagram, Facebook, Twitter, Linkedin, Youtube, Globe } from "lucide-react";
 import MediaRenderer from "@/components/MediaRenderer";
 import ImageModal from "@/components/ImageModal";
@@ -167,11 +166,15 @@ export default function PostGrid({
     setImageModal({ src: url, alt: filename, postId, assetId });
   };
 
-  // Convert UTC to IST using luxon
-  const convertToIST = (utcDate: string) => {
-    const dateTime = DateTime.fromISO(utcDate, { zone: 'utc' }).setZone('Asia/Kolkata');
-    return dateTime.toFormat('MMM dd');
-  };
+  // Render a UTC timestamp in IST. Intl does the timezone work the browser already
+  // ships, so this needs no date library — luxon was a 4.5 MB dependency for this one
+  // conversion.
+  const convertToIST = (utcDate: string) =>
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata",
+      month: "short",
+      day: "2-digit",
+    }).format(new Date(utcDate));
 
   return (
     <>
