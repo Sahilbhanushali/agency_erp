@@ -9,7 +9,12 @@
  *
  * See DEPLOY.md for the full first-deploy and cutover steps.
  */
-const APP_DIR = "/var/www/projects/itsme/agency_erp_next";
+// The directory this config file sits in — so the app works wherever you deploy it
+// (agency_erp, agency_erp_next, anywhere) without editing this line. cwd is not
+// cosmetic: every upload path resolves through process.cwd(), so a wrong value writes
+// files where nothing can serve them. Override with APP_DIR=/path pm2 start ... if you
+// ever need to.
+const APP_DIR = process.env.APP_DIR || __dirname;
 
 module.exports = {
   apps: [

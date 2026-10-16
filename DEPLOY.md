@@ -89,8 +89,9 @@ git checkout dev          # or main, whichever you are shipping
 node -v                   # Next 15 needs 18.18+; 20 LTS or 22 is better
 ```
 
-`ecosystem.config.js` expects exactly `/var/www/projects/itsme/agency_erp_next`. Using a
-different path means changing `APP_DIR` at the top of that file.
+`ecosystem.config.js` now derives its `cwd` from its own location, so the app runs
+correctly from whichever directory you clone into — `agency_erp`, `agency_erp_next` or
+anything else. Set `APP_DIR=/path` in the environment only if you need to override it.
 
 ---
 
@@ -203,16 +204,82 @@ Take a dump first, every time:
 mysqldump -u itsme_erp -p --single-transaction itsme_erp > ~/itsme_erp-$(date +%F).sql
 ```
 
-### If the build is killed
+### If the build is killed — `SIGKILL` / `exited with code: null`
 
-OOM — 2 GB is tight for a Next build:
-
-```bash
-NODE_OPTIONS=--max-old-space-size=1536 npm run build
+```
+Next.js build worker exited with code: null and signal: SIGKILL
 ```
 
-`next.config.mjs` already sets `experimental.cpus: 1` and `images.unoptimized: true`, so
-no `sharp` build is needed.
+That is the Linux **OOM killer**, not a build error. Nothing in the code is wrong; the
+machine ran out of memory and the kernel killed the worker.
+
+**Measured on this codebase** (62 pages, 165 route handlers, 83 Prisma models, plus
+`exceljs`, `xlsx`, `recharts` and `jspdf`):
+
+| | wall time | peak RSS |
+|---|---|---|
+| `npm run build`, 8 cores | 190 s | **1.86 GiB** |
+| `npm run build:vps` (1 GB heap cap), 8 cores | 135 s | **1.71 GiB** |
+
+So the build needs roughly **1.7–1.9 GiB on its own**, before the OS, MySQL and PM2.
+On a 2 GB VPS with no swap it cannot finish — which is exactly what you are seeing.
+Expect several times the wall time on 1 vCPU.
+
+#### 1. Check what you actually have
+
+```bash
+free -h            # look at the Swap row — if it is 0B, that is the problem
+nproc
+```
+
+#### 2. Add swap — the fix that makes the build complete
+
+```bash
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab   # survives reboot
+free -h
+```
+
+Swap is slower than RAM, so the build takes longer — but it finishes instead of being
+killed. This alone resolves the `SIGKILL`.
+
+#### 3. Cap Node's heap and free what you can
+
+```bash
+pm2 stop all          # frees a few hundred MB during the build
+npm run build:vps     # NODE_OPTIONS=--max-old-space-size=1024 next build
+pm2 start all
+```
+
+The cap makes V8 collect garbage instead of growing until the kernel intervenes. It is
+worth about 150 MB of peak and, more importantly, makes the ceiling predictable.
+
+#### 4. Better on a small VPS: do not build on it at all
+
+`.next` is a build artefact. Build it on your laptop or in CI and copy it up — the
+server then needs memory only to *run* the app, which is a fraction of what building
+takes:
+
+```bash
+# on your machine, with the same Node major version as the VPS
+npm ci && npm run build
+rsync -az --delete .next/ sahil@srv1376710:/var/www/projects/itsme/agency_erp/.next/
+# then on the VPS
+pm2 reload itsmedezinoagencyerp
+```
+
+Two conditions: build with the same Node major version the VPS runs, and keep
+`NEXT_PUBLIC_*` values identical, because those are compiled into the bundle.
+
+#### Why not just reduce dependencies
+
+Worth saying so you do not go hunting: `exceljs` (23 MB) and `xlsx` (7.7 MB) look
+redundant but are not. `exceljs` is used once, in `app/api/posts/bulk/sample/route.ts`,
+for dropdown data-validation in the import template — something SheetJS cannot produce.
+Removing either one loses a feature and saves no meaningful build memory.
 
 ### Bringing the old uploads across
 

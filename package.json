@@ -10,7 +10,8 @@
     "db:seed": "node prisma/seed.mjs",
     "db:push": "prisma db push",
     "check:finance": "tsc lib/finance.ts lib/finance.check.ts --outDir node_modules/.cache/finance-check --module commonjs --target es2022 --esModuleInterop --strict && node node_modules/.cache/finance-check/finance.check.js",
-    "db:fresh": "prisma db push --force-reset && node prisma/seed.mjs"
+    "db:fresh": "prisma db push --force-reset && node prisma/seed.mjs",
+    "build:vps": "NODE_OPTIONS=--max-old-space-size=1024 next build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
