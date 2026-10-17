@@ -115,7 +115,7 @@ export default function PayslipModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-4xl max-h-[92vh] p-0 flex flex-col gap-0 rounded-2xl overflow-hidden border border-border bg-background shadow-2xl"
+        className="w-[95vw] sm:max-w-4xl max-h-[92vh] p-0 flex flex-col gap-0 rounded-2xl overflow-hidden border border-border bg-background shadow-2xl"
       >
         {/* Modal Toolbar Header */}
         <div className="shrink-0 bg-card border-b border-border/80 px-6 py-3 flex items-center justify-between print:hidden">

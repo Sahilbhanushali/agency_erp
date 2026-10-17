@@ -48,6 +48,23 @@ const PERMISSIONS = [
   ["View-quotations", "View quotations and their totals"],
   ["Manage-invoices", "Create, edit, send and delete invoices, and record payments"],
   ["View-invoices", "View invoices, payments and balances"],
+  ["View-hrms", "View HRMS dashboards, job pipeline, and candidates"],
+  ["Manage-hrms", "Create and manage job openings, candidates, and recruitment"],
+  ["Manage-offers", "Create, approve, and send offer letters"],
+  ["Manage-onboarding", "Manage onboarding workflows and employee conversions"],
+  ["View-attendance", "View company attendance logs and rosters"],
+  ["Manage-attendance", "Manual punch correction and attendance sync"],
+  ["Approve-attendance", "Review and approve attendance regularizations"],
+  ["View-leaves", "View employee leave requests and balances"],
+  ["Manage-leaves", "Apply or adjust employee leave balances and policies"],
+  ["Approve-leaves", "Review, approve, or reject employee leave requests"],
+  ["View-payroll", "View payroll runs, registers, and summaries"],
+  ["Manage-payroll", "Create, calculate, and recalculate payroll runs"],
+  ["Approve-payroll", "Approve, lock, and publish payroll runs"],
+  ["View-salary", "View employee salary structures and revisions"],
+  ["Manage-salary", "Create and edit employee compensation structures"],
+  ["Manage-loans", "Disburse, schedule, and pause employee loans and advances"],
+  ["Manage-fnf", "Calculate and approve Full and Final settlements for offboarding"],
 ]
 
 async function main() {

@@ -34,6 +34,14 @@ export async function GET(
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
 
+    const currentUserId = parseInt(session.user.id, 10);
+    const userRole = (session.user as any).role || "";
+    const isHrOrAdmin = ["ADMIN", "HR"].includes(userRole);
+
+    if (!isHrOrAdmin && currentUserId !== userId) {
+      return NextResponse.json({ error: "Forbidden: You can only view your own documents" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const categoryParam = searchParams.get("category");
     const statusParam = searchParams.get("status");

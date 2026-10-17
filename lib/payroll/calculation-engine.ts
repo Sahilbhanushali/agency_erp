@@ -9,6 +9,7 @@ import {
   EmployeePayrollCalculation,
   ComponentBreakdown,
   PayslipLineItem,
+  FnFCalculationBreakdown,
 } from "./types";
 
 export const ENGINE_VERSION = "2.5.0-PROD";
@@ -645,5 +646,132 @@ export function calculateEmployeePayroll({
 
     engineVersion: ENGINE_VERSION,
     calculatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Calculates Full and Final (FnF) Settlement breakdown for departing employees.
+ * Follows Payment of Gratuity Act 1972, Indian Leave Encashment, and Notice Period recovery rules.
+ */
+export function calculateFnFSettlement({
+  employee,
+  resignationDate,
+  lastWorkingDate,
+  noticePeriodDays = 30,
+  servedNoticeDays = 30,
+  leaveEncashmentDays = 0,
+  outstandingLoanBalance = 0,
+  otherDeductions = 0,
+  notes,
+}: {
+  employee: {
+    userId: number;
+    userName: string;
+    joiningDate?: Date | string | null;
+    monthlyGross: number; // minor units (paise)
+    basicMonthly: number; // minor units (paise)
+  };
+  resignationDate: Date | string;
+  lastWorkingDate: Date | string;
+  noticePeriodDays?: number;
+  servedNoticeDays?: number;
+  leaveEncashmentDays?: number;
+  outstandingLoanBalance?: number;
+  otherDeductions?: number;
+  notes?: string;
+}): FnFCalculationBreakdown {
+  const rDate = new Date(resignationDate);
+  const lwd = new Date(lastWorkingDate);
+  const jDate = employee.joiningDate ? new Date(employee.joiningDate) : new Date(resignationDate);
+
+  // Tenure calculation in months & years
+  let totalMonths = (lwd.getFullYear() - jDate.getFullYear()) * 12 + (lwd.getMonth() - jDate.getMonth());
+  if (lwd.getDate() < jDate.getDate()) {
+    totalMonths = Math.max(0, totalMonths - 1);
+  }
+  const tenureYears = Math.floor(Math.max(0, totalMonths) / 12);
+  const tenureMonths = Math.max(0, totalMonths) % 12;
+
+  // Notice Period Shortfall
+  const shortfallDays = Math.max(0, noticePeriodDays - servedNoticeDays);
+  const perDayGross = Math.round(employee.monthlyGross / 30);
+  const noticeRecoveryAmount = shortfallDays * perDayGross;
+
+  // Pending Salary for Final Month (Prorated up to LWD)
+  const finalMonthDays = getDaysInMonth(lwd.getFullYear(), lwd.getMonth() + 1);
+  const unpaidDaysInFinalMonth = Math.min(finalMonthDays, Math.max(1, lwd.getDate()));
+  const perDayRateFinalMonth = Math.round(employee.monthlyGross / finalMonthDays);
+  const pendingSalaryAmount = perDayRateFinalMonth * unpaidDaysInFinalMonth;
+
+  // Leave Encashment (Earned Leave Basic / 30 * days)
+  const perDayBasic = Math.round(employee.basicMonthly / 30);
+  const leaveEncashmentAmount = Math.max(0, Math.round(perDayBasic * Math.max(0, leaveEncashmentDays)));
+
+  // Gratuity under Payment of Gratuity Act, 1972:
+  // Requires minimum 5 continuous years of service (or 4.5+ years: >= 4y 8m)
+  const isGratuityEligible = tenureYears >= 5 || (tenureYears === 4 && tenureMonths >= 8);
+  let gratuityAmount = 0;
+  if (isGratuityEligible) {
+    // 15 days basic wages for each completed year of service (tenureMonths >= 6 rounds up)
+    const roundedYears = tenureMonths >= 6 ? tenureYears + 1 : tenureYears;
+    const rawGratuity = Math.round((15 * employee.basicMonthly * roundedYears) / 26);
+    // Statutory Gratuity Cap: ₹20,00,000 (20,00,000 * 100 paise)
+    gratuityAmount = Math.min(200000000, rawGratuity);
+  }
+
+  // Totals
+  const totalPayable = pendingSalaryAmount + leaveEncashmentAmount + gratuityAmount;
+  const totalRecoverable = noticeRecoveryAmount + outstandingLoanBalance + otherDeductions;
+  const netSettlementAmount = Math.max(0, totalPayable - totalRecoverable);
+
+  const calculationNotes: string[] = [];
+  calculationNotes.push(`Service Tenure: ${tenureYears} year(s), ${tenureMonths} month(s) (Joined: ${jDate.toISOString().split("T")[0]}, LWD: ${lwd.toISOString().split("T")[0]})`);
+  calculationNotes.push(`Final Month Pending Salary: ${unpaidDaysInFinalMonth} day(s) × ₹${(perDayRateFinalMonth / 100).toFixed(2)} = ₹${(pendingSalaryAmount / 100).toFixed(2)}`);
+  if (shortfallDays > 0) {
+    calculationNotes.push(`Notice Period Shortfall: ${shortfallDays} day(s) deficit recovered at ₹${(perDayGross / 100).toFixed(2)}/day = ₹${(noticeRecoveryAmount / 100).toFixed(2)}`);
+  } else {
+    calculationNotes.push(`Notice Period: ${servedNoticeDays}/${noticePeriodDays} days served. No recovery.`);
+  }
+  if (leaveEncashmentDays > 0) {
+    calculationNotes.push(`Leave Encashment: ${leaveEncashmentDays} day(s) at Basic rate (₹${(perDayBasic / 100).toFixed(2)}/day) = ₹${(leaveEncashmentAmount / 100).toFixed(2)}`);
+  }
+  if (isGratuityEligible) {
+    calculationNotes.push(`Gratuity: Eligible (${tenureYears} yrs service). Calculated under Gratuity Act formula (15 * Basic * Years / 26) = ₹${(gratuityAmount / 100).toFixed(2)}`);
+  } else {
+    calculationNotes.push(`Gratuity: Not eligible (requires 5 years continuous service; actual tenure: ${tenureYears}y ${tenureMonths}m)`);
+  }
+  if (outstandingLoanBalance > 0) {
+    calculationNotes.push(`Outstanding Loan Advance Recovery: ₹${(outstandingLoanBalance / 100).toFixed(2)} deducted`);
+  }
+  if (otherDeductions > 0) {
+    calculationNotes.push(`Other Deductions / Asset Clearance: ₹${(otherDeductions / 100).toFixed(2)} deducted`);
+  }
+  if (notes) {
+    calculationNotes.push(`Notes: ${notes}`);
+  }
+
+  return {
+    userId: employee.userId,
+    userName: employee.userName,
+    resignationDate: rDate.toISOString(),
+    lastWorkingDate: lwd.toISOString(),
+    tenureYears,
+    tenureMonths,
+    noticePeriodDays,
+    servedNoticeDays,
+    shortfallDays,
+    noticeRecoveryAmount,
+    unpaidDaysInFinalMonth,
+    pendingSalaryAmount,
+    leaveEncashmentDays,
+    leaveEncashmentAmount,
+    isGratuityEligible,
+    gratuityAmount,
+    outstandingLoanBalance,
+    otherDeductions,
+    totalPayable,
+    totalRecoverable,
+    netSettlementAmount,
+    calculationNotes,
   };
 }

@@ -1883,6 +1883,9 @@ model SalaryStructure {
   effectiveFrom    DateTime              @default(now())
   effectiveTo      DateTime?
 
+  templateId       String?
+  template         SalaryStructureTemplate? @relation("TemplateSalaryStructure", fields: [templateId], references: [id], onDelete: SetNull)
+
   items            SalaryStructureItem[]
   revisions        SalaryRevision[]
 
@@ -1891,7 +1894,31 @@ model SalaryStructure {
 
   @@index([userId])
   @@index([status])
+  @@index([templateId])
   @@map("salary_structures")
+}
+
+model SalaryStructureTemplate {
+  id                    String            @id @default(cuid())
+  name                  String            @unique
+  code                  String            @unique
+  description           String?
+  basicPercentage       Float             @default(50.0) // % of monthly gross
+  hraPercentage         Float             @default(25.0) // % of monthly gross
+  specialPercentage     Float             @default(15.0) // % of monthly gross
+  otherPercentage       Float             @default(10.0) // % of monthly gross
+  pfApplicable          Boolean           @default(true)
+  esiApplicable         Boolean           @default(false)
+  professionalTax       Boolean           @default(true)
+  isDefault             Boolean           @default(false)
+  isActive              Boolean           @default(true)
+
+  assignedStructures    SalaryStructure[] @relation("TemplateSalaryStructure")
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@map("salary_structure_templates")
 }
 
 model SalaryStructureItem {

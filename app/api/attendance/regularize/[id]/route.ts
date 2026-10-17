@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { AttendanceService } from "@/lib/payroll/attendance-service";
 
 export async function PATCH(
@@ -20,6 +21,21 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
+    const currentUserId = Number(session.user.id);
+
+    const reg = await prisma.attendanceRegularization.findUnique({
+      where: { id },
+    });
+    if (!reg) {
+      return NextResponse.json({ error: "Regularization request not found" }, { status: 404 });
+    }
+
+    if (reg.userId === currentUserId) {
+      return NextResponse.json(
+        { error: "Forbidden: Self-approval is not permitted. Regularization must be reviewed by another manager or HR" },
+        { status: 403 }
+      );
+    }
 
     if (!["APPROVED", "REJECTED"].includes(body.status)) {
       return NextResponse.json({ error: "Status must be APPROVED or REJECTED" }, { status: 400 });
@@ -29,7 +45,7 @@ export async function PATCH(
       regularizationId: id,
       status: body.status,
       remarks: body.remarks,
-      reviewerId: Number(session.user.id),
+      reviewerId: currentUserId,
     });
 
     return NextResponse.json(updated);

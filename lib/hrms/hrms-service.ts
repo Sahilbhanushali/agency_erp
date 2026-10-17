@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { HRMS_STAGES, HrmsStage, DEFAULT_ONBOARDING_CHECKLIST } from "./types";
-import { seedHrmsInitialData } from "./seed-data";
+import { PayrollService } from "@/lib/payroll/payroll-service";
+import { LeaveService } from "@/lib/payroll/leave-service";
 
 export interface DashboardFilterParams {
   startDate?: string | null;
@@ -12,12 +13,6 @@ export interface DashboardFilterParams {
 }
 
 export async function getHrmsDashboardStats(filters: DashboardFilterParams = {}) {
-  // Ensure seed data is initialized if database has 0 records
-  const countCandidates = await prisma.hrmsCandidate.count();
-  if (countCandidates === 0) {
-    await seedHrmsInitialData();
-  }
-
   const applicationWhere: any = {};
   if (filters.jobOpeningId) {
     applicationWhere.jobOpeningId = filters.jobOpeningId;
@@ -343,6 +338,7 @@ export async function convertCandidateToEmployee(options: {
         currentSalary: salary,
         joiningDate,
         employmentType: latestOffer?.employmentType || "FULL_TIME",
+        exitStatus: "ACTIVE",
       },
     });
   } else {
@@ -356,8 +352,56 @@ export async function convertCandidateToEmployee(options: {
         joiningDate,
         phone: candidate.phone || targetUser.phone,
         address: candidate.address || targetUser.address,
+        exitStatus: "ACTIVE",
       },
     });
+  }
+
+  // 1. Initialize SalaryStructure from offer / candidate compensation
+  try {
+    const monthlyGrossPaise = Math.round((salary || 50000) * 100);
+    const basicPaise = Math.round(monthlyGrossPaise * 0.50);
+    const hraPaise = Math.round(monthlyGrossPaise * 0.25);
+    const specialPaise = Math.round(monthlyGrossPaise * 0.25);
+
+    await PayrollService.upsertSalaryStructure({
+      userId: targetUser.id,
+      basicSalary: basicPaise,
+      hra: hraPaise,
+      specialAllowance: specialPaise,
+      pfDeduction: true,
+      professionalTax: true,
+      effectiveFrom: joiningDate,
+      revisionReason: "Initial structure created from candidate onboarding conversion",
+    });
+  } catch (err: any) {
+    console.warn("SalaryStructure setup warning during conversion:", err.message);
+  }
+
+  // 2. Assign default Shift & WeeklyOffPattern if not set
+  try {
+    const defaultShift = await prisma.shift.findFirst({ where: { isActive: true } });
+    const defaultPattern = await prisma.weeklyOffPattern.findFirst({ where: { isDefault: true } });
+
+    if (defaultShift || defaultPattern) {
+      await prisma.user.update({
+        where: { id: targetUser.id },
+        data: {
+          shiftId: defaultShift?.id || undefined,
+          weeklyOffPatternId: defaultPattern?.id || undefined,
+        },
+      });
+    }
+  } catch (err: any) {
+    console.warn("Shift/Pattern assignment warning:", err.message);
+  }
+
+  // 3. Initialize Leave Balances for employee
+  try {
+    const joinYear = new Date(joiningDate).getFullYear();
+    await LeaveService.getUserBalances(targetUser.id, joinYear);
+  } catch (err: any) {
+    console.warn("Leave balance initialization warning:", err.message);
   }
 
   // Link to onboarding record

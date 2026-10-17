@@ -8,6 +8,11 @@ export async function POST(request: NextRequest) {
   const auth = await requireSession();
   if (!auth.ok) return auth.response;
 
+  const userRole = (auth.session.user as any)?.role || "";
+  if (userRole !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  }
+
   try {
     await seedHrmsInitialData();
     return NextResponse.json({ success: true, message: "HRMS demo data initialized successfully." });

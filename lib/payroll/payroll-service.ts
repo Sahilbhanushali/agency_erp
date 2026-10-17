@@ -6,9 +6,13 @@ import {
   EmployeeSalaryInput,
   MonthlyAdjustmentItem,
   LoanRecoveryItem,
+  CreateLoanInput,
+  FnFCalculationInput,
+  FnFCalculationBreakdown,
 } from "./types";
 import {
   calculateEmployeePayroll,
+  calculateFnFSettlement,
   getDaysInMonth,
   DEFAULT_PT_SLABS,
   DEFAULT_STATUTORY_CONFIG,
@@ -197,6 +201,9 @@ export class PayrollService {
         userId,
         status: "ACTIVE",
       },
+      include: {
+        template: true,
+      },
       orderBy: { effectiveFrom: "desc" },
     });
   }
@@ -217,7 +224,9 @@ export class PayrollService {
     professionalTax = true,
     tdsMonthly = 0,
     effectiveFrom = new Date(),
+    revisionReason,
     actorUserId,
+    templateId,
   }: {
     userId: number;
     basicSalary: number;
@@ -231,7 +240,9 @@ export class PayrollService {
     professionalTax?: boolean;
     tdsMonthly?: number;
     effectiveFrom?: Date;
+    revisionReason?: string;
     actorUserId?: number;
+    templateId?: string;
   }) {
     const monthlyGross = basicSalary + hra + specialAllowance + otherAllowances;
     const ctcMonthly = monthlyGross + fixedBonus;
@@ -251,6 +262,7 @@ export class PayrollService {
     const newStructure = await prisma.salaryStructure.create({
       data: {
         userId,
+        templateId: templateId || null,
         basicSalary,
         hra,
         specialAllowance,
@@ -264,9 +276,26 @@ export class PayrollService {
         professionalTax,
         tdsMonthly,
         effectiveFrom,
+        revisionReason: revisionReason || null,
         status: "ACTIVE",
       },
     });
+
+    // Record SalaryRevision if previous structure existed
+    if (currentActive && (currentActive.ctcMonthly !== ctcMonthly || currentActive.basicSalary !== basicSalary)) {
+      await prisma.salaryRevision.create({
+        data: {
+          userId,
+          salaryStructureId: newStructure.id,
+          previousCtc: currentActive.ctcMonthly,
+          newCtc: ctcMonthly,
+          effectiveDate: effectiveFrom,
+          reason: revisionReason || "Salary structure revision",
+          approvedById: actorUserId,
+          approvedAt: new Date(),
+        },
+      });
+    }
 
     // Update currentSalary on User model for quick reference
     await prisma.user.update({
@@ -1765,5 +1794,460 @@ export class PayrollService {
       agencyName: settings.companyName,
       user: payslip.user,
     };
+  }
+
+  // ==========================================
+  // LOANS AND ADVANCES MANAGEMENT
+  // ==========================================
+
+  /**
+   * Creates a loan or salary advance for an employee with scheduled installments.
+   */
+  static async createLoanAdvance(input: CreateLoanInput) {
+    if (!input.userId) throw new Error("userId is required");
+    if (!input.principalAmount || input.principalAmount <= 0) {
+      throw new Error("Principal amount must be greater than zero");
+    }
+    if (!input.totalTenure || input.totalTenure <= 0) {
+      throw new Error("Tenure must be at least 1 month");
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { id: true, name: true, exitStatus: true },
+    });
+    if (!user) throw new Error("Employee not found");
+    if (user.exitStatus === "SEPARATED") throw new Error("Cannot grant loan to a separated employee");
+
+    const activeLoan = await prisma.loanAdvance.findFirst({
+      where: { userId: input.userId, status: "ACTIVE", balanceAmount: { gt: 0 } },
+    });
+    if (activeLoan) {
+      throw new Error(
+        `Employee already has an active loan (ID: ${activeLoan.id}) with outstanding balance ₹${(activeLoan.balanceAmount / 100).toFixed(2)}. Please close or adjust the existing loan first.`
+      );
+    }
+
+    const calculatedEmi =
+      input.installmentEmi && input.installmentEmi > 0
+        ? input.installmentEmi
+        : Math.ceil(input.principalAmount / input.totalTenure);
+
+    const disbursedAt = input.disbursedAt ? new Date(input.disbursedAt) : new Date();
+
+    const loan = await prisma.$transaction(async (tx) => {
+      const createdLoan = await tx.loanAdvance.create({
+        data: {
+          userId: input.userId,
+          principalAmount: input.principalAmount,
+          disbursedAmount: input.principalAmount,
+          balanceAmount: input.principalAmount,
+          totalRepaid: 0,
+          installmentEmi: calculatedEmi,
+          totalTenure: input.totalTenure,
+          status: "ACTIVE",
+          reason: input.reason || "Employee Loan / Salary Advance",
+          disbursedAt,
+        },
+      });
+
+      // Schedule monthly installments starting from current or next month
+      let curMonth = disbursedAt.getMonth() + 1;
+      let curYear = disbursedAt.getFullYear();
+
+      // If disbursed in second half of month (after 15th), start EMI from next month
+      if (disbursedAt.getDate() > 15) {
+        curMonth++;
+        if (curMonth > 12) {
+          curMonth = 1;
+          curYear++;
+        }
+      }
+
+      let remainingToSchedule = input.principalAmount;
+      for (let i = 0; i < input.totalTenure; i++) {
+        const emiForMonth =
+          i === input.totalTenure - 1
+            ? remainingToSchedule
+            : Math.min(calculatedEmi, remainingToSchedule);
+        await tx.loanInstallment.create({
+          data: {
+            loanAdvanceId: createdLoan.id,
+            month: curMonth,
+            year: curYear,
+            expectedEmi: emiForMonth,
+            deductedEmi: 0,
+            status: "SCHEDULED",
+          },
+        });
+        remainingToSchedule = Math.max(0, remainingToSchedule - emiForMonth);
+        curMonth++;
+        if (curMonth > 12) {
+          curMonth = 1;
+          curYear++;
+        }
+      }
+
+      return tx.loanAdvance.findUnique({
+        where: { id: createdLoan.id },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, department: true, designation: true },
+          },
+          installments: {
+            orderBy: [{ year: "asc" }, { month: "asc" }],
+          },
+        },
+      });
+    });
+
+    return loan;
+  }
+
+  /**
+   * Retrieves all loan advances with optional filtering by user or status.
+   */
+  static async getLoanAdvances(options?: { userId?: number; status?: string }) {
+    const where: any = {};
+    if (options?.userId) where.userId = options.userId;
+    if (options?.status) where.status = options.status;
+
+    return prisma.loanAdvance.findMany({
+      where,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, department: true, designation: true },
+        },
+        installments: {
+          orderBy: [{ year: "asc" }, { month: "asc" }],
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  /**
+   * Retrieves single loan advance details with installments and user information.
+   */
+  static async getLoanAdvanceById(loanId: string) {
+    const loan = await prisma.loanAdvance.findUnique({
+      where: { id: loanId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, department: true, designation: true },
+        },
+        installments: {
+          orderBy: [{ year: "asc" }, { month: "asc" }],
+        },
+      },
+    });
+    if (!loan) throw new Error("Loan not found");
+    return loan;
+  }
+
+  /**
+   * Updates loan status (ACTIVE, PAUSED, COMPLETED).
+   */
+  static async updateLoanStatus(loanId: string, status: "ACTIVE" | "PAUSED" | "COMPLETED") {
+    const loan = await prisma.loanAdvance.findUnique({ where: { id: loanId } });
+    if (!loan) throw new Error("Loan not found");
+
+    return prisma.loanAdvance.update({
+      where: { id: loanId },
+      data: { status },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        installments: true,
+      },
+    });
+  }
+
+  /**
+   * Records a manual or off-cycle repayment towards a loan.
+   */
+  static async recordManualLoanRepayment(loanId: string, amount: number, notes?: string) {
+    if (amount <= 0) throw new Error("Repayment amount must be positive");
+
+    const loan = await prisma.loanAdvance.findUnique({
+      where: { id: loanId },
+      include: { installments: { orderBy: [{ year: "asc" }, { month: "asc" }] } },
+    });
+    if (!loan) throw new Error("Loan not found");
+    if (loan.balanceAmount <= 0) throw new Error("Loan is already fully repaid");
+
+    const repayment = Math.min(amount, loan.balanceAmount);
+    const newRepaid = loan.totalRepaid + repayment;
+    const newBalance = Math.max(0, loan.principalAmount - newRepaid);
+
+    return prisma.$transaction(async (tx) => {
+      // Find earliest scheduled installment to mark/reduce
+      const nextInstallment = loan.installments.find(
+        (i) => i.status === "SCHEDULED" || i.status === "PARTIAL"
+      );
+      if (nextInstallment) {
+        const installmentDeducted = Math.min(repayment, nextInstallment.expectedEmi);
+        await tx.loanInstallment.update({
+          where: { id: nextInstallment.id },
+          data: {
+            deductedEmi: nextInstallment.deductedEmi + installmentDeducted,
+            status:
+              nextInstallment.deductedEmi + installmentDeducted >= nextInstallment.expectedEmi
+                ? "RECOVERED"
+                : "PARTIAL",
+            recoveredAt: new Date(),
+          },
+        });
+      }
+
+      return tx.loanAdvance.update({
+        where: { id: loanId },
+        data: {
+          totalRepaid: newRepaid,
+          balanceAmount: newBalance,
+          status: newBalance === 0 ? "COMPLETED" : loan.status,
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          installments: { orderBy: [{ year: "asc" }, { month: "asc" }] },
+        },
+      });
+    });
+  }
+
+  // ==========================================
+  // FULL AND FINAL SETTLEMENT (FnF)
+  // ==========================================
+
+  /**
+   * Computes deterministic Full and Final (FnF) settlement preview without persisting.
+   */
+  static async calculateFnF(input: FnFCalculationInput): Promise<FnFCalculationBreakdown> {
+    const user = await prisma.user.findUnique({
+      where: { id: input.userId },
+      include: {
+        salaryStructures: {
+          orderBy: { effectiveFrom: "desc" },
+          take: 1,
+        },
+        leaveBalances: {
+          include: { leaveType: true },
+        },
+      },
+    });
+
+    if (!user) throw new Error("Employee not found");
+
+    const activeStructure = user.salaryStructures?.[0];
+    const currentSalaryNum = user.currentSalary ? Number(user.currentSalary) : 0;
+    const monthlyGross =
+      activeStructure?.monthlyGross || Math.round(currentSalaryNum * 100);
+    const basicMonthly =
+      activeStructure?.basicSalary || Math.round(monthlyGross * 0.5);
+
+    if (monthlyGross <= 0) {
+      throw new Error("Employee has no configured salary structure or current salary");
+    }
+
+    // Calculate encashable leave balance: EL or paid encashable types
+    let totalEncashableDays = 0;
+    for (const lb of user.leaveBalances) {
+      if (
+        lb.leaveType.code === "EL" ||
+        lb.leaveType.name.toLowerCase().includes("earned")
+      ) {
+        const available = Math.max(0, lb.totalQuota - lb.usedDays);
+        totalEncashableDays += available;
+      }
+    }
+
+    // Active outstanding loans
+    const activeLoans = await prisma.loanAdvance.findMany({
+      where: { userId: user.id, status: "ACTIVE", balanceAmount: { gt: 0 } },
+    });
+    const outstandingLoanBalance = activeLoans.reduce((sum, l) => sum + l.balanceAmount, 0);
+
+    return calculateFnFSettlement({
+      employee: {
+        userId: user.id,
+        userName: user.name,
+        joiningDate: user.joiningDate,
+        monthlyGross,
+        basicMonthly,
+      },
+      resignationDate: input.resignationDate,
+      lastWorkingDate: input.lastWorkingDate,
+      noticePeriodDays: input.noticePeriodDays ?? 30,
+      servedNoticeDays: input.servedNoticeDays ?? 30,
+      leaveEncashmentDays: totalEncashableDays,
+      outstandingLoanBalance,
+      otherDeductions: input.otherDeductions ?? 0,
+      notes: input.notes,
+    });
+  }
+
+  /**
+   * Creates or updates a Full and Final Settlement record.
+   */
+  static async saveFnFSettlement(input: FnFCalculationInput) {
+    const breakdown = await this.calculateFnF(input);
+
+    const existing = await prisma.fullAndFinalSettlement.findFirst({
+      where: { userId: input.userId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (existing && existing.status === "APPROVED") {
+      throw new Error("A settlement for this employee has already been approved and finalized.");
+    }
+
+    const data = {
+      userId: input.userId,
+      resignationDate: new Date(input.resignationDate),
+      lastWorkingDate: new Date(input.lastWorkingDate),
+      noticePeriodDays: breakdown.noticePeriodDays,
+      servedNoticeDays: breakdown.servedNoticeDays,
+      shortfallDays: breakdown.shortfallDays,
+      noticeRecoveryAmount: breakdown.noticeRecoveryAmount,
+      leaveEncashmentDays: breakdown.leaveEncashmentDays,
+      leaveEncashmentAmount: breakdown.leaveEncashmentAmount,
+      gratuityAmount: breakdown.gratuityAmount,
+      pendingSalaryAmount: breakdown.pendingSalaryAmount,
+      otherDeductions: breakdown.otherDeductions + breakdown.outstandingLoanBalance,
+      netSettlementAmount: breakdown.netSettlementAmount,
+      status: "DRAFT",
+      notes: breakdown.calculationNotes.join("\n"),
+    };
+
+    if (existing) {
+      return prisma.fullAndFinalSettlement.update({
+        where: { id: existing.id },
+        data,
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, department: true, designation: true },
+          },
+        },
+      });
+    }
+
+    return prisma.fullAndFinalSettlement.create({
+      data,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, department: true, designation: true },
+        },
+      },
+    });
+  }
+
+  /**
+   * Retrieves list of FnF settlements with optional user or status filter.
+   */
+  static async getFnFSettlements(options?: { userId?: number; status?: string }) {
+    const where: any = {};
+    if (options?.userId) where.userId = options.userId;
+    if (options?.status) where.status = options.status;
+
+    return prisma.fullAndFinalSettlement.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            designation: true,
+            joiningDate: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  /**
+   * Retrieves a single FnF settlement by ID.
+   */
+  static async getFnFSettlementById(settlementId: string) {
+    const settlement = await prisma.fullAndFinalSettlement.findUnique({
+      where: { id: settlementId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            designation: true,
+            joiningDate: true,
+            panNumber: true,
+            bankName: true,
+            bankAccountNumber: true,
+            bankIfsc: true,
+          },
+        },
+      },
+    });
+    if (!settlement) throw new Error("FnF Settlement not found");
+    return settlement;
+  }
+
+  /**
+   * Approves Full and Final Settlement and transitions employee lifecycle to SEPARATED.
+   */
+  static async approveFnFSettlement(settlementId: string, approverUserId: number) {
+    const settlement = await prisma.fullAndFinalSettlement.findUnique({
+      where: { id: settlementId },
+      include: { user: true },
+    });
+
+    if (!settlement) throw new Error("FnF Settlement not found");
+    if (settlement.status === "APPROVED") {
+      throw new Error("Settlement is already approved");
+    }
+
+    if (settlement.userId === approverUserId) {
+      throw new Error(
+        "Separation of duties violation: You cannot approve your own Full and Final Settlement"
+      );
+    }
+
+    return prisma.$transaction(async (tx) => {
+      // 1. Mark FnF as APPROVED
+      const approvedSettlement = await tx.fullAndFinalSettlement.update({
+        where: { id: settlementId },
+        data: {
+          status: "APPROVED",
+          approvedById: approverUserId,
+          approvedAt: new Date(),
+        },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, department: true, designation: true },
+          },
+        },
+      });
+
+      // 2. Mark employee lifecycle as SEPARATED
+      await tx.user.update({
+        where: { id: settlement.userId },
+        data: {
+          exitStatus: "SEPARATED",
+          exitDate: settlement.lastWorkingDate,
+        },
+      });
+
+      // 3. Close active loan advances if any (balance recovered through settlement)
+      await tx.loanAdvance.updateMany({
+        where: { userId: settlement.userId, status: "ACTIVE" },
+        data: {
+          status: "COMPLETED",
+          balanceAmount: 0,
+        },
+      });
+
+      return approvedSettlement;
+    });
   }
 }

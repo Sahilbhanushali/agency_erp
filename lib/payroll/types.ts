@@ -258,3 +258,47 @@ export interface EmployeePayrollCalculation {
   engineVersion: string;
   calculatedAt: string;
 }
+
+export interface CreateLoanInput {
+  userId: number;
+  principalAmount: number; // minor units (paise)
+  totalTenure: number; // in months
+  installmentEmi?: number; // optional custom EMI, otherwise principalAmount / totalTenure
+  reason: string;
+  disbursedAt?: Date | string;
+}
+
+export interface FnFCalculationInput {
+  userId: number;
+  resignationDate: Date | string;
+  lastWorkingDate: Date | string;
+  noticePeriodDays?: number;
+  servedNoticeDays?: number;
+  otherDeductions?: number; // minor units
+  notes?: string;
+}
+
+export interface FnFCalculationBreakdown {
+  userId: number;
+  userName: string;
+  resignationDate: string;
+  lastWorkingDate: string;
+  tenureYears: number;
+  tenureMonths: number;
+  noticePeriodDays: number;
+  servedNoticeDays: number;
+  shortfallDays: number;
+  noticeRecoveryAmount: number; // minor units
+  unpaidDaysInFinalMonth: number;
+  pendingSalaryAmount: number; // minor units
+  leaveEncashmentDays: number;
+  leaveEncashmentAmount: number; // minor units
+  isGratuityEligible: boolean;
+  gratuityAmount: number; // minor units
+  outstandingLoanBalance: number; // minor units
+  otherDeductions: number; // minor units
+  totalPayable: number; // minor units
+  totalRecoverable: number; // minor units
+  netSettlementAmount: number; // minor units
+  calculationNotes: string[];
+}

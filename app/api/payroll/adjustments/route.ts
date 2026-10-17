@@ -99,6 +99,67 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userRole = (session.user as any).role || "";
+    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
+      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { id, title, type, amount, month, year, notes, isApproved } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Adjustment ID is required" }, { status: 400 });
+    }
+
+    const existing = await prisma.salaryAdjustment.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Adjustment not found" }, { status: 404 });
+    }
+
+    const data: any = {};
+    if (title !== undefined) data.title = title.trim();
+    if (type !== undefined) data.type = type;
+    if (amount !== undefined) data.amount = Math.round(Number(amount));
+    if (month !== undefined) data.month = Number(month);
+    if (year !== undefined) data.year = Number(year);
+    if (notes !== undefined) data.notes = notes ? notes.trim() : null;
+    if (isApproved !== undefined) data.isApproved = Boolean(isApproved);
+
+    const updated = await prisma.salaryAdjustment.update({
+      where: { id },
+      data,
+      include: {
+        user: { select: { id: true, name: true, email: true, designation: true } },
+      },
+    });
+
+    let recalculated = null;
+    if (body.payrollRunId) {
+      try {
+        recalculated = await PayrollService.recalculateEmployeePayslip({
+          payrollRunId: body.payrollRunId,
+          userId: existing.userId,
+          actorUserId: Number(session.user.id),
+        });
+      } catch (err: any) {
+        console.warn("Adjustment updated but payslip recalculate skipped:", err.message);
+      }
+    }
+
+    return NextResponse.json({ success: true, adjustment: updated, recalculated });
+  } catch (error: any) {
+    console.error("PATCH /api/payroll/adjustments error:", error);
+    return NextResponse.json({ error: error.message || "Failed to update adjustment" }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -112,12 +173,26 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
+    let id = searchParams.get("id");
+    if (!id) {
+      try {
+        const body = await request.json();
+        id = body.id;
+      } catch {
+        // body might be empty
+      }
+    }
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
+    const existing = await prisma.salaryAdjustment.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Adjustment not found" }, { status: 404 });
+    }
+
     await prisma.salaryAdjustment.delete({ where: { id } });
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deleted: true });
   } catch (error: any) {
+    console.error("DELETE /api/payroll/adjustments error:", error);
     return NextResponse.json({ error: error.message || "Failed to delete adjustment" }, { status: 500 });
   }
 }

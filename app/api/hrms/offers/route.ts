@@ -3,11 +3,22 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/api-auth";
 import { resolvePlaceholders } from "@/lib/hrms/placeholder-engine";
 
+import { hasPermission } from "@/lib/api-auth";
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const auth = await requireSession();
   if (!auth.ok) return auth.response;
+
+  const userRole = (auth.session.user as any)?.role || "";
+  const canAccess =
+    ["ADMIN", "HR"].includes(userRole) ||
+    (await hasPermission(auth.session, "View-hrms")) ||
+    (await hasPermission(auth.session, "Manage-offers"));
+  if (!canAccess) {
+    return NextResponse.json({ error: "Forbidden: HR or Admin access required" }, { status: 403 });
+  }
 
   try {
     const { searchParams } = new URL(request.url);
@@ -43,6 +54,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireSession();
   if (!auth.ok) return auth.response;
+
+  const userRole = (auth.session.user as any)?.role || "";
+  const canCreate =
+    ["ADMIN", "HR"].includes(userRole) ||
+    (await hasPermission(auth.session, "Manage-offers"));
+  if (!canCreate) {
+    return NextResponse.json({ error: "Forbidden: HR or Admin access required to create offers" }, { status: 403 });
+  }
 
   try {
     const body = await request.json();

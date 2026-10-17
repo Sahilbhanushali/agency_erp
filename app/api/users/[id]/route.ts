@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAuditAction } from "@/lib/audit";
+import { hasPermission } from "@/lib/api-auth";
+import { PayrollService } from "@/lib/payroll/payroll-service";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
@@ -15,6 +17,34 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const userId = parseInt(params.id, 10);
     if (isNaN(userId)) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    const currentUserId = parseInt(session.user.id, 10);
+    const userRole = (session.user as any).role || "";
+    const isSelf = currentUserId === userId;
+    const isHrOrAdmin = ["ADMIN", "HR"].includes(userRole) || (await hasPermission(session, "Manage-User"));
+
+    // If requester is not self and not HR/Admin: return only non-confidential public directory fields
+    if (!isSelf && !isHrOrAdmin) {
+      const publicUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+          createdAt: true,
+          designation: true,
+          department: true,
+          role: { select: { id: true, name: true } },
+          assignedProjects: { select: { id: true, name: true } },
+        },
+      });
+
+      if (!publicUser) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+      return NextResponse.json(publicUser);
     }
 
     const user = await prisma.user.findUnique({
@@ -45,6 +75,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         emergencyContactPhone: true,
         emergencyContactRelation: true,
         offerLetterUrl: true,
+        exitStatus: true,
+        exitDate: true,
         documents: {
           orderBy: { uploadedAt: "desc" },
         },
@@ -69,8 +101,15 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
   const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || !["ADMIN", "MANAGER", "Manager"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userRole = (session?.user as any)?.role || "";
+    const canManage = session?.user?.id && (
+      ["ADMIN", "HR"].includes(userRole) ||
+      (await hasPermission(session, "Manage-User")) ||
+      (await hasPermission(session, "Manage-salary"))
+    );
+
+    if (!canManage) {
+      return NextResponse.json({ error: "Forbidden: HR or Admin access required" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -96,10 +135,17 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       emergencyContactPhone,
       emergencyContactRelation,
       offerLetterUrl,
+      exitStatus,
+      exitDate,
     } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
+    }
+
+    const targetUserId = parseInt(params.id, 10);
+    if (isNaN(targetUserId)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
 
     let data: any = {
@@ -123,6 +169,8 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       emergencyContactPhone: emergencyContactPhone || null,
       emergencyContactRelation: emergencyContactRelation || null,
       offerLetterUrl: offerLetterUrl || null,
+      exitStatus: exitStatus || undefined,
+      exitDate: exitDate ? new Date(exitDate) : undefined,
     };
 
     if (role) {
@@ -132,10 +180,31 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     }
 
     const user = await prisma.user.update({
-      where: { id: parseInt(params.id) },
+      where: { id: targetUserId },
       data,
       include: { role: true, documents: true },
     });
+
+    // Synchronize with SalaryStructure so compensation is never desynchronized
+    if (currentSalary !== undefined && currentSalary !== null && currentSalary !== "") {
+      try {
+        const monthlyGrossPaise = Math.round(Number(currentSalary) * 100);
+        const basicPaise = Math.round(monthlyGrossPaise * 0.50);
+        const hraPaise = Math.round(monthlyGrossPaise * 0.25);
+        const specialPaise = Math.round(monthlyGrossPaise * 0.25);
+
+        await PayrollService.upsertSalaryStructure({
+          userId: targetUserId,
+          basicSalary: basicPaise,
+          hra: hraPaise,
+          specialAllowance: specialPaise,
+          actorUserId: parseInt(session.user.id, 10),
+          revisionReason: "User profile compensation update",
+        });
+      } catch (err: any) {
+        console.warn("SalaryStructure sync notice:", err.message);
+      }
+    }
 
     await logAuditAction({
       userId: session.user.id,

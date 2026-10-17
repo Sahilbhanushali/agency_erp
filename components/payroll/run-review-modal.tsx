@@ -314,13 +314,13 @@ export default function RunReviewModal({
   return (
     <>
       <Dialog open={!!runId} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[92vh] p-0 flex flex-col gap-0 rounded-2xl overflow-hidden bg-background">
+        <DialogContent className="w-[96vw] max-w-7xl sm:max-w-7xl max-h-[92vh] h-[90vh] p-0 flex flex-col gap-0 rounded-2xl overflow-hidden bg-background shadow-2xl border border-border">
           {/* Header */}
-          <div className="p-6 border-b border-border bg-card shrink-0 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="px-6 py-4 border-b border-border bg-card shrink-0 space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2.5">
-                  <DialogTitle className="text-xl font-bold text-foreground">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <DialogTitle className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
                     {MONTH_NAMES[run.month - 1]} {run.year} Payroll Run
                   </DialogTitle>
                   <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider">
@@ -349,7 +349,7 @@ export default function RunReviewModal({
                   )}
                 </div>
                 <DialogDescription className="text-xs text-muted-foreground mt-1">
-                  Pay Period: {new Date(run.payPeriodStart).toLocaleDateString()} — {new Date(run.payPeriodEnd).toLocaleDateString()}
+                  Pay Period: {new Date(run.payPeriodStart).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} — {new Date(run.payPeriodEnd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                   {run.approvedBy && ` • Approved by ${run.approvedBy.name}`}
                 </DialogDescription>
               </div>
@@ -562,14 +562,14 @@ export default function RunReviewModal({
             </div>
 
             {/* Top Metric & MoM Variance Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Net Disbursement */}
-              <div className="p-3 rounded-xl border border-border bg-muted/30">
-                <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                  <span>Net Disbursement</span>
+              <div className="p-3.5 rounded-xl border border-border bg-muted/20">
+                <div className="flex items-center justify-between text-muted-foreground text-xs">
+                  <span className="font-medium">Net Disbursement</span>
                   {varianceData?.summary?.net && (
                     <span
-                      className={`font-mono font-bold flex items-center gap-0.5 ${
+                      className={`font-mono font-bold flex items-center gap-0.5 text-xs ${
                         varianceData.summary.net.percent >= 0 ? "text-emerald-600" : "text-amber-600"
                       }`}
                     >
@@ -582,35 +582,38 @@ export default function RunReviewModal({
                     </span>
                   )}
                 </div>
-                <h4 className="text-xl font-bold font-mono text-emerald-600 mt-1">
+                <div className="text-xl lg:text-2xl font-bold font-mono text-emerald-600 mt-1.5 tracking-tight">
                   {formatInr(run.totalNetPay)}
-                </h4>
+                </div>
               </div>
 
               {/* Headcount */}
-              <div className="p-3 rounded-xl border border-border bg-muted/30">
-                <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                  <span>Processed Staff</span>
+              <div className="p-3.5 rounded-xl border border-border bg-muted/20">
+                <div className="flex items-center justify-between text-muted-foreground text-xs">
+                  <span className="font-medium">Processed Staff</span>
                   {varianceData?.summary?.headcount && (
-                    <span className="font-mono text-xs">
+                    <span className="font-mono text-xs font-semibold">
                       {varianceData.summary.headcount.delta > 0
                         ? `+${varianceData.summary.headcount.delta}`
                         : varianceData.summary.headcount.delta}
                     </span>
                   )}
                 </div>
-                <h4 className="text-xl font-bold font-mono text-foreground mt-1">
-                  {run.totalHeadcount} Employees
-                </h4>
+                <div className="flex items-baseline gap-1.5 mt-1.5">
+                  <span className="text-xl lg:text-2xl font-bold font-mono text-foreground tracking-tight">
+                    {run.totalHeadcount}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-medium">Employees</span>
+                </div>
               </div>
 
               {/* Gross */}
-              <div className="p-3 rounded-xl border border-border bg-muted/30">
-                <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                  <span>Total Gross</span>
+              <div className="p-3.5 rounded-xl border border-border bg-muted/20">
+                <div className="flex items-center justify-between text-muted-foreground text-xs">
+                  <span className="font-medium">Total Gross</span>
                   {varianceData?.summary?.gross && (
                     <span
-                      className={`font-mono text-xs ${
+                      className={`font-mono text-xs font-semibold ${
                         varianceData.summary.gross.percent >= 0 ? "text-emerald-600" : "text-amber-600"
                       }`}
                     >
@@ -618,24 +621,24 @@ export default function RunReviewModal({
                     </span>
                   )}
                 </div>
-                <h4 className="text-xl font-bold font-mono text-foreground mt-1">
+                <div className="text-xl lg:text-2xl font-bold font-mono text-foreground mt-1.5 tracking-tight">
                   {formatInr(run.totalGross)}
-                </h4>
+                </div>
               </div>
 
               {/* Employer Cost (CTC) */}
-              <div className="p-3 rounded-xl border border-border bg-muted/30">
-                <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                  <span>Total Employer Cost</span>
+              <div className="p-3.5 rounded-xl border border-border bg-muted/20">
+                <div className="flex items-center justify-between text-muted-foreground text-xs">
+                  <span className="font-medium">Total Employer Cost</span>
                   {flaggedCount > 0 && (
                     <Badge variant="warning" className="text-[10px] py-0 px-1 font-mono">
                       {flaggedCount} Flagged
                     </Badge>
                   )}
                 </div>
-                <h4 className="text-xl font-bold font-mono text-foreground mt-1">
+                <div className="text-xl lg:text-2xl font-bold font-mono text-foreground mt-1.5 tracking-tight">
                   {formatInr(run.totalEmployerCost)}
-                </h4>
+                </div>
               </div>
             </div>
           </div>
@@ -721,17 +724,17 @@ export default function RunReviewModal({
               {/* TAB 1: EMPLOYEES TABLE */}
               <TabsContent value="employees" className="flex-1 overflow-y-auto m-0 border border-border rounded-xl">
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="min-w-[950px]">
                     <TableHeader className="sticky top-0 bg-card z-10 shadow-2xs">
                       <TableRow>
-                        <TableHead className="text-xs font-semibold">Employee</TableHead>
-                        <TableHead className="text-right text-xs font-semibold">Payable Days</TableHead>
-                        <TableHead className="text-right text-xs font-semibold">Earned Gross</TableHead>
-                        <TableHead className="text-right text-xs font-semibold">Deductions</TableHead>
-                        <TableHead className="text-right text-xs font-semibold">Net Pay</TableHead>
-                        <TableHead className="text-xs font-semibold">Variance & Reasons</TableHead>
-                        <TableHead className="text-xs font-semibold">Status</TableHead>
-                        <TableHead className="text-right text-xs font-semibold">Actions</TableHead>
+                        <TableHead className="text-xs font-semibold w-64 min-w-[200px]">Employee</TableHead>
+                        <TableHead className="text-right text-xs font-semibold w-28">Payable Days</TableHead>
+                        <TableHead className="text-right text-xs font-semibold w-32">Earned Gross</TableHead>
+                        <TableHead className="text-right text-xs font-semibold w-28">Deductions</TableHead>
+                        <TableHead className="text-right text-xs font-semibold w-36">Net Pay</TableHead>
+                        <TableHead className="text-xs font-semibold min-w-[220px]">Variance & Reasons</TableHead>
+                        <TableHead className="text-center text-xs font-semibold w-24">Status</TableHead>
+                        <TableHead className="text-right text-xs font-semibold w-36">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -747,35 +750,35 @@ export default function RunReviewModal({
                           const isHeld = slip.status === "ON_HOLD";
                           return (
                             <TableRow key={slip.id} className="hover:bg-muted/30">
-                              <TableCell>
+                              <TableCell className="w-64 min-w-[200px]">
                                 <div>
                                   <p className="text-xs font-bold text-foreground">
                                     {slip.user?.name || slip.employeeName}
                                   </p>
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {slip.user?.designation || slip.designation} • {slip.user?.department || slip.department}
+                                  <p className="text-[11px] text-muted-foreground truncate">
+                                    {slip.user?.designation || slip.designation || "Staff"} • {slip.user?.department || slip.department || "General"}
                                   </p>
                                 </div>
                               </TableCell>
 
-                              <TableCell className="text-right text-xs font-mono font-medium">
+                              <TableCell className="text-right text-xs font-mono font-medium w-28">
                                 {slip.payableDays} d
                               </TableCell>
 
-                              <TableCell className="text-right text-xs font-mono">
+                              <TableCell className="text-right text-xs font-mono w-32">
                                 {formatInr(slip.grossSalary)}
                               </TableCell>
 
-                              <TableCell className="text-right text-xs font-mono text-red-600">
+                              <TableCell className="text-right text-xs font-mono text-red-600 font-medium w-28">
                                 {formatInr(slip.totalDeductions)}
                               </TableCell>
 
-                              <TableCell className="text-right text-xs font-mono font-bold text-emerald-600">
+                              <TableCell className="text-right text-xs font-mono font-bold text-emerald-600 text-sm w-36">
                                 {formatInr(slip.netSalary)}
                               </TableCell>
 
                               {/* MoM Variance & Operational Reasons */}
-                              <TableCell>
+                              <TableCell className="min-w-[220px]">
                                 <div className="flex flex-col gap-1 items-start">
                                   {v?.previousGross !== null && v ? (
                                     <span
@@ -793,8 +796,8 @@ export default function RunReviewModal({
                                   )}
 
                                   {v?.reasons && v.reasons.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                      {v.reasons.slice(0, 2).map((r: string, idx: number) => (
+                                    <div className="flex flex-wrap gap-1 max-w-[280px]">
+                                      {v.reasons.slice(0, 3).map((r: string, idx: number) => (
                                         <span
                                           key={idx}
                                           className="text-[9px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground truncate"
@@ -803,9 +806,9 @@ export default function RunReviewModal({
                                           {r}
                                         </span>
                                       ))}
-                                      {v.reasons.length > 2 && (
-                                        <span className="text-[9px] text-muted-foreground">
-                                          +{v.reasons.length - 2} more
+                                      {v.reasons.length > 3 && (
+                                        <span className="text-[9px] text-muted-foreground font-medium">
+                                          +{v.reasons.length - 3} more
                                         </span>
                                       )}
                                     </div>
@@ -814,7 +817,7 @@ export default function RunReviewModal({
                               </TableCell>
 
                               {/* Status pill */}
-                              <TableCell>
+                              <TableCell className="text-center w-24">
                                 {isHeld ? (
                                   <Badge variant="destructive" className="text-[10px] py-0" title={slip.holdReason}>
                                     On Hold
@@ -827,7 +830,7 @@ export default function RunReviewModal({
                               </TableCell>
 
                               {/* Actions */}
-                              <TableCell className="text-right">
+                              <TableCell className="text-right w-36">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <Button
                                     variant="outline"

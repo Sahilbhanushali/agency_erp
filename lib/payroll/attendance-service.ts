@@ -482,6 +482,9 @@ export class AttendanceService {
     });
 
     if (!reg) throw new Error("Regularization request not found");
+    if (reg.userId === reviewerId) {
+      throw new Error("Self-approval is not permitted. Regularization must be reviewed by another manager or HR administrator");
+    }
 
     const updated = await prisma.attendanceRegularization.update({
       where: { id: regularizationId },
