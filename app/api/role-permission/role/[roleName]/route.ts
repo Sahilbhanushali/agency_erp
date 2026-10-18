@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { MODULES, allPermissions, permissionName } from "@/lib/permissions/catalog"
+import { ensurePermissionIds } from "@/lib/permissions/store"
 
 export const dynamic = "force-dynamic"
 
@@ -149,15 +150,42 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ rol
       for (const a of mod.actions) wanted.delete(permissionName(mod.key, a.action))
     }
 
+    /**
+     * Resolve every name to a row id, creating any the `permissions` table is missing.
+     *
+     * This used to be a plain lookup whose misses were filtered out, which meant a
+     * database holding fewer permissions than the catalog — anything seeded before the
+     * catalog grew, which is the normal state of a server that has not re-run the seed
+     * — silently discarded most of the matrix and still answered "Permissions updated".
+     */
     const canonicalNames = allPermissions().map((p) => p.name)
-    const rows = await prisma.permission.findMany({
-      where: { name: { in: canonicalNames } },
-      select: { id: true, name: true },
-    })
-    const idByName = new Map(rows.map((r) => [r.name, r.id]))
-    const canonicalIds = new Set(rows.map((r) => r.id))
+    const { idByName, created } = await ensurePermissionIds(canonicalNames)
+    const canonicalIds = new Set(idByName.values())
 
     const before = role.permissions.map((rp) => rp.permission.name).sort()
+
+    // Resolved before the transaction so the count reported back is the count written.
+    const grantIds = Array.from(wanted).flatMap((name) => {
+      const id = idByName.get(name)
+      if (id === undefined) {
+        console.error(`[role-permission] cannot grant "${name}" — no permission row for it`)
+        return []
+      }
+      return [id]
+    })
+
+    if (grantIds.length !== wanted.size) {
+      // Saying 200 while dropping grants is what made this look like a UI bug for so
+      // long. Fail loudly instead: nothing is written and the role is left as it was.
+      return NextResponse.json(
+        {
+          error:
+            "Could not save every permission — the permission catalog and the database " +
+            "are out of step. Run the seed on this database and try again.",
+        },
+        { status: 500 },
+      )
+    }
 
     await prisma.$transaction(async (tx) => {
       // Only canonical grants are rewritten. Legacy grants are left alone so a role
@@ -165,11 +193,18 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ rol
       await tx.rolePermission.deleteMany({
         where: { roleId: role.id, permissionId: { in: Array.from(canonicalIds) } },
       })
-      const data = Array.from(wanted)
-        .map((name) => idByName.get(name))
-        .filter((id): id is number => typeof id === "number")
-        .map((permissionId) => ({ roleId: role.id, permissionId }))
-      if (data.length > 0) await tx.rolePermission.createMany({ data, skipDuplicates: true })
+      if (grantIds.length > 0) {
+        await tx.rolePermission.createMany({
+          data: grantIds.map((permissionId) => ({ roleId: role.id, permissionId })),
+          skipDuplicates: true,
+        })
+      }
+    })
+
+    // Confirm from the database rather than from intent. A grant that did not land
+    // must not be reported as saved.
+    const saved = await prisma.rolePermission.count({
+      where: { roleId: role.id, permissionId: { in: Array.from(canonicalIds) } },
     })
 
     await logAuditAction({
@@ -183,7 +218,12 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ rol
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
-    return NextResponse.json({ message: `Permissions updated for ${role.name}`, granted: wanted.size })
+    return NextResponse.json({
+      message: `${saved} permission${saved === 1 ? "" : "s"} saved for ${role.name}`,
+      granted: saved,
+      // Surfaced so a drifted database is visible in the response, not only the logs.
+      ...(created.length > 0 ? { createdPermissions: created.length } : {}),
+    })
   } catch (error) {
     console.error("[role-permission] update failed:", error)
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })

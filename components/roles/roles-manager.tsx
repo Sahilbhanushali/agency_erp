@@ -58,6 +58,36 @@ const fetcher = async (url: string) => {
 export default function RolesManager() {
   const { data: roles, error, isLoading, mutate } = useSWR<Role[]>("/api/roles", fetcher)
 
+  // Drift between the catalog in the code and the permissions table is what made saving
+  // appear to do nothing on a server where the seed had never run. Say so plainly.
+  const { data: catalog, mutate: recheckCatalog } = useSWR<{
+    expected: number
+    present: number
+    inSync: boolean
+  }>("/api/permissions/sync", async (url: string) => {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error("status unavailable")
+    return res.json()
+  })
+  const [syncing, setSyncing] = useState(false)
+
+  const syncCatalog = async () => {
+    setSyncing(true)
+    try {
+      const res = await fetch("/api/permissions/sync", { method: "POST" })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error ?? "Could not sync")
+      toast.success(
+        `Catalog synced — ${body.createdCanonical} permission(s) added, ${body.totalPermissions} total`,
+      )
+      await Promise.all([recheckCatalog(), mutate()])
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const [selected, setSelected] = useState<string | null>(null)
   const [newName, setNewName] = useState("")
   const [newDescription, setNewDescription] = useState("")
@@ -187,6 +217,27 @@ export default function RolesManager() {
 
   return (
     <div className="space-y-6">
+      {catalog && !catalog.inSync && (
+        <div className="flex flex-wrap items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
+          <div className="min-w-0 flex-1 space-y-0.5 text-xs">
+            <p className="font-medium text-amber-700 dark:text-amber-400">
+              This database knows {catalog.present} of {catalog.expected} permissions
+            </p>
+            <p className="text-muted-foreground">
+              Permissions the database has no row for cannot be granted. Sync the catalog,
+              then set this role&apos;s permissions again.
+            </p>
+          </div>
+          <Button size="sm" variant="outline" disabled={syncing} onClick={syncCatalog}>
+            {syncing ? (
+              <Loader2 className="mr-2 size-3.5 animate-spin" aria-hidden="true" />
+            ) : null}
+            Sync catalog
+          </Button>
+        </div>
+      )}
+
       {/* Create */}
       <Card className="shadow-2xs border-border/70">
         <CardContent className="space-y-4 p-4 sm:p-6">
