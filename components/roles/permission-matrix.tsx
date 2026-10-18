@@ -48,7 +48,14 @@ const COLUMN_LABEL: Record<string, string> = {
  * what it cannot see is not a coherent state — and the server enforces the same rule,
  * so this is a convenience rather than the protection.
  */
-export default function PermissionMatrix({ roleName }: { roleName: string }) {
+export default function PermissionMatrix({
+  roleName,
+  onSaved,
+}: {
+  roleName: string
+  /** Called after a successful save, so a parent can refresh its own counts. */
+  onSaved?: () => void
+}) {
   const [modules, setModules] = useState<MatrixModule[]>([])
   const [selected, setSelected] = useState<Record<string, Set<string>>>({})
   const [initial, setInitial] = useState<string>("")
@@ -167,6 +174,7 @@ export default function PermissionMatrix({ roleName }: { roleName: string }) {
       }
       toast.success(data.message ?? "Permissions updated")
       await load()
+      onSaved?.()
     } catch {
       setError("Network error — please try again")
       toast.error("Network error — please try again")
@@ -312,7 +320,12 @@ export default function PermissionMatrix({ roleName }: { roleName: string }) {
               <RotateCcw className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button size="sm" disabled={!dirty || saving} onClick={save}>
+            {/*
+              Deliberately not disabled on `dirty`. A greyed-out Save button is
+              indistinguishable from a save that silently does nothing, and writing the
+              same matrix again is idempotent — so the button always works.
+            */}
+            <Button size="sm" disabled={saving} onClick={save}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Save permissions
             </Button>

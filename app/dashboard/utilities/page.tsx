@@ -15,6 +15,7 @@ import { Sliders, Plus, Trash2, Edit, Shield, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
+import Link from "next/link";
 
 type Utility = {
   id: string;
@@ -50,7 +51,6 @@ export default function UtilitiesPage() {
     type: "",
     values: "",
   });
-  const [roleForm, setRoleForm] = useState({ name: "", description: "" });
 
   // Fetch utilities
   useEffect(() => {
@@ -145,41 +145,6 @@ export default function UtilitiesPage() {
     } catch (err) {
       console.error("Error saving utility:", err);
       toast.error("Failed to save utility");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Handle role form submit
-  const handleRoleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!roleForm.name) {
-      toast.error("Role name is required");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/roles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: roleForm.name,
-          description: roleForm.description || null,
-        }),
-      });
-      if (res.ok) {
-        const newRole = await res.json();
-        setRoles([...roles, newRole]);
-        setRoleForm({ name: "", description: "" });
-        toast.success("Role created successfully");
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to create role");
-      }
-    } catch (err) {
-      console.error("Error creating role:", err);
-      toast.error("Failed to create role");
     } finally {
       setSubmitting(false);
     }
@@ -327,47 +292,32 @@ export default function UtilitiesPage() {
           </CardContent>
         </Card>
 
-        {/* Add Role Form */}
+        {/* Roles are created and given permissions on one screen, under
+            Users -> Roles & Permissions. Creating them here as well meant two sources
+            for the same list, and a role made here had no permissions and no obvious
+            place to get them. */}
         <Card className="shadow-2xs border-border/70">
           <CardHeader>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Shield className="size-4 text-primary" />
-              Create Security Role
+              Roles &amp; Permissions
             </CardTitle>
             <CardDescription className="text-xs">
-              Add new role definition for user permission assignment.
+              Roles now live with their permissions, so a new role can be given access in
+              the same place it is created.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleRoleSubmit} className="space-y-3.5">
-              <div className="space-y-1.5">
-                <Label htmlFor="roleName" className="text-xs font-medium">Role Name</Label>
-                <Input
-                  id="roleName"
-                  value={roleForm.name}
-                  onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
-                  placeholder="e.g. Operations Manager"
-                  className="h-8 text-xs"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="roleDescription" className="text-xs font-medium">Description (Optional)</Label>
-                <Input
-                  id="roleDescription"
-                  value={roleForm.description}
-                  onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
-                  placeholder="e.g. Manages operations and logistics"
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div className="pt-1">
-                <Button type="submit" size="sm" disabled={submitting} className="gap-1.5">
-                  <Plus className="size-3.5" />
-                  {submitting ? "Creating..." : "Add Security Role"}
-                </Button>
-              </div>
-            </form>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              {roles.length} role{roles.length === 1 ? "" : "s"} defined. Use the table
+              below to change which role a person has.
+            </p>
+            <Button size="sm" variant="outline" asChild className="gap-1.5">
+              <Link href="/dashboard/users?tab=roles">
+                <Shield className="size-3.5" />
+                Manage roles and permissions
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

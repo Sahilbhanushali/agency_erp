@@ -10,8 +10,17 @@ export async function GET() {
   if (!auth.ok) return auth.response;
 
   try {
+    // Still an array of {id, name, ...} — several pages use it as a plain dropdown
+    // source. The extra fields let the role manager show what a role costs to delete
+    // without a second request per role.
     const roles = await prisma.role.findMany({
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        _count: { select: { users: true, permissions: true } },
+      },
+      orderBy: { name: "asc" },
     });
     return NextResponse.json(roles);
   } catch (error: any) {

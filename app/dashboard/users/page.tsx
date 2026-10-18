@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,7 +31,7 @@ import HrDocumentsModal from "@/components/users/hr-documents-modal"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import PermissionMatrix from "@/components/roles/permission-matrix"
+import RolesManager from "@/components/roles/roles-manager"
 
 interface User {
   id: string
@@ -75,7 +76,6 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("ALL")
-  const [selectedRole, setSelectedRole] = useState<string>("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [formData, setFormData] = useState({
@@ -100,6 +100,13 @@ export default function UsersPage() {
   const [editingSmtpConfig, setEditingSmtpConfig] = useState<SmtpConfig | null>(null)
   const [testingConnection, setTestingConnection] = useState<number | null>(null)
   const [sortBy, setSortBy] = useState<'createdAt' | 'isActive' | 'isVerified'>('createdAt')
+
+  // Lets other pages link straight to a tab, e.g. /dashboard/users?tab=roles
+  const searchParams = useSearchParams()
+  const requestedTab = searchParams.get("tab")
+  const initialTab = ["users", "roles", "smtp"].includes(requestedTab ?? "")
+    ? (requestedTab as string)
+    : "users"
 
   // Fetch users, roles, permissions, and SMTP configs
   useEffect(() => {
@@ -319,11 +326,6 @@ export default function UsersPage() {
     }
   }
 
-  const handleRoleSelection = (roleName: string) => {
-    // PermissionMatrix loads and saves this role's matrix itself, keyed on roleName.
-    setSelectedRole(roleName)
-  }
-
   const handleSmtpFormSubmit = async () => {
     setShowSmtpForm(false)
     setEditingSmtpConfig(null)
@@ -523,7 +525,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
         </Link>
       </div>
 
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList className="bg-muted/60 p-1 border border-border/60 rounded-lg">
           <TabsTrigger value="users" className="text-xs">Users ({users.length})</TabsTrigger>
           <TabsTrigger value="roles" className="text-xs">Roles & Permissions</TabsTrigger>
@@ -868,64 +870,13 @@ const testSmtpConnection = async (config: SmtpConfig) => {
         </TabsContent>
 
         <TabsContent value="roles" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Role Permissions</CardTitle>
-              <p className="text-sm text-muted-foreground">Select a role to view and edit its permissions</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {roles.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    No roles available. Please add roles via the Utilities page.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center space-x-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="roleSelect">Select Role</Label>
-                      <Select value={selectedRole} onValueChange={handleRoleSelection}>
-                        <SelectTrigger className="w-48">
-                          <SelectValue placeholder="Choose a role..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roles.map((role) => (
-                            <SelectItem key={role.id} value={role.name}>
-                              {role.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {selectedRole ? (
-                    /* A module x action matrix replaces the old flat list of permission
-                       names. The flat list could only express "Manage-X", which bundled
-                       create, update and delete together — there was no way to grant
-                       edit without also granting delete. */
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-semibold">
-                          Permissions for <span className="capitalize">{selectedRole}</span>
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          Tick the actions this role may perform in each module. Changes are
-                          validated and applied on the server.
-                        </p>
-                      </div>
-                      <PermissionMatrix roleName={selectedRole} />
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">Please select a role to manage its permissions.</p>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+          {/*
+            Creating a role and setting its permissions are one job, so they are one
+            screen. They used to be split — the role was created on the Utilities page
+            and its permissions set here — which meant a role could exist in one place
+            and be missing from the list in the other.
+          */}
+          <RolesManager />
         </TabsContent>
 
         <TabsContent value="smtp" className="space-y-4">
