@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter } from "next/navigation";
 import ProjectForm from "@/components/forms/project-form";
 import useSWR from "swr";
@@ -60,75 +61,28 @@ const fetcher = async (url: string) => {
 
 export default function NewProjectPage() {
   const { data: session, status } = useSession();
-  const [permissions, setPermissions] = useState<string[]>([]);
+  const { can, role: userRole } = usePermissions();
   const [hasManageProjectsPermission, setHasManageProjectsPermission] = useState(false); // New state for permission check
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Fetch permissions with simple fetch
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      if (status !== "authenticated" || !session?.user?.id) {
-        setLoading(false);
-        return;
-      }
+  /**
+   * Permissions come from `/api/me/permissions` via usePermissions().
+   *
+   * This page used to fetch `/api/users/role?id=...` and then
+   * `/api/role-permission/role/<roleName>`. Both are administrative endpoints — they
+   * require `users:update` and `roles:read` — so a role holding only this module's
+   * permission got 403 from them and the page rendered "Forbidden" despite being
+   * allowed in. They also returned legacy names like "Manage-projects", which a role
+   * created in the permission matrix never holds.
+   */
 
-      try {
-        console.log("Fetching permissions for user:", session.user.id);
-
-        // Fetch user role
-        const roleResponse = await fetch(`/api/users/role?id=${session.user.id}`, {
-          credentials: "include",
-        });
-
-        if (!roleResponse.ok) {
-          throw new Error(`Failed to fetch user role: ${roleResponse.status}`);
-        }
-
-        const userData = await roleResponse.json();
-        console.log("User role data:", userData);
-
-        if (userData.role) {
-          // Fetch permissions for this role
-          const permResponse = await fetch(`/api/role-permission/role/${userData.role}`, {
-            credentials: "include",
-          });
-
-          if (!permResponse.ok) {
-            throw new Error(`Failed to fetch permissions: ${permResponse.status}`);
-          }
-
-          const permData = await permResponse.json();
-          const userPermissions = permData.map((item: { permission: string }) => item.permission);
-          console.log("User permissions:", userPermissions);
-          setPermissions(userPermissions);
-
-          // Check for Manage-projects permission
-          const hasPermission = userPermissions.includes("Manage-projects");
-          setHasManageProjectsPermission(hasPermission);
-          console.log("Has Manage-projects permission:", hasPermission);
-
-          if (!hasPermission) {
-            toast.error("You do not have permission to manage projects.");
-          }
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching permissions:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch permissions");
-        toast.error(err instanceof Error ? err.message : "Failed to fetch permissions");
-        setLoading(false);
-      }
-    };
-
-    fetchPermissions();
-  }, [session, status]);
 
   // Determine if user should see all projects or just their own
-  const userRole = session?.user?.role;
-  const isAdminOrManager = userRole === "ADMIN" || userRole === "Manager";
+  // Was a role-name check; projects:create is what the API actually enforces.
+  const isAdminOrManager = can("projects", "create");
 
   // Build projects URL conditionally
   const projectsUrl = session?.user?.id

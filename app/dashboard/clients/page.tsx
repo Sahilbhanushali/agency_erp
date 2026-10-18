@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,62 +65,26 @@ export default function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [projectFilter, setProjectFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("NEWEST");
-  const [permissions, setPermissions] = useState<string[]>([]);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { can, role: userRole, isLoading: isCheckingPermissions } = usePermissions();
   const [selectedLogo, setSelectedLogo] = useState<{ url: string; filename: string; type: string } | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
   const [isNavigatingToEdit, setIsNavigatingToEdit] = useState<string | null>(null);
   const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isDeletingClient, setIsDeletingClient] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchUserRoleAndPermissions = async () => {
-      if (status === "loading" || !session?.user?.id) {
-        setIsCheckingPermissions(false);
-        return;
-      }
+  /**
+   * Permissions come from `/api/me/permissions` via usePermissions().
+   *
+   * This page used to fetch `/api/users/role?id=...` and then
+   * `/api/role-permission/role/<roleName>` to work out what the viewer may do. Both are
+   * administrative endpoints — they require `users:update` and `roles:read` — so any
+   * role without those got 403 and the page rendered "Forbidden" even when it held the
+   * permission for this module. It then compared against legacy names like
+   * "View-clients", which a role created in the permission matrix never holds.
+   */
 
-      try {
-        const userRes = await fetch(`/api/users/role?id=${session.user.id}`, {
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-        });
-        if (!userRes.ok) {
-          const errorData = await userRes.json();
-          throw new Error(errorData.error || "Failed to fetch user role");
-        }
-        const userData = await userRes.json();
-        setUserRole(userData.role || "CLIENT");
-
-        if (userData.role) {
-          const permRes = await fetch(`/api/role-permission/role/${userData.role}`, {
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-          });
-          if (!permRes.ok) {
-            const errorData = await permRes.json();
-            throw new Error(errorData.error || "Failed to fetch permissions");
-          }
-          const permData = await permRes.json();
-          const permissionStrings = Array.isArray(permData)
-            ? permData.map((item: { permission: string }) => item.permission)
-            : [];
-          setPermissions(permissionStrings);
-        }
-      } catch (error) {
-        console.error("Error fetching user role/permissions:", error);
-        setAuthError(error instanceof Error ? error.message : "Failed to load user permissions");
-        toast.error(error instanceof Error ? error.message : "Failed to load permissions");
-      } finally {
-        setIsCheckingPermissions(false);
-      }
-    };
-    fetchUserRoleAndPermissions();
-  }, [session, status]);
-
-  const clientsUrl = status !== "loading" && session && !isCheckingPermissions && permissions.includes("View-clients")
+  const clientsUrl = status !== "loading" && session && !isCheckingPermissions && can("clients", "read")
     ? "/api/clients"
     : null;
 
@@ -225,8 +190,8 @@ export default function ClientsPage() {
     });
   }, [clients, searchTerm, statusFilter, projectFilter, sortBy]);
 
-  const canManageClients = permissions.includes("Manage-clients");
-  const canViewClients = permissions.includes("View-clients");
+  const canManageClients = can("clients", "update");
+  const canViewClients = can("clients", "read");
 
   if (isCheckingPermissions || status === "loading") {
     return (

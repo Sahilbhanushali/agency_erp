@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { guardPage } from "@/lib/permissions/guard"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
@@ -21,9 +22,14 @@ export default async function NewPostPage({
     redirect("/auth/signin")
   }
   
-  if (!["ADMIN", "Manager", "Team Lead", "Content Writer", "Social Media Manager","Designer"].includes(session.user.role)) {
-    redirect("/dashboard")
-  }
+  /**
+   * posts:create, not a list of role names.
+   *
+   * This redirected anyone whose role was not literally one of six names, so a role
+   * granted posts:create in the permission matrix was bounced back to the dashboard.
+   */
+  const gate = await guardPage("posts", "create", "Content & Posts")
+  if (!gate.ok) return gate.response
   
   const projectId = typeof resolvedSearchParams.projectId === 'string' ? resolvedSearchParams.projectId : undefined;
   

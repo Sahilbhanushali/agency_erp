@@ -2,6 +2,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { useEffect, useState, useCallback } from "react";
@@ -116,7 +117,7 @@ const calculateTotalPosts = (postTypes: PostTypeCount | undefined): number => {
 
 export default function ProjectsPage() {
   const { data: session, status } = useSession();
-  const [permissions, setPermissions] = useState<string[]>([]);
+  const { can, role: userRole } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -133,54 +134,20 @@ export default function ProjectsPage() {
 
   console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
 
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      if (status !== "authenticated" || !session?.user?.id) {
-        setLoading(false);
-        return;
-      }
+  /**
+   * Permissions come from `/api/me/permissions` via usePermissions().
+   *
+   * This page used to fetch `/api/users/role?id=...` and then
+   * `/api/role-permission/role/<roleName>`. Both are administrative endpoints — they
+   * require `users:update` and `roles:read` — so a role holding only this module's
+   * permission got 403 from them and the page rendered "Forbidden" despite being
+   * allowed in. They also returned legacy names like "Manage-projects", which a role
+   * created in the permission matrix never holds.
+   */
 
-      try {
-        console.log("Fetching permissions for user:", session.user.id);
-        const roleResponse = await fetch(`/api/users/role?id=${session.user.id}`, {
-          credentials: "include",
-        });
 
-        if (!roleResponse.ok) {
-          throw new Error(`Failed to fetch user role: ${roleResponse.status}`);
-        }
-
-        const userData = await roleResponse.json();
-        console.log("User role data:", userData);
-
-        if (userData.role) {
-          const permResponse = await fetch(`/api/role-permission/role/${userData.role}`, {
-            credentials: "include",
-          });
-
-          if (!permResponse.ok) {
-            throw new Error(`Failed to fetch permissions: ${permResponse.status}`);
-          }
-
-          const permData = await permResponse.json();
-          const userPermissions = permData.map((item: { permission: string }) => item.permission);
-          console.log("User permissions:", userPermissions);
-          setPermissions(userPermissions);
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching permissions:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch permissions");
-        setLoading(false);
-      }
-    };
-
-    fetchPermissions();
-  }, [session, status]);
-
-  const userRole = session?.user?.role;
-  const isAdminOrManager = userRole === "ADMIN" || userRole === "Manager";
+  // Was a role-name check; projects:read is the agency-wide view.
+  const isAdminOrManager = can("projects", "read");
 
   const projectsUrl = session?.user?.id
     ? `/api/projects?month=${monthFilter}&year=${yearFilter}${!isAdminOrManager ? `&userId=${session.user.id}` : ""}`
@@ -351,7 +318,7 @@ export default function ProjectsPage() {
   }
 
   const roleName = session.user.role || "Unknown";
-  const canManageProjects = ["ADMIN", "Manager"].includes(roleName) || permissions.includes("Manage-projects");
+  const canManageProjects = can("projects", "update") || can("projects", "create");
 
   const getProjectPostMetrics = (project: Project) => {
     if (!project.posts || !Array.isArray(project.posts)) {
@@ -677,8 +644,9 @@ export default function ProjectsPage() {
                         </Button>
                       </Link>
                       {(() => {
-                        const normalizedRole = roleName.toLowerCase();
-                        const canEditDelete = ["admin", "manager", "team lead", "social media manager", "designer"].includes(normalizedRole) || permissions.includes("Manage-projects");
+                        // Was a list of lowercased role names, so a role created in
+                        // the matrix could never edit a project however it was granted.
+                        const canEditDelete = can("projects", "update");
                         return canEditDelete;
                       })() && (
                         <>
@@ -759,7 +727,7 @@ export default function ProjectsPage() {
                 ? "No projects match the current filters."
                 : "No assigned projects match the current filters."}
             </p>
-            {permissions.includes("Manage-projects") && (
+            {can("projects", "create") && (
               <Link href="/dashboard/projects/new">
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />

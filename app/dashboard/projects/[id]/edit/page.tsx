@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter, useParams } from "next/navigation";
 import ProjectForm from "@/components/forms/project-form";
 import useSWR from "swr";
@@ -275,51 +276,17 @@ export default function EditProjectPage() {
   console.log(permissions," User permissions loaded");
 
 // Updated fetchPermissions useEffect
-useEffect(() => {
-  const fetchPermissions = async () => {
-    if (status !== "authenticated" || !session?.user?.id) {
-      setPermissionsLoaded(true); // Early exit: treat as loaded (no perms)
-      return;
-    }
+  /**
+   * Permissions come from `/api/me/permissions` via usePermissions().
+   *
+   * This page used to fetch `/api/users/role?id=...` and then
+   * `/api/role-permission/role/<roleName>`. Both are administrative endpoints — they
+   * require `users:update` and `roles:read` — so a role holding only this module's
+   * permission got 403 from them and the page rendered "Forbidden" despite being
+   * allowed in. They also returned legacy names like "Manage-projects", which a role
+   * created in the permission matrix never holds.
+   */
 
-    try {
-      console.log("Fetching permissions for user:", session.user.id);
-      const roleResponse = await fetch(`/api/users/role?id=${session.user.id}`, {
-        credentials: "include",
-      });
-
-      if (!roleResponse.ok) {
-        throw new Error(`Failed to fetch user role: ${roleResponse.status}`);
-      }
-
-      const userData = await roleResponse.json();
-      console.log("User role data:", userData);
-
-      if (userData.role) {
-        const permResponse = await fetch(`/api/role-permission/role/${userData.role}`, {
-          credentials: "include",
-        });
-
-        if (!permResponse.ok) {
-          throw new Error(`Failed to fetch permissions: ${permResponse.status}`);
-        }
-
-        const permData = await permResponse.json();
-        const userPermissions = permData.map((item: { permission: string }) => item.permission);
-        console.log("User permissions:", userPermissions);
-        setPermissions(userPermissions);
-      }
-    } catch (err) {
-      console.error("Error fetching permissions:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch permissions");
-    } finally {
-      // Always set loaded after attempt (success or fail)
-      setPermissionsLoaded(true);
-    }
-  };
-
-  fetchPermissions();
-}, [session, status]);
 
 // Updated auth check useEffect (with loaded guard + case-insensitive check)
 useEffect(() => {
