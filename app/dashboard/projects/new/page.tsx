@@ -61,9 +61,7 @@ const fetcher = async (url: string) => {
 
 export default function NewProjectPage() {
   const { data: session, status } = useSession();
-  const { can, role: userRole } = usePermissions();
-  const [hasManageProjectsPermission, setHasManageProjectsPermission] = useState(false); // New state for permission check
-  const [loading, setLoading] = useState(true);
+  const { can, role: userRole, isLoading: permissionsLoading } = usePermissions();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -85,7 +83,7 @@ export default function NewProjectPage() {
   const isAdminOrManager = can("projects", "create");
 
   // Build projects URL conditionally
-  const projectsUrl = session?.user?.id
+  const projectsUrl = session?.user?.id && !permissionsLoading
     ? `/api/projects${!isAdminOrManager ? `?userId=${session.user.id}` : ""}`
     : null;
 
@@ -173,7 +171,7 @@ export default function NewProjectPage() {
   }));
 
   // Show loading state
-  if (status === "loading" || loading || usersLoading || clientsLoading || projectsLoading) {
+  if (status === "loading" || permissionsLoading || usersLoading || clientsLoading || projectsLoading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="space-y-2">
@@ -217,6 +215,7 @@ export default function NewProjectPage() {
   }
 
   // Permission denied state
+  const hasManageProjectsPermission = can("projects", "create");
   if (!hasManageProjectsPermission) {
     return (
       <div className="py-12">
