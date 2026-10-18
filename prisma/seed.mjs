@@ -26,12 +26,35 @@ const ADMIN_NAME = "System Admin"
  * what can be granted. The legacy flat names (View-X / Manage-X) are seeded too, because
  * routes that have not been migrated to `requireCan` still check them.
  */
-const out = mkdtempSync(join(tmpdir(), "permcat-"))
-execSync(
-  `npx tsc lib/permissions/catalog.ts --outDir ${out} --module commonjs --target es2022 --skipLibCheck`,
-  { stdio: "pipe" },
-)
-const { allPermissions } = await import(join(out, "catalog.js"))
+/**
+ * Reading the catalog needs TypeScript, which is a devDependency — so this step fails on
+ * a server installed with `npm ci --omit=dev`. That is not a theoretical problem: a
+ * production database then never receives the permission rows, and saving a role's
+ * permissions silently drops every grant it has no row for.
+ *
+ * Say so clearly rather than dying on a confusing "tsc: not found", and name the
+ * alternative, which runs inside the app where the catalog is already compiled.
+ */
+let allPermissions
+try {
+  const out = mkdtempSync(join(tmpdir(), "permcat-"))
+  execSync(
+    `npx tsc lib/permissions/catalog.ts --outDir ${out} --module commonjs --target es2022 --skipLibCheck`,
+    { stdio: "pipe" },
+  )
+  ;({ allPermissions } = await import(join(out, "catalog.js")))
+} catch (error) {
+  console.error("Seed failed: could not read lib/permissions/catalog.ts.")
+  console.error("TypeScript is a devDependency, so this does not work after `npm ci --omit=dev`.")
+  console.error("Either install dev dependencies (`npm ci`) and re-run, or sync the catalog")
+  console.error("through the running app instead:")
+  console.error("")
+  console.error('  curl -X POST -b "<admin session cookie>" https://<host>/api/permissions/sync')
+  console.error("")
+  console.error("or press “Sync catalog” on Users → Roles & Permissions.")
+  console.error(`(${error.message.split("\n")[0]})`)
+  process.exit(1)
+}
 
 const CANONICAL = allPermissions()
 const LEGACY = Array.from(new Set(CANONICAL.flatMap((p) => p.legacy))).sort()
@@ -77,16 +100,25 @@ async function main() {
     skipDuplicates: true,
   })
 
-  // 3. The one admin account. The password is only ever written as a bcrypt hash.
+  /**
+   * 3. The one admin account. The password is only ever written as a bcrypt hash, and
+   *    only on first creation: re-running this to pick up new permissions must not
+   *    quietly reset a password that has since been changed on a live server.
+   */
   const password = await bcrypt.hash(ADMIN_PASSWORD, 10)
   const user = await prisma.user.upsert({
     where: { email: ADMIN_EMAIL },
-    update: { roleId: admin.id, password },
+    update: { roleId: admin.id },
     create: { email: ADMIN_EMAIL, name: ADMIN_NAME, roleId: admin.id, password },
   })
+  const freshAccount = user.password === password
 
   console.log(`✓ ${CANONICAL.length} module permissions + ${LEGACY.length} legacy, ADMIN role, admin user #${user.id}`)
-  console.log(`  ${ADMIN_EMAIL} / ${ADMIN_PASSWORD} — change this password at first sign-in`)
+  if (freshAccount) {
+    console.log(`  ${ADMIN_EMAIL} / ${ADMIN_PASSWORD} — change this password at first sign-in`)
+  } else {
+    console.log(`  ${ADMIN_EMAIL} already existed — its password was left alone`)
+  }
 }
 
 main()

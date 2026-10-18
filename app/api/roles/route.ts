@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireCan, requireSession } from "@/lib/api-auth";
 import { allPermissions } from "@/lib/permissions/catalog";
+import { ensurePermissionIds } from "@/lib/permissions/store";
 import { logAudit } from "@/lib/audit";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const auth = await requireSession();
@@ -62,13 +65,11 @@ export async function POST(request: Request) {
      * sign in to a sidebar with nothing in it, which read as "permissions were not
      * saved" even when the matrix had saved correctly.
      */
+    // Same resolver the permission matrix uses, so a database that is missing catalog
+    // rows gets them created rather than quietly producing a role with no access.
     const baseline = allPermissions().filter((p) => p.baseline).map((p) => p.name);
-    const baselineRows = baseline.length
-      ? await prisma.permission.findMany({
-          where: { name: { in: baseline } },
-          select: { id: true },
-        })
-      : [];
+    const { idByName } = await ensurePermissionIds(baseline);
+    const baselineRows = Array.from(idByName.values()).map((id) => ({ id }));
 
     const role = await prisma.role.create({
       data: {
