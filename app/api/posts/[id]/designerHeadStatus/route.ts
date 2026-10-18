@@ -9,6 +9,8 @@ import fs from "fs/promises";
 import path from "path";
 import CryptoJS from "crypto-js";
 import { requireCan } from "@/lib/api-auth";
+import { APP_BASE_URL } from "@/lib/utils"
+import { formatFrom, htmlToText } from "@/lib/smtp"
 
 const emailTemplatePath = path.join(
   process.cwd(),
@@ -32,7 +34,7 @@ const fallbackEmailTemplate = `
   <p><strong>Feedback:</strong> {{ feedback }}</p>
   <p><strong>Rejected At:</strong> {{ rejectedAt }}</p>
   <p><a href="{{ dashboardUrl }}" style="color: #111827;">View Post in Dashboard</a></p>
-  <p>&copy; {{ currentYear }} Automation.rndtechnosoft.com. All rights reserved.</p>
+  <p>&copy; {{ currentYear }} itsmeDezino. All rights reserved.</p>
 </body>
 </html>
 `;
@@ -606,7 +608,7 @@ if ((designerHeadApproval === PostStatus.REJECTED || designerHeadApproval === Po
     });
 
     if (postWithAssets?.assets?.length) {
-      assetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}${postWithAssets.assets[0].url}`;
+      assetUrl = `${APP_BASE_URL}${postWithAssets.assets[0].url}`;
     }
 
     // Loop through all usersToNotify
@@ -635,7 +637,7 @@ if ((designerHeadApproval === PostStatus.REJECTED || designerHeadApproval === Po
       );
       emailHtml = emailHtml.replace(
         "{{ dashboardUrl }}",
-        `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}/dashboard/tasks?projectId=${post.projectId}`
+        `${APP_BASE_URL}/dashboard/tasks?projectId=${post.projectId}`
       );
       emailHtml = emailHtml.replace("{{ currentYear }}", currentTime.getFullYear().toString());
 
@@ -654,12 +656,14 @@ if ((designerHeadApproval === PostStatus.REJECTED || designerHeadApproval === Po
 
       try {
         await transporter.sendMail({
-          from: `<${smtpDetails.username}>`,
+          from: formatFrom(smtpDetails.username),
           to: user.email,
           subject: designerHeadApproval === PostStatus.NEEDS_MINOR_CHANGE
             ? `Team Lead Approval - Needs Minor Change: ${post.title}`
             : `Team Lead Approval Rejected: ${post.title}`,
           html: emailHtml,
+          // HTML-only mail is a heavy spam signal; this is the text/plain alternative.
+          text: htmlToText(emailHtml),
         });
         console.log(`[Team Lead Approval API] Rejection/Minor change email sent successfully to ${user.email}`);
       } catch (sendError: any) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 
 export async function POST(
   request: NextRequest,
@@ -12,10 +12,10 @@ export async function POST(
     const auth = await requireCan("payroll", "approve");
     if (!auth.ok) return auth.response;
     const session = auth.session;
-    const userRole = (session.user as any).role || "";
-    // Only Admin can void payroll runs
-    if (userRole !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden: Super-Admin required to void payroll runs" }, { status: 403 });
+    // Voiding a run destroys calculated pay, so it needs payroll:delete rather than
+    // a role called ADMIN — a finance role can now be granted it explicitly.
+    if (!(await can(session, "payroll", "delete"))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { id } = await params;

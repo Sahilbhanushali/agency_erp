@@ -16,7 +16,6 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const currentUserId = Number(session.user.id);
-    const userRole = (session.user as any).role || "";
     // Employees may still act on their own leave; this only decides whether they
     // may act on anyone else’s.
     const isStaffOrAdmin = await can(session, "leaves", "approve");
@@ -88,7 +87,6 @@ export async function DELETE(
     const session = auth.session;
     const { id } = await params;
     const currentUserId = Number(session.user.id);
-    const userRole = (session.user as any).role || "";
 
     const leave = await prisma.leaveRequest.findUnique({ where: { id } });
     if (!leave) {

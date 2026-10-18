@@ -36,7 +36,6 @@ export async function GET(
     }
 
     const currentUserId = parseInt(session.user.id, 10);
-    const userRole = (session.user as any).role || "";
     const isHrOrAdmin = await can(session, "users", "read");
 
     if (!isHrOrAdmin && currentUserId !== userId) {
@@ -107,7 +106,6 @@ export async function POST(
 
     // Role check: Only ADMIN, Manager, or the user themselves can upload
     const currentUserId = parseInt(session.user.id, 10);
-    const userRole = (session.user as any).role;
     // Employees may upload their own documents; this decides whether they may also
     // upload against someone else’s record.
     const isStaffOrAdmin = await can(session, "users", "update");

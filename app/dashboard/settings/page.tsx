@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import Link from "next/link"
-import { Plus, X, Trash2, Mail, Settings as SettingsIcon } from "lucide-react"
+import { Plus, X, Trash2, Mail, Clock, Settings as SettingsIcon } from "lucide-react"
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
 
 interface Utility {
@@ -180,8 +180,14 @@ export default function SettingsPage() {
     <div className="space-y-6 animate-in fade-in-50 duration-200">
       <PageHeader
         title="System Settings"
-        description="Configure taxonomy utilities, social platform targets, and email delivery credentials."
+        description="Configure taxonomy utilities, scheduled report emails, and email delivery credentials."
       >
+        <Button variant="outline" size="sm" asChild className="gap-1.5">
+          <Link href="/dashboard/settings/jobs">
+            <Clock className="size-3.5" />
+            Scheduled Jobs
+          </Link>
+        </Button>
         <Button variant="outline" size="sm" asChild className="gap-1.5">
           <Link href="/dashboard/settings/smtp">
             <Mail className="size-3.5" />

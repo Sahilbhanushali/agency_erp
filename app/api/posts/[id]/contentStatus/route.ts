@@ -9,6 +9,8 @@ import fs from "fs/promises";
 import path from "path";
 import CryptoJS from "crypto-js"; // Import crypto-js
 import { requireCan } from "@/lib/api-auth";
+import { APP_BASE_URL } from "@/lib/utils"
+import { formatFrom, htmlToText } from "@/lib/smtp"
 
 // Load the email template
 const emailTemplatePath = path.join(
@@ -33,7 +35,7 @@ const fallbackEmailTemplate = `
   <p><strong>Feedback:</strong> {{ feedback }}</p>
   <p><strong>Updated At:</strong> {{ updatedAt }}</p>
   <p><a href="{{ dashboardUrl }}" style="color: #111827;">View Post in Dashboard</a></p>
-  <p>&copy; {{ currentYear }} Automation.rndtechnosoft.com . All rights reserved.</p>
+  <p>&copy; {{ currentYear }} itsmeDezino. All rights reserved.</p>
 </body>
 </html>
 `;
@@ -533,7 +535,7 @@ const postWithAssets = await prisma.post.findFirst({
 });
 
           if (postWithAssets?.assets && postWithAssets.assets.length > 0) {
-            assetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}${postWithAssets.assets[0].url}`;
+            assetUrl = `${APP_BASE_URL}${postWithAssets.assets[0].url}`;
           }
 
           // Populate email template
@@ -562,7 +564,7 @@ const postWithAssets = await prisma.post.findFirst({
           );
           emailHtml = emailHtml.replace(
             "{{ dashboardUrl }}",
-            `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation/rndtechnosoft.com"}/dashboard/projects/posts?projectId=${post.projectId}`
+            `${APP_BASE_URL}/dashboard/projects/posts?projectId=${post.projectId}`
           );
           emailHtml = emailHtml.replace(
             "{{ currentYear }}",
@@ -600,10 +602,12 @@ const postWithAssets = await prisma.post.findFirst({
 
           if (post.createdBy?.email) {
             await transporter.sendMail({
-              from: ` <${smtpDetails.username}>`,
+              from: formatFrom(smtpDetails.username),
               to: post.createdBy.email,
               subject: emailSubject,
               html: emailHtml,
+              // HTML-only mail is a heavy spam signal; this is the text/plain alternative.
+              text: htmlToText(emailHtml),
             });
 
             console.log(

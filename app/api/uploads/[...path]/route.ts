@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
+import { APP_BASE_URL } from "@/lib/utils"
 
 export async function GET(
   request: Request,
@@ -36,7 +37,7 @@ export async function GET(
     }
 
     if (!fileBuffer) {
-      const PROD_BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com").replace(/\/+$/, "");
+      const PROD_BASE_URL = APP_BASE_URL;
       try {
         const prodUrl = `${PROD_BASE_URL}/api/uploads/${pathSegments.map(encodeURIComponent).join("/")}`;
         const prodRes = await fetch(prodUrl);

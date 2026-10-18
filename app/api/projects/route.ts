@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const userRole = user.role?.name;
-    const isAdminOrManager = userRole === "ADMIN" || userRole === "Manager";
+    // projects:read means "every project"; without it a caller sees only their own.
+    const isAdminOrManager = await can(session, "projects", "read");
 
     const searchParams = request.nextUrl.searchParams;
     const userId = searchParams.get("userId");

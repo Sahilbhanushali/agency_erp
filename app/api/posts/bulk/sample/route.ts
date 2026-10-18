@@ -73,7 +73,7 @@ export async function GET() {
 
     // 4. Add Sample Rows
     const currentYear = new Date().getFullYear().toString().slice(-2);
-    
+
     worksheet.addRow({
       sr: 1,
       dueDate: `12/07/${currentYear}`,
@@ -106,7 +106,7 @@ export async function GET() {
       hashtags: "#styling #interiorstyling #tips",
       keyword: "",
       ref: "",
-      designer: designerNames.length > 1 ? designerNames[1] : (designerNames[0] || "Ravi Shah"),
+      designer: designerNames.length > 1 ? designerNames[1] : (designerNames[0]),
       platforms: "INSTAGRAM, FACEBOOK, LINKEDIN"
     });
 

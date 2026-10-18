@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PayrollService } from "@/lib/payroll/payroll-service";
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -175,9 +175,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "reset") {
-      const userRole = (session.user as any).role || "";
-      if (!["ADMIN", "HR"].includes(userRole)) {
-        return NextResponse.json({ error: "Forbidden: Admin required to reset rules" }, { status: 403 });
+      if (!(await can(session, "payroll", "update"))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
       // Reset to statutory defaults

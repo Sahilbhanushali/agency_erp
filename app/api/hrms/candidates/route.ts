@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
   const auth = await requireCan("hrms", "read");
   if (!auth.ok) return auth.response;
 
-  const userRole = (auth.session.user as any)?.role || "";
   const canAccess =
     (await hasPermission(auth.session, "View-hrms")) ||
     (await hasPermission(auth.session, "Manage-hrms"));
@@ -76,7 +75,6 @@ export async function POST(request: NextRequest) {
   const auth = await requireCan("hrms", "create");
   if (!auth.ok) return auth.response;
 
-  const userRole = (auth.session.user as any)?.role || "";
   const canManage =
     (await hasPermission(auth.session, "Manage-hrms"));
   if (!canManage) {

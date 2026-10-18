@@ -52,12 +52,20 @@ module.exports = {
       out_file: "/var/log/pm2/itsmedezinoagencyerp.out.log",
       time: true,
     },
-    // Disabled for now — uncomment to re-enable the daily designer and delay
-    // report emails (scripts/cron-job.js). After uncommenting:
-    //   pm2 start ecosystem.config.js && pm2 save
     {
-      // Daily designer + delay report emails (scripts/cron-job.js, node-cron).
-      // Separate process so an API restart never skips a scheduled send.
+      /**
+       * The scheduled job supervisor.
+       *
+       * It schedules nothing itself: it asks the app for the schedules an administrator
+       * set in Settings -> Scheduled jobs and reconciles every minute, so changing a
+       * time or a recipient list never needs a deploy or a restart of this process.
+       *
+       * Separate from the web process on purpose — an API restart must not skip a send,
+       * and a report that takes a minute should not hold a request open.
+       *
+       * It needs CRON_SECRET from .env, which PM2 caches: after changing it run
+       *   pm2 restart ecosystem.config.js --update-env
+       */
       name: "itsmedezinoagencyerp-cron",
       cwd: APP_DIR,
       script: "node",
@@ -70,6 +78,8 @@ module.exports = {
       watch: false,
       env: {
         NODE_ENV: "production",
+        // Must match the app's port; the supervisor talks to it over localhost.
+        PORT: 3008,
       },
       error_file: "/var/log/pm2/itsmedezinoagencyerp-cron.error.log",
       out_file: "/var/log/pm2/itsmedezinoagencyerp-cron.out.log",

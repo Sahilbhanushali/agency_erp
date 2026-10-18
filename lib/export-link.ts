@@ -1,5 +1,6 @@
 import crypto from "crypto"
 import bcrypt from "bcryptjs"
+import { APP_BASE_URL } from "@/lib/utils"
 
 /**
  * Generates a cryptographically secure 256-bit random token (64 hex characters)
@@ -260,7 +261,7 @@ export function getConfirmBaseUrl(requestOrigin?: string | null): string {
     return envShareBase.trim().replace(/\/+$/, "")
   }
 
-  const rawBase = requestOrigin || process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"
+  const rawBase = requestOrigin || APP_BASE_URL
 
   try {
     const url = new URL(rawBase)
@@ -289,7 +290,11 @@ export function getConfirmBaseUrl(requestOrigin?: string | null): string {
 
     return url.origin
   } catch {
-    return "https://share.rndtechnosoft.com"
+    // APP_BASE_URL could not be parsed as a URL, which is a configuration fault, not
+    // something to paper over with a guessed hostname. Set SHARE_BASE_URL.
+    throw new Error(
+      "Cannot derive the share URL: set SHARE_BASE_URL (or a valid NEXT_PUBLIC_BASE_URL)",
+    )
   }
 }
 

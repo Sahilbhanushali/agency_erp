@@ -64,7 +64,7 @@ function getProjectTimingInfo(posts) {
   return { status: 'VERY_MUCH_DELAY', diffDays: avgDiffDays };
 }
 
-async function sendDailyDelayReport() {
+async function sendDailyDelayReport(recipients = []) {
   console.log('Starting sendDailyDelayReport function at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
   try {
     const today = new Date();
@@ -84,10 +84,12 @@ async function sendDailyDelayReport() {
       return;
     }
 
-    // Use Prachi for SMTP details since that's what was verified
+    // Whichever account has SMTP configured sends it. There is one agency mailbox, so
+    // naming a specific person here only broke the job when that person left.
     const adminUser = await prisma.user.findFirst({
-      where: { email: 'prachi@rndtechnosoft.com' },
+      where: { smtpDetails: { isNot: null } },
       include: { smtpDetails: true },
+      orderBy: { id: 'asc' },
     });
 
     if (!adminUser || !adminUser.smtpDetails) {
@@ -344,7 +346,12 @@ async function sendDailyDelayReport() {
       },
     });
 
-    const recipients = ['ravi@rndtechnosoft.com', 'saloni@rndtechnosoft.com', 'prachi@rndtechnosoft.com'];
+    // Recipients come from Settings -> Scheduled jobs. No built-in list: a hardcoded
+    // one silently mailed the wrong people for as long as nobody checked.
+    if (recipients.length === 0) {
+      console.error('No recipients configured for the delay report — nothing sent.');
+      return;
+    }
     
     await transporter.sendMail({
       from: adminUser.smtpDetails.username,

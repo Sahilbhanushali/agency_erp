@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCan } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
-import nodemailer from "nodemailer";
+import { sendMail } from "@/lib/smtp";
 
 export const dynamic = "force-dynamic";
 
@@ -48,37 +48,11 @@ export async function POST(
         })
       : "Upcoming";
 
-    // SMTP configuration
-    let transporter: any;
-    let fromEmail = process.env.FROM_EMAIL || "pbind4545@gmail.com";
-
-    const adminSmtp = await prisma.smtpDetails.findFirst({
-      where: { isActive: true, isVerified: true },
-    });
-
-    if (adminSmtp) {
-      transporter = nodemailer.createTransport({
-        host: adminSmtp.host,
-        port: adminSmtp.port,
-        secure: adminSmtp.encryption === "SSL",
-        auth: { user: adminSmtp.username, pass: adminSmtp.password },
-        tls: adminSmtp.encryption === "TLS" ? { ciphers: "SSLv3" } : undefined,
-      });
-      fromEmail = adminSmtp.username;
-    } else {
-      transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE === "true",
-        auth: {
-          user: process.env.SMTP_USER || "pbind4545@gmail.com",
-          pass: process.env.SMTP_PASSWORD || "eptg xytk wsxe waet",
-        },
-      });
-    }
-
+    // Sending goes through lib/smtp, which resolves the configured mailbox, decrypts
+    // the stored password and verifies the login. This route used to build its own
+    // transporter with a Gmail address and app password written into the source, and
+    // passed the stored password to nodemailer still encrypted.
     const mailOptions = {
-      from: fromEmail,
       to: contract.client.email,
       subject: `Upcoming Retainer Renewal Reminder — ${contract.title}`,
       html: `
@@ -141,7 +115,7 @@ export async function POST(
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sendMail(mailOptions);
 
     await prisma.contract.update({
       where: { id },

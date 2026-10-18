@@ -1,4 +1,5 @@
 import nodemailer, { Transporter } from 'nodemailer';
+import { formatFrom, fromEmailAddress, htmlToText } from "@/lib/smtp"
 import {prisma} from '@/lib/prisma';
 import { decryptSmtpPassword } from '@/lib/smtp';
 
@@ -112,9 +113,10 @@ export function createEmailService(userId: number) {
           throw new Error('Invalid email options: to, subject, html, and text are required');
         }
 
-        const fromEmail = (transporter!.options as any).auth?.user || 'default@example.com';
+        const fromEmail = (transporter!.options as any).auth?.user || fromEmailAddress();
+        if (!fromEmail) throw new Error('No sending mailbox configured');
         const info = await transporter!.sendMail({
-          from: `"Your App" <${fromEmail}>`,
+          from: formatFrom(fromEmail),
           to,
           subject,
           html,

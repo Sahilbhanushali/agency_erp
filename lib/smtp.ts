@@ -52,6 +52,9 @@ export function decryptSmtpPassword(stored: string): string {
 
 export interface ResolvedSmtp {
   transporter: Transporter
+  /** The authenticated mailbox. Use this as the From address so SPF/DKIM align. */
+  fromMailbox: string
+  /** Ready-to-use `"Name" <mailbox>` header. */
   fromEmail: string
   /** Where the settings came from, for log lines and error messages. */
   source: string
@@ -73,7 +76,8 @@ function fromEnv(): ResolvedSmtp | null {
       secure: process.env.SMTP_SECURE === "true" || port === 465,
       auth: { user, pass },
     }),
-    fromEmail: process.env.FROM_EMAIL || user,
+    fromMailbox: user,
+    fromEmail: formatFrom(user),
     source: `env (${host}:${port} as ${user})`,
   }
 }
@@ -96,7 +100,8 @@ async function fromDatabase(): Promise<ResolvedSmtp | null> {
       auth: { user: config.username, pass: password },
       ...(config.encryption === "TLS" ? { requireTLS: true } : {}),
     }),
-    fromEmail: config.username,
+    fromMailbox: config.username,
+    fromEmail: formatFrom(config.username),
     source: `settings (${config.host}:${config.port} as ${config.username})`,
   }
 }
@@ -172,4 +177,133 @@ export async function verifySmtp(): Promise<{ ok: true; source: string } | { ok:
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) }
   }
+}
+
+/* ------------------------------------------------------------------------- *
+ * Sending
+ * ------------------------------------------------------------------------- */
+
+const EMAIL_RE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/
+
+const looksLikeAddress = (value: string | undefined | null): boolean =>
+  !!value && EMAIL_RE.test(value.trim())
+
+/**
+ * The display name on outgoing mail.
+ *
+ * `FROM_EMAIL` in this install is set to `itsmeDezino` — a brand name, not a mailbox.
+ * That was going straight into the `From:` header, producing a header no receiver can
+ * parse, which is on its own enough for Gmail and Outlook to bin the message. Treat a
+ * non-address value as the name it obviously is.
+ */
+function senderName(): string {
+  const configured = process.env.MAIL_FROM_NAME || process.env.FROM_EMAIL
+  if (configured && !looksLikeAddress(configured)) return configured.trim()
+  return "itsmeDezino"
+}
+
+/** A real mailbox to send as, or null when none is configured. */
+export function fromEmailAddress(): string | null {
+  for (const candidate of [process.env.FROM_EMAIL, process.env.SMTP_USER]) {
+    if (looksLikeAddress(candidate)) return candidate!.trim()
+  }
+  return null
+}
+
+/**
+ * `"Name" <mailbox>` — and the mailbox is always the account that authenticated.
+ *
+ * Deliverability depends on the From domain matching what SPF and DKIM authorise for
+ * the sending server. Sending as a different address than the one we logged in with is
+ * exactly the pattern spam filters are built to catch, so the authenticated mailbox
+ * wins over anything configured.
+ */
+export function formatFrom(mailbox: string, name = senderName()): string {
+  const safe = name.replace(/["\\\r\n]/g, "").trim()
+  return safe ? `"${safe}" <${mailbox}>` : mailbox
+}
+
+/**
+ * A readable plain-text version of an HTML body.
+ *
+ * Every message this app sent was HTML-only. A missing text/plain alternative is one of
+ * the oldest and heaviest spam signals there is, and it is also what a screen reader or
+ * a text-only client falls back to.
+ */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    // Keep the destination of a link; a bare label is useless without it.
+    .replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_m, href, label) => {
+      const text = label.replace(/<[^>]+>/g, "").trim()
+      return text && !text.includes(href) ? `${text} (${href})` : href
+    })
+    .replace(/<(br|\/p|\/div|\/tr|\/h[1-6]|\/li)\s*\/?>/gi, "\n")
+    .replace(/<li\b[^>]*>/gi, "- ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
+    .trim()
+}
+
+export interface OutgoingMail {
+  to: string | string[]
+  subject: string
+  html: string
+  /** Generated from `html` when omitted. */
+  text?: string
+  cc?: string | string[]
+  bcc?: string | string[]
+  replyTo?: string
+  attachments?: { filename: string; path?: string; content?: Buffer | string; cid?: string }[]
+  /** Display name for this message, if it should differ from the default. */
+  fromName?: string
+  headers?: Record<string, string>
+}
+
+/**
+ * Send one message, correctly.
+ *
+ * Every outgoing email goes through here so that the things which decide whether mail
+ * is delivered or filtered are applied once instead of being re-derived (and got wrong)
+ * at sixteen call sites. Those sites variously sent `From: " <addr>"` — a leading space
+ * and no display name, which is a malformed header — `"Your App" <addr>`, and a bare
+ * brand name where an address belongs.
+ *
+ * What this adds:
+ *  - a well-formed `From` on the authenticated mailbox, so SPF and DKIM align
+ *  - a text/plain alternative alongside the HTML
+ *  - `Auto-Submitted`, so receivers and mailing lists know not to auto-reply
+ *  - `Reply-To` kept separate from the sending identity
+ */
+export async function sendMail(message: OutgoingMail) {
+  const { transporter, fromMailbox } = await resolveSmtp()
+
+  return transporter.sendMail({
+    from: formatFrom(fromMailbox, message.fromName),
+    to: Array.isArray(message.to) ? message.to.join(", ") : message.to,
+    cc: Array.isArray(message.cc) ? message.cc.join(", ") : message.cc,
+    bcc: Array.isArray(message.bcc) ? message.bcc.join(", ") : message.bcc,
+    replyTo: message.replyTo,
+    subject: message.subject,
+    html: message.html,
+    text: message.text ?? htmlToText(message.html),
+    attachments: message.attachments,
+    headers: {
+      // Nothing here is a reply to a human, and saying so stops out-of-office loops.
+      "Auto-Submitted": "auto-generated",
+      ...message.headers,
+    },
+  })
 }

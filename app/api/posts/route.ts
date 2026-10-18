@@ -10,7 +10,7 @@ import path from "path";
 
 
 import { PostStatus, Platform, PostType, ContentStatus } from '@prisma/client';
-import { requireCan } from "@/lib/api-auth";
+import { can, contentScope, isClientContact, requireCan } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -472,11 +472,18 @@ export async function GET(request: NextRequest) {
 
     const whereClause: any = {};
 
-    // Role-based filtering
-    if (session.user.role === "CLIENT") {
+    // A client login is scoped to its own projects. This is decided from the client
+    // record matching their address, not from a role being named "CLIENT" — renaming
+    // or recreating that role used to hand one client every other client's content.
+    if (await isClientContact(session)) {
       whereClause.project = { client: { email: session.user.email } };
-    } else if (session.user.role === "Designer" && assignedToMe) {
-      whereClause.assignedToId = session.user.id;
+    } else if ((await contentScope(session)) === "own") {
+      whereClause.OR = [
+        { assignedToId: Number(session.user.id) },
+        { assignedUsers: { some: { id: Number(session.user.id) } } },
+      ];
+    } else if (assignedToMe) {
+      whereClause.assignedToId = Number(session.user.id);
     }
 
     // Status filtering

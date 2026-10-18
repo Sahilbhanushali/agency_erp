@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 
 // PATCH: Edit comment content
 export async function PATCH(
@@ -32,13 +32,12 @@ export async function PATCH(
     }
 
     const userId = Number(session.user.id)
-    const userRole = session.user.role
-
-    // Check authorization: author or Admin/Manager
+    // Authors edit their own comment; moderating someone else's needs posts:update.
+    // This used to compare role names, so any role not literally called ADMIN or
+    // Manager could never moderate — including every role created since.
     const isAuthor = existingComment.userId === userId
-    const isAdminOrManager = userRole === "ADMIN" || userRole === "Manager"
 
-    if (!isAuthor && !isAdminOrManager) {
+    if (!isAuthor && !(await can(session, "posts", "update"))) {
       return NextResponse.json({ error: "You are not authorized to edit this comment" }, { status: 403 })
     }
 
@@ -88,13 +87,9 @@ export async function DELETE(
     }
 
     const userId = Number(session.user.id)
-    const userRole = session.user.role
-
-    // Check authorization: author or Admin/Manager
     const isAuthor = existingComment.userId === userId
-    const isAdminOrManager = userRole === "ADMIN" || userRole === "Manager"
 
-    if (!isAuthor && !isAdminOrManager) {
+    if (!isAuthor && !(await can(session, "posts", "delete"))) {
       return NextResponse.json({ error: "You are not authorized to delete this comment" }, { status: 403 })
     }
 

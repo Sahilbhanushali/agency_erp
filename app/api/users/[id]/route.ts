@@ -20,7 +20,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     }
 
     const currentUserId = parseInt(session.user.id, 10);
-    const userRole = (session.user as any).role || "";
     const isSelf = currentUserId === userId;
     const isHrOrAdmin = await can(session, "users", "read");
 
@@ -229,8 +228,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    // Changing someone's role is a permission change, so it needs roles:update.
+    // This used to require a role literally named ADMIN, which meant a role granted
+    // every permission in the matrix still could not do it.
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await can(session, "roles", "update"))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { role } = await request.json();
@@ -278,8 +283,11 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || !["ADMIN", "MANAGER", "Manager"].includes(session.user.role)) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await can(session, "users", "delete"))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const user = await prisma.user.findUnique({

@@ -8,7 +8,9 @@ import path from "path";
 import { z } from "zod";
 import nodemailer from "nodemailer";
 import CryptoJS from "crypto-js"; // Import crypto-js
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
+import { APP_BASE_URL } from "@/lib/utils"
+import { formatFrom, htmlToText } from "@/lib/smtp"
 
 // Load email templates
 const rejectionEmailTemplatePath = path.join(process.cwd(), "public/templates", "rejection-email-template.html");
@@ -23,7 +25,7 @@ The post {{ postTitle }} for the project {{ projectName }} has been rejected. Pl
 Feedback: {{ feedback }}
 Rejected At: {{ rejectedAt }}
 View Post in Dashboard
-© {{ currentYear }} Automation.rndtechnosoft.com. All rights reserved.
+© {{ currentYear }} itsmeDezino. All rights reserved.
 `;
 
 const fallbackSubmissionEmailTemplate = `
@@ -35,7 +37,7 @@ Feedback: {{ feedback }}
 {{ /feedback }}
 Submitted At: {{ submittedAt }}
 View Post in Dashboard
-© {{ currentYear }} Automation.rndtechnosoft.com. All rights reserved.
+© {{ currentYear }} itsmeDezino. All rights reserved.
 `;
 
 async function loadEmailTemplates() {
@@ -474,11 +476,11 @@ if (newStatus && (newStatus === PostStatus.SUBMITTED || newStatus === PostStatus
 
         let assetUrl: string | null = null;
         if (postWithAssets?.assets && postWithAssets.assets.length > 0) {
-          assetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}${postWithAssets.assets[0].url}`;
+          assetUrl = `${APP_BASE_URL}${postWithAssets.assets[0].url}`;
         }
 
         const statusVerb = newStatus === PostStatus.SUBMITTED ? "submitted" : "resubmitted";
-        const dashboardUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}/dashboard/projects/posts?projectId=${post.projectId}`;
+        const dashboardUrl = `${APP_BASE_URL}/dashboard/projects/posts?projectId=${post.projectId}`;
         const currentYear = currentTime.getFullYear().toString();
         const formattedDate = currentTime.toLocaleString("en-US", {
           weekday: "long",
@@ -525,10 +527,12 @@ if (newStatus && (newStatus === PostStatus.SUBMITTED || newStatus === PostStatus
 
           try {
             await transporter.sendMail({
-              from: `<${smtpDetails.username}>`,
+              from: formatFrom(smtpDetails.username),
               to: user.email,
               subject: `Post ${newStatus}: ${post.title}`,
               html: emailHtml,
+              // HTML-only mail is a heavy spam signal; this is the text/plain alternative.
+              text: htmlToText(emailHtml),
             });
             console.log(`[Design Status API] ${newStatus} email sent successfully to ${user.email}`);
           } catch (sendError: any) {
@@ -575,7 +579,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const session = await getServerSession(authOptions);
-    if (!session || !["ADMIN", "Manager", "Team Lead", "Designer"].includes(session.user.role)) {
+    if (!session || !(await can(session, "posts", "update"))) {
       console.warn(`[Design Status API] Unauthorized access: session=${!!session}, role=${session?.user.role}`);
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -904,7 +908,7 @@ const postWithAssets = await prisma.post.findFirst({
 
           let assetUrl: string | null = null;
           if (postWithAssets?.assets && postWithAssets.assets.length > 0) {
-            assetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}${postWithAssets.assets[0].url}`;
+            assetUrl = `${APP_BASE_URL}${postWithAssets.assets[0].url}`;
           }
 
           let emailHtml: string;
@@ -961,7 +965,7 @@ if (status === PostStatus.REJECTED) {
   }
 }
 
-          emailHtml = emailHtml.replace("{{ dashboardUrl }}", `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}/dashboard/projects/posts?projectId=${post.projectId}`);
+          emailHtml = emailHtml.replace("{{ dashboardUrl }}", `${APP_BASE_URL}/dashboard/projects/posts?projectId=${post.projectId}`);
           emailHtml = emailHtml.replace("{{ currentYear }}", currentTime.getFullYear().toString());
 
           if (assetUrl) {
@@ -974,10 +978,12 @@ if (status === PostStatus.REJECTED) {
 
           if (recipients.length > 0) {
             await transporter.sendMail({
-              from: ` <${smtpDetails.username}>`,
+              from: formatFrom(smtpDetails.username),
               to: recipients.join(","),
               subject,
               html: emailHtml,
+              // HTML-only mail is a heavy spam signal; this is the text/plain alternative.
+              text: htmlToText(emailHtml),
             });
             console.log(`[Design Status API] ${status} email sent successfully to ${recipients.join(", ")}`);
           }

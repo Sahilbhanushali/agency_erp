@@ -22,7 +22,7 @@ import {
   Video,
   Link as LinkIcon,
 } from "lucide-react";
-import { getMediaUrl } from "@/lib/utils";
+import { APP_BASE_URL, getMediaUrl } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -328,7 +328,7 @@ function MiniTaskCard({
                       if (target.src.includes("localhost") || target.src.includes("127.0.0.1")) {
                         try {
                           const parsed = new URL(target.src);
-                          const prodFallback = `https://automation.rndtechnosoft.com${parsed.pathname}`;
+                          const prodFallback = `${APP_BASE_URL}${parsed.pathname}`;
                           if (target.src !== prodFallback) {
                             target.src = prodFallback;
                             return;

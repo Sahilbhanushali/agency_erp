@@ -5,7 +5,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-const PROD_BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com").replace(/\/+$/, "");
+/**
+ * Where this installation is reachable. The single source for every absolute URL the
+ * app builds — asset links in email, dashboard links, share links.
+ *
+ * Set NEXT_PUBLIC_BASE_URL. There is deliberately no production domain baked in here:
+ * this used to default to a previous customer's hostname, which meant a missing
+ * environment variable silently sent clients links to somebody else's server. A
+ * localhost default is obviously wrong instead of quietly wrong.
+ */
+export const APP_BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
+
+const PROD_BASE_URL = APP_BASE_URL;
 
 export function getMediaUrl(url: string | null | undefined): string {
   if (!url) return "";
@@ -21,7 +32,7 @@ export function getMediaUrl(url: string | null | undefined): string {
       if (
         parsed.hostname === "localhost" ||
         parsed.hostname === "127.0.0.1" ||
-        parsed.hostname === "automation.rndtechnosoft.com" ||
+        parsed.hostname === new URL(APP_BASE_URL).hostname ||
         (typeof window !== "undefined" && parsed.hostname === window.location.hostname)
       ) {
         cleanPath = parsed.pathname + parsed.search;

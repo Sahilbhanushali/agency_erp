@@ -162,6 +162,7 @@ model User {
   directReports User[] @relation("TeamReports")
 
   dailyTodos          DailyTodo[]  @relation("UserTodos")
+  jobsUpdated         ScheduledJob[] @relation("JobsUpdated")
   createdTasks        Task[]       @relation("CreatedTasks")
   assignedTasks       Task[]       @relation("TaskAssignees")
   createdContracts    Contract[]   @relation("CreatedContracts")
@@ -2698,4 +2699,81 @@ model DailyTodo {
   @@index([userId, date])
   @@index([date])
   @@map("daily_todos")
+}
+
+
+// ---------------------------------------------------------------------------
+// Scheduled jobs
+//
+// The schedule used to live in scripts/cron-job.js, so changing when a report went out
+// meant editing code and restarting PM2. These rows are the source of truth instead:
+// the cron supervisor re-reads them every minute, so an administrator can change a
+// time, pick different recipients, or switch a job off, and it takes effect without a
+// deploy.
+//
+// `key` is fixed in code (it maps to an endpoint); everything else is configuration.
+// ---------------------------------------------------------------------------
+
+enum JobRecipientMode {
+  /// Work out recipients from the data — a person's reportsTo manager, falling back to
+  /// whoever holds the relevant permission.
+  AUTO
+  /// Send only to the people explicitly chosen in the admin screen.
+  EXPLICIT
+  /// Both.
+  BOTH
+}
+
+model ScheduledJob {
+  id  String @id @default(cuid())
+  /// Stable identifier matching a known endpoint, e.g. "eod-todo-report".
+  key String @unique
+
+  label       String
+  description String? @db.Text
+
+  /// Standard five-field cron expression, validated before it is saved.
+  cronExpression String
+  timezone       String  @default("Asia/Kolkata")
+  isEnabled      Boolean @default(true)
+
+  recipientMode   JobRecipientMode @default(AUTO)
+  /// User ids chosen in the admin screen, when the mode includes EXPLICIT.
+  recipientUserIds Json?
+  /// Addresses that are not app users, e.g. a shared inbox.
+  recipientEmails  Json?
+
+  /// Set when an administrator presses "Run now". The scheduler picks it up on its next
+  /// poll and clears it, so a manual run takes exactly the same path as a scheduled one.
+  runRequestedAt DateTime?
+
+  lastRunAt    DateTime?
+  lastStatus   String?   // "ok" | "error"
+  lastMessage  String?   @db.Text
+  updatedById  Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  updatedBy User?    @relation("JobsUpdated", fields: [updatedById], references: [id], onDelete: SetNull)
+  runs      JobRun[]
+
+  @@map("scheduled_jobs")
+}
+
+/// A short history per job, so "did the report go out?" is answerable.
+model JobRun {
+  id         String   @id @default(cuid())
+  jobId      String
+  startedAt  DateTime @default(now())
+  finishedAt DateTime?
+  ok         Boolean  @default(false)
+  message    String?  @db.Text
+  /// "schedule" or "manual" — who asked for this run.
+  trigger    String   @default("schedule")
+
+  job ScheduledJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, startedAt])
+  @@map("job_runs")
 }

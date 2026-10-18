@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
 import nodemailer from 'nodemailer';
 import CryptoJS from 'crypto-js';
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 import { decryptSmtpPassword } from "@/lib/smtp";
 
 const prisma = new PrismaClient();
@@ -184,7 +184,7 @@ export async function PUT(request: NextRequest) {
     const auth = await requireCan("settings", "update");
     if (!auth.ok) return auth.response;
     const session = auth.session as any;
-    if (!['ADMIN', 'MANAGER', 'Manager'].includes(session.user.role)) {
+    if (!(await can(session, "settings", "update"))) {
       return NextResponse.json({ error: "Forbidden: ADMIN access required" }, { status: 403 });
     }
 

@@ -7,6 +7,8 @@ import fs from "fs/promises"
 import path from "path"
 import CryptoJS from "crypto-js"
 import { requireCan } from "@/lib/api-auth";
+import { APP_BASE_URL } from "@/lib/utils"
+import { formatFrom, htmlToText } from "@/lib/smtp"
 
 // Load the comment email template
 const commentEmailTemplatePath = path.join(
@@ -32,7 +34,7 @@ const fallbackCommentEmailTemplate = `
   <p><strong>Comment:</strong> {{ commentContent }}</p>
   <p><strong>Commented At:</strong> {{ commentedAt }}</p>
   <p><a href="{{ dashboardUrl }}" style="color: #111827;">View Post in Dashboard</a></p>
-  <p>&copy; {{ currentYear }} Automation.rndtechnosoft.com. All rights reserved.</p>
+  <p>&copy; {{ currentYear }} itsmeDezino. All rights reserved.</p>
 </body>
 </html>
 `
@@ -263,7 +265,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           )
           emailHtml = emailHtml.replace(
             "{{ dashboardUrl }}",
-            `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}/dashboard/projects/posts/${postId}`
+            `${APP_BASE_URL}/dashboard/projects/posts/${postId}`
           )
           emailHtml = emailHtml.replace(
             "{{ currentYear }}",
@@ -271,10 +273,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           )
 
           await transporter.sendMail({
-            from: `<${smtpDetails.username}>`,
+            from: formatFrom(smtpDetails.username),
             to: user.email,
             subject: `New Comment on Post: ${post.title}`,
             html: emailHtml,
+            // HTML-only mail is a heavy spam signal; this is the text/plain alternative.
+            text: htmlToText(emailHtml),
           })
 
           notifiedUsersList.push(user.name || user.email)
