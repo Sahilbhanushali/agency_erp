@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -223,6 +224,7 @@ const fetcher = async ([url, token]: [string, string | undefined]) => {
 
 export function PostDetail({ post: initialPost, isPublicView = false }: PostDetailProps) {
   const { data: session } = useSession();
+  const { can } = usePermissions();
   const router = useRouter();
 
   // SWR: Fetch latest post data
@@ -689,12 +691,17 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
   const currentUser = session?.user || { id: "", role: "", name: "" };
   const canSubmit = post.createdById === currentUser.id && post.status === "DRAFT";
   const canEdit = post.createdById === currentUser.id && ["DRAFT", "REJECTED"].includes(post.status);
-  const canSchedule = currentUser.role === "Manager" && post.status === "APPROVED";
-  const canManageStatus = ["ADMIN", "Manager", "Team Lead"].includes(currentUser.role);
-  const canManageContentStatus = ["ADMIN", "Manager"].includes(currentUser.role);
-
-  // NEW: Delete permission
-  const canDeleteAssets = ["ADMIN", "Manager", "Team Lead", "Designer", "Video Editor"].includes(currentUser.role) || currentUser.role?.toUpperCase() === "DESIGNER";
+  /**
+   * Driven by permissions, not role names.
+   *
+   * These were lists of role names ("Manager", "Team Lead", "Designer"), so a role
+   * created in the permission matrix could hold posts:publish and still see none of
+   * these controls — the same reason a new role appears to have no access anywhere.
+   */
+  const canSchedule = can("posts", "publish") && post.status === "APPROVED";
+  const canManageStatus = can("posts", "status") || can("posts", "approve");
+  const canManageContentStatus = can("posts", "approve");
+  const canDeleteAssets = can("assets", "delete");
 
   // Separate assets by type
   const referenceAssets = post.assets.filter((asset: any) => asset.isReference);
@@ -1219,7 +1226,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
             size="sm"
             onClick={() => setShowHistory(!showHistory)}
             className={showHistory ? "bg-blue-950/20 text-blue-400 border-blue-900/60" : ""}
-            disabled={!session || !["ADMIN", "Manager", "Social Media Manager"].includes(currentUser.role)}
+            disabled={!session || !can("posts", "read")}
           >
             <History className="h-4 w-4 mr-2" />
             {showHistory ? "Hide" : "Show"} History

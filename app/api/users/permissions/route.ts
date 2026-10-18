@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireCan, requirePermission, requireSession } from "@/lib/api-auth";
+import { requireSession } from "@/lib/api-auth";
 
 /**
  * GET /api/users/permissions — the CALLER's own permission names.
@@ -37,112 +37,13 @@ export async function GET() {
   }
 }
 
-// PATCH /api/users/permissions?id={userId}
-export async function PATCH(request: Request) {
-  const auth = await requireCan("roles", "update");
-  if (!auth.ok) return auth.response;
-
-  try {
-    // Extract userId from query parameters and permissions from body
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('id');
-    const { permissions } = await request.json();
-    console.log('PATCH userId:', userId, 'permissions:', permissions);
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
-
-    if (!Array.isArray(permissions)) {
-      return NextResponse.json({ error: 'Permissions must be an array' }, { status: 400 });
-    }
-
-    // Validate that all provided permissions exist
-    const permissionRecords = await prisma.permission.findMany({
-      where: { name: { in: permissions } },
-      select: { id: true, name: true },
-    });
-
-    if (permissionRecords.length !== permissions.length) {
-      const invalidPermissions = permissions.filter(
-        (p: string) => !permissionRecords.some((pr) => pr.name === p)
-      );
-      return NextResponse.json(
-        { error: `Invalid permissions: ${invalidPermissions.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
-    // Find or create a role with the specified permissions
-    let role = await prisma.role.findFirst({
-      where: {
-        permissions: {
-          every: {
-            permission: { name: { in: permissions } },
-          },
-          none: {
-            permission: { name: { notIn: permissions } },
-          },
-        },
-      },
-      include: { permissions: true },
-    });
-
-    if (!role) {
-      // Create a new role if no exact match is found
-      role = await prisma.role.create({
-        data: {
-          name: `CustomRole_${userId}_${Date.now()}`, // Unique name for the role
-          description: 'Custom role created for user permissions',
-          permissions: {
-            create: permissionRecords.map((pr) => ({
-              permissionId: pr.id,
-              createdAt: new Date(),
-            })),
-          },
-        },
-      });
-    }
-
-    // Update the user's role
-    const updatedUser = await prisma.user.update({
-      where: { id: parseInt(userId) },
-      data: {
-        roleId: role.id,
-      },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              select: {
-                permission: {
-                  select: { name: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!updatedUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Extract updated permissions
-    const updatedPermissions = updatedUser.role?.permissions.map((rp) => rp.permission.name) || [];
-    console.log('Updated permissions for user', userId, ':', updatedPermissions);
-
-    return NextResponse.json({
-      id: updatedUser.id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      permissions: updatedPermissions,
-    }, { status: 200 });
-  } catch (error) {
-    console.error('Error updating user permissions:', error);
-    return NextResponse.json({ error: 'Failed to update user permissions', details: error.message }, { status: 500 });
-  } finally {
-    // await prisma.$disconnect(); // Commented out for serverless compatibility
-  }
-}
+/**
+ * There was a PATCH handler here that took a list of permission names and then either
+ * found a role matching that exact set or created one called `CustomRole_<userId>_<ts>`.
+ * It was dead — both callers only ever GET — and it worked against the role model: it
+ * manufactured a throwaway role per user instead of assigning one of the real ones,
+ * leaving unnamed roles in the list that nobody could interpret.
+ *
+ * Roles are assigned with PATCH /api/users/[id] and edited under
+ * Users -> Roles & Permissions.
+ */

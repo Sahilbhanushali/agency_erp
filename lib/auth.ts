@@ -37,7 +37,16 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           roleId: user.role?.id?.toString() || null,
-          role: user.role?.name || "CLIENT",
+          /**
+           * Null when the account has no role, never a guessed one.
+           *
+           * This used to fall back to "CLIENT", which invented an identity nobody had
+           * granted: an account whose role had been deleted reported itself as a client
+           * and was scoped like one, while the real problem — no role at all — was
+           * invisible. It also made the session look healthy while every permission
+           * check returned nothing.
+           */
+          role: user.role?.name ?? null,
         }
       },
     }),
