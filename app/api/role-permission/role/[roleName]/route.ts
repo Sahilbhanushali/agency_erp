@@ -13,8 +13,17 @@ const matrixSchema = z.object({
 })
 
 /**
- * The role's permission matrix, shaped for the editor: every module and action in the
- * catalog, each flagged with whether this role holds it.
+ * A role's permissions.
+ *
+ * Two shapes, because two kinds of caller need different things:
+ *   - default: the historical `[{ permission: "Manage-post" }, ...]` array. Eight
+ *     dashboard pages read this to decide which buttons to show, and breaking that
+ *     shape broke all of them at once.
+ *   - `?view=matrix`: every module and action in the catalog with a granted flag, for
+ *     the permission editor.
+ *
+ * Keeping the legacy shape as the default means the migration never needed a
+ * co-ordinated front-end change.
  */
 export async function GET(request: NextRequest, context: { params: Promise<{ roleName: string }> }) {
   const auth = await requireCan("roles", "read")
@@ -33,6 +42,14 @@ export async function GET(request: NextRequest, context: { params: Promise<{ rol
     if (!role) return NextResponse.json({ error: "Role not found" }, { status: 404 })
 
     const held = new Set(role.permissions.map((rp) => rp.permission.name))
+
+    if (request.nextUrl.searchParams.get("view") !== "matrix") {
+      // Legacy shape. Includes canonical module:action names alongside the old flat
+      // ones so a page checking either style keeps working.
+      return NextResponse.json(
+        Array.from(held).map((permission) => ({ permission })),
+      )
+    }
 
     const modules = MODULES.map((m) => ({
       key: m.key,

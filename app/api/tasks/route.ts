@@ -120,7 +120,11 @@ export async function POST(request: NextRequest) {
       select: taskSelect,
     })
 
-    await notifyTaskAssignees(input.assigneeIds, task.id, task.title, auth.userId)
+    await notifyTaskAssignees(input.assigneeIds, task.id, task.title, auth.userId, {
+      dueDate: task.dueDate,
+      priority: task.priority,
+      assignedBy: auth.session.user?.name ?? null,
+    })
 
     await logAuditAction({
       userId: String(auth.userId),

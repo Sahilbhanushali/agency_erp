@@ -57,6 +57,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { NotificationCenter } from "./notification-center"
+import DesktopNotifications from "@/components/notifications/desktop-notifications"
 
 type NavigationItem = {
   name: string
@@ -81,8 +82,8 @@ type NavigationItem = {
 const navigation: NavigationItem[] = [
   { name: "Dashboard", href: "/dashboard", module: "dashboard", icon: LayoutDashboard },
   { name: "My Tasks", href: "/dashboard/tasks", module: "tasks", icon: CheckCircle, permissions: ["View-tasks"] },
+  { name: "My Day", href: "/dashboard/my-day", icon: Sun },
   { name: "Projects", href: "/dashboard/projects", module: "projects", icon: FolderOpen, permissions: ["Manage-projects", "View-project"] },
-  { name: "Project Summary", href: "/dashboard/project-summary", module: "projects", icon: FileText, permissions: ["Manage-projects", "View-project"] },
   { name: "Calendar", href: "/dashboard/calendar", module: "calendar", icon: Calendar, permissions: ["View-calender"] },
   { name: "Pending Approvals", href: "/dashboard/approvals", module: "approvals", icon: FileClock, permissions: ["Manage-approvals"] },
   { name: "Assets", href: "/dashboard/assets", module: "assets", icon: ImageIcon, permissions: ["View-assets"] },
@@ -105,7 +106,7 @@ const navigation: NavigationItem[] = [
 
 const navigationGroups = [
   { label: "Overview", names: ["Dashboard"] },
-  { label: "Delivery", names: ["My Tasks", "Projects", "Project Summary", "Calendar", "Pending Approvals", "Assets", "Reports"] },
+  { label: "Delivery", names: ["My Tasks", "My Day", "Projects", "Calendar", "Pending Approvals", "Assets", "Reports"] },
   { label: "Agency", names: ["Leads Pipeline", "Clients", "Contracts & SOW", "Expenses & Margins", "Companies", "Quotations", "Invoices", "User Management", "Recruitment & HRMS", "Attendance & Leaves", "Payroll", "Utilities", "Credentials"] },
   { label: "Preferences", names: ["Settings"] },
 ]
@@ -283,6 +284,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </Button>
 
             {/* Notification Center */}
+            <DesktopNotifications />
             <NotificationCenter />
           </div>
         </div>

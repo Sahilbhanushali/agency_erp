@@ -63,7 +63,7 @@ export default function PermissionMatrix({ roleName }: { roleName: string }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/role-permission/role/${encodeURIComponent(roleName)}`)
+      const res = await fetch(`/api/role-permission/role/${encodeURIComponent(roleName)}?view=matrix`)
       const data = await res.json()
       if (!res.ok) {
         setError(data.error ?? "Could not load permissions")

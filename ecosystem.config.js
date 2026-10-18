@@ -55,25 +55,25 @@ module.exports = {
     // Disabled for now — uncomment to re-enable the daily designer and delay
     // report emails (scripts/cron-job.js). After uncommenting:
     //   pm2 start ecosystem.config.js && pm2 save
-    // {
-    //   // Daily designer + delay report emails (scripts/cron-job.js, node-cron).
-    //   // Separate process so an API restart never skips a scheduled send.
-    //   name: "itsmedezinoagencyerp-cron",
-    //   cwd: APP_DIR,
-    //   script: "node",
-    //   args: "scripts/cron-job.js",
-    //   exec_mode: "fork",
-    //   instances: 1,
-    //   autorestart: true,
-    //   min_uptime: "20s",
-    //   max_memory_restart: "256M",
-    //   watch: false,
-    //   env: {
-    //     NODE_ENV: "production",
-    //   },
-    //   error_file: "/var/log/pm2/itsmedezinoagencyerp-cron.error.log",
-    //   out_file: "/var/log/pm2/itsmedezinoagencyerp-cron.out.log",
-    //   time: true,
-    // },
+    {
+      // Daily designer + delay report emails (scripts/cron-job.js, node-cron).
+      // Separate process so an API restart never skips a scheduled send.
+      name: "itsmedezinoagencyerp-cron",
+      cwd: APP_DIR,
+      script: "node",
+      args: "scripts/cron-job.js",
+      exec_mode: "fork",
+      instances: 1,
+      autorestart: true,
+      min_uptime: "20s",
+      max_memory_restart: "256M",
+      watch: false,
+      env: {
+        NODE_ENV: "production",
+      },
+      error_file: "/var/log/pm2/itsmedezinoagencyerp-cron.error.log",
+      out_file: "/var/log/pm2/itsmedezinoagencyerp-cron.out.log",
+      time: true,
+    },
   ],
 };

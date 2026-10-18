@@ -71,6 +71,17 @@ export const MODULES: PermissionModule[] = [
     actions: [{ action: "read", label: "Read", legacy: [], baseline: true }] },
   { key: "tasks", label: "My Tasks", href: "/dashboard/tasks", group: "Delivery",
     actions: crud("View-tasks", "Manage-tasks") },
+  /**
+   * Daily todos. Everyone manages their own regardless of these — the endpoints
+   * self-scope, exactly as attendance and leaves do. These actions govern seeing and
+   * acting on OTHER people's days, which is a manager's job.
+   */
+  { key: "todos", label: "Daily Plan", href: "/dashboard/my-day", group: "Delivery",
+    actions: [
+      { action: "read", label: "See team's day", legacy: [] },
+      { action: "update", label: "Edit team's todos", legacy: [] },
+      { action: "export", label: "Receive EOD report", legacy: [] },
+    ] },
   { key: "projects", label: "Projects", href: "/dashboard/projects", group: "Delivery",
     actions: crud("View-project", "Manage-projects") },
   { key: "posts", label: "Content & Posts", href: "/dashboard/projects/posts", group: "Delivery",
