@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { stageDecisionSchema } from "@/lib/validation/approval";
 import { ApprovalStepStatus, PostStatus } from "@prisma/client";
+import { requireCan } from "@/lib/api-auth";
 
 export async function POST(
   request: NextRequest,
@@ -12,7 +13,9 @@ export async function POST(
   try {
     const params = await context.params;
     const postId = params.id;
-    const session = await getServerSession(authOptions);
+    const auth = await requireCan("posts", "approve");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const body = await request.json();
     const parsed = stageDecisionSchema.safeParse(body);

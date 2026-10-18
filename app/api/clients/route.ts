@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireCan } from "@/lib/api-auth";
 import path from "path";
 import fs from "fs/promises";
 
@@ -9,11 +10,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized: No session found" }, { status: 401 });
-    }
+    const auth = await requireCan("clients", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const formData = await request.formData();
     const name = formData.get("name") as string;
@@ -83,11 +82,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized: No session found" }, { status: 401 });
-    }
+    const auth = await requireCan("clients", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     // Fetch the user's role from the database
     const user = await prisma.user.findUnique({

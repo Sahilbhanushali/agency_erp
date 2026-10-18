@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireCan } from "@/lib/api-auth";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { deleteLocalFile } from "@/lib/storage";
@@ -10,10 +11,9 @@ import { deleteLocalFile } from "@/lib/storage";
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized: No session found" }, { status: 401 });
-    }
+    const auth = await requireCan("clients", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const client = await prisma.client.findUnique({
       where: { id: params.id },
@@ -92,10 +92,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("clients", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const existingClient = await prisma.client.findUnique({
       where: { id: params.id },
@@ -187,10 +186,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized: No session found" }, { status: 401 });
-    }
+    const auth = await requireCan("clients", "delete");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     // Check user permissions
     const user = await prisma.user.findUnique({

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import {
   INVOICE_TRANSITIONS,
@@ -15,7 +15,7 @@ import { invoiceUpdateSchema } from "@/lib/validation/invoice"
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("View-invoices")
+  const auth = await requireCan("invoices", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-invoices")
+  const auth = await requireCan("invoices", "update")
   if (!auth.ok) return auth.response
 
   try {
@@ -218,7 +218,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
  * so it is refused. Cancel it instead — that keeps the document and its history.
  */
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-invoices")
+  const auth = await requireCan("invoices", "delete")
   if (!auth.ok) return auth.response
 
   try {

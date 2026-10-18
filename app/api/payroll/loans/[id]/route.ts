@@ -2,26 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
-import { hasPermission } from "@/lib/api-auth";
+import { can, hasPermission, requireCan } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("payroll", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { id } = await params;
     const loan = await PayrollService.getLoanAdvanceById(id);
 
-    const userRole = (session.user as any).role || "";
     const isPrivileged =
-      ["ADMIN", "HR", "FINANCE"].includes(userRole) ||
-      (await hasPermission(session, "View-payroll")) ||
-      (await hasPermission(session, "Manage-loans"));
+      (await can(session, "payroll", "read")) ||
+      (await can(session, "payroll", "update"));
 
     const currentUserId = Number(session.user.id);
     if (!isPrivileged && loan.userId !== currentUserId) {
@@ -40,15 +36,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
+    const auth = await requireCan("payroll", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const canManage =
-      ["ADMIN", "HR", "FINANCE"].includes(userRole) ||
-      (await hasPermission(session, "Manage-loans"));
+      (await can(session, "payroll", "update"));
 
     if (!canManage) {
       return NextResponse.json(

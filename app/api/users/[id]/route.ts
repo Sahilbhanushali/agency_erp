@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAuditAction } from "@/lib/audit";
-import { hasPermission } from "@/lib/api-auth";
+import { can, hasPermission } from "@/lib/api-auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const currentUserId = parseInt(session.user.id, 10);
     const userRole = (session.user as any).role || "";
     const isSelf = currentUserId === userId;
-    const isHrOrAdmin = ["ADMIN", "HR"].includes(userRole) || (await hasPermission(session, "Manage-User"));
+    const isHrOrAdmin = await can(session, "users", "read");
 
     // If requester is not self and not HR/Admin: return only non-confidential public directory fields
     if (!isSelf && !isHrOrAdmin) {
@@ -103,9 +103,8 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     const session = await getServerSession(authOptions);
     const userRole = (session?.user as any)?.role || "";
     const canManage = session?.user?.id && (
-      ["ADMIN", "HR"].includes(userRole) ||
-      (await hasPermission(session, "Manage-User")) ||
-      (await hasPermission(session, "Manage-salary"))
+      (await can(session, "users", "update")) ||
+      (await can(session, "salary", "update"))
     );
 
     if (!canManage) {

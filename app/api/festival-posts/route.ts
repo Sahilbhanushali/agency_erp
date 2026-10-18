@@ -7,6 +7,7 @@ import { createEmailService } from '@/lib/emailService';
 import { renderPostAssignedEmail } from '@/lib/renderEmail';
 import { promises as fs } from "fs";
 import path from "path";
+import { requireCan } from "@/lib/api-auth";
 
 type PostStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED';
 type Platform = 'INSTAGRAM' | 'FACEBOOK' | 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'IGTV' | 'THREADS' | 'GMB' | 'PINTEREST';
@@ -15,8 +16,9 @@ type ContentStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
-    const session = await getServerSession(authOptions);
+    const auth = await requireCan("posts", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
 
     // Parse JSON body
     const {

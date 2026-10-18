@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { deleteLocalFile } from "@/lib/storage";
 import path from "path";
 import fs from "fs/promises";
+import { can } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function PATCH(
 
     const currentUserId = parseInt(session.user.id, 10);
     const userRole = (session.user as any).role;
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "Manager", "HR"].includes(userRole);
+    const isStaffOrAdmin = await can(session, "users", "update");
     const userId = parseInt(id, 10);
 
     const doc = await prisma.userDocument.findUnique({
@@ -177,7 +178,7 @@ export async function DELETE(
 
     const currentUserId = parseInt(session.user.id, 10);
     const userRole = (session.user as any).role;
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "Manager", "HR"].includes(userRole);
+    const isStaffOrAdmin = await can(session, "users", "update");
     const doc = await prisma.userDocument.findUnique({
       where: { id: docId },
     });

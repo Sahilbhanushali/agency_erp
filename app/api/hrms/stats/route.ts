@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/api-auth";
+import { requireCan, requireSession } from "@/lib/api-auth";
 import { getHrmsDashboardStats } from "@/lib/hrms/hrms-service";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const auth = await requireSession();
+  const auth = await requireCan("hrms", "read");
   if (!auth.ok) return auth.response;
 
   try {

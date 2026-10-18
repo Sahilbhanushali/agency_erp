@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { notifyTaskAssignees, taskSelect, validateTaskLinks } from "@/lib/tasks"
 import { TASK_PRIORITIES, TASK_STATUSES, taskSchema } from "@/lib/validation/task"
@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic"
  * Only View-tasks is required: anyone who can open the module can read the board.
  */
 export async function GET(request: NextRequest) {
-  const auth = await requirePermission("View-tasks")
+  const auth = await requireCan("tasks", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requirePermission("Manage-tasks")
+  const auth = await requireCan("tasks", "create")
   if (!auth.ok) return auth.response
 
   try {

@@ -561,15 +561,31 @@ model Role {
   @@map("roles")
 }
 
+/// A single grantable capability. `name` stays the stable key that RolePermission
+/// points at, so adding module/action below changed no existing assignment.
+///
+/// Canonical names are `module:action` (e.g. "quotations:update"). Legacy names
+/// (`View-X` / `Manage-X` / `Approve-X`) remain as rows so pre-migration grants keep
+/// working; lib/permissions/catalog.ts maps between the two.
 model Permission {
   id          Int      @id @default(autoincrement())
   name        String   @unique
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+
+  /// Module key from the catalog, e.g. "quotations". Null on legacy rows.
+  module String?
+  /// Action within the module, e.g. "update". Null on legacy rows.
+  action String?
+  /// Column heading in the permission matrix, e.g. "Update".
+  label String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   rolePermissions RolePermission[]
 
+  @@unique([module, action])
+  @@index([module])
   @@map("permissions")
 }
 

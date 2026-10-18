@@ -1,16 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession, hasPermission } from "@/lib/api-auth";
+import { hasPermission, requireCan, requireSession } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const auth = await requireSession();
+  const auth = await requireCan("hrms", "read");
   if (!auth.ok) return auth.response;
 
   const userRole = (auth.session.user as any)?.role || "";
   const canAccess =
-    ["ADMIN", "HR", "MANAGER"].includes(userRole) ||
     (await hasPermission(auth.session, "View-hrms")) ||
     (await hasPermission(auth.session, "Manage-hrms"));
   if (!canAccess) {
@@ -74,12 +73,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireSession();
+  const auth = await requireCan("hrms", "create");
   if (!auth.ok) return auth.response;
 
   const userRole = (auth.session.user as any)?.role || "";
   const canManage =
-    ["ADMIN", "HR", "MANAGER"].includes(userRole) ||
     (await hasPermission(auth.session, "Manage-hrms"));
   if (!canManage) {
     return NextResponse.json(

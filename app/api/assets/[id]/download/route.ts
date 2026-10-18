@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireCan } from "@/lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
@@ -11,10 +12,9 @@ export async function GET(
 ) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("assets", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     // Await params to get the id
     const { id } = await params;

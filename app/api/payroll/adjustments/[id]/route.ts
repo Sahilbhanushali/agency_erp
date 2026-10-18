@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PayrollService } from "@/lib/payroll/payroll-service";
+import { requireCan } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +12,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("payroll", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { id } = await params;
     const adjustment = await prisma.salaryAdjustment.findUnique({
       where: { id },
@@ -40,15 +39,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const { id } = await params;
     const existing = await prisma.salaryAdjustment.findUnique({ where: { id } });
@@ -99,15 +92,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "delete");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const { id } = await params;
     const existing = await prisma.salaryAdjustment.findUnique({ where: { id } });

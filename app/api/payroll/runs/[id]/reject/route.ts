@@ -2,21 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
+import { requireCan } from "@/lib/api-auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE", "MANAGER"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: Approver permissions required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "approve");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const { id } = await params;
     const body = await request.json();

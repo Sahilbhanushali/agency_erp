@@ -10,15 +10,14 @@ import path from "path";
 
 
 import { PostStatus, Platform, PostType, ContentStatus } from '@prisma/client';
+import { requireCan } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
     // Authenticate user
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const auth = await requireCan("posts", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     // Parse form data
     const formData = await request.formData();
     const title = formData.get('title')?.toString();
@@ -457,11 +456,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { searchParams } = new URL(request.url);
     const assignedToMe = searchParams.get("assignedToMe") === "true";
     const status = searchParams.get("status");

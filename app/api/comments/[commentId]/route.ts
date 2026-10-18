@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { requireCan } from "@/lib/api-auth";
 
 // PATCH: Edit comment content
 export async function PATCH(
@@ -9,12 +10,9 @@ export async function PATCH(
   { params }: { params: Promise<{ commentId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
     const resolvedParams = await params
     const commentId = resolvedParams.commentId
     const { content } = await request.json()
@@ -74,12 +72,9 @@ export async function DELETE(
   { params }: { params: Promise<{ commentId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
     const resolvedParams = await params
     const commentId = resolvedParams.commentId
 

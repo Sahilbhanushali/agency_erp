@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermission, requireSession } from '@/lib/api-auth';
+import { requireCan, requirePermission, requireSession } from "@/lib/api-auth";
 
 /**
  * GET /api/users/permissions — the CALLER's own permission names.
@@ -39,7 +39,7 @@ export async function GET() {
 
 // PATCH /api/users/permissions?id={userId}
 export async function PATCH(request: Request) {
-  const auth = await requirePermission('Manage-User');
+  const auth = await requireCan("roles", "update");
   if (!auth.ok) return auth.response;
 
   try {

@@ -3,23 +3,20 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PayrollService } from "@/lib/payroll/payroll-service";
-import { hasPermission } from "@/lib/api-auth";
+import { can, hasPermission, requireCan } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("salary", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { userId: userIdStr } = await params;
     const targetUserId = Number(userIdStr);
     const currentUserId = Number(session.user.id);
-    const userRole = (session.user as any).role || "";
-    const isPrivileged = ["ADMIN", "HR", "FINANCE"].includes(userRole) || (await hasPermission(session, "View-salary"));
+    const isPrivileged = (await can(session, "salary", "read"));
 
     // Permission check: employees can only see their own salary structure
     if (!isPrivileged && currentUserId !== targetUserId) {
@@ -44,13 +41,10 @@ export async function POST(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    const canEdit = ["ADMIN", "HR", "FINANCE"].includes(userRole) || (await hasPermission(session, "Manage-salary"));
+    const auth = await requireCan("salary", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
+    const canEdit = (await can(session, "salary", "update"));
     if (!canEdit) {
       return NextResponse.json({ error: "Forbidden: Only HR/Admin/Finance can edit salary" }, { status: 403 });
     }

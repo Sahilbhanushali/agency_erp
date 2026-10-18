@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth"; // Adjust path to your NextAuth config
 import CryptoJS from 'crypto-js';
+import { requireCan } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
@@ -24,10 +25,9 @@ export async function POST(request: Request) {
   
     try {
 
-     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireCan("posts", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
       // Fetch assigned user's email and name
       const assignedUser = await prisma.user.findUnique({
         where: { id: parseInt(assignedToId) },

@@ -6,6 +6,7 @@ import nodemailer from "nodemailer"
 import fs from "fs/promises"
 import path from "path"
 import CryptoJS from "crypto-js"
+import { requireCan } from "@/lib/api-auth";
 
 // Load the comment email template
 const commentEmailTemplatePath = path.join(
@@ -50,12 +51,9 @@ async function loadCommentEmailTemplate() {
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { content } = await request.json()
     const postId = params.id
 
@@ -300,12 +298,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const comments = await prisma.comment.findMany({
       where: { postId: params.id },
       include: { user: true },

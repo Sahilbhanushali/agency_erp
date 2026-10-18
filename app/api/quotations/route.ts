@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { computeTotals } from "@/lib/finance"
 import { nextDocumentNumber, withNumberRetry } from "@/lib/document-number"
@@ -33,7 +33,7 @@ const listSelect = {
  * or `?search=` (number or title). Paged with `?page=` and `?limit=` (max 100).
  */
 export async function GET(request: NextRequest) {
-  const auth = await requirePermission("View-quotations")
+  const auth = await requireCan("quotations", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requirePermission("Manage-quotations")
+  const auth = await requireCan("quotations", "create")
   if (!auth.ok) return auth.response
 
   try {

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logAuditAction } from "@/lib/audit"
-import { hasPermission } from "@/lib/api-auth"
+import { can, hasPermission, requireCan } from "@/lib/api-auth"
 import { sendOnboardingInviteEmail } from "@/lib/email"
 import bcrypt from "bcryptjs"
 import crypto from "crypto"
@@ -12,10 +12,9 @@ export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const auth = await requireCan("users", "read")
+    if (!auth.ok) return auth.response
+    const session = auth.session
 
     // Extract role(s) from query params
     const { searchParams } = new URL(request.url)
@@ -68,15 +67,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const canManageUsers = session?.user && (
-      ["ADMIN", "MANAGER", "Manager"].includes((session.user as any).role) ||
-      await hasPermission(session, "Manage-User")
-    )
-
-    if (!canManageUsers) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const auth = await requireCan("users", "create")
+    if (!auth.ok) return auth.response
+    const session = auth.session
 
     const body = await request.json()
     const { name, email, role, password, sendInvite = true } = body

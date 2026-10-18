@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PayrollService, maskPan, maskBankAccount } from "@/lib/payroll/payroll-service";
-import { hasPermission } from "@/lib/api-auth";
+import { can, hasPermission, requireCan } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
@@ -17,8 +17,7 @@ export async function GET(
 
     const { id } = await params;
     const currentUserId = Number(session.user.id);
-    const userRole = (session.user as any).role || "";
-    const isPrivileged = ["ADMIN", "HR", "FINANCE"].includes(userRole) || (await hasPermission(session, "View-payroll"));
+    const isPrivileged = (await can(session, "payroll", "read"));
 
     const payslip = await prisma.payslip.findUnique({
       where: { id },
@@ -86,15 +85,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const { id } = await params;
     const body = await request.json();

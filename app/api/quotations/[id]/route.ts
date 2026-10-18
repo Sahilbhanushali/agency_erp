@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import {
   QUOTATION_TRANSITIONS,
@@ -13,7 +13,7 @@ import { quotationUpdateSchema } from "@/lib/validation/quotation"
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("View-quotations")
+  const auth = await requireCan("quotations", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-quotations")
+  const auth = await requireCan("quotations", "update")
   if (!auth.ok) return auth.response
 
   try {
@@ -184,7 +184,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-quotations")
+  const auth = await requireCan("quotations", "delete")
   if (!auth.ok) return auth.response
 
   try {

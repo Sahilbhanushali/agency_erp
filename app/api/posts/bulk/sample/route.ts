@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import ExcelJS from 'exceljs';
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/api-auth";
+import { requireCan, requireSession } from "@/lib/api-auth";
 
 export async function GET() {
-  const auth = await requireSession();
+  const auth = await requireCan("posts", "read");
   if (!auth.ok) return auth.response;
 
   try {

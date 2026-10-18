@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit"
 import fs from "fs/promises"
 import path from "path"
 import { deleteLocalFile } from "@/lib/storage"
+import { requireCan } from "@/lib/api-auth";
 
 // Interface for postTypes JSON object
 interface PostTypeCount {
@@ -49,12 +50,9 @@ function generateStrategiesData(
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    
+    const auth = await requireCan("projects", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     // Await params before using (Next.js 15+ requirement)
     const { id } = await params
     
@@ -116,12 +114,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("projects", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     // if (!["ADMIN", "Manager"].includes(session.user.role)) {
     //   return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     // }
@@ -297,12 +292,9 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("projects", "delete");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { id } = await params;
 
     const project = await prisma.project.findUnique({

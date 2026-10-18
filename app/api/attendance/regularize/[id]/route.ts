@@ -3,21 +3,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AttendanceService } from "@/lib/payroll/attendance-service";
+import { requireCan } from "@/lib/api-auth";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "MANAGER", "HR"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR or Admin access required" }, { status: 403 });
-    }
+    const auth = await requireCan("attendance", "approve");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const { id } = await params;
     const body = await request.json();

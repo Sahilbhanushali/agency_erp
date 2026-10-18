@@ -2,14 +2,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireCan } from "@/lib/api-auth";
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("projects", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     // Fetch user permissions
     const user = await prisma.user.findUnique({
       where: { id: parseInt(session.user.id) },

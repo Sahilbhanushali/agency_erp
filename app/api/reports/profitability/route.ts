@@ -2,16 +2,24 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { can, requireCan } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("reports", "read");
+    if (!auth.ok) return auth.response;
 
+    // This report aggregates invoice totals and expense figures, so seeing it means
+    // seeing the money. Reports access alone is not enough.
+    if (!(await can(auth.session, "invoices", "read"))) {
+      return NextResponse.json(
+        { error: "Forbidden: this report exposes invoice and expense figures" },
+        { status: 403 },
+      );
+    }
+    const session = auth.session as any;
     // Load all approved/reimbursed expenses
     const expenses = await prisma.expense.findMany({
       where: {

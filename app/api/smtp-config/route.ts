@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
 import nodemailer from 'nodemailer';
 import CryptoJS from 'crypto-js';
+import { requireCan } from "@/lib/api-auth";
+import { decryptSmtpPassword } from "@/lib/smtp";
 
 const prisma = new PrismaClient();
 
@@ -15,23 +17,19 @@ function encryptPassword(password: string): string {
   return CryptoJS.AES.encrypt(password, ENCRYPTION_KEY).toString();
 }
 
-// Decrypt password using crypto-js
+// Stored SMTP passwords exist in two encryption formats across this database's
+// history. decryptSmtpPassword understands both and falls back to plaintext, so a row
+// written by lib/encryption.ts no longer throws "Malformed UTF-8 data" here.
 function decryptPassword(encryptedPassword: string): string {
-  const bytes = CryptoJS.AES.decrypt(encryptedPassword, ENCRYPTION_KEY);
-  return bytes.toString(CryptoJS.enc.Utf8);
+  return decryptSmtpPassword(encryptedPassword);
 }
 
 // GET - Fetch all SMTP configurations for the authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!['ADMIN', 'MANAGER', 'Manager'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden: ADMIN access required' }, { status: 403 });
-    }
+    const auth = await requireCan("settings", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
 
     const smtpConfigs = await prisma.smtpDetails.findMany({
       select: {
@@ -83,14 +81,9 @@ export async function GET(request: NextRequest) {
 // POST - Create a new SMTP configuration
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!['ADMIN', 'MANAGER', 'Manager'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden: ADMIN access required' }, { status: 403 });
-    }
+    const auth = await requireCan("settings", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
 
     const body = await request.json();
     const { host, port, username, password, encryption, userId } = body;
@@ -188,11 +181,9 @@ export async function POST(request: NextRequest) {
 // PUT - Update an existing SMTP configuration or test connection
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("settings", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
     if (!['ADMIN', 'MANAGER', 'Manager'].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden: ADMIN access required" }, { status: 403 });
     }
@@ -359,9 +350,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!['ADMIN', 'MANAGER', 'Manager'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden: ADMIN access required' }, { status: 403 });
-    }
 
     const userId = parseInt(session.user.id);
     const { searchParams } = new URL(request.url);

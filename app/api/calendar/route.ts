@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { PostPlatform } from "@prisma/client";
+import { requireCan } from "@/lib/api-auth";
 
 // Define types for clarity and type safety
 interface User {
@@ -34,12 +35,9 @@ interface Project {
 }
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session || !session.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+    const auth = await requireCan("calendar", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
   // Log session data for debugging
   console.log("Session user:", {
     id: session.user.id,

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession, hasPermission } from "@/lib/api-auth";
+import { hasPermission, requireCan, requireSession } from "@/lib/api-auth";
 import { convertCandidateToEmployee } from "@/lib/hrms/hrms-service";
 
 export const dynamic = "force-dynamic";
@@ -9,12 +9,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireSession();
+  const auth = await requireCan("users", "create");
   if (!auth.ok) return auth.response;
 
-  const userRole = (auth.session.user as any)?.role || "";
   const canConvert =
-    ["ADMIN", "HR"].includes(userRole) ||
     (await hasPermission(auth.session, "Manage-onboarding")) ||
     (await hasPermission(auth.session, "Manage-User"));
   if (!canConvert) {

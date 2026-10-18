@@ -1,13 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/api-auth";
+import { requireCan } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
 import { contractSchema } from "@/lib/validation/contract";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const auth = await requirePermission("View-clients");
+  const auth = await requireCan("contracts", "read");
   if (!auth.ok) return auth.response;
 
   try {
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requirePermission("Manage-clients");
+  const auth = await requireCan("contracts", "create");
   if (!auth.ok) return auth.response;
 
   try {

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/api-auth";
+import { requireCan } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
 import { contractUpdateSchema } from "@/lib/validation/contract";
 import { deleteLocalFile } from "@/lib/storage";
@@ -11,7 +11,7 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requirePermission("View-clients");
+  const auth = await requireCan("contracts", "read");
   if (!auth.ok) return auth.response;
 
   try {
@@ -44,7 +44,7 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requirePermission("Manage-clients");
+  const auth = await requireCan("contracts", "update");
   if (!auth.ok) return auth.response;
 
   try {
@@ -121,7 +121,7 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requirePermission("Manage-clients");
+  const auth = await requireCan("contracts", "delete");
   if (!auth.ok) return auth.response;
 
   try {

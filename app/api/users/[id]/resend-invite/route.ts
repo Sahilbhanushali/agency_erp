@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAuditAction } from "@/lib/audit";
-import { hasPermission } from "@/lib/api-auth";
+import { can, hasPermission } from "@/lib/api-auth";
 import { sendOnboardingInviteEmail } from "@/lib/email";
 import crypto from "crypto";
 
@@ -16,8 +16,7 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions);
     const canManageUsers = session?.user && (
-      ["ADMIN", "MANAGER", "Manager"].includes((session.user as any).role) ||
-      await hasPermission(session, "Manage-User")
+      await can(session, "users", "update")
     );
 
     if (!canManageUsers) {

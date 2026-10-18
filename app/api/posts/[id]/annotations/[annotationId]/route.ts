@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateAnnotationSchema } from "@/lib/validation/approval";
+import { requireCan } from "@/lib/api-auth";
 
 export async function PATCH(
   request: NextRequest,
@@ -11,7 +12,9 @@ export async function PATCH(
   try {
     const params = await context.params;
     const { id: postId, annotationId } = params;
-    const session = await getServerSession(authOptions);
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const body = await request.json();
     const parsed = updateAnnotationSchema.safeParse(body);

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createAnnotationSchema } from "@/lib/validation/approval";
+import { requireCan } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
@@ -56,7 +57,9 @@ export async function POST(
   try {
     const params = await context.params;
     const postId = params.id;
-    const session = await getServerSession(authOptions);
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const body = await request.json();
     const parsed = createAnnotationSchema.safeParse(body);

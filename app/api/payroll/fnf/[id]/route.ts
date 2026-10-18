@@ -2,26 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
-import { hasPermission } from "@/lib/api-auth";
+import { can, hasPermission, requireCan } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("payroll", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { id } = await params;
     const settlement = await PayrollService.getFnFSettlementById(id);
 
-    const userRole = (session.user as any).role || "";
     const isPrivileged =
-      ["ADMIN", "HR", "FINANCE"].includes(userRole) ||
-      (await hasPermission(session, "View-payroll")) ||
-      (await hasPermission(session, "Manage-fnf"));
+      (await can(session, "payroll", "read")) ||
+      (await can(session, "payroll", "update"));
 
     const currentUserId = Number(session.user.id);
     if (!isPrivileged && settlement.userId !== currentUserId) {
@@ -43,16 +39,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
+    const auth = await requireCan("payroll", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const canApprove =
-      ["ADMIN", "HR", "FINANCE"].includes(userRole) ||
       (await hasPermission(session, "Approve-payroll")) ||
-      (await hasPermission(session, "Manage-fnf"));
+      (await can(session, "payroll", "update"));
 
     if (!canApprove) {
       return NextResponse.json(

@@ -62,34 +62,45 @@ type NavigationItem = {
   name: string
   href: string
   icon: any
+  /**
+   * Catalog module this entry governs. Visibility follows `module:read`, which is the
+   * same permission the page and its API check — so the sidebar cannot disagree with
+   * what the user can actually open.
+   */
+  module?: string
+  /** @deprecated Legacy flat names; kept so an unmigrated entry still resolves. */
   permissions?: string[]
+  /**
+   * @deprecated Role-name gating. Replaced by `module`, because a role name is not
+   * proof of authorization — two installs can give the same role different permissions.
+   */
   allowedRoles?: string[]
   subItems?: { name: string; href: string; icon: any }[]
 }
 
 const navigation: NavigationItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "My Tasks", href: "/dashboard/tasks", icon: CheckCircle, permissions: ["View-tasks"] },
-  { name: "Projects", href: "/dashboard/projects", icon: FolderOpen, permissions: ["Manage-projects", "View-project"] },
-  { name: "Project Summary", href: "/dashboard/project-summary", icon: FileText, permissions: ["Manage-projects", "View-project"] },
-  { name: "Calendar", href: "/dashboard/calendar", icon: Calendar, permissions: ["View-calender"] },
-  { name: "Pending Approvals", href: "/dashboard/approvals", icon: FileClock, permissions: ["Manage-approvals"] },
-  { name: "Assets", href: "/dashboard/assets", icon: ImageIcon, permissions: ["View-assets"] },
-  { name: "Reports", href: "/dashboard/reports", icon: BarChart3, permissions: ["View-reports"] },
-  { name: "Leads Pipeline", href: "/dashboard/leads", icon: Target, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
-  { name: "Clients", href: "/dashboard/clients", icon: Users, permissions: ["Manage-clients", "View-clients"] },
-  { name: "Contracts & SOW", href: "/dashboard/contracts", icon: FileSignature, permissions: ["Manage-clients", "View-clients"] },
-  { name: "Expenses & Margins", href: "/dashboard/expenses", icon: Receipt, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
-  { name: "Companies", href: "/dashboard/companies", icon: Building2, permissions: ["Manage-companies", "View-companies"] },
-  { name: "Quotations", href: "/dashboard/quotations", icon: FileText, permissions: ["Manage-quotations", "View-quotations"] },
-  { name: "Invoices", href: "/dashboard/invoices", icon: Receipt, permissions: ["Manage-invoices", "View-invoices"] },
-  { name: "User Management", href: "/dashboard/users", icon: UserCog, permissions: ["Manage-User"], allowedRoles: ["ADMIN", "MANAGER"] },
-  { name: "Recruitment & HRMS", href: "/dashboard/hrms", icon: Briefcase, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
-  { name: "Attendance & Leaves", href: "/dashboard/attendance", icon: CalendarClock },
-  { name: "Payroll", href: "/dashboard/payroll", icon: Banknote },
-  { name: "Utilities", href: "/dashboard/utilities", icon: UtilityPole, permissions: ["View-utilities"] },
-  { name: "Credentials", href: "/dashboard/credentials", icon: Key, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings, permissions: ["Manage-settings"] },
+  { name: "Dashboard", href: "/dashboard", module: "dashboard", icon: LayoutDashboard },
+  { name: "My Tasks", href: "/dashboard/tasks", module: "tasks", icon: CheckCircle, permissions: ["View-tasks"] },
+  { name: "Projects", href: "/dashboard/projects", module: "projects", icon: FolderOpen, permissions: ["Manage-projects", "View-project"] },
+  { name: "Project Summary", href: "/dashboard/project-summary", module: "projects", icon: FileText, permissions: ["Manage-projects", "View-project"] },
+  { name: "Calendar", href: "/dashboard/calendar", module: "calendar", icon: Calendar, permissions: ["View-calender"] },
+  { name: "Pending Approvals", href: "/dashboard/approvals", module: "approvals", icon: FileClock, permissions: ["Manage-approvals"] },
+  { name: "Assets", href: "/dashboard/assets", module: "assets", icon: ImageIcon, permissions: ["View-assets"] },
+  { name: "Reports", href: "/dashboard/reports", module: "reports", icon: BarChart3, permissions: ["View-reports"] },
+  { name: "Leads Pipeline", href: "/dashboard/leads", module: "leads", icon: Target, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
+  { name: "Clients", href: "/dashboard/clients", module: "clients", icon: Users, permissions: ["Manage-clients", "View-clients"] },
+  { name: "Contracts & SOW", href: "/dashboard/contracts", module: "contracts", icon: FileSignature, permissions: ["Manage-clients", "View-clients"] },
+  { name: "Expenses & Margins", href: "/dashboard/expenses", module: "expenses", icon: Receipt, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
+  { name: "Companies", href: "/dashboard/companies", module: "companies", icon: Building2, permissions: ["Manage-companies", "View-companies"] },
+  { name: "Quotations", href: "/dashboard/quotations", module: "quotations", icon: FileText, permissions: ["Manage-quotations", "View-quotations"] },
+  { name: "Invoices", href: "/dashboard/invoices", module: "invoices", icon: Receipt, permissions: ["Manage-invoices", "View-invoices"] },
+  { name: "User Management", href: "/dashboard/users", module: "users", icon: UserCog, permissions: ["Manage-User"], allowedRoles: ["ADMIN", "MANAGER"] },
+  { name: "Recruitment & HRMS", href: "/dashboard/hrms", module: "hrms", icon: Briefcase, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
+  { name: "Attendance & Leaves", href: "/dashboard/attendance", module: "attendance", icon: CalendarClock },
+  { name: "Payroll", href: "/dashboard/payroll", module: "payroll", icon: Banknote },
+  { name: "Utilities", href: "/dashboard/utilities", module: "utilities", icon: UtilityPole, permissions: ["View-utilities"] },
+  { name: "Credentials", href: "/dashboard/credentials", module: "credentials", icon: Key, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
+  { name: "Settings", href: "/dashboard/settings", module: "settings", icon: Settings, permissions: ["Manage-settings"] },
 ]
 
 const navigationGroups = [
@@ -105,6 +116,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [userPermissions, setUserPermissions] = useState<string[]>([])
+  const [accessibleModules, setAccessibleModules] = useState<string[]>([])
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [cmdOpen, setCmdOpen] = useState(false)
@@ -116,15 +128,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (session?.user?.id) {
       const fetchPermissions = async () => {
         try {
-          const response = await fetch(`/api/users/permissions?id=${session.user.id}`, {
-            headers: { "Content-Type": "application/json" },
-          })
-          if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-          const data = await response.json()
-          setUserPermissions(data.permissions || [])
+          // Session-scoped: takes no user id, so there is nothing to tamper with.
+          // Returns both the legacy flat names and the effective module:action set.
+          const [legacyRes, effectiveRes] = await Promise.all([
+            fetch("/api/users/permissions", { headers: { "Content-Type": "application/json" } }),
+            fetch("/api/me/permissions", { headers: { "Content-Type": "application/json" } }),
+          ])
+          if (!legacyRes.ok) throw new Error(`HTTP ${legacyRes.status}: ${legacyRes.statusText}`)
+          const legacy = await legacyRes.json()
+          setUserPermissions(legacy.permissions || [])
+
+          if (effectiveRes.ok) {
+            const effective = await effectiveRes.json()
+            setAccessibleModules(effective.modules || [])
+          }
         } catch (error) {
           console.error("Fetch permissions error:", error)
           setUserPermissions([])
+          setAccessibleModules([])
         } finally {
           setIsPermissionsLoading(false)
         }
@@ -180,13 +201,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     )
   }
 
+  // Navigation is built from effective permissions. `module:read` is the same
+  // permission the page and its API enforce, so a visible link always leads somewhere
+  // the user can actually open — and a hidden one is never the only protection.
   const filteredNavigation = navigation.filter((item) => {
-    if (item.allowedRoles) {
-      const userRole = (session.user as any)?.role?.toUpperCase()
-      if (!userRole || !item.allowedRoles.includes(userRole)) return false
+    if (item.module) return accessibleModules.includes(item.module)
+    // Entries not yet mapped to a module fall back to the legacy names.
+    if (item.permissions?.length) {
+      return item.permissions.some((permission) => userPermissions.includes(permission))
     }
-    if (!item.permissions?.length) return true
-    return item.permissions.some((permission) => userPermissions.includes(permission))
+    return true
   })
 
   const userInitial = session.user.name?.charAt(0).toUpperCase() || "U"

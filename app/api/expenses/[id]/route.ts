@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireCan } from "@/lib/api-auth";
 import { updateExpenseSchema } from "@/lib/validation/expense";
 import { deleteLocalFile } from "@/lib/storage";
 import { ExpenseCategory, ExpenseStatus, PaymentMethod } from "@prisma/client";
@@ -11,10 +12,9 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("expenses", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const params = await context.params;
     const expense = await prisma.expense.findUnique({
@@ -46,10 +46,9 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("expenses", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const params = await context.params;
     const existing = await prisma.expense.findUnique({
@@ -137,10 +136,9 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("expenses", "delete");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const params = await context.params;
     const existing = await prisma.expense.findUnique({

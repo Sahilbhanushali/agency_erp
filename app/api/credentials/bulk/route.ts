@@ -3,15 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
+import { requireCan } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("credentials", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
     const data = await request.json();
 
     if (!Array.isArray(data)) {

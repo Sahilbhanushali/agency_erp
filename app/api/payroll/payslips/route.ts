@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { can } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,8 +18,10 @@ export async function GET(request: NextRequest) {
     const runIdParam = searchParams.get("runId");
 
     const currentUserId = Number(session.user.id);
-    const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR", "FINANCE"].includes(userRole);
+    // Permission-driven, not role-name driven: "HR" and "FINANCE" are not roles
+    // in this install, so the old list silently denied anyone outside
+    // ADMIN/MANAGER. Employees without payroll:read still see their own rows.
+    const isStaffOrAdmin = await can(session, "payroll", "read");
 
     const where: any = {};
 

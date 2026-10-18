@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApprovalStageType, ApprovalStepStatus } from "@prisma/client";
+import { requireCan } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
@@ -109,7 +110,9 @@ export async function POST(
   try {
     const params = await context.params;
     const postId = params.id;
-    const session = await getServerSession(authOptions);
+    const auth = await requireCan("posts", "approve");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     // Reset or re-create chain for resubmission
     const existing = await prisma.approvalChain.findFirst({

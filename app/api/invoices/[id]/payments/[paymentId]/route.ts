@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { paymentSummary } from "@/lib/finance"
 
@@ -14,7 +14,7 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string; paymentId: string }> },
 ) {
-  const auth = await requirePermission("Manage-invoices")
+  const auth = await requireCan("invoices", "delete")
   if (!auth.ok) return auth.response
 
   try {

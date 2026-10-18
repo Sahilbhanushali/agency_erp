@@ -4,16 +4,15 @@ import { PrismaClient } from '@prisma/client';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import CryptoJS from 'crypto-js';
+import { requireCan } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const auth = await requireCan("projects", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
     const { projectId, assignedUserId } = await request.json();
 
     console.log('📧 Email API received:', { projectId, assignedUserId, projectIdType: typeof projectId });

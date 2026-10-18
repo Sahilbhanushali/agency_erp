@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { taskReorderSchema } from "@/lib/validation/task"
 
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic"
  * All in a transaction: a half-applied reorder would leave the board scrambled.
  */
 export async function PATCH(request: NextRequest) {
-  const auth = await requirePermission("Manage-tasks")
+  const auth = await requireCan("tasks", "update")
   if (!auth.ok) return auth.response
 
   try {

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AttendanceStatus, AttendanceSource } from "@prisma/client";
+import { can } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +20,10 @@ export async function GET(request: NextRequest) {
     const statusParam = searchParams.get("status");
 
     const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR"].includes(userRole);
+    // Permission-driven scoping. "HR" was never a role in this database, so the
+    // old list silently limited this to ADMIN/MANAGER. Employees without
+    // attendance:read still see their own rows, which is the point of the endpoint.
+    const isStaffOrAdmin = await can(session, "attendance", "read");
     const currentUserId = Number(session.user.id);
 
     const where: any = {};
@@ -77,7 +81,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const currentUserId = Number(session.user.id);
     const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR"].includes(userRole);
+    // Permission-driven scoping. "HR" was never a role in this database, so the
+    // old list silently limited this to ADMIN/MANAGER. Employees without
+    // attendance:read still see their own rows, which is the point of the endpoint.
+    const isStaffOrAdmin = await can(session, "attendance", "read");
 
     const targetUserId = isStaffOrAdmin && body.userId ? Number(body.userId) : currentUserId;
     const dateStr = body.date || new Date().toISOString().split("T")[0];

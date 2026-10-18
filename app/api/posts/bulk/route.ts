@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import * as XLSX from 'xlsx';
+import { requireCan } from "@/lib/api-auth";
 
 type PostType = 'PHOTO' | 'REEL' | 'STORY' | 'CAROUSEL' | 'CUSTOM' | 'UNKNOWN';
 type PostStatus = 'DRAFT' | 'POSTED';
@@ -42,10 +43,9 @@ function getSimilarity(a: string, b: string): number {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireCan("posts", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     // Uncomment when you want role-check again
     // if (!['ADMIN', 'Manager'].includes(session.user.role)) {
     //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

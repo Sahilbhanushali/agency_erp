@@ -3,14 +3,13 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { can, requireCan } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions) as any;
-
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireCan("projects", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
 
     const userId = Number(session.user.id);
   
@@ -18,8 +17,8 @@ export async function GET(request: Request) {
       where: { id: userId },
       include: { role: { select: { name: true } } },
     });
-    const userRole = dbUser?.role?.name || '';
-    const isAdminOrManager = ['ADMIN', 'Manager', 'Social Media Manager'].includes(userRole);
+    // Permission-driven: role names varied by spelling across installs.
+    const isAdminOrManager = await can(session, "projects", "read");
 
     const url = new URL(request.url);
     const filter = url.searchParams.get('filter') || 'all';

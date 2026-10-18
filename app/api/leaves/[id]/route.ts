@@ -3,22 +3,23 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeaveService } from "@/lib/payroll/leave-service";
+import { can, requireCan } from "@/lib/api-auth";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("leaves", "approve");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { id } = await params;
     const body = await request.json();
     const currentUserId = Number(session.user.id);
     const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR"].includes(userRole);
+    // Employees may still act on their own leave; this only decides whether they
+    // may act on anyone else’s.
+    const isStaffOrAdmin = await can(session, "leaves", "approve");
 
     const leave = await prisma.leaveRequest.findUnique({
       where: { id },
@@ -29,7 +30,7 @@ export async function PATCH(
 
     if (body.status === "CANCELLED") {
       // Applicant can cancel their own leave, or HR/Admin can cancel
-      if (leave.userId !== currentUserId && !["ADMIN", "HR"].includes(userRole)) {
+      if (leave.userId !== currentUserId && !(await can(session, "leaves", "approve"))) {
         return NextResponse.json(
           { error: "Forbidden: You can only cancel your own leave request" },
           { status: 403 }
@@ -82,11 +83,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("leaves", "delete");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { id } = await params;
     const currentUserId = Number(session.user.id);
     const userRole = (session.user as any).role || "";
@@ -96,7 +95,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Leave request not found" }, { status: 404 });
     }
 
-    if (leave.userId !== currentUserId && !["ADMIN", "HR"].includes(userRole)) {
+    if (leave.userId !== currentUserId && !(await can(session, "leaves", "approve"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

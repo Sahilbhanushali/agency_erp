@@ -8,6 +8,7 @@ import path from "path";
 import { z } from "zod";
 import nodemailer from "nodemailer";
 import CryptoJS from "crypto-js"; // Import crypto-js
+import { requireCan } from "@/lib/api-auth";
 
 // Load email templates
 const rejectionEmailTemplatePath = path.join(process.cwd(), "public/templates", "rejection-email-template.html");
@@ -80,11 +81,9 @@ function determineWorkflowStage(designStatus: PostStatus, contentStatus: Content
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("assets", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const formData = await request.formData();
     const files = formData.getAll("files") as File[];
     const feedback = formData.get("feedback") as string | null;

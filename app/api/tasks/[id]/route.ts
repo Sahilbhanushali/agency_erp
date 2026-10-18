@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { hasPermission, requirePermission, requireSession } from "@/lib/api-auth"
+import { hasPermission, requireCan, requireSession } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { notifyTaskAssignees, taskSelect, validateTaskLinks } from "@/lib/tasks"
 import { taskSelfUpdateSchema, taskUpdateSchema } from "@/lib/validation/task"
@@ -8,7 +8,7 @@ import { taskSelfUpdateSchema, taskUpdateSchema } from "@/lib/validation/task"
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("View-tasks")
+  const auth = await requireCan("tasks", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -122,7 +122,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-tasks")
+  const auth = await requireCan("tasks", "delete")
   if (!auth.ok) return auth.response
 
   try {

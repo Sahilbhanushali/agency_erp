@@ -5,16 +5,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { promises as fs } from "fs";
 import path from "path";
+import { requireCan } from "@/lib/api-auth";
 
 export async function POST(
   request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("assets", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const body = await request.json();
     const { imageData, originalAssetId, filename } = body;
 

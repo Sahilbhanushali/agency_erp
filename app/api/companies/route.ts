@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { companySchema } from "@/lib/validation/company"
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic"
 
 /** List billing companies, newest first. `?search=` matches name, legal name or GST. */
 export async function GET(request: NextRequest) {
-  const auth = await requirePermission("View-companies")
+  const auth = await requireCan("companies", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requirePermission("Manage-companies")
+  const auth = await requireCan("companies", "create")
   if (!auth.ok) return auth.response
 
   try {

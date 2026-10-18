@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { generateSecureToken, getConfirmBaseUrl } from "@/lib/export-link"
 
@@ -16,7 +16,7 @@ const shareUrlFor = (token: string, origin: string | null) =>
 
 /** Issue a client link, or rotate the existing one. `?days=` sets the lifetime (1–365). */
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-quotations")
+  const auth = await requireCan("quotations", "create")
   if (!auth.ok) return auth.response
 
   try {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 
 /** Revoke the link. The old token stops working immediately. */
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-quotations")
+  const auth = await requireCan("quotations", "delete")
   if (!auth.ok) return auth.response
 
   try {

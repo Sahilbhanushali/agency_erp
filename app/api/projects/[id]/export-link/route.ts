@@ -15,6 +15,7 @@ import {
 } from "@/lib/export-link"
 import { sendConfirmationLinkEmail } from "@/lib/customer-email"
 import { logAudit } from "@/lib/audit"
+import { requireCan } from "@/lib/api-auth";
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -22,11 +23,9 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("projects", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { id: projectId } = await params
     const { searchParams } = new URL(request.url)
     const month = searchParams.get("month") ? parseInt(searchParams.get("month")!, 10) : undefined
@@ -114,11 +113,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("projects", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { id: projectId } = await params
     const body = await request.json().catch(() => ({}))
     const {
@@ -610,11 +607,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("projects", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { id: projectId } = await params
     const { searchParams } = new URL(request.url)
     const linkId = searchParams.get("linkId")

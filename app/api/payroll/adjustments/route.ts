@@ -5,18 +5,18 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("payroll", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month") ? Number(searchParams.get("month")) : undefined;
     const year = searchParams.get("year") ? Number(searchParams.get("year")) : undefined;
     const userIdParam = searchParams.get("userId") ? Number(searchParams.get("userId")) : undefined;
 
-    const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR", "FINANCE"].includes(userRole);
+    // Permission-driven, not role-name driven: "HR" and "FINANCE" are not roles
+    // in this install, so the old list silently denied anyone outside
+    // ADMIN/MANAGER. Employees without payroll:read still see their own rows.
+    const isStaffOrAdmin = await can(session, "payroll", "read");
     const currentUserId = Number(session.user.id);
 
     const where: any = {};
@@ -45,18 +45,13 @@ export async function GET(request: NextRequest) {
 }
 
 import { PayrollService } from "@/lib/payroll/payroll-service";
+import { can, requireCan } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const body = await request.json();
     if (!body.userId || !body.month || !body.year || !body.type || !body.title || !body.amount) {
@@ -101,15 +96,9 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const body = await request.json();
     const { id, title, type, amount, month, year, notes, isApproved } = body;
@@ -162,15 +151,9 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "delete");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const { searchParams } = new URL(request.url);
     let id = searchParams.get("id");

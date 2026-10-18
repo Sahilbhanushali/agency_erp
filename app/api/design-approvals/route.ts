@@ -2,13 +2,15 @@ import { PrismaClient } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth"; // Adjust path to your auth options
+import { requireCan } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   try {
-    // Get the session
-    const session = await getServerSession(authOptions);
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
 
     // Check if user is authenticated
     if (!session || !session.user?.id) {

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { encrypt } from "@/lib/encryption"
 import { credentialUpdateSchema } from "@/lib/validation/credential"
@@ -26,7 +26,7 @@ const select = {
 
 /** Everything except the password, which comes from the audited reveal endpoint. */
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("View-credentials")
+  const auth = await requireCan("credentials", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -50,7 +50,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 }
 
 async function update(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-credentials")
+  const auth = await requireCan("credentials", "update")
   if (!auth.ok) return auth.response
 
   try {
@@ -129,7 +129,7 @@ async function update(request: NextRequest, context: { params: Promise<{ id: str
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-credentials")
+  const auth = await requireCan("credentials", "delete")
   if (!auth.ok) return auth.response
 
   try {
