@@ -90,12 +90,11 @@ const fetcher = async (url: string) => {
 
 export default function EditProjectPage() {
   const { data: session, status } = useSession();
+  const { can, isLoading: permissionsLoading } = usePermissions();
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
   const [error, setError] = useState<string | null>(null);
-  const [permissions, setPermissions] = useState<string[]>([]);
-  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
   useBreadcrumbTitle(id, "Edit Project");
 
@@ -273,44 +272,22 @@ export default function EditProjectPage() {
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
-  console.log(permissions," User permissions loaded");
-
-// Updated fetchPermissions useEffect
   /**
    * Permissions come from `/api/me/permissions` via usePermissions().
-   *
-   * This page used to fetch `/api/users/role?id=...` and then
-   * `/api/role-permission/role/<roleName>`. Both are administrative endpoints — they
-   * require `users:update` and `roles:read` — so a role holding only this module's
-   * permission got 403 from them and the page rendered "Forbidden" despite being
-   * allowed in. They also returned legacy names like "Manage-projects", which a role
-   * created in the permission matrix never holds.
    */
+  useEffect(() => {
+    if (status === "loading" || permissionsLoading) {
+      return;
+    }
 
-
-// Updated auth check useEffect (with loaded guard + case-insensitive check)
-useEffect(() => {
-  // Only check if we've attempted to load permissions
-  if (!permissionsLoaded) {
-    return; // Skip until loaded
-  }
-
-  // Case-insensitive check: normalize to lowercase
-  const hasManageProjectsPerm = permissions.some(perm => 
-    perm.toLowerCase() === "manage-projects"
-  );
-
-  if (!hasManageProjectsPerm) {
-    console.log("Unauthorized permission. Loaded perms:", permissions);
-    toast.error("You do not have permission to edit projects");
-    router.push("/dashboard");
-  } else {
-    console.log("✅ Authorized: Manage-projects permission found");
-  }
-}, [status, session, router, permissions, permissionsLoaded]); //
+    if (!can("projects", "update")) {
+      toast.error("You do not have permission to edit projects");
+      router.push("/dashboard/projects");
+    }
+  }, [status, permissionsLoading, can, router]);
 
   // Show loading state
-  if (status === "loading" || projectLoading || clientsLoading || usersLoading) {
+  if (status === "loading" || permissionsLoading || projectLoading || clientsLoading || usersLoading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="space-y-2">

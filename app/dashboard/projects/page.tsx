@@ -117,8 +117,7 @@ const calculateTotalPosts = (postTypes: PostTypeCount | undefined): number => {
 
 export default function ProjectsPage() {
   const { data: session, status } = useSession();
-  const { can, role: userRole } = usePermissions();
-  const [loading, setLoading] = useState(true);
+  const { can, role: userRole, isLoading: permissionsLoading } = usePermissions();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -149,13 +148,13 @@ export default function ProjectsPage() {
   // Was a role-name check; projects:read is the agency-wide view.
   const isAdminOrManager = can("projects", "read");
 
-  const projectsUrl = session?.user?.id
+  const projectsUrl = session?.user?.id && !permissionsLoading
     ? `/api/projects?month=${monthFilter}&year=${yearFilter}${!isAdminOrManager ? `&userId=${session.user.id}` : ""}`
     : null;
   console.log("Projects URL:", projectsUrl);
 
   const { data: projects = [], error: projectsError, isLoading: projectsLoading } = useSWR<Project[]>(
-    status === "authenticated" && session?.user?.id ? projectsUrl : null,
+    status === "authenticated" && session?.user?.id && !permissionsLoading ? projectsUrl : null,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -278,7 +277,7 @@ export default function ProjectsPage() {
     return matchesSearch && matchesStatus && matchesClient;
   });
 
-  if (status === "loading" || loading || projectsLoading) {
+  if (status === "loading" || permissionsLoading || projectsLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-32 mb-2" />
