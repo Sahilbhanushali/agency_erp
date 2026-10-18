@@ -146,30 +146,47 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
 
-    let data: any = {
-      name,
-      email,
-      joiningDate: joiningDate ? new Date(joiningDate) : null,
-      designation: designation || null,
-      department: department || null,
-      currentSalary: currentSalary !== undefined && currentSalary !== null && currentSalary !== "" ? Number(currentSalary) : null,
-      salaryFrequency: salaryFrequency || "MONTHLY",
-      employmentType: employmentType || "FULL_TIME",
-      phone: phone || null,
-      personalEmail: personalEmail || null,
-      address: address || null,
-      panNumber: panNumber || null,
-      aadhaarNumber: aadhaarNumber || null,
-      bankName: bankName || null,
-      bankAccountNumber: bankAccountNumber || null,
-      bankIfsc: bankIfsc || null,
-      emergencyContactName: emergencyContactName || null,
-      emergencyContactPhone: emergencyContactPhone || null,
-      emergencyContactRelation: emergencyContactRelation || null,
-      offerLetterUrl: offerLetterUrl || null,
-      exitStatus: exitStatus || undefined,
-      exitDate: exitDate ? new Date(exitDate) : undefined,
+    /**
+     * Only fields the request actually sent are written.
+     *
+     * This used to build the full record unconditionally, defaulting every absent key
+     * to null. Two different forms post here: the HR profile, which sends everything,
+     * and the Users page edit dialog, which sends only name, email and role. Saving
+     * from the Users page therefore wiped the person's joining date, designation,
+     * department, salary, phone, address, PAN, Aadhaar, bank details and emergency
+     * contact — silently, with a "User updated successfully" toast.
+     */
+    const data: any = { name, email };
+    const present = (key: string) => Object.prototype.hasOwnProperty.call(body, key);
+    const setIfSent = (key: string, value: unknown) => {
+      if (present(key)) data[key] = value;
     };
+
+    setIfSent("joiningDate", joiningDate ? new Date(joiningDate) : null);
+    setIfSent("designation", designation || null);
+    setIfSent("department", department || null);
+    setIfSent(
+      "currentSalary",
+      currentSalary !== undefined && currentSalary !== null && currentSalary !== ""
+        ? Number(currentSalary)
+        : null,
+    );
+    setIfSent("salaryFrequency", salaryFrequency || "MONTHLY");
+    setIfSent("employmentType", employmentType || "FULL_TIME");
+    setIfSent("phone", phone || null);
+    setIfSent("personalEmail", personalEmail || null);
+    setIfSent("address", address || null);
+    setIfSent("panNumber", panNumber || null);
+    setIfSent("aadhaarNumber", aadhaarNumber || null);
+    setIfSent("bankName", bankName || null);
+    setIfSent("bankAccountNumber", bankAccountNumber || null);
+    setIfSent("bankIfsc", bankIfsc || null);
+    setIfSent("emergencyContactName", emergencyContactName || null);
+    setIfSent("emergencyContactPhone", emergencyContactPhone || null);
+    setIfSent("emergencyContactRelation", emergencyContactRelation || null);
+    setIfSent("offerLetterUrl", offerLetterUrl || null);
+    if (exitStatus) data.exitStatus = exitStatus;
+    if (exitDate) data.exitDate = new Date(exitDate);
 
     if (role) {
       const roleObj = await prisma.role.findUnique({ where: { name: role } });

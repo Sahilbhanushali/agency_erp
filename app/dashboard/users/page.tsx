@@ -22,7 +22,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Trash2, Edit, Plus, Search, AlertCircle, CheckCircle, Mail, RefreshCw, FileText, Clock, Send, Folder, Briefcase } from "lucide-react"
+import { Trash2, Edit, Plus, Search, AlertCircle, AlertTriangle, CheckCircle, Mail, RefreshCw, FileText, Clock, Send, Folder, Briefcase } from "lucide-react"
 import SmtpConfigForm from "@/components/SmtpConfigForm"
 import { toast } from "react-hot-toast"
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
@@ -533,6 +533,25 @@ const testSmtpConnection = async (config: SmtpConfig) => {
         </TabsList>
 
         <TabsContent value="users" className="space-y-3">
+          {/* Deleting a role unassigns everyone who held it, and an account with no role
+              cannot open anything. Surface the count rather than leaving it to be found
+              one empty sidebar at a time. */}
+          {users.filter((u) => !u.role).length > 0 && (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
+              <div className="space-y-0.5 text-xs">
+                <p className="font-medium text-amber-700 dark:text-amber-400">
+                  {users.filter((u) => !u.role).length} account
+                  {users.filter((u) => !u.role).length === 1 ? " has" : "s have"} no role
+                </p>
+                <p className="text-muted-foreground">
+                  They can sign in but nothing is available to them — the sidebar will be
+                  empty. Pick a role in the Role column for each.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
@@ -707,13 +726,21 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                         )}
                       </TableCell>
                       <TableCell>
+                        {/* A user with no role cannot use the app at all, and an empty
+                            dropdown did not say so. Deleting a role unassigns everyone
+                            who held it, which is how accounts end up in this state. */}
                         <Select
                           value={user.role || ""}
                           onValueChange={(value) => handleUpdateUserRole(user.id, value)}
                           disabled={roles.length === 0}
                         >
-                          <SelectTrigger className="h-8 w-28 text-xs bg-background">
-                            <SelectValue placeholder="Role" />
+                          <SelectTrigger
+                            className={`h-8 w-28 text-xs bg-background ${
+                              user.role ? "" : "border-amber-500/60 text-amber-700 dark:text-amber-400"
+                            }`}
+                            aria-label={`Role for ${user.name || user.email}`}
+                          >
+                            <SelectValue placeholder="No role" />
                           </SelectTrigger>
                           <SelectContent>
                             {roles.map((role) => (

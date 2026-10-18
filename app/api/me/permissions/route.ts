@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { effectivePermissions, requireSession } from "@/lib/api-auth"
+import { effectivePermissions, requireSession, roleOf } from "@/lib/api-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -19,7 +19,10 @@ export async function GET() {
 
   try {
     const session = await getServerSession(authOptions)
-    const permissions = await effectivePermissions(session)
+    const [permissions, { roleName }] = await Promise.all([
+      effectivePermissions(session),
+      roleOf(session),
+    ])
 
     const modules = Array.from(
       new Set(permissions.filter((p) => p.endsWith(":read")).map((p) => p.split(":")[0])),
@@ -29,7 +32,9 @@ export async function GET() {
       {
         permissions,
         modules,
-        role: (session?.user as { role?: string } | undefined)?.role ?? null,
+        // From the database, not the sign-in token: a role assigned after this person
+        // signed in has to be reported, and a deleted one has to stop being reported.
+        role: roleName,
       },
       // Permission-sensitive and per-user: never let a shared cache serve one user's
       // permissions to another.

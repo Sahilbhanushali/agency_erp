@@ -24,18 +24,41 @@ const unauthorized = () =>
 
 const forbidden = () => NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-/** Permission names granted to this user's role. */
-export async function permissionsFor(session: Session | null): Promise<string[]> {
+/**
+ * This user's role and its permissions, read from the database.
+ *
+ * Never from the session token. `role` is written into the JWT once, at sign-in, and
+ * never refreshed — so an administrator changing somebody's role does not reach their
+ * session until they sign out and back in. Trusting the token meant an account demoted
+ * out of ADMIN kept the superuser shortcut below for the life of its session, and an
+ * account whose role was deleted still claimed to hold it.
+ */
+export async function roleOf(
+  session: Session | null,
+): Promise<{ roleName: string | null; permissions: string[] }> {
   const id = Number(session?.user?.id)
-  if (!Number.isFinite(id)) return []
+  if (!Number.isFinite(id)) return { roleName: null, permissions: [] }
 
   const user = await prisma.user.findUnique({
     where: { id },
     select: {
-      role: { select: { permissions: { select: { permission: { select: { name: true } } } } } },
+      role: {
+        select: {
+          name: true,
+          permissions: { select: { permission: { select: { name: true } } } },
+        },
+      },
     },
   })
-  return user?.role?.permissions.map((rp) => rp.permission.name) ?? []
+  return {
+    roleName: user?.role?.name ?? null,
+    permissions: user?.role?.permissions.map((rp) => rp.permission.name) ?? [],
+  }
+}
+
+/** Permission names granted to this user's role. */
+export async function permissionsFor(session: Session | null): Promise<string[]> {
+  return (await roleOf(session)).permissions
 }
 
 /**
@@ -52,8 +75,9 @@ export async function hasPermission(
   permission: string,
 ): Promise<boolean> {
   if (!session?.user) return false
-  if ((session.user as { role?: string }).role === "ADMIN") return true
-  return (await permissionsFor(session)).includes(permission)
+  const { roleName, permissions } = await roleOf(session)
+  if (roleName === "ADMIN") return true
+  return permissions.includes(permission)
 }
 
 /** Signed in, nothing more. For reference data every staff screen needs. */
@@ -88,7 +112,6 @@ export async function can(
   action: Action | string,
 ): Promise<boolean> {
   if (!session?.user) return false
-  if ((session.user as { role?: string }).role === "ADMIN") return true
 
   const accepted = namesSatisfying(module, action)
   if (accepted.length === 0) {
@@ -98,8 +121,10 @@ export async function can(
     return false
   }
 
-  const held = await permissionsFor(session)
-  return accepted.some((name) => held.includes(name))
+  // Role resolved from the database, not the session token — see roleOf().
+  const { roleName, permissions } = await roleOf(session)
+  if (roleName === "ADMIN") return true
+  return accepted.some((name) => permissions.includes(name))
 }
 
 /**
@@ -128,8 +153,10 @@ export async function effectivePermissions(session: Session | null): Promise<str
   if (!session?.user) return []
 
   const { MODULES, permissionName } = await import("@/lib/permissions/catalog")
-  const isAdmin = (session.user as { role?: string }).role === "ADMIN"
-  const held = isAdmin ? null : new Set(await permissionsFor(session))
+  // From the database, so a role assigned a moment ago appears without signing out.
+  const { roleName, permissions } = await roleOf(session)
+  const isAdmin = roleName === "ADMIN"
+  const held = new Set(permissions)
 
   const granted: string[] = []
   for (const m of MODULES) {
@@ -139,7 +166,7 @@ export async function effectivePermissions(session: Session | null): Promise<str
         continue
       }
       const accepted = namesSatisfying(m.key, a.action)
-      if (accepted.some((name) => held!.has(name))) granted.push(permissionName(m.key, a.action))
+      if (accepted.some((name) => held.has(name))) granted.push(permissionName(m.key, a.action))
     }
   }
   return granted

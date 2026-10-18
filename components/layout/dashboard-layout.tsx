@@ -119,6 +119,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [userPermissions, setUserPermissions] = useState<string[]>([])
   const [accessibleModules, setAccessibleModules] = useState<string[]>([])
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true)
+  /** The role the server resolved from the database, or null when none is assigned. */
+  const [resolvedRole, setResolvedRole] = useState<string | null>(null)
+  const [permissionsFailed, setPermissionsFailed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [cmdOpen, setCmdOpen] = useState(false)
 
@@ -142,11 +145,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           if (effectiveRes.ok) {
             const effective = await effectiveRes.json()
             setAccessibleModules(effective.modules || [])
+            // The role is read from the database here, not the sign-in token, so a role
+            // assigned a moment ago is reflected without signing out again.
+            setResolvedRole(effective.role ?? null)
           }
+          setPermissionsFailed(false)
         } catch (error) {
+          // An empty sidebar used to be the only symptom of this, which is
+          // indistinguishable from "you have no permissions". Record the difference.
           console.error("Fetch permissions error:", error)
           setUserPermissions([])
           setAccessibleModules([])
+          setPermissionsFailed(true)
         } finally {
           setIsPermissionsLoading(false)
         }
@@ -364,6 +374,40 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </section>
             )
           })}
+
+          {/*
+            An account with no role has no permissions, so every module link is hidden
+            and the sidebar renders empty. That looked like a broken app rather than an
+            account waiting to be set up — which is exactly how it was reported. Say
+            which of the two it is.
+          */}
+          {filteredNavigation.length === 0 && (
+            <div className="mx-1 rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-xs font-medium text-foreground">
+                {permissionsFailed
+                  ? "Could not load your permissions"
+                  : resolvedRole
+                    ? "No modules enabled yet"
+                    : "No role assigned"}
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                {permissionsFailed ? (
+                  <>Reload the page. If it keeps happening, tell your administrator.</>
+                ) : resolvedRole ? (
+                  <>
+                    Your role (<span className="font-medium">{resolvedRole}</span>) has no
+                    modules enabled. An administrator grants these under Users &rarr;
+                    Roles &amp; Permissions.
+                  </>
+                ) : (
+                  <>
+                    Your account has no role, so nothing is available yet. An
+                    administrator needs to assign one under Users.
+                  </>
+                )}
+              </p>
+            </div>
+          )}
         </nav>
 
         {/* User Profile Footer */}
