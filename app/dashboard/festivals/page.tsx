@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,86 +72,37 @@ export default function FestivalsPage() {
     primaryType: "",
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { can, has, role: userRole, isLoading: isCheckingPermissions } = usePermissions();
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
-  const [permissions, setPermissions] = useState<string[]>([]);
 
 
-  // Fetch current user's role with SWR
-  const { data: userData, error: userError } = useSWR(
-    status === "authenticated" && session?.user?.id ? `/api/users/role?id=${session.user.id}` : null,
-    fetcher
-  );
+  // `/api/users/role` needs users:update, so asking it for your own role 403s for
+  // everyone else. usePermissions() is session-scoped and needs nothing but a session.
 
   // Fetch user role and permissions
-  useEffect(() => {
-    const fetchUserRoleAndPermissions = async () => {
-      if (status === "loading" || !session?.user?.id) {
-        setIsCheckingPermissions(false);
-        return;
-      }
+  /**
+   * Permissions come from `/api/me/permissions` via usePermissions().
+   *
+   * This page used to fetch `/api/users/role?id=...` and then
+   * `/api/role-permission/role/<roleName>`. Both are administrative endpoints — they
+   * require `users:update` and `roles:read` — so a role holding only this module's
+   * permission got 403 from them and the page rendered "Forbidden" despite being
+   * allowed in. They also returned legacy names like "Manage-projects", which a role
+   * created in the permission matrix never holds.
+   */
 
-      try {
-        const userRes = await fetch(`/api/users/role?id=${session.user.id}`, {
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-        });
-        if (!userRes.ok) {
-          const errorData = await userRes.json();
-          throw new Error(errorData.error || "Failed to fetch user role");
-        }
-        const userData = await userRes.json();
-        setUserRole(userData.role || "CLIENT");
-
-        if (userData.role) {
-          const permRes = await fetch(`/api/role-permission/role/${userData.role}`, {
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-          });
-          if (!permRes.ok) {
-            const errorData = await permRes.json();
-            throw new Error(errorData.error || "Failed to fetch permissions");
-          }
-          const permData = await permRes.json();
-          console.log("Received permissions:", permData);
-          const permissionStrings = Array.isArray(permData)
-            ? permData.map((item: { permission: string }) => item.permission)
-            : [];
-          console.log("Extracted permission strings:", permissionStrings);
-          setPermissions(permissionStrings);
-        }
-      } catch (error) {
-        console.error("Error fetching user role/permissions:", error);
-        setAuthError(error instanceof Error ? error.message : "Failed to load user permissions");
-        toast.error(error instanceof Error ? error.message : "Failed to load user permissions");
-      } finally {
-        setIsCheckingPermissions(false);
-      }
-    };
-    fetchUserRoleAndPermissions();
-  }, [session, status]);
 
   // Fetch projects for dropdown
   const { data: projects, error: projectsError } = useSWR(
-    userRole && (userRole === "ADMIN" || userRole === "Manager") ? "/api/projects" : null,
+    // Was gated on the role being literally named ADMIN or Manager.
+    can("projects", "read") ? "/api/projects" : null,
     fetcher
   );
 
-  useEffect(() => {
-    if (userData) {
-      setUserRole(userData.role || "CLIENT");
-    }
-    if (userError) {
-      console.error("Error fetching user role:", userError);
-      setAuthError(userError.message || "Failed to load user role");
-      toast.error(userError.message || "Failed to load user role"); // Show error toast
-    }
-  }, [userData, userError]);
 
   // Fetch festivals with SWR
   const { data: rawFestivals, error: festivalsError, mutate: mutateFestivals, isLoading: festivalsIsLoading } = useSWR(
-    userRole ? "/api/festivals" : null,
+    can("festivals", "read") ? "/api/festivals" : null,
     fetcher
   );
 
@@ -461,8 +413,8 @@ export default function FestivalsPage() {
     return new Date(2000, month - 1, 1).toLocaleString("default", { month: "long" });
   };
 
-  const canManageFestivals = permissions.includes("Manage-festival");
-  const canViewFestivals = permissions.includes("View-festivals");
+  const canManageFestivals = can("festivals", "update") || can("festivals", "create");
+  const canViewFestivals = can("festivals", "read");
 
   const displayedFestivals = useMemo(() => {
     console.log("Filtering festivals for year:", selectedYear, "month:", selectedMonth);

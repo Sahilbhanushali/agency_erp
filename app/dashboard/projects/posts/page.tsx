@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -153,27 +154,15 @@ export default function PostsPage() {
     fetcher
   );
 
-  // SWR for fetching permissions
-  const { data: permissionsData, error: permissionsError } = useSWR<string[]>(
-    session?.user?.id ? `/api/users/role?id=${session.user.id}` : null,
-    async (url: string) => {
-      const userResponse = await fetch(url, {
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-      if (!userResponse.ok) throw new Error("Failed to fetch user role");
-      const userData = await userResponse.json();
-      if (!userData.role) return [];
-
-      const permResponse = await fetch(`/api/role-permission/role/${userData.role}`, {
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-      if (!permResponse.ok) throw new Error("Failed to fetch permissions");
-      const permData = await permResponse.json();
-      return permData.map((item: { permission: string }) => item.permission);
-    }
-  );
+  /**
+   * Permissions come from `/api/me/permissions` via usePermissions().
+   *
+   * This used to chain `/api/users/role?id=...` into
+   * `/api/role-permission/role/<roleName>`. Both are administrative endpoints —
+   * `users:update` and `roles:read` — so a role holding only posts:read got 403 and
+   * this page failed outright rather than simply showing fewer controls.
+   */
+  const { can, has, role: userRole, permissions: permissionsData } = usePermissions();
 
   const { data: designersData } = useSWR<User[]>("/api/users?role=Designer", fetcher);
   const { data: clientsData } = useSWR<{ id: string; name: string; company: string }[]>(
@@ -463,7 +452,7 @@ export default function PostsPage() {
     const permissions = Array.isArray(permissionsData) ? permissionsData : [];
     const filtered = postsData.filter((post) => {
       const isAssignedToCurrentUser = post?.assignedTo?.name === session?.user?.name;
-      if (!permissions.includes("Manage-post") && !isAssignedToCurrentUser) return false;
+      if (!can("posts", "update") && !isAssignedToCurrentUser) return false;
 
       const matchesSearch =
         post?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1172,14 +1161,14 @@ export default function PostsPage() {
     );
   }
 
-  if (postsError || projectError || permissionsError) {
+  if (postsError || projectError) {
     return (
       <div className="space-y-6">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-4xl mb-4">⚠️</div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Posts</h3>
-            <p className="text-gray-600 text-center mb-4">{postsError?.message || projectError?.message || permissionsError?.message || "An error occurred"}</p>
+            <p className="text-gray-600 text-center mb-4">{postsError?.message || projectError?.message || "An error occurred"}</p>
             <Button onClick={() => window.location.reload()}>Try Again</Button>
           </CardContent>
         </Card>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -146,7 +147,7 @@ export default function ClientIdPage() {
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
-  const [permissions, setPermissions] = useState<string[]>([]);
+  const { can } = usePermissions();
   const [authError, setAuthError] = useState<string | null>(null);
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<any | null>(null);
@@ -156,37 +157,17 @@ export default function ClientIdPage() {
 
   useBreadcrumbTitle(clientId, client?.name || "Client Details");
 
-  useEffect(() => {
-    const fetchUserRoleAndPermissions = async () => {
-      if (status === "loading" || !session?.user?.id) return;
+  /**
+   * Permissions come from `/api/me/permissions` via usePermissions().
+   *
+   * This page used to fetch `/api/users/role?id=...` and then
+   * `/api/role-permission/role/<roleName>`. Both are administrative endpoints — they
+   * require `users:update` and `roles:read` — so a role holding only this module's
+   * permission got 403 from them and the page rendered "Forbidden" despite being
+   * allowed in. They also returned legacy names like "Manage-projects", which a role
+   * created in the permission matrix never holds.
+   */
 
-      try {
-        const userRes = await fetch(`/api/users/role?id=${session.user.id}`, {
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-        });
-        if (!userRes.ok) throw new Error("Failed to fetch user role");
-        const userData = await userRes.json();
-
-        if (userData.role) {
-          const permRes = await fetch(`/api/role-permission/role/${userData.role}`, {
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-          });
-          if (permRes.ok) {
-            const permData = await permRes.json();
-            const permissionStrings = Array.isArray(permData)
-              ? permData.map((item: { permission: string }) => item.permission)
-              : [];
-            setPermissions(permissionStrings);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching permissions:", error);
-      }
-    };
-    fetchUserRoleAndPermissions();
-  }, [session, status]);
 
   const fetchClient = async () => {
     if (!clientId) return;
@@ -218,7 +199,7 @@ export default function ClientIdPage() {
     }
   }, [clientId]);
 
-  const canManageClients = permissions.includes("Manage-clients");
+  const canManageClients = can("clients", "update");
 
   const formatDate = (date?: string | null) => {
     if (!date) return "—";
