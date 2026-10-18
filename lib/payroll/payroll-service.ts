@@ -1736,7 +1736,8 @@ export class PayrollService {
   static async getPayslipForPdf(
     payslipId: string,
     currentUserId?: number,
-    userRole?: string
+    /** Whether this caller may see anyone's payslip, decided by the route. */
+    canSeeAnyone?: boolean
   ): Promise<PayslipPdfData> {
     const payslip = await prisma.payslip.findUnique({
       where: { id: payslipId },
@@ -1761,7 +1762,7 @@ export class PayrollService {
 
     if (!payslip) throw new Error("Payslip not found");
 
-    const isPrivileged = ["ADMIN", "MANAGER", "HR", "FINANCE"].includes(userRole || "");
+    const isPrivileged = canSeeAnyone === true;
     if (!isPrivileged && payslip.userId !== currentUserId) {
       throw new Error("Access denied: You can only access your own payslip");
     }

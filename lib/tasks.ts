@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { resolveSmtp } from "@/lib/smtp"
+import { sendMail } from "@/lib/smtp"
 
 /**
  * Shared task helpers. These live here rather than in a route file because Next only
@@ -154,8 +154,7 @@ async function notify(
     const to = people.map((p) => p.email).filter(Boolean)
     if (to.length === 0) return
 
-    const { transporter, fromEmail } = await resolveSmtp()
-    await transporter.sendMail({ from: fromEmail, to, subject: email.subject, html: email.html })
+    await sendMail({ to, subject: email.subject, html: email.html })
   } catch (error) {
     console.error("[tasks] notification email failed:", error)
   }

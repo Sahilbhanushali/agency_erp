@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
@@ -55,8 +55,10 @@ export async function GET(
     }
 
     // Check if user has access to this asset
-    const isAdmin = session.user.role === "ADMIN";
-    const isManager = session.user.role === "MANAGER";
+    // assets:read is what the Assets module itself checks, so a role granted it in
+    // the matrix can download; a role name called "MANAGER" is no longer required.
+    const isAdmin = await can(session, "assets", "read");
+    const isManager = isAdmin;
     const isAssignedToProject = asset.post?.project?.assignedUsers?.length > 0;
 
     if (!isAdmin && !isManager && !isAssignedToProject) {

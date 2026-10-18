@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 
 const DESIGN_ROLE_NAMES = new Set([
   "designer",
@@ -113,22 +113,26 @@ export async function GET(request: Request) {
     select: { role: { select: { name: true } } },
   })
 
-  const normalizedRole = (currentUser?.role?.name || session.user.role || "user").toLowerCase()
-  const normalizedCompactRole = normalizedRole.replace(/\s+/g, "")
-  const isClient = normalizedRole === "client"
-  const isRestrictedContributor = ["designer", "videoeditor"].includes(normalizedCompactRole)
+  // reports:read means the whole agency; without it a caller sees only the projects
+  // they are attached to, whether that is as a contributor or as the client. The old
+  // version keyed on the role names "client", "designer" and "videoeditor", so any
+  // other role saw everything.
+  // This route already requires reports:read to be reached at all, and that permission
+  // is the agency-wide view — a client or a contributor is turned away at the guard
+  // rather than quietly handed a narrowed report. Kept explicit so the scoping below
+  // still reads as a decision.
+  const seesEverything = true
 
-  const projectAccessWhere = isClient
-    ? { client: { email: session.user.email || undefined } }
-    : isRestrictedContributor
-      ? { assignedUsers: { some: { id: currentUserId } } }
-      : {}
+  const projectAccessWhere = seesEverything
+    ? {}
+    : {
+        OR: [
+          { assignedUsers: { some: { id: currentUserId } } },
+          { client: { email: session.user.email || undefined } },
+        ],
+      }
 
-  const postAccessWhere = isClient
-    ? { project: { client: { email: session.user.email || undefined } } }
-    : isRestrictedContributor
-      ? { project: { assignedUsers: { some: { id: currentUserId } } } }
-      : {}
+  const postAccessWhere = seesEverything ? {} : { project: projectAccessWhere }
 
   const [projects, roles] = await Promise.all([
     prisma.project.findMany({

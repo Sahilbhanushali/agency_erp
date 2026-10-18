@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
-import { resolveSmtp } from "@/lib/smtp"
+import { sendMail } from "@/lib/smtp"
 import { dayStart, summarise } from "@/lib/todos/service"
 import { namesSatisfying } from "@/lib/permissions/catalog"
+import { recipientsFor } from "@/lib/jobs/service"
 
 /**
  * End-of-day report: what each person planned, how far they got, and what blocked them.
@@ -154,6 +155,19 @@ export async function sendEndOfDayReports(options: { date?: Date; dryRun?: boole
     for (const recipient of fallback) addTo(recipient.email, recipient.name, unassigned)
   }
 
+  /**
+   * An administrator can redirect this report from Settings -> Scheduled jobs.
+   * EXPLICIT replaces the reporting-line routing with a fixed list; BOTH adds to it.
+   * Whoever is named this way gets everybody, because they asked for the whole report
+   * rather than one team's part of it.
+   */
+  const choice = await recipientsFor("eod-todo-report")
+  if (choice && choice.mode !== "AUTO" && choice.emails.length > 0) {
+    const everyone = Array.from(byUser.values())
+    if (choice.mode === "EXPLICIT") inbox.clear()
+    for (const email of choice.emails) addTo(email, null, everyone)
+  }
+
   const deliveries = Array.from(inbox.entries()).map(([to, entry]) => ({
     to,
     people: entry.rows.size,
@@ -163,13 +177,11 @@ export async function sendEndOfDayReports(options: { date?: Date; dryRun?: boole
     return { date: label, dryRun: true, deliveries, people: byUser.size }
   }
 
-  const { transporter, fromEmail } = await resolveSmtp()
   let sent = 0
 
   const send = async (to: string, rows: ReportRow[]) => {
     const overall = summarise(rows.flatMap((r) => r.todos))
-    await transporter.sendMail({
-      from: fromEmail,
+    await sendMail({
       to,
       subject: `Daily work report — ${label} (${overall.done}/${overall.total} done${
         overall.blocked ? `, ${overall.blocked} blocked` : ""

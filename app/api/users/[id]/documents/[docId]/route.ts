@@ -21,7 +21,6 @@ export async function PATCH(
     }
 
     const currentUserId = parseInt(session.user.id, 10);
-    const userRole = (session.user as any).role;
     const isStaffOrAdmin = await can(session, "users", "update");
     const userId = parseInt(id, 10);
 
@@ -177,7 +176,6 @@ export async function DELETE(
     }
 
     const currentUserId = parseInt(session.user.id, 10);
-    const userRole = (session.user as any).role;
     const isStaffOrAdmin = await can(session, "users", "update");
     const doc = await prisma.userDocument.findUnique({
       where: { id: docId },

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireCan, requireSession } from "@/lib/api-auth";
+import { can, requireCan, requireSession } from "@/lib/api-auth";
 import { seedHrmsInitialData } from "@/lib/hrms/seed-data";
 
 export const dynamic = "force-dynamic";
@@ -8,9 +8,8 @@ export async function POST(request: NextRequest) {
   const auth = await requireCan("settings", "update");
   if (!auth.ok) return auth.response;
 
-  const userRole = (auth.session.user as any)?.role || "";
-  if (userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  if (!(await can(auth.session, "hrms", "create"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {

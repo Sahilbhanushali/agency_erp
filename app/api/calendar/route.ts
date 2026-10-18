@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { PostPlatform } from "@prisma/client";
-import { requireCan } from "@/lib/api-auth";
+import { can, contentScope, requireCan } from "@/lib/api-auth";
 
 // Define types for clarity and type safety
 interface User {
@@ -52,23 +52,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
   }
 
-  // Normalize role to match interface
-  const normalizedRole = session.user.role
-
-  // Define whereClause based on user role
-  const isFullAccess = ["admin", "manager", "team lead", "social media manager"].includes(
-    normalizedRole?.toLowerCase() || ""
-  );
+  // Who sees the whole calendar vs only their own work. posts:create is the set that
+  // plans content for every client, which is exactly who the old role-name list named.
+  const isFullAccess = (await contentScope(session)) === "all";
 
   let whereClause: any = {};
-  if (normalizedRole?.toLowerCase() === "client") {
-    whereClause = { project: { client: { email: session.user.email ?? "" } } };
-  } else if (!isFullAccess) {
+  if (!isFullAccess) {
     whereClause = {
       OR: [
         { assignedToId: userId },
         { assignedUsers: { some: { id: userId } } },
         { assignments: { some: { userId: userId } } },
+        // A client login sees its own projects' posts and nothing else.
+        { project: { client: { email: session.user.email ?? "" } } },
       ],
     };
   }
@@ -122,8 +118,20 @@ export async function GET(request: Request) {
   }));
 
   // Fetch projects
+  // The calendar's project filter was unscoped, so a client login was handed the name
+  // and contact details of every other client's projects. It follows the same scope as
+  // the posts above.
   const projectsRaw = await prisma.project.findMany({
-    where: { isActive: true },
+    where: isFullAccess
+      ? { isActive: true }
+      : {
+          isActive: true,
+          OR: [
+            { assignedUsers: { some: { id: userId } } },
+            { managerId: userId },
+            { client: { email: session.user.email ?? "" } },
+          ],
+        },
     include: { client: true },
     orderBy: { name: "asc" },
   });
@@ -136,10 +144,10 @@ export async function GET(request: Request) {
       : null,
   }));
 
-  // Determine if user can see the Posting Date calendar
-  // Only Designer and Video Editor roles are restricted to Design Date only
-  const roleName = (session.user.role || "").toLowerCase();
-  const showPostingCalendar = !roleName.includes("designer") && !roleName.includes("video");
+  // Whoever sees every post sees the posting-date calendar; someone scoped to their
+  // own work gets design dates, which is what they act on. Previously this matched the
+  // strings "designer" and "video" in the role name.
+  const showPostingCalendar = isFullAccess;
 
   // Serialize currentUser
   const currentUser = {

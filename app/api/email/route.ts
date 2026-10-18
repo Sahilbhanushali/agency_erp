@@ -5,6 +5,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth"; // Adjust path to your NextAuth config
 import CryptoJS from 'crypto-js';
 import { requireCan } from "@/lib/api-auth";
+import { APP_BASE_URL } from "@/lib/utils"
+import { formatFrom, htmlToText } from "@/lib/smtp"
 
 const prisma = new PrismaClient();
 
@@ -73,7 +75,7 @@ export async function POST(request: Request) {
         });
         if (post?.assets && post.assets.length > 0) {
           // Prepend base URL to make it fully qualified
-          assetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://automation.rndtechnosoft.com'}${post.assets[0].url}`;
+          assetUrl = `${APP_BASE_URL}${post.assets[0].url}`;
         }
       }
   
@@ -287,11 +289,11 @@ export async function POST(request: Request) {
               
               <p>Please review the post details and coordinate with the project team as needed. If you have any questions, contact the project manager.</p>
               
-              <a href="https://automation.rndtechnosoft.com/dashboard/projects/posts?projectId=${projectId}" class="button">View Post in Dashboard</a>
+              <a href="${APP_BASE_URL}/dashboard/projects/posts?projectId=${projectId}" class="button">View Post in Dashboard</a>
             </div>
             <div class="footer">
-              <p>This is an automated email from RndTechnosoft. Please do not reply directly to this email.</p>
-              <p>&copy; ${new Date().getFullYear()} Rndtechnosoft. All rights reserved.</p>
+              <p>This is an automated email from itsmeDezino. Please do not reply directly to this email.</p>
+              <p>&copy; ${new Date().getFullYear()} itsmeDezino. All rights reserved.</p>
             </div>
           </div>
         </body>
@@ -303,10 +305,12 @@ export async function POST(request: Request) {
   
       // Send email
       await transporter.sendMail({
-        from: ` <${smtpDetails.username}>`,
+        from: formatFrom(smtpDetails.username),
         to: assignedUser.email,
         subject: `New Post Assignment: ${title}`,
         html: emailHtml,
+        // HTML-only mail is a heavy spam signal; this is the text/plain alternative.
+        text: htmlToText(emailHtml),
       });
   
       console.log(`Email sent successfully to ${assignedUser.email}`);

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
 import { PayrollPdfGenerator } from "@/lib/payroll/pdf-generator";
+import { can } from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
@@ -16,9 +17,10 @@ export async function GET(
 
     const { id } = await params;
     const currentUserId = Number((session.user as any).id);
-    const userRole = (session.user as any).role || "";
+    // payroll:read decides whether someone may open a payslip that is not their own.
+    const canSeeAnyone = await can(session, "payroll", "read");
 
-    const payslipData = await PayrollService.getPayslipForPdf(id, currentUserId, userRole);
+    const payslipData = await PayrollService.getPayslipForPdf(id, currentUserId, canSeeAnyone);
     const pdfBuffer = PayrollPdfGenerator.generatePayslipPdf(payslipData);
 
     const safeName = (payslipData.user.name || "Employee").replace(/[^a-zA-Z0-9_-]/g, "_");

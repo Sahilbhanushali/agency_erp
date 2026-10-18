@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth"; // Adjust path to your auth options
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
@@ -48,8 +48,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId'); // Optional projectId filter
 
-    const userRoleName = (user.role?.name || '').toUpperCase().trim();
-    const isFullAccessRole = ['ADMIN', 'MANAGER', 'TEAM LEAD', 'DESIGNER HEAD', 'ADMINISTRATOR'].includes(userRoleName);
+    // approvals:read decides whether this caller sees every project's approvals or
+    // only their own. The previous list of role names left out any role created after
+    // it was written, which silently restricted them with no way to grant access.
+    const isFullAccessRole = await can(session, "approvals", "read");
 
     let projectIds: string[] = [];
     if (!isFullAccessRole) {

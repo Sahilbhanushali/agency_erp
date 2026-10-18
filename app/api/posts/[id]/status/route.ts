@@ -9,6 +9,8 @@ import fs from "fs/promises";
 import path from "path";
 import CryptoJS from "crypto-js";
 import { requireCan } from "@/lib/api-auth";
+import { APP_BASE_URL } from "@/lib/utils"
+import { formatFrom, htmlToText } from "@/lib/smtp"
 // Load the email template
 const emailTemplatePath = path.join(
   process.cwd(),
@@ -32,7 +34,7 @@ const fallbackEmailTemplate = `
   <p><strong>Feedback:</strong> {{ feedback }}</p>
   <p><strong>Rejected At:</strong> {{ rejectedAt }}</p>
   <p><a href="{{ dashboardUrl }}" style="color: #111827;">View Post in Dashboard</a></p>
-  <p>&copy; {{ currentYear }} Automation.rndtechnosoft.com. All rights reserved.</p>
+  <p>&copy; {{ currentYear }} itsmeDezino. All rights reserved.</p>
 </body>
 </html>
 `;
@@ -704,7 +706,7 @@ export async function PATCH(
           });
 
           if (postWithAssets?.assets && postWithAssets.assets.length > 0) {
-            assetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}${postWithAssets.assets[0].url}`;
+            assetUrl = `${APP_BASE_URL}${postWithAssets.assets[0].url}`;
           }
 
           // Populate email template
@@ -735,7 +737,7 @@ export async function PATCH(
           );
           emailHtml = emailHtml.replace(
             "{{ dashboardUrl }}",
-            `${process.env.NEXT_PUBLIC_BASE_URL || "https://automation.rndtechnosoft.com"}/dashboard/tasks?projectId=${post.projectId}`
+            `${APP_BASE_URL}/dashboard/tasks?projectId=${post.projectId}`
           );
           emailHtml = emailHtml.replace(
             "{{ currentYear }}",
@@ -762,10 +764,12 @@ export async function PATCH(
           const emailSubject = status === PostStatus.REJECTED ? `Post Rejected: ${post.title}` : `Post Needs Minor Change: ${post.title}`;
 
           await transporter.sendMail({
-            from: ` <${smtpDetails.username}>`,
+            from: formatFrom(smtpDetails.username),
             to: post.assignedTo.email,
             subject: emailSubject,
             html: emailHtml,
+            // HTML-only mail is a heavy spam signal; this is the text/plain alternative.
+            text: htmlToText(emailHtml),
           });
 
           console.log(

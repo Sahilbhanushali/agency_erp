@@ -3,7 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const nodemailer = require('nodemailer');
 const prisma = new PrismaClient();
 
-async function sendDailyDesignerReport() {
+async function sendDailyDesignerReport(recipients = []) {
   console.log('Starting sendDailyDesignerReport function at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
   try {
     // Define the time range for today (IST)
@@ -135,12 +135,13 @@ async function sendDailyDesignerReport() {
     console.log('Sending email...');
     await transporter.sendMail({
       from: designerHead.smtpDetails.username,
-      to: designerHead.email,
+      // Settings -> Scheduled jobs can override who this goes to.
+      to: recipients.length > 0 ? recipients.join(', ') : designerHead.email,
       subject: `Daily Designer Submission Report - ${today.toDateString()}`,
       html: emailBody,
     });
 
-    console.log('Daily designer report email sent successfully to', designerHead.email);
+    console.log('Daily designer report email sent to', recipients.length > 0 ? recipients.join(', ') : designerHead.email);
 
     // Log the email action to prevent duplicates
     console.log('Logging email action to auditLog...');

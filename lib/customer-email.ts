@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import CryptoJS from "crypto-js"
 
 import { formatReadableDate } from "./export-link"
+import { fromEmailAddress, formatFrom } from "@/lib/smtp"
 
 interface SendConfirmationEmailParams {
   clientEmail: string
@@ -225,10 +226,16 @@ Regards,
 ${organizationName}
 `
 
-    const fromAddress = smtpDetails?.username || process.env.FROM_EMAIL || "noreply@rndtechnosoft.com"
+    // The sending mailbox must be the address mail is actually authorised for, or
+    // SPF/DKIM fail and the message is treated as forged. FROM_EMAIL is only used when
+    // it is a real address; a display name like "itsmeDezino" is not one.
+    const fromAddress = smtpDetails?.username || fromEmailAddress()
+    if (!fromAddress) {
+      throw new Error("No sending address configured: set SMTP_USER or FROM_EMAIL to a mailbox")
+    }
 
     await transporter.sendMail({
-      from: `"${organizationName}" <${fromAddress}>`,
+      from: formatFrom(fromAddress, organizationName),
       to: clientEmail,
       subject: emailSubject,
       text,

@@ -144,3 +144,30 @@ export async function effectivePermissions(session: Session | null): Promise<str
   }
   return granted
 }
+
+/**
+ * How much of the agency's content this caller may see.
+ *
+ * `"all"` for the people who plan content across every client — which is exactly the
+ * set holding `posts:create` — and `"own"` for everyone else: their assigned work, and
+ * the projects of the client they are.
+ *
+ * This replaces the role-name lists that used to decide scope
+ * (`userRole === "CLIENT"`, `["admin", "manager", "team lead", "social media manager"]`).
+ * Those lists were the real defect behind "I granted three modules and the role still
+ * sees everything": a role not named in the list fell through to the unscoped branch,
+ * so any role created after the list was written got full visibility that no permission
+ * had granted. `posts:read` cannot carry this decision, because a client login holds it
+ * in order to see its own content.
+ */
+export async function contentScope(session: Session | null): Promise<"all" | "own"> {
+  return (await can(session, "posts", "create")) ? "all" : "own"
+}
+
+/** Is this login a client contact rather than a member of the agency? */
+export async function isClientContact(session: Session | null): Promise<boolean> {
+  const email = session?.user?.email
+  if (!email) return false
+  const client = await prisma.client.findFirst({ where: { email }, select: { id: true } })
+  return client !== null
+}

@@ -5,6 +5,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import CryptoJS from 'crypto-js';
 import { requireCan } from "@/lib/api-auth";
+import { APP_BASE_URL } from "@/lib/utils"
+import { formatFrom, htmlToText } from "@/lib/smtp"
 
 const prisma = new PrismaClient();
 
@@ -157,7 +159,7 @@ try {
 
     // Calculate total posts
     const totalPosts = Object.values(project.postTypes || {}).reduce((a: number, b: number) => a + (b as number), 0);
-     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation.rndtechnosoft.com';
+     const baseUrl = APP_BASE_URL;
 
 
     // Email template
@@ -297,12 +299,12 @@ try {
             <p>Please review the project details and reach out to the project manager${manager ? ` (${manager.name})` : ''} for any clarification. You can view the project in the dashboard for more details.</p>
             
             <div class="button-container">
-              <a href="https://automation.rndtechnosoft.com/dashboard/projects/${validProjectId}" class="button">View Project in Dashboard</a>
+              <a href="${APP_BASE_URL}/dashboard/projects/${validProjectId}" class="button">View Project in Dashboard</a>
             </div>
           </div>
           <div class="footer">
-            <p>This is an automated email from itsmeDezino Agency ERP. Please do not reply directly to this email.</p>
-            <p>&copy; ${new Date().getFullYear()} Rndtechnosoft. All rights reserved.</p>
+            <p>This is an automated email from itsmeDezino. Please do not reply directly to this email.</p>
+            <p>&copy; ${new Date().getFullYear()} itsmeDezino. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -314,10 +316,12 @@ try {
 
     // Send email
     await transporter.sendMail({
-      from: `<${smtpDetails.username}>`,
+      from: formatFrom(smtpDetails.username),
       to: assignedUser.email,
       subject: `New Project Assignment: ${project.name}`,
       html: emailHtml,
+      // HTML-only mail is a heavy spam signal; this is the text/plain alternative.
+      text: htmlToText(emailHtml),
     });
 
     console.log(`Email sent successfully to ${assignedUser.email} for project ${validProjectId}`);

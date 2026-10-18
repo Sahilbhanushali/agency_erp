@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
     const yearParam = searchParams.get("year");
     const statusParam = searchParams.get("status");
 
-    const userRole = (session.user as any).role || "";
     // Permission-driven scoping. "HR" was never a role in this database, so the
     // old list silently limited this to ADMIN/MANAGER. Employees without
     // attendance:read still see their own rows, which is the point of the endpoint.
@@ -80,7 +79,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const currentUserId = Number(session.user.id);
-    const userRole = (session.user as any).role || "";
     // Permission-driven scoping. "HR" was never a role in this database, so the
     // old list silently limited this to ADMIN/MANAGER. Employees without
     // attendance:read still see their own rows, which is the point of the endpoint.

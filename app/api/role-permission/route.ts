@@ -1,10 +1,10 @@
 // app/api/role-permission/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma"// Adjust the import path to your Prisma client
-import { requirePermission } from "@/lib/api-auth";
+import { requireCan } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
-  const auth = await requirePermission("Manage-settings");
+  const auth = await requireCan("roles", "update");
   if (!auth.ok) return auth.response;
 
   try {
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requirePermission("Manage-settings");
+  const auth = await requireCan("roles", "update");
   if (!auth.ok) return auth.response;
 
   try {

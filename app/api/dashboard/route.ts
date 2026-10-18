@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { contentScope } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -10,8 +11,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const userRole = session.user.role || "USER";
   const userId = parseInt(session.user.id as string, 10);
+
+  // Scope follows the permission, not the role name. Without posts:read a caller sees
+  // only what they are attached to — work assigned to them, or projects belonging to
+  // the client they are. That covers designers and client logins in one branch, and a
+  // role created tomorrow is scoped correctly without editing this file.
+  const scope = await contentScope(session);
+  const ownPostFilter = {
+    OR: [
+      { assignedToId: userId },
+      { assignedUsers: { some: { id: userId } } },
+      { project: { client: { email: session.user.email ?? "" } } },
+    ],
+  };
+  const ownProjectFilter = {
+    OR: [
+      { assignedUsers: { some: { id: userId } } },
+      { client: { email: session.user.email ?? "" } },
+    ],
+  };
 
   // Parse query params
   const { searchParams } = new URL(request.url);
@@ -22,23 +41,8 @@ export async function GET(request: Request) {
     project: { isActive: true }
   };
 
-  if (userRole === "CLIENT") {
-    whereClause.project = { 
-      client: { email: session.user.email },
-      isActive: true 
-    };
-  } else if (["Designer", "Video Editor", "VideoEditor"].includes(userRole)) {
-    whereClause = {
-      AND: [
-        { project: { isActive: true } },
-        {
-          OR: [
-            { assignedToId: userId },
-            { assignedUsers: { some: { id: userId } } }
-          ]
-        }
-      ]
-    };
+  if (scope === "own") {
+    whereClause = { AND: [{ project: { isActive: true } }, ownPostFilter] };
   }
 
   // Add type filter if specified
@@ -50,12 +54,9 @@ export async function GET(request: Request) {
   // Build project queries (unchanged, as they are not type-specific)
   let activeProjectsQuery: any = { isActive: true };
   let totalProjectsQuery: any = {};
-  if (userRole === "CLIENT") {
-    activeProjectsQuery = { client: { email: session.user.email }, isActive: true };
-    totalProjectsQuery = { client: { email: session.user.email } };
-  } else if (["Designer", "Video Editor", "VideoEditor"].includes(userRole)) {
-    activeProjectsQuery = { assignedUsers: { some: { id: userId } }, isActive: true };
-    totalProjectsQuery = { assignedUsers: { some: { id: userId } } };
+  if (scope === "own") {
+    activeProjectsQuery = { AND: [ownProjectFilter], isActive: true };
+    totalProjectsQuery = { AND: [ownProjectFilter] };
   }
 
   try {
@@ -76,13 +77,10 @@ export async function GET(request: Request) {
 
     // Fetch Project Strategies to get the target post counts
     let projectStrategyWhere: any = {};
-    if (userRole === "CLIENT") {
-      projectStrategyWhere = { project: { client: { email: session.user.email }, isActive: true } };
-    } else if (["Designer", "Video Editor", "VideoEditor"].includes(userRole)) {
-      projectStrategyWhere = { project: { assignedUsers: { some: { id: userId } }, isActive: true } };
-    } else {
-      projectStrategyWhere = { project: { isActive: true } };
-    }
+    projectStrategyWhere =
+      scope === "all"
+        ? { project: { isActive: true } }
+        : { project: { AND: [ownProjectFilter], isActive: true } };
 
     const strategies = await prisma.projectStrategy.findMany({
       where: projectStrategyWhere,
