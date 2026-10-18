@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
+import { requireCan } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -43,11 +44,9 @@ function generateStrategiesData(
 }
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("projects", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const user = await prisma.user.findUnique({
       where: { id: parseInt(session.user.id) },
       select: { role: { select: { name: true } } },
@@ -135,11 +134,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("projects", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     // Fetch user permissions
     const user = await prisma.user.findUnique({
       where: { id: parseInt(session.user.id) },
@@ -286,11 +283,9 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("projects", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     // Fetch user permissions
     const user = await prisma.user.findUnique({
       where: { id: parseInt(session.user.id) },
@@ -399,11 +394,9 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("projects", "delete");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const user = await prisma.user.findUnique({
       where: { id: parseInt(session.user.id) },
       include: {

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/api-auth";
+import { hasPermission, requireCan, requireSession } from "@/lib/api-auth";
 import { convertCandidateToEmployee } from "@/lib/hrms/hrms-service";
 
 export const dynamic = "force-dynamic";
@@ -9,8 +9,15 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireSession();
+  const auth = await requireCan("users", "create");
   if (!auth.ok) return auth.response;
+
+  const canConvert =
+    (await hasPermission(auth.session, "Manage-onboarding")) ||
+    (await hasPermission(auth.session, "Manage-User"));
+  if (!canConvert) {
+    return NextResponse.json({ error: "Forbidden: HR or Admin access required to convert candidates" }, { status: 403 });
+  }
 
   try {
     const { id } = await params;

@@ -4,18 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ManualCsvAttendanceProvider } from "@/lib/payroll/attendance-provider";
 import { evaluateDayStatus } from "@/lib/payroll/daily-status-engine";
+import { requireCan } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "MANAGER", "HR"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR or Admin access required" }, { status: 403 });
-    }
+    const auth = await requireCan("attendance", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

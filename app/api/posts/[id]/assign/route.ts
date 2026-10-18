@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan, requirePermission } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 
 export const dynamic = "force-dynamic"
@@ -19,7 +19,7 @@ const assignSchema = z.object({
  * action that also emails the assignee, so it needs Manage-post — not merely a session.
  */
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-post")
+  const auth = await requireCan("posts", "update")
   if (!auth.ok) return auth.response
 
   try {

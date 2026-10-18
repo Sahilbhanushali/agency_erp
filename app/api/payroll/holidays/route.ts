@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireCan } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("payroll", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { searchParams } = new URL(request.url);
     const yearParam = searchParams.get("year");
     const year = yearParam ? Number(yearParam) : new Date().getFullYear();
@@ -28,15 +27,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR or Admin access required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const body = await request.json();
     if (!body.name || !body.date) {
@@ -69,15 +62,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR or Admin access required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "delete");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

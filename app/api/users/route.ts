@@ -3,19 +3,31 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logAuditAction } from "@/lib/audit"
-import { hasPermission } from "@/lib/api-auth"
+import { can, hasPermission, requireCan, requireSession } from "@/lib/api-auth"
 import { sendOnboardingInviteEmail } from "@/lib/email"
 import bcrypt from "bcryptjs"
 import crypto from "crypto"
 
 export const dynamic = "force-dynamic"
 
+/**
+ * Staff list.
+ *
+ * Two payloads, because assigning work and administering people are different jobs:
+ *   - `users:read` gets the full record (email, account state, projects).
+ *   - any signed-in user gets a directory: id, name, role, avatar. Every assignment
+ *     dropdown in the app needs that much — a manager must be able to pick a designer
+ *     for a project without being able to administer accounts.
+ *
+ * Gating the whole endpoint on `users:read` is what emptied those dropdowns; the fix is
+ * to narrow the response, not to deny the request.
+ */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const auth = await requireSession()
+    if (!auth.ok) return auth.response
+    const session = auth.session
+    const canSeeFullRecords = await can(session, "users", "read")
 
     // Extract role(s) from query params
     const { searchParams } = new URL(request.url)
@@ -48,16 +60,30 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     })
 
-    const formattedUsers = users.map((user: any) => ({
-      id: user.id.toString(),
-      name: user.name,
-      email: user.email,
-      role: user.role?.name || null,
-      avatar: user.avatar,
-      hasPassword: !!user.password,
-      createdAt: user.createdAt,
-      assignedProjects: user.assignedProjects.map((project: any) => ({ name: project.name, id: project.id.toString() })),
-    }))
+    const formattedUsers = users.map((user: any) =>
+      canSeeFullRecords
+        ? {
+            id: user.id.toString(),
+            name: user.name,
+            email: user.email,
+            role: user.role?.name || null,
+            avatar: user.avatar,
+            hasPassword: !!user.password,
+            createdAt: user.createdAt,
+            assignedProjects: user.assignedProjects.map((project: any) => ({
+              name: project.name,
+              id: project.id.toString(),
+            })),
+          }
+        : // Directory view: enough to pick someone from a dropdown, nothing more.
+          // No email, no account state, no project history.
+          {
+            id: user.id.toString(),
+            name: user.name,
+            role: user.role?.name || null,
+            avatar: user.avatar,
+          },
+    )
 
     return NextResponse.json(formattedUsers)
   } catch (error) {
@@ -68,15 +94,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    const canManageUsers = session?.user && (
-      ["ADMIN", "MANAGER", "Manager"].includes((session.user as any).role) ||
-      await hasPermission(session, "Manage-User")
-    )
-
-    if (!canManageUsers) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const auth = await requireCan("users", "create")
+    if (!auth.ok) return auth.response
+    const session = auth.session
 
     const body = await request.json()
     const { name, email, role, password, sendInvite = true } = body

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { encrypt } from "@/lib/encryption"
 import { credentialSchema } from "@/lib/validation/credential"
@@ -38,7 +38,7 @@ const listSelect = {
  * `?projectId=`, `?category=`, `?search=` over label, platform, username and location.
  */
 export async function GET(request: NextRequest) {
-  const auth = await requirePermission("View-credentials")
+  const auth = await requireCan("credentials", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requirePermission("Manage-credentials")
+  const auth = await requireCan("credentials", "create")
   if (!auth.ok) return auth.response
 
   try {

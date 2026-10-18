@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/api-auth";
+import { requireCan, requireSession } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const auth = await requireSession();
+  const auth = await requireCan("hrms", "read");
   if (!auth.ok) return auth.response;
 
   try {
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireSession();
+  const auth = await requireCan("hrms", "create");
   if (!auth.ok) return auth.response;
 
   try {

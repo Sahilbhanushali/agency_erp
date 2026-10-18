@@ -84,7 +84,17 @@ const VIEWS: { key: ViewMode; label: string; icon: typeof Kanban }[] = [
  * Every view carries the same View / Edit / Delete menu, and all three share one detail
  * dialog, one edit sheet and one delete confirmation held here.
  */
-export default function TaskBoard({ canManage }: { canManage: boolean }) {
+export interface TaskPerms {
+  create: boolean
+  update: boolean
+  delete: boolean
+}
+
+export default function TaskBoard({ perms }: { perms: TaskPerms }) {
+  // Dragging a card changes its status, which is an update. Creating and deleting are
+  // separate permissions, so a read+update role gets a working board with no New task
+  // button and no delete action.
+  const canManage = perms.update
   const [viewMode, setViewMode] = useState<ViewMode>("kanban")
   const [search, setSearch] = useState("")
   const [priority, setPriority] = useState<string>("ALL")
@@ -233,7 +243,7 @@ export default function TaskBoard({ canManage }: { canManage: boolean }) {
           <Edit className="mr-2 h-4 w-4" />
           Edit
         </DropdownMenuItem>
-        {canManage && (
+        {perms.delete && (
           <DropdownMenuItem
             onSelect={() => setDeleting(task)}
             className="text-destructive focus:text-destructive"
@@ -357,7 +367,7 @@ export default function TaskBoard({ canManage }: { canManage: boolean }) {
           })}
         </div>
 
-        {canManage && (
+        {perms.create && (
           <Button
             onClick={() => {
               setEditing(null)
@@ -382,7 +392,7 @@ export default function TaskBoard({ canManage }: { canManage: boolean }) {
                 ? "Try a different priority or clear the search."
                 : "Tasks can stand alone, or hang off a post, project or client."}
             </p>
-            {!isFiltered && canManage && (
+            {!isFiltered && perms.create && (
               <Button
                 className="mt-5"
                 onClick={() => {
@@ -581,7 +591,7 @@ export default function TaskBoard({ canManage }: { canManage: boolean }) {
         onOpenChange={(open) => !open && setViewing(null)}
         onEdit={openEdit}
         onDelete={setDeleting}
-        canManage={canManage}
+        canManage={perms.update}
       />
 
       <TaskForm
@@ -589,7 +599,7 @@ export default function TaskBoard({ canManage }: { canManage: boolean }) {
         onOpenChange={setFormOpen}
         task={editing}
         onSaved={() => mutate()}
-        canManage={canManage}
+        canManage={perms.update}
       />
 
       <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>

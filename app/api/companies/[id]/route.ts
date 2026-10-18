@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { companyUpdateSchema } from "@/lib/validation/company"
 import { deleteLocalFile } from "@/lib/storage"
@@ -8,7 +8,7 @@ import { deleteLocalFile } from "@/lib/storage"
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("View-companies")
+  const auth = await requireCan("companies", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-companies")
+  const auth = await requireCan("companies", "update")
   if (!auth.ok) return auth.response
 
   try {
@@ -109,7 +109,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
  * is refused. Deactivate it instead (isActive: false) to retire it from new documents.
  */
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-companies")
+  const auth = await requireCan("companies", "delete")
   if (!auth.ok) return auth.response
 
   try {

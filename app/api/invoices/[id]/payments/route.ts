@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { paymentSummary, toNumber } from "@/lib/finance"
 import { paymentSchema } from "@/lib/validation/invoice"
@@ -19,7 +19,7 @@ const paymentSelect = {
 }
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("View-invoices")
+  const auth = await requireCan("invoices", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
  * so the status can never disagree with the money received.
  */
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-invoices")
+  const auth = await requireCan("invoices", "create")
   if (!auth.ok) return auth.response
 
   try {

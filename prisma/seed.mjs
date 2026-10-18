@@ -10,6 +10,10 @@
 
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
+import { execSync } from "node:child_process"
+import { mkdtempSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 const prisma = new PrismaClient()
 
@@ -17,63 +21,60 @@ const ADMIN_EMAIL = "admin@gmail.com"
 const ADMIN_PASSWORD = "admin@123"
 const ADMIN_NAME = "System Admin"
 
-/** Every permission the app checks for. ADMIN is granted all of them. */
-const PERMISSIONS = [
-  ["Manage-User", "Create, edit and remove users and their roles"],
-  ["Manage-settings", "Change application settings, roles and permissions"],
-  ["Manage-clients", "Create, edit and remove clients"],
-  ["View-clients", "View the client list and client details"],
-  ["Manage-projects", "Create, edit and remove projects"],
-  ["View-project", "View a project and its details"],
-  ["Manage-post", "Create, edit and remove posts"],
-  ["View-post", "View an individual post"],
-  ["View-posts", "View the post list"],
-  ["Manage-content", "Write and edit post content and captions"],
-  ["Manage-design", "Upload and manage design work on posts"],
-  ["Manage-approvals", "Approve or reject submitted work"],
-  ["Manage-assets", "Upload, replace and delete assets"],
-  ["View-assets", "View and download assets"],
-  ["Manage-festival", "Create and edit festivals"],
-  ["View-festivals", "View the festival calendar"],
-  ["View-calender", "View the content calendar"],
-  ["View-tasks", "View tasks assigned to you and your team"],
-  ["Manage-tasks", "Create, edit, assign and delete tasks"],
-  ["View-reports", "View reports and analytics"],
-  ["View-utilities", "View utility lists"],
-  ["Manage-credentials", "Create, edit and remove stored credentials"],
-  ["View-credentials", "View stored credentials and reveal their passwords"],
-  ["Manage-companies", "Create, edit and remove billing companies"],
-  ["View-companies", "View billing companies and their details"],
-  ["Manage-quotations", "Create, edit, send and delete quotations"],
-  ["View-quotations", "View quotations and their totals"],
-  ["Manage-invoices", "Create, edit, send and delete invoices, and record payments"],
-  ["View-invoices", "View invoices, payments and balances"],
-]
+/**
+ * Permissions come from lib/permissions/catalog.ts so there is one source of truth for
+ * what can be granted. The legacy flat names (View-X / Manage-X) are seeded too, because
+ * routes that have not been migrated to `requireCan` still check them.
+ */
+const out = mkdtempSync(join(tmpdir(), "permcat-"))
+execSync(
+  `npx tsc lib/permissions/catalog.ts --outDir ${out} --module commonjs --target es2022 --skipLibCheck`,
+  { stdio: "pipe" },
+)
+const { allPermissions } = await import(join(out, "catalog.js"))
+
+const CANONICAL = allPermissions()
+const LEGACY = Array.from(new Set(CANONICAL.flatMap((p) => p.legacy))).sort()
 
 async function main() {
-  // 1. Permission catalog — upserted by name, so re-running adds new ones without
-  //    disturbing the grants already in place.
-  for (const [name, description] of PERMISSIONS) {
+  // 1. Permission catalog — canonical module:action rows, plus the legacy names that
+  //    unmigrated routes still check. Upserted by name, so re-running adds new
+  //    permissions without disturbing existing grants.
+  for (const perm of CANONICAL) {
+    await prisma.permission.upsert({
+      where: { name: perm.name },
+      update: { description: perm.description, module: perm.module, action: perm.action, label: perm.label },
+      create: {
+        name: perm.name,
+        description: perm.description,
+        module: perm.module,
+        action: perm.action,
+        label: perm.label,
+      },
+    })
+  }
+  for (const name of LEGACY) {
     await prisma.permission.upsert({
       where: { name },
-      update: { description },
-      create: { name, description },
+      update: {},
+      create: { name, description: `Legacy permission (${name})` },
     })
   }
   const permissions = await prisma.permission.findMany({ select: { id: true } })
 
-  // 2. ADMIN role, holding every permission.
+  // 2. ADMIN holds every permission explicitly. The superuser shortcut in
+  //    lib/api-auth.ts is only a lockout guard — authorization itself is data-driven,
+  //    so ADMIN's authority must be visible in the database like any other role.
   const admin = await prisma.role.upsert({
     where: { name: "ADMIN" },
     update: { description: "Full access to every module" },
     create: { name: "ADMIN", description: "Full access to every module" },
   })
 
-  // Re-grant from scratch so a permission added above is picked up, and one removed
-  // from the catalog does not linger as a stale grant.
   await prisma.rolePermission.deleteMany({ where: { roleId: admin.id } })
   await prisma.rolePermission.createMany({
     data: permissions.map(({ id }) => ({ roleId: admin.id, permissionId: id })),
+    skipDuplicates: true,
   })
 
   // 3. The one admin account. The password is only ever written as a bcrypt hash.
@@ -84,7 +85,7 @@ async function main() {
     create: { email: ADMIN_EMAIL, name: ADMIN_NAME, roleId: admin.id, password },
   })
 
-  console.log(`✓ ${PERMISSIONS.length} permissions, ADMIN role, admin user #${user.id}`)
+  console.log(`✓ ${CANONICAL.length} module permissions + ${LEGACY.length} legacy, ADMIN role, admin user #${user.id}`)
   console.log(`  ${ADMIN_EMAIL} / ${ADMIN_PASSWORD} — change this password at first sign-in`)
 }
 

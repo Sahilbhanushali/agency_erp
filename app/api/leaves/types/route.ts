@@ -3,14 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeaveService } from "@/lib/payroll/leave-service";
+import { requireCan } from "@/lib/api-auth";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("leaves", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     await LeaveService.initDefaultLeaveTypes();
 
     const types = await prisma.leaveType.findMany({
@@ -26,15 +25,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "MANAGER", "HR"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: Admin or HR access required" }, { status: 403 });
-    }
+    const auth = await requireCan("leaves", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const body = await request.json();
     if (!body.name || !body.code) {

@@ -1,12 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
-import { requirePermission } from "@/lib/api-auth";
+import { requireCan, requirePermission } from "@/lib/api-auth";
 
 const prisma = new PrismaClient()
 
 // GET /api/user/role?id=1
 export async function GET(request: Request) {
-  const auth = await requirePermission("Manage-User");
+  const auth = await requireCan("users", "update");
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url)
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
 // PATCH /api/user/role (for updating user roles - body should contain userId and role)
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-User");
+  const auth = await requireCan("users", "update");
   if (!auth.ok) return auth.response;
 
   const params = await context.params;

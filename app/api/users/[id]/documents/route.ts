@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import path from "path";
 import fs from "fs/promises";
+import { can } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,14 @@ export async function GET(
     const userId = parseInt(params.id, 10);
     if (isNaN(userId)) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    const currentUserId = parseInt(session.user.id, 10);
+    const userRole = (session.user as any).role || "";
+    const isHrOrAdmin = await can(session, "users", "read");
+
+    if (!isHrOrAdmin && currentUserId !== userId) {
+      return NextResponse.json({ error: "Forbidden: You can only view your own documents" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -99,7 +108,9 @@ export async function POST(
     // Role check: Only ADMIN, Manager, or the user themselves can upload
     const currentUserId = parseInt(session.user.id, 10);
     const userRole = (session.user as any).role;
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "Manager", "HR"].includes(userRole);
+    // Employees may upload their own documents; this decides whether they may also
+    // upload against someone else’s record.
+    const isStaffOrAdmin = await can(session, "users", "update");
     if (!isStaffOrAdmin && currentUserId !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

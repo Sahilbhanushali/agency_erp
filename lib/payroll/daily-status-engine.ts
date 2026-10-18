@@ -250,14 +250,24 @@ export function evaluateDayStatus(input: DayEvaluationInput): DayEvaluationResul
   const shiftEndMins = timeStringToMinutes(shift.endTime);
   const shiftGraceEndMins = shiftStartMins + shift.graceMinutes;
 
+  const isOvernight = Boolean(shift.isNightShift || shiftStartMins > shiftEndMins);
+  const effectiveShiftEndMins = isOvernight ? shiftEndMins + 1440 : shiftEndMins;
+
   const checkInMins = getPunchMinutes(checkIn, date);
   const checkOutMins = getPunchMinutes(checkOut, date);
 
+  // Derive relative minutes from shift start day midnight
+  const isCheckInNextDay = checkIn.getUTCDate() !== date.getUTCDate() || checkIn.getUTCMonth() !== date.getUTCMonth();
+  const checkInRelMins = isCheckInNextDay ? checkInMins + 1440 : checkInMins;
+
+  const isCheckOutNextDay = checkOut.getUTCDate() !== date.getUTCDate() || checkOut.getUTCMonth() !== date.getUTCMonth();
+  const checkOutRelMins = isCheckOutNextDay ? checkOutMins + 1440 : checkOutMins;
+
   // Late calculation
-  const lateMinutes = checkInMins > shiftGraceEndMins ? checkInMins - shiftStartMins : 0;
+  const lateMinutes = checkInRelMins > shiftGraceEndMins ? Math.max(0, checkInRelMins - shiftStartMins) : 0;
 
   // Early exit calculation
-  const earlyExitMinutes = checkOutMins < shiftEndMins ? shiftEndMins - checkOutMins : 0;
+  const earlyExitMinutes = checkOutRelMins < effectiveShiftEndMins ? Math.max(0, effectiveShiftEndMins - checkOutRelMins) : 0;
 
   // Overtime: worked beyond shift fullDayMinutes
   let overtimeHours = 0;

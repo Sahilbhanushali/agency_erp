@@ -3,7 +3,7 @@ import Link from "next/link"
 import { getServerSession } from "next-auth"
 import { Plus } from "lucide-react"
 import { authOptions } from "@/lib/auth"
-import { hasPermission } from "@/lib/api-auth"
+import { can } from "@/lib/api-auth"
 import { Button } from "@/components/ui/button"
 import InvoiceTable from "@/components/finance/invoice-table"
 import NoAccess from "@/components/finance/no-access"
@@ -12,8 +12,8 @@ export const metadata: Metadata = { title: "Invoices" }
 
 export default async function InvoicesPage() {
   const session = await getServerSession(authOptions)
-  if (!(await hasPermission(session, "View-invoices"))) return <NoAccess what="invoices" />
-  const canManage = await hasPermission(session, "Manage-invoices")
+  if (!(await can(session, "invoices", "read"))) return <NoAccess what="invoices" />
+  const canCreate = await can(session, "invoices", "create")
 
   return (
     <div className="space-y-6">
@@ -24,7 +24,7 @@ export default async function InvoicesPage() {
             Tax invoices your companies issue, with GST, payments and a client link.
           </p>
         </div>
-        {canManage && (
+        {canCreate && (
           <Button asChild>
             <Link href="/dashboard/invoices/new">
               <Plus className="mr-2 h-4 w-4" />

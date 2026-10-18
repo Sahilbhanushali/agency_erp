@@ -58,6 +58,9 @@ import {
   Maximize2,
   Printer,
   ChevronDown,
+  Layers,
+  Check,
+  X,
 } from "lucide-react";
 import { PLACEHOLDERS, PlaceholderDefinition } from "@/lib/hrms/types";
 import { resolvePlaceholders, generateSalaryBreakdownTable } from "@/lib/hrms/placeholder-engine";
@@ -79,6 +82,139 @@ interface Template {
   letterhead?: { id: string; name: string; companyName: string; headerHtml?: string; footerHtml?: string } | null;
 }
 
+interface TemplateBlockDef {
+  key: string;
+  name: string;
+  category: "Compensation" | "Legal & Compliance" | "Terms" | "Signatures";
+  description: string;
+  isMatch: (html: string) => boolean;
+  remove: (html: string) => string;
+  defaultHtml: string;
+}
+
+const TEMPLATE_BLOCKS: TemplateBlockDef[] = [
+  {
+    key: "salary_breakdown",
+    name: "Salary Breakdown Table",
+    category: "Compensation",
+    description: "Itemized Cost-to-Company (CTC) table displaying Basic, HRA, Allowances, PF, ESI, and Net Pay.",
+    isMatch: (html) => html.includes("{{salary_breakdown}}"),
+    remove: (html) =>
+      html
+        .replace(/<div[^>]*data-block=["']salary_breakdown["'][^>]*>[\s\S]*?<\/div>/gi, "")
+        .replace(/<p[^>]*>\s*{{salary_breakdown}}\s*<\/p>/gi, "")
+        .replace(/{{salary_breakdown}}/g, ""),
+    defaultHtml: `<p>{{salary_breakdown}}</p>`,
+  },
+  {
+    key: "signature_block",
+    name: "Signatures & Acceptance Block",
+    category: "Signatures",
+    description: "Side-by-side formal execution block for authorized company signatory and candidate signature.",
+    isMatch: (html) =>
+      html.includes("Candidate Signature") ||
+      html.includes("Candidate Acceptance") ||
+      html.includes("authorized_signatory") ||
+      html.includes("data-block=\"signature\""),
+    remove: (html) =>
+      html
+        .replace(/<table[^>]*>[\s\S]*?(?:Candidate Signature|Candidate Acceptance|authorized_signatory)[\s\S]*?<\/table>/gi, "")
+        .replace(/<div[^>]*data-block=["']signature["'][^>]*>[\s\S]*?<\/div>/gi, ""),
+    defaultHtml: `<table style="width: 100%; margin-top: 36px; border-collapse: collapse;">
+  <tr>
+    <td style="width: 50%; vertical-align: top;">
+      <p style="font-size: 13px; font-weight: bold; margin: 0 0 40px 0;">For {{company_name}}</p>
+      <div style="border-top: 1px solid #94a3b8; width: 180px; padding-top: 4px;">
+        <p style="font-size: 12px; font-weight: 600; margin: 0;">{{authorized_signatory}}</p>
+      </div>
+    </td>
+    <td style="width: 50%; vertical-align: top;">
+      <p style="font-size: 13px; font-weight: bold; margin: 0 0 40px 0;">Candidate Signature</p>
+      <div style="border-top: 1px solid #94a3b8; width: 180px; padding-top: 4px;">
+        <p style="font-size: 12px; font-weight: 600; margin: 0;">{{candidate_name}}</p>
+        <p style="font-size: 11px; color: #64748b; margin: 0;">Date: ________________</p>
+      </div>
+    </td>
+  </tr>
+</table>`,
+  },
+  {
+    key: "probation_clause",
+    name: "Probation & Confirmation Clause",
+    category: "Terms",
+    description: "Standard 3-month probation terms and written confirmation criteria.",
+    isMatch: (html) => /probation period/i.test(html) || /data-block=["']probation["']/i.test(html),
+    remove: (html) =>
+      html
+        .replace(/<div[^>]*data-block=["']probation["'][^>]*>[\s\S]*?<\/div>/gi, "")
+        .replace(/<h[1-6][^>]*>[^<]*probation[^<]*<\/h[1-6]>\s*(?:<p[^>]*>[\s\S]*?<\/p>)?/gi, ""),
+    defaultHtml: `<div data-block="probation">
+<h3>3. Probation Period</h3>
+<p>You will be on probation for an initial period of <strong>3 months</strong> from your date of joining. Upon successful evaluation of performance, your employment will be confirmed in writing.</p>
+</div>`,
+  },
+  {
+    key: "notice_clause",
+    name: "Notice Period & Separation Terms",
+    category: "Terms",
+    description: "Notice period durations during probation (15 days) and after confirmation (30 days).",
+    isMatch: (html) => /notice period/i.test(html) || /data-block=["']notice_period["']/i.test(html),
+    remove: (html) =>
+      html
+        .replace(/<div[^>]*data-block=["']notice_period["'][^>]*>[\s\S]*?<\/div>/gi, "")
+        .replace(/<h[1-6][^>]*>[^<]*notice period[^<]*<\/h[1-6]>\s*(?:<p[^>]*>[\s\S]*?<\/p>)?/gi, ""),
+    defaultHtml: `<div data-block="notice_period">
+<h3>4. Notice Period & Termination</h3>
+<p>During probation, either party may terminate employment by giving <strong>15 days' written notice</strong> or salary in lieu. Following confirmation, the required notice period shall be <strong>30 days</strong>.</p>
+</div>`,
+  },
+  {
+    key: "confidentiality_clause",
+    name: "Confidentiality & IP Clause",
+    category: "Legal & Compliance",
+    description: "Protection of intellectual property, proprietary software codebase, and trade secrets.",
+    isMatch: (html) => /confidentiality/i.test(html) || /data-block=["']confidentiality["']/i.test(html),
+    remove: (html) =>
+      html
+        .replace(/<div[^>]*data-block=["']confidentiality["'][^>]*>[\s\S]*?<\/div>/gi, "")
+        .replace(/<h[1-6][^>]*>[^<]*(?:confidentiality|non-disclosure)[^<]*<\/h[1-6]>\s*(?:<p[^>]*>[\s\S]*?<\/p>)?/gi, ""),
+    defaultHtml: `<div data-block="confidentiality">
+<h3>5. Confidentiality & Non-Disclosure</h3>
+<p>You agree to maintain strict confidentiality regarding all proprietary information, software codebase, client materials, and trade secrets of {{company_name}} during and indefinitely following your tenure.</p>
+</div>`,
+  },
+  {
+    key: "working_hours_clause",
+    name: "Working Hours & Location",
+    category: "Terms",
+    description: "Official work timing schedule, weekly off days, and work location provisions.",
+    isMatch: (html) => /working hours/i.test(html) || /place of work/i.test(html) || /data-block=["']working_hours["']/i.test(html),
+    remove: (html) =>
+      html
+        .replace(/<div[^>]*data-block=["']working_hours["'][^>]*>[\s\S]*?<\/div>/gi, "")
+        .replace(/<h[1-6][^>]*>[^<]*(?:working hours|place of work)[^<]*<\/h[1-6]>\s*(?:<p[^>]*>[\s\S]*?<\/p>)?/gi, ""),
+    defaultHtml: `<div data-block="working_hours">
+<h3>6. Working Hours & Place of Work</h3>
+<p>Standard working hours are 9:30 AM to 6:30 PM, Monday through Friday. Your primary location of work will be the company registered office or approved hybrid schedule.</p>
+</div>`,
+  },
+  {
+    key: "validity_clause",
+    name: "Offer Validity & Acceptance Clause",
+    category: "Legal & Compliance",
+    description: "Expiry date of the offer and formal acceptance acknowledgment deadline.",
+    isMatch: (html) => /offer validity/i.test(html) || /remains valid until/i.test(html) || /data-block=["']validity["']/i.test(html),
+    remove: (html) =>
+      html
+        .replace(/<div[^>]*data-block=["']validity["'][^>]*>[\s\S]*?<\/div>/gi, "")
+        .replace(/<h[1-6][^>]*>[^<]*(?:offer validity|acceptance)[^<]*<\/h[1-6]>\s*(?:<p[^>]*>[\s\S]*?<\/p>)?/gi, ""),
+    defaultHtml: `<div data-block="validity">
+<h3>7. Offer Validity & Acceptance</h3>
+<p>This employment offer remains valid until <strong>{{offer_expiry_date}}</strong>. Kindly sign and return a duplicate copy to confirm your acceptance.</p>
+</div>`,
+  },
+];
+
 export function HrmsTemplateEditor() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [letterheads, setLetterheads] = useState<any[]>([]);
@@ -89,6 +225,9 @@ export function HrmsTemplateEditor() {
   const [activeTemplate, setActiveTemplate] = useState<Template | null>(null);
   const [isEditingNew, setIsEditingNew] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Template Blocks Management Modal
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
 
   // Meta fields
   const [title, setTitle] = useState("");
@@ -307,6 +446,40 @@ export function HrmsTemplateEditor() {
       setPreviewHtml(editorRef.current.innerHTML);
       setHasUnsavedChanges(true);
     }
+  };
+
+  const handleRemoveBlock = (key: string) => {
+    const currentHtml = editorRef.current?.innerHTML || contentHtmlRef.current;
+    const block = TEMPLATE_BLOCKS.find((b) => b.key === key);
+    if (!block) return;
+
+    const newHtml = block.remove(currentHtml);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = newHtml;
+    }
+    contentHtmlRef.current = newHtml;
+    setPreviewHtml(newHtml);
+    setHasUnsavedChanges(true);
+    toast.success(`Removed "${block.name}" block from template`);
+  };
+
+  const handleInsertBlock = (key: string) => {
+    const currentHtml = editorRef.current?.innerHTML || contentHtmlRef.current;
+    const block = TEMPLATE_BLOCKS.find((b) => b.key === key);
+    if (!block) return;
+
+    let newHtml = currentHtml;
+    if (editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand("insertHTML", false, `\n${block.defaultHtml}\n`);
+      newHtml = editorRef.current.innerHTML;
+    } else {
+      newHtml = currentHtml + `\n${block.defaultHtml}\n`;
+    }
+    contentHtmlRef.current = newHtml;
+    setPreviewHtml(newHtml);
+    setHasUnsavedChanges(true);
+    toast.success(`Inserted "${block.name}" block into template`);
   };
 
   const handleSave = async () => {
@@ -807,6 +980,17 @@ export function HrmsTemplateEditor() {
                       <FileText className="size-3" />
                       <span>Signature Block</span>
                     </Button>
+
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => setIsBlockModalOpen(true)}
+                      className="gap-1.5 text-xs text-primary font-semibold border-primary/30 hover:bg-primary/5"
+                      title="Manage and remove modular clauses and blocks from template"
+                    >
+                      <Layers className="size-3 text-primary" />
+                      <span>Manage / Remove Blocks</span>
+                    </Button>
                   </div>
 
                   {hasUnsavedChanges && (
@@ -958,6 +1142,84 @@ export function HrmsTemplateEditor() {
           </div>
         )}
       </div>
+
+      {/* ================= MANAGE / REMOVE BLOCKS MODAL ================= */}
+      <Dialog open={isBlockModalOpen} onOpenChange={setIsBlockModalOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Layers className="size-4 text-primary" />
+              <span>Manage & Remove Template Blocks</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Inspect, add, or cleanly remove modular offer letter clauses, salary tables, and execution blocks from the current template.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {TEMPLATE_BLOCKS.map((block) => {
+              const currentContent = editorRef.current?.innerHTML || contentHtmlRef.current || previewHtml;
+              const isPresent = block.isMatch(currentContent);
+              return (
+                <div
+                  key={block.key}
+                  className={`p-3 rounded-xl border transition-all flex items-start justify-between gap-3 ${
+                    isPresent
+                      ? "bg-card border-border shadow-2xs"
+                      : "bg-muted/20 border-dashed border-border/80 opacity-70"
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-xs text-foreground">{block.name}</span>
+                      <Badge
+                        variant={isPresent ? "default" : "outline"}
+                        className={`text-[10px] py-0 px-1.5 ${isPresent ? "bg-emerald-600 text-white" : ""}`}
+                      >
+                        {isPresent ? "Included in Template" : "Not Included"}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        {block.category}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{block.description}</p>
+                  </div>
+
+                  <div className="shrink-0 pt-0.5">
+                    {isPresent ? (
+                      <Button
+                        variant="destructive"
+                        size="xs"
+                        onClick={() => handleRemoveBlock(block.key)}
+                        className="gap-1 text-xs"
+                      >
+                        <Trash2 className="size-3" />
+                        <span>Remove Block</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => handleInsertBlock(block.key)}
+                        className="gap-1 text-xs text-primary font-medium"
+                      >
+                        <Plus className="size-3" />
+                        <span>Insert Block</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button size="sm" onClick={() => setIsBlockModalOpen(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

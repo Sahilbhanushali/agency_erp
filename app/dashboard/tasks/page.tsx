@@ -3,7 +3,7 @@ import Link from "next/link"
 import { getServerSession } from "next-auth"
 import { ListTodo, Workflow } from "lucide-react"
 import { authOptions } from "@/lib/auth"
-import { hasPermission } from "@/lib/api-auth"
+import { can } from "@/lib/api-auth"
 import TaskBoard from "@/components/tasks/task-board"
 import WorkQueueView from "@/components/tasks/work-queue-view"
 import NoAccess from "@/components/finance/no-access"
@@ -28,9 +28,15 @@ export default async function TasksPage({
   searchParams: Promise<{ view?: string }>
 }) {
   const session = await getServerSession(authOptions)
-  if (!(await hasPermission(session, "View-tasks"))) return <NoAccess what="tasks" />
+  if (!(await can(session, "tasks", "read"))) return <NoAccess what="tasks" />
 
-  const canManage = await hasPermission(session, "Manage-tasks")
+    // Each action is checked separately now: a role can be allowed to move a task
+  // through its statuses without being allowed to create or delete one.
+  const perms = {
+    create: await can(session, "tasks", "create"),
+    update: await can(session, "tasks", "update"),
+    delete: await can(session, "tasks", "delete"),
+  }
   const { view } = await searchParams
   const active = view === "pipeline" ? "pipeline" : "board"
 
@@ -67,7 +73,7 @@ export default async function TasksPage({
         })}
       </nav>
 
-      {active === "board" ? <TaskBoard canManage={canManage} /> : <WorkQueueView />}
+      {active === "board" ? <TaskBoard perms={perms} /> : <WorkQueueView />}
     </div>
   )
 }

@@ -1,14 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { hasPermission, requirePermission, requireSession } from "@/lib/api-auth"
+import { hasPermission, requireCan, requireSession } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
-import { notifyTaskAssignees, taskSelect, validateTaskLinks } from "@/lib/tasks"
+import {
+  notifyTaskAssignees,
+  notifyTaskStatusChange,
+  taskAccess,
+  taskSelect,
+  validateTaskLinks,
+} from "@/lib/tasks"
 import { taskSelfUpdateSchema, taskUpdateSchema } from "@/lib/validation/task"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("View-tasks")
+  const auth = await requireCan("tasks", "read")
   if (!auth.ok) return auth.response
 
   try {
@@ -45,26 +51,46 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         title: true,
         status: true,
         completedAt: true,
+        createdById: true,
         assignees: { select: { id: true } },
       },
     })
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     const canManage = await hasPermission(auth.session, "Manage-tasks")
-    const isAssignee = existing.assignees.some((user) => user.id === auth.userId)
+    const access = taskAccess(existing, auth.userId, canManage)
 
-    if (!canManage) {
-      if (!isAssignee) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (access.level === "none") {
+      return NextResponse.json({ error: `Forbidden: ${access.reason}` }, { status: 403 })
+    }
 
+    if (access.level === "status") {
+      // Assignees and the person who created the task may move it, nothing more.
       const selfParsed = taskSelfUpdateSchema.safeParse(body)
       if (!selfParsed.success || Object.keys(body).length !== 1) {
         return NextResponse.json(
-          { error: "You can only change the status of a task assigned to you" },
+          { error: `You can only change the status of this task (${access.reason})` },
           { status: 403 },
         )
       }
 
       const task = await applyUpdate(id, { status: selfParsed.data.status }, existing.status)
+
+      if (selfParsed.data.status !== existing.status) {
+        await notifyTaskStatusChange(
+          id,
+          task.title,
+          existing.status,
+          selfParsed.data.status,
+          auth.userId,
+          auth.session.user?.name ?? null,
+          {
+            assigneeIds: existing.assignees.map((a) => a.id),
+            createdById: existing.createdById,
+          },
+        )
+      }
+
       await logAuditAction({
         userId: String(auth.userId),
         action: "UPDATE",
@@ -100,6 +126,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         id,
         task.title,
         auth.userId,
+        { dueDate: task.dueDate, priority: task.priority, assignedBy: auth.session.user?.name ?? null },
+      )
+    }
+
+    if (input.status && input.status !== existing.status) {
+      await notifyTaskStatusChange(
+        id,
+        task.title,
+        existing.status,
+        input.status,
+        auth.userId,
+        auth.session.user?.name ?? null,
+        { assigneeIds: existing.assignees.map((a) => a.id), createdById: existing.createdById },
       )
     }
 
@@ -122,7 +161,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-tasks")
+  const auth = await requireCan("tasks", "delete")
   if (!auth.ok) return auth.response
 
   try {

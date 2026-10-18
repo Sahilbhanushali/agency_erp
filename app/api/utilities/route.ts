@@ -1,11 +1,11 @@
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
-import { requirePermission } from "@/lib/api-auth";
+import { requireCan } from "@/lib/api-auth";
 
 const prisma = new PrismaClient()
 
 export async function GET() {
-  const auth = await requirePermission("View-utilities");
+  const auth = await requireCan("utilities", "read");
   if (!auth.ok) return auth.response;
 
   try {
@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission("Manage-settings");
+  const auth = await requireCan("utilities", "create");
   if (!auth.ok) return auth.response;
 
   try {
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const auth = await requirePermission("Manage-settings");
+  const auth = await requireCan("utilities", "update");
   if (!auth.ok) return auth.response;
 
   try {
@@ -61,7 +61,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requirePermission("Manage-settings");
+  const auth = await requireCan("utilities", "delete");
   if (!auth.ok) return auth.response;
 
   try {

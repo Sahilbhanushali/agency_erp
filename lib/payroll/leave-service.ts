@@ -139,10 +139,24 @@ export class LeaveService {
     });
     if (!leaveType) throw new Error("Leave type not found");
 
-    const policy = await this.getActivePolicy();
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (end < start) throw new Error("End date cannot be earlier than start date");
+
+    // Check for overlapping pending or approved leave requests
+    const overlapping = await prisma.leaveRequest.findFirst({
+      where: {
+        userId,
+        status: { in: ["PENDING", "APPROVED"] },
+        startDate: { lte: end },
+        endDate: { gte: start },
+      },
+    });
+    if (overlapping) {
+      throw new Error("An active or pending leave request already exists overlapping these dates");
+    }
+
+    const policy = await this.getActivePolicy();
 
     let totalDays = 0;
     if (isHalfDay) {
@@ -228,6 +242,10 @@ export class LeaveService {
     if (!leave) throw new Error("Leave request not found");
     if (leave.status !== "PENDING") {
       throw new Error(`Leave request has already been ${leave.status.toLowerCase()}`);
+    }
+
+    if (leave.userId === approverId) {
+      throw new Error("Self-approval is not permitted. Leave requests must be reviewed by another manager or HR administrator");
     }
 
     const year = leave.startDate.getFullYear();
@@ -327,8 +345,9 @@ export class LeaveService {
   }
 
   /**
-   * Reverses or cancels an approved leave request.
-   * Restores balance and creates a REVERSAL ledger entry.
+   * Reverses or cancels a pending or approved leave request.
+   * If approved: Restores balance, creates a REVERSAL ledger entry, and removes attendance override.
+   * If pending: Cancels the request cleanly without ledger changes.
    */
   static async cancelLeave({
     leaveRequestId,
@@ -344,8 +363,8 @@ export class LeaveService {
       include: { leaveType: true },
     });
     if (!leave) throw new Error("Leave request not found");
-    if (leave.status !== "APPROVED") {
-      throw new Error("Only approved leave requests can be cancelled / reversed");
+    if (!["PENDING", "APPROVED"].includes(leave.status)) {
+      throw new Error(`Only pending or approved leave requests can be cancelled (current: ${leave.status})`);
     }
 
     const year = leave.startDate.getFullYear();
@@ -359,33 +378,52 @@ export class LeaveService {
         },
       });
 
-      // Restore balance
-      const updatedBalance = await tx.leaveBalance.update({
-        where: {
-          userId_leaveTypeId_year: {
+      // If approved, rollback balance, ledger, and attendance records
+      if (leave.status === "APPROVED") {
+        // 1. Restore balance
+        const updatedBalance = await tx.leaveBalance.update({
+          where: {
+            userId_leaveTypeId_year: {
+              userId: leave.userId,
+              leaveTypeId: leave.leaveTypeId,
+              year,
+            },
+          },
+          data: {
+            usedDays: { decrement: leave.totalDays },
+          },
+        });
+
+        // 2. Credit entry in ledger
+        await tx.leaveLedger.create({
+          data: {
             userId: leave.userId,
             leaveTypeId: leave.leaveTypeId,
-            year,
+            entryType: "REVERSAL",
+            days: leave.totalDays,
+            balanceAfter: Math.max(0, updatedBalance.totalQuota - updatedBalance.usedDays),
+            referenceId: leave.id,
+            notes: `Reversal of leave: ${reason}`,
+            effectiveDate: new Date(),
           },
-        },
-        data: {
-          usedDays: { decrement: leave.totalDays },
-        },
-      });
+        });
 
-      // Credit entry in ledger
-      await tx.leaveLedger.create({
-        data: {
-          userId: leave.userId,
-          leaveTypeId: leave.leaveTypeId,
-          entryType: "REVERSAL",
-          days: leave.totalDays,
-          balanceAfter: Math.max(0, updatedBalance.totalQuota - updatedBalance.usedDays),
-          referenceId: leave.id,
-          notes: `Reversal of leave: ${reason}`,
-          effectiveDate: new Date(),
-        },
-      });
+        // 3. Revert attendance records from ON_LEAVE to standard
+        const current = new Date(leave.startDate);
+        const end = new Date(leave.endDate);
+        while (current <= end) {
+          const attDate = new Date(current.toISOString().split("T")[0] + "T00:00:00.000Z");
+          await tx.attendance.deleteMany({
+            where: {
+              userId: leave.userId,
+              date: attDate,
+              isCorrected: true,
+              correctionReason: { contains: "Approved Leave" },
+            },
+          });
+          current.setDate(current.getDate() + 1);
+        }
+      }
 
       return updated;
     });

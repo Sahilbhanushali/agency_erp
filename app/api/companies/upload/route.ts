@@ -4,17 +4,15 @@ import { authOptions } from "@/lib/auth";
 import path from "path";
 import fs from "fs/promises";
 import { deleteLocalFile } from "@/lib/storage";
+import { requireCan } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("companies", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const type = (formData.get("type") as string) || "letterhead"; // 'letterhead' | 'signature' | 'logo'
@@ -73,11 +71,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("companies", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
     const { url } = await request.json();
     if (url) {
       await deleteLocalFile(url);

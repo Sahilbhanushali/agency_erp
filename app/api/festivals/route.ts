@@ -1,10 +1,10 @@
 // pages/api/festivals.js
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/api-auth";
+import { requireCan } from "@/lib/api-auth";
 
 export async function GET() {
-  const auth = await requirePermission("View-festivals");
+  const auth = await requireCan("festivals", "read");
   if (!auth.ok) return auth.response;
 
   try {
@@ -37,7 +37,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission("Manage-festival");
+  const auth = await requireCan("festivals", "create");
   if (!auth.ok) return auth.response;
 
   try {

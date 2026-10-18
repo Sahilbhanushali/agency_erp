@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { decrypt } from "@/lib/encryption"
 
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic"
  * cache.
  */
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("View-credentials")
+  const auth = await requireCan("credentials", "read")
   if (!auth.ok) return auth.response
 
   try {

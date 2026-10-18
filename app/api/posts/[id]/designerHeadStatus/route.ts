@@ -8,6 +8,7 @@ import nodemailer from "nodemailer";
 import fs from "fs/promises";
 import path from "path";
 import CryptoJS from "crypto-js";
+import { requireCan } from "@/lib/api-auth";
 
 const emailTemplatePath = path.join(
   process.cwd(),
@@ -103,20 +104,14 @@ export async function PATCH(
       );
     }
 
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session?.user?.role || "").toString().toLowerCase().replace(/_/g, " ").trim();
-    const restrictedRoles = ["client", "content writer", "designer"];
-    if (restrictedRoles.includes(userRole)) {
-      return NextResponse.json(
-        { error: "Forbidden: Client, Content Writer, and Designer roles cannot change design approval status" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireCan("posts", "approve");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
+    // Was a hardcoded deny-list of role names. The same policy now lives in the
+    // permission catalog as posts:status, so an administrator can change who may
+    // move a post through its workflow without editing this file.
+    const statusAuth = await requireCan("posts", "status");
+    if (!statusAuth.ok) return statusAuth.response;
 
     if (!id) {
       console.warn("[Team Lead Approval API] Invalid post ID provided");

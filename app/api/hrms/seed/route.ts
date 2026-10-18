@@ -1,12 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/api-auth";
+import { requireCan, requireSession } from "@/lib/api-auth";
 import { seedHrmsInitialData } from "@/lib/hrms/seed-data";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const auth = await requireSession();
+  const auth = await requireCan("settings", "update");
   if (!auth.ok) return auth.response;
+
+  const userRole = (auth.session.user as any)?.role || "";
+  if (userRole !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  }
 
   try {
     await seedHrmsInitialData();

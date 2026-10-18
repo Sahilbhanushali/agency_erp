@@ -63,6 +63,11 @@ import PayslipModal from "@/components/payroll/payslip-modal";
 import RunReviewModal from "@/components/payroll/run-review-modal";
 import EmployeeSelfService from "@/components/payroll/employee-self-service";
 import StatutoryReportsTab from "@/components/payroll/statutory-reports-tab";
+import LoansTab from "@/components/payroll/loans-tab";
+import FnFTab from "@/components/payroll/fnf-tab";
+import { SalaryStructuresTab } from "@/components/payroll/salary-structures-tab";
+import { AdjustmentsTab } from "@/components/payroll/adjustments-tab";
+import { CalculationRulesTab } from "@/components/payroll/calculation-rules-tab";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -489,6 +494,8 @@ export default function PayrollPage() {
             <TabsTrigger value="runs" className="text-xs">Payroll Runs</TabsTrigger>
             <TabsTrigger value="salaries" className="text-xs">Salary Structures</TabsTrigger>
             <TabsTrigger value="adjustments" className="text-xs">Monthly Adjustments</TabsTrigger>
+            <TabsTrigger value="loans" className="text-xs">Loans & Advances</TabsTrigger>
+            <TabsTrigger value="fnf" className="text-xs">Full & Final (FnF)</TabsTrigger>
             <TabsTrigger value="settings" className="text-xs">Rules & Settings</TabsTrigger>
             <TabsTrigger value="reports" className="text-xs">Statutory & Reports</TabsTrigger>
             <TabsTrigger value="self-service" className="text-xs">My Self-Service</TabsTrigger>
@@ -617,190 +624,29 @@ export default function PayrollPage() {
             )}
           </TabsContent>
 
-          {/* TAB 2: SALARY STRUCTURES */}
+          {/* TAB 2: SALARY STRUCTURES & COMPENSATION */}
           <TabsContent value="salaries" className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                Configure monthly CTC split, HRA, statutory PF, ESI, and monthly TDS per employee.
-              </p>
-              <div className="relative w-full sm:w-64">
-                <Search className="size-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
-                <Input
-                  placeholder="Filter by name, email, role..."
-                  value={salarySearch}
-                  onChange={(e) => setSalarySearch(e.target.value)}
-                  className="h-8 pl-8 text-xs"
-                />
-              </div>
-            </div>
-
-            <Card className="shadow-2xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs font-semibold">Employee</TableHead>
-                      <TableHead className="text-xs font-semibold">Role / Designation</TableHead>
-                      <TableHead className="text-right text-xs font-semibold">Configured Salary (CTC)</TableHead>
-                      <TableHead className="text-xs font-semibold">Bank Info</TableHead>
-                      <TableHead className="text-right text-xs font-semibold">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredUsers.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-xs text-muted-foreground">
-                          {salarySearch ? "No employees match your search criteria." : "No employee profiles found."}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredUsers.map((u: any) => (
-                        <TableRow key={u.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2.5">
-                              <Avatar className="size-7">
-                                <AvatarImage src={u.avatar} />
-                                <AvatarFallback className="text-[10px]">{u.name?.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="text-xs font-bold text-foreground">{u.name}</p>
-                                <p className="text-[10px] text-muted-foreground">{u.email}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs">{u.designation || u.role || "Member"}</TableCell>
-                          <TableCell className="text-right text-xs font-mono font-bold text-emerald-700">
-                            {u.currentSalary ? `₹${Number(u.currentSalary).toLocaleString("en-IN")}/mo` : "Not Configured"}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground font-mono">
-                            {u.bankAccountNumber ? `A/C: ••••${u.bankAccountNumber.slice(-4)}` : "Missing A/C"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="xs"
-                              onClick={() => handleOpenSalaryModal(u)}
-                              className="gap-1 text-xs"
-                            >
-                              <Settings className="size-3.5" />
-                              Configure Salary
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
+            <SalaryStructuresTab users={safeUsers} onRefresh={mutateRuns} />
           </TabsContent>
 
           {/* TAB 3: MONTHLY ADJUSTMENTS */}
           <TabsContent value="adjustments" className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                One-time bonuses, travel reimbursements, and deductions applied to monthly payroll.
-              </p>
-              <div className="flex items-center gap-2">
-                <div className="relative w-48 sm:w-60">
-                  <Search className="size-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Filter adjustments..."
-                    value={adjSearch}
-                    onChange={(e) => setAdjSearch(e.target.value)}
-                    className="h-8 pl-8 text-xs"
-                  />
-                </div>
-                <Button size="xs" onClick={() => setIsAdjustmentModalOpen(true)} className="gap-1.5 shrink-0">
-                  <Plus className="size-3.5" />
-                  Add Adjustment
-                </Button>
-              </div>
-            </div>
-
-            <Card className="shadow-2xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs font-semibold">Employee</TableHead>
-                      <TableHead className="text-xs font-semibold">Type</TableHead>
-                      <TableHead className="text-xs font-semibold">Title</TableHead>
-                      <TableHead className="text-right text-xs font-semibold">Amount</TableHead>
-                      <TableHead className="text-xs font-semibold">Cycle</TableHead>
-                      <TableHead className="text-xs font-semibold">Notes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredAdjustments.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-xs text-muted-foreground">
-                          {adjSearch ? "No adjustments match your filter." : "No variable adjustments recorded for this cycle."}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredAdjustments.map((a: any) => (
-                        <TableRow key={a.id}>
-                          <TableCell className="font-bold text-xs">{a.user?.name}</TableCell>
-                          <TableCell>
-                            <Badge variant={a.type.includes("DEDUCTION") ? "destructive" : "success"} className="text-[10px] py-0">
-                              {a.type}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs font-medium">{a.title}</TableCell>
-                          <TableCell className="text-right text-xs font-mono font-bold">
-                            {formatInr(a.amount)}
-                          </TableCell>
-                          <TableCell className="text-xs font-mono">{a.month}/{a.year}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{a.notes || "-"}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
+            <AdjustmentsTab users={safeUsers} currentYear={new Date().getFullYear()} />
           </TabsContent>
 
-          {/* TAB 4: SETTINGS */}
+          {/* TAB 4: CALCULATION RULES & SETTINGS */}
           <TabsContent value="settings" className="space-y-4">
-            {settings && (
-              <Card className="shadow-2xs">
-                <CardHeader>
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Settings className="size-4 text-primary" /> Agency Payroll Calculation Rules
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-3 rounded-lg border border-border bg-muted/20">
-                      <span className="font-bold block text-foreground">Pay Period Divisor</span>
-                      <span className="text-muted-foreground">{settings.payPeriodType}</span>
-                    </div>
-                    <div className="p-3 rounded-lg border border-border bg-muted/20">
-                      <span className="font-bold block text-foreground">Overtime Multiplier</span>
-                      <span className="text-muted-foreground">{settings.overtimeHourlyRateMultiplier}x hourly rate</span>
-                    </div>
-                    <div className="p-3 rounded-lg border border-border bg-muted/20">
-                      <span className="font-bold block text-foreground">Late Mark Penalty</span>
-                      <span className="text-muted-foreground">{settings.lateMarksForHalfDayPenalty} late marks = 0.5 day penalty</span>
-                    </div>
-                    <div className="p-3 rounded-lg border border-border bg-muted/20">
-                      <span className="font-bold block text-foreground">PF Employee Rate</span>
-                      <span className="text-muted-foreground">{settings.pfEmployeeRate}% (Ceiling: ₹15,000)</span>
-                    </div>
-                    <div className="p-3 rounded-lg border border-border bg-muted/20">
-                      <span className="font-bold block text-foreground">ESI Employee Rate</span>
-                      <span className="text-muted-foreground">{settings.esiEmployeeRate}% (Ceiling: ₹21,000)</span>
-                    </div>
-                    <div className="p-3 rounded-lg border border-border bg-muted/20">
-                      <span className="font-bold block text-foreground">Standard Work Hours</span>
-                      <span className="text-muted-foreground">{settings.standardWorkHours} Hours / Day</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <CalculationRulesTab />
+          </TabsContent>
+
+          {/* TAB: LOANS & ADVANCES */}
+          <TabsContent value="loans" className="space-y-4">
+            <LoansTab users={safeUsers} />
+          </TabsContent>
+
+          {/* TAB: FULL AND FINAL SETTLEMENT (FnF) */}
+          <TabsContent value="fnf" className="space-y-4">
+            <FnFTab users={safeUsers} currentUserId={Number((session?.user as any)?.id)} />
           </TabsContent>
 
           {/* TAB 5: STATUTORY & FINANCIAL REPORTS */}

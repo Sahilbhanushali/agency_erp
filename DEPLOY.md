@@ -441,6 +441,106 @@ pm2 stop itsmedezinoagencyerp
 
 ---
 
+## 11. Scheduled jobs (cron)
+
+Four jobs run from a single PM2 process. They are **not running today** — the cron app
+in `ecosystem.config.js` is commented out.
+
+| Job | When (IST) | What it does |
+|---|---|---|
+| Designer report | 08:53 daily | existing |
+| Delay report | 21:00 daily | existing |
+| **EOD todo report** | **19:00 Mon–Fri** | emails each manager what their people planned, finished and got stuck on |
+| **Overdue task reminders** | **09:30 Mon–Fri** | nudges assignees and the task creator at 1, 3, 7 and 14 days late |
+
+### How they work
+
+`scripts/cron-job.js` is a long-lived `node-cron` process. It does **not** import the
+report code; it makes an authenticated HTTP call to the running app:
+
+```
+PM2 cron process ──POST /api/todos/report──▶ Next app (port 3008)
+                   header: x-cron-secret
+```
+
+That matters for deployment. The earlier design imported the TypeScript service
+directly, which meant compiling TS at runtime — and `typescript` is a **devDependency**,
+so on a server installed with `npm ci --omit=dev` every job would have failed silently.
+Calling the app needs no build tooling and runs the same code path the UI does.
+
+### What you have to do
+
+**1. Set `CRON_SECRET` in `.env`** — without it the jobs refuse to run, and the
+endpoints refuse the header. An unset secret authorises nothing, so a missing value
+can never accidentally open an endpoint.
+
+```bash
+openssl rand -hex 24      # put the result in CRON_SECRET
+```
+
+**2. Uncomment the cron app** in `ecosystem.config.js` (the block is kept verbatim), then:
+
+```bash
+pm2 start ecosystem.config.js
+pm2 save
+pm2 status                 # expect itsmedezinoagencyerp AND -cron
+pm2 logs itsmedezinoagencyerp-cron --lines 30
+```
+
+**3. Make sure email actually works** — the jobs are useless otherwise:
+
+```bash
+curl -s https://internalagencyos.itsmedigital.in/api/smtp-config/verify   # as an admin
+```
+
+**4. Check `PORT` agrees.** The cron client targets `http://127.0.0.1:$PORT`
+(default 3008). If you run the app on another port, set `PORT` for the cron process too,
+or set `CRON_TARGET_URL` explicitly.
+
+### Testing without waiting for the clock
+
+Every job is previewable and triggerable by hand:
+
+```bash
+# who would receive the EOD report, nothing sent
+curl -s -H "x-cron-secret: $CRON_SECRET" "http://127.0.0.1:3008/api/todos/report?dryRun=1"
+
+# which overdue tasks would be nudged today
+curl -s -H "x-cron-secret: $CRON_SECRET" "http://127.0.0.1:3008/api/tasks/reminders?dryRun=1"
+
+# actually send, now
+curl -s -X POST -H "x-cron-secret: $CRON_SECRET" http://127.0.0.1:3008/api/todos/report
+```
+
+Or run the client the way PM2 does:
+
+```bash
+node -e 'require("./scripts/cron-client").sendEodTodoReport()'
+```
+
+### If a job does not fire
+
+- `pm2 logs itsmedezinoagencyerp-cron` — every run logs `[cron:<name>] <result>`.
+- `[cron:...] CRON_SECRET is missing or too short` — set it and `pm2 restart --update-env`.
+- `[cron:...] could not reach http://127.0.0.1:3008` — the app was down or `PORT` differs.
+- `HTTP 401` — the cron process and the app hold different `CRON_SECRET` values. PM2
+  caches the environment a process started with, so after editing `.env` you need
+  `pm2 restart itsmedezinoagencyerp-cron --update-env`.
+- Timezone: all four schedules pass `{ timezone: 'Asia/Kolkata' }`. A server in UTC
+  still fires them at the intended IST time.
+
+### Alternative: system cron instead of PM2
+
+If you would rather not run a second PM2 process, drop the cron app and use crontab —
+the endpoints are the same:
+
+```cron
+0  19 * * 1-5  curl -fsS -X POST -H "x-cron-secret: SECRET" http://127.0.0.1:3008/api/todos/report
+30 9  * * 1-5  curl -fsS -X POST -H "x-cron-secret: SECRET" http://127.0.0.1:3008/api/tasks/reminders
+```
+
+---
+
 ## 11. Routine deploys after this
 
 ```bash

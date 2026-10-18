@@ -30,6 +30,7 @@ import HrDocumentsModal from "@/components/users/hr-documents-modal"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import PermissionMatrix from "@/components/roles/permission-matrix"
 
 interface User {
   id: string
@@ -71,9 +72,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
-  const [rolePermissions, setRolePermissions] = useState<{ [roleName: string]: string[] }>({})
   const [isLoading, setIsLoading] = useState(true)
-  const [loadingPermissions, setLoadingPermissions] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("ALL")
   const [selectedRole, setSelectedRole] = useState<string>("")
@@ -157,23 +156,6 @@ export default function UsersPage() {
     } catch (error: any) {
       console.error(error)
       setError(error.message || "Failed to load permissions")
-    }
-  }
-
-  const fetchRolePermissions = async (roleName: string) => {
-    if (!roleName) return
-    setLoadingPermissions(true)
-    try {
-      const response = await fetch(`/api/role-permission/role/${roleName}`)
-      if (!response.ok) throw new Error("Failed to fetch permissions")
-      const data = await response.json()
-      const permissionNames = data.map((item: { permission: string }) => item.permission)
-      setRolePermissions((prev) => ({ ...prev, [roleName]: permissionNames || [] }))
-    } catch (error: any) {
-      console.error(error)
-      setError(error.message || "Failed to load role permissions")
-    } finally {
-      setLoadingPermissions(false)
     }
   }
 
@@ -338,42 +320,8 @@ export default function UsersPage() {
   }
 
   const handleRoleSelection = (roleName: string) => {
+    // PermissionMatrix loads and saves this role's matrix itself, keyed on roleName.
     setSelectedRole(roleName)
-    if (roleName && !rolePermissions[roleName]) {
-      fetchRolePermissions(roleName)
-    }
-  }
-
-  const handlePermissionChange = async (permission: string, checked: boolean) => {
-    if (!selectedRole) return
-
-    try {
-      const method = checked ? "POST" : "DELETE"
-      const response = await fetch("/api/role-permission", {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: selectedRole, permission }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `Failed to ${checked ? "add" : "remove"} permission`)
-      }
-
-      setRolePermissions((prev) => {
-        const currentPerms = prev[selectedRole] || []
-        let newPerms
-        if (checked) {
-          newPerms = [...currentPerms, permission]
-        } else {
-          newPerms = currentPerms.filter((p) => p !== permission)
-        }
-        return { ...prev, [selectedRole]: newPerms }
-      })
-    } catch (error: any) {
-      console.error(error)
-      setError(error.message || `Failed to ${checked ? "add" : "remove"} permission`)
-    }
   }
 
   const handleSmtpFormSubmit = async () => {
@@ -950,59 +898,25 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                         </SelectContent>
                       </Select>
                     </div>
-                    {loadingPermissions && (
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                        <span>Loading permissions...</span>
-                      </div>
-                    )}
                   </div>
 
                   {selectedRole ? (
-                    permissions.length === 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          No permissions available. Please add permissions via the Utilities page.
+                    /* A module x action matrix replaces the old flat list of permission
+                       names. The flat list could only express "Manage-X", which bundled
+                       create, update and delete together — there was no way to grant
+                       edit without also granting delete. */
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold">
+                          Permissions for <span className="capitalize">{selectedRole}</span>
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Tick the actions this role may perform in each module. Changes are
+                          validated and applied on the server.
                         </p>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="bg-muted p-4 rounded-lg">
-                          <h3 className="font-semibold mb-2">
-                            Permissions for <span className="capitalize">{selectedRole}</span>
-                          </h3>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {permissions.length} available permissions
-                          </p>
-                          {loadingPermissions ? (
-                            <div className="flex items-center justify-center py-8">
-                              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
-                              {permissions.map((permission) => (
-                                <div
-                                  key={permission.id}
-                                  className="flex items-center space-x-3 p-2 border rounded-md hover:bg-accent"
-                                >
-                                  <Checkbox
-                                    id={`perm-${permission.name}`}
-                                    checked={(rolePermissions[selectedRole] || []).includes(permission.name)}
-                                    onCheckedChange={(checked) => handlePermissionChange(permission.name, checked as boolean)}
-                                  />
-                                  <Label htmlFor={`perm-${permission.name}`} className="cursor-pointer flex-1">
-                                    <span className="font-medium">{permission.name}</span>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {permission.name.toLowerCase().replace(/_/g, " ")}
-                                    </p>
-                                  </Label>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
+                      <PermissionMatrix roleName={selectedRole} />
+                    </div>
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-muted-foreground">Please select a role to manage its permissions.</p>

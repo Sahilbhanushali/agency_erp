@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { LeaveService } from "@/lib/payroll/leave-service";
+import { can } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,8 +16,10 @@ export async function GET(request: NextRequest) {
     const yearParam = searchParams.get("year");
 
     const currentUserId = Number(session.user.id);
-    const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR"].includes(userRole);
+    // Permission-driven scoping. "HR" was never a role in this database, so the
+    // old list silently limited this to ADMIN/MANAGER. Employees without
+    // leaves:read still see their own rows, which is the point of the endpoint.
+    const isStaffOrAdmin = await can(session, "leaves", "read");
 
     const targetUserId = isStaffOrAdmin && userIdParam ? Number(userIdParam) : currentUserId;
     const year = yearParam ? Number(yearParam) : new Date().getFullYear();

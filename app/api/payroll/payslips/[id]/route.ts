@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PayrollService } from "@/lib/payroll/payroll-service";
+import { PayrollService, maskPan, maskBankAccount } from "@/lib/payroll/payroll-service";
+import { can, hasPermission, requireCan } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
@@ -16,8 +17,7 @@ export async function GET(
 
     const { id } = await params;
     const currentUserId = Number(session.user.id);
-    const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR", "FINANCE"].includes(userRole);
+    const isPrivileged = (await can(session, "payroll", "read"));
 
     const payslip = await prisma.payslip.findUnique({
       where: { id },
@@ -47,7 +47,7 @@ export async function GET(
     }
 
     // Privacy guard: employees can only view their own payslip
-    if (!isStaffOrAdmin && payslip.userId !== currentUserId) {
+    if (!isPrivileged && payslip.userId !== currentUserId) {
       return NextResponse.json({ error: "Forbidden: You cannot view another employee's payslip" }, { status: 403 });
     }
 
@@ -58,8 +58,16 @@ export async function GET(
 
     const settings = await PayrollService.getSettings();
 
+    // Sanitized user representation with masked sensitive identifiers
+    const sanitizedUser = {
+      ...payslip.user,
+      panNumber: payslip.panNumberMasked || maskPan(payslip.user.panNumber),
+      bankAccountNumber: payslip.bankAccountMasked || maskBankAccount(payslip.user.bankAccountNumber),
+    };
+
     return NextResponse.json({
       ...payslip,
+      user: sanitizedUser,
       calculationBreakdown,
       agency: {
         companyName: settings.companyName,
@@ -77,15 +85,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const { id } = await params;
     const body = await request.json();

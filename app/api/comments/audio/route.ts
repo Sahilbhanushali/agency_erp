@@ -4,14 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
+import { requireCan } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
     const formData = await request.formData();
     const audioFile = formData.get("audio") as File | null;
     const postId = formData.get("postId") as string | null;

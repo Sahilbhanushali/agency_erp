@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { requireCan } from "@/lib/api-auth";
 
 const DESIGN_ROLE_NAMES = new Set([
   "designer",
@@ -86,11 +87,9 @@ type RoleSummary = {
 }
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+    const auth = await requireCan("reports", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
   const url = new URL(request.url)
   const projectId = url.searchParams.get("projectId") || undefined
   const roleParam = url.searchParams.get("role") || undefined

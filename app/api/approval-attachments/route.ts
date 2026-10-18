@@ -6,6 +6,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
 import { PrismaClient } from "@prisma/client";
+import { requireCan } from "@/lib/api-auth";
 
 // Create a fresh Prisma instance for this route
 let prisma: PrismaClient;
@@ -29,8 +30,9 @@ export async function POST(request: NextRequest) {
     
     console.log("[Approval Attachments API] Prisma client initialized:", !!db);
 
-    // Check authentication
-    const session = await getServerSession(authOptions);
+    const auth = await requireCan("posts", "approve");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
     if (!session) {
       console.warn("[Approval Attachments API] Unauthorized access attempt");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

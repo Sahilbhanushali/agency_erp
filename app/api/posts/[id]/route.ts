@@ -6,6 +6,7 @@ import { z } from "zod";
 import path from "path";
 import fs from "fs/promises";
 import { deleteLocalFile } from "@/lib/storage";
+import { requireCan } from "@/lib/api-auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -528,11 +529,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   
   export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-      const session = await getServerSession(authOptions);
-      if (!session?.user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-  
+    const auth = await requireCan("posts", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
       // Fetch user with permissions
       const user = await prisma.user.findUnique({
         where: { id: parseInt(session.user.id) },

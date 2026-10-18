@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/api-auth";
+import { requireCan, requireSession } from "@/lib/api-auth";
 import { transitionApplicationStage } from "@/lib/hrms/hrms-service";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireSession();
+  const auth = await requireCan("hrms", "read");
   if (!auth.ok) return auth.response;
 
   try {
@@ -48,7 +48,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireSession();
+  const auth = await requireCan("hrms", "update");
   if (!auth.ok) return auth.response;
 
   try {
@@ -187,7 +187,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireSession();
+  const auth = await requireCan("hrms", "delete");
   if (!auth.ok) return auth.response;
 
   try {

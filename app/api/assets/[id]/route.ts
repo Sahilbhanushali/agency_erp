@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireCan } from "@/lib/api-auth";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -27,10 +28,9 @@ async function deleteFileFromDisk(fileUrl: string): Promise<void> {
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("assets", "delete");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     // Check if user is admin (adjust this condition based on your auth system)
     // You might want to check session.user.role === 'admin' or similar
@@ -73,10 +73,9 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
 // POST bulk delete assets
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("assets", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     // Check if user is admin
     const isAdmin = true; // Replace with your actual admin check
@@ -133,10 +132,9 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("assets", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const formData = await request.formData();
     const file = formData.get("file") as File;

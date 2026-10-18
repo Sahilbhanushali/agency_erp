@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/api-auth";
+import { requireCan } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requirePermission("Manage-clients");
+  const auth = await requireCan("contracts", "create");
   if (!auth.ok) return auth.response;
 
   try {

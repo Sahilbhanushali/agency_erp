@@ -2,13 +2,12 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma"; // Assume prisma client is set up
 import { NextResponse } from "next/server";
+import { requireCan } from "@/lib/api-auth";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+    const auth = await requireCan("posts", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session as any;
   const userId = parseInt(session.user.id as string);
   const today = new Date();
   const currentMonth = today.getMonth() + 1; // 1-12

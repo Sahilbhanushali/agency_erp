@@ -3,18 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PayrollService } from "@/lib/payroll/payroll-service";
+import { requireCan } from "@/lib/api-auth";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "MANAGER", "HR", "FINANCE"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const runs = await prisma.payrollRun.findMany({
       include: {
@@ -33,15 +28,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden: HR/Admin/Finance required" }, { status: 403 });
-    }
+    const auth = await requireCan("payroll", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const body = await request.json();
     if (!body.month || !body.year) {

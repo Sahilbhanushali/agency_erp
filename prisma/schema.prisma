@@ -155,6 +155,13 @@ model User {
   createdQuotations   Quotation[]  @relation("CreatedQuotations")
   createdInvoices     Invoice[]    @relation("CreatedInvoices")
   recordedPayments    Payment[]    @relation("RecordedPayments")
+  /// Who this person reports to. Drives the end-of-day todo report; when unset the
+  /// report falls back to everyone holding todos:read.
+  reportsToId Int?
+  reportsTo   User?  @relation("TeamReports", fields: [reportsToId], references: [id], onDelete: SetNull)
+  directReports User[] @relation("TeamReports")
+
+  dailyTodos          DailyTodo[]  @relation("UserTodos")
   createdTasks        Task[]       @relation("CreatedTasks")
   assignedTasks       Task[]       @relation("TaskAssignees")
   createdContracts    Contract[]   @relation("CreatedContracts")
@@ -561,15 +568,31 @@ model Role {
   @@map("roles")
 }
 
+/// A single grantable capability. `name` stays the stable key that RolePermission
+/// points at, so adding module/action below changed no existing assignment.
+///
+/// Canonical names are `module:action` (e.g. "quotations:update"). Legacy names
+/// (`View-X` / `Manage-X` / `Approve-X`) remain as rows so pre-migration grants keep
+/// working; lib/permissions/catalog.ts maps between the two.
 model Permission {
   id          Int      @id @default(autoincrement())
   name        String   @unique
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+
+  /// Module key from the catalog, e.g. "quotations". Null on legacy rows.
+  module String?
+  /// Action within the module, e.g. "update". Null on legacy rows.
+  action String?
+  /// Column heading in the permission matrix, e.g. "Update".
+  label String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   rolePermissions RolePermission[]
 
+  @@unique([module, action])
+  @@index([module])
   @@map("permissions")
 }
 
@@ -1514,6 +1537,7 @@ model Task {
   @@index([projectId])
   @@index([clientId])
   @@map("tasks")
+  dailyTodos DailyTodo[]
 }
 
 // =============================================================================
@@ -1883,6 +1907,9 @@ model SalaryStructure {
   effectiveFrom    DateTime              @default(now())
   effectiveTo      DateTime?
 
+  templateId       String?
+  template         SalaryStructureTemplate? @relation("TemplateSalaryStructure", fields: [templateId], references: [id], onDelete: SetNull)
+
   items            SalaryStructureItem[]
   revisions        SalaryRevision[]
 
@@ -1891,7 +1918,31 @@ model SalaryStructure {
 
   @@index([userId])
   @@index([status])
+  @@index([templateId])
   @@map("salary_structures")
+}
+
+model SalaryStructureTemplate {
+  id                    String            @id @default(cuid())
+  name                  String            @unique
+  code                  String            @unique
+  description           String?
+  basicPercentage       Float             @default(50.0) // % of monthly gross
+  hraPercentage         Float             @default(25.0) // % of monthly gross
+  specialPercentage     Float             @default(15.0) // % of monthly gross
+  otherPercentage       Float             @default(10.0) // % of monthly gross
+  pfApplicable          Boolean           @default(true)
+  esiApplicable         Boolean           @default(false)
+  professionalTax       Boolean           @default(true)
+  isDefault             Boolean           @default(false)
+  isActive              Boolean           @default(true)
+
+  assignedStructures    SalaryStructure[] @relation("TemplateSalaryStructure")
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@map("salary_structure_templates")
 }
 
 model SalaryStructureItem {
@@ -2593,4 +2644,58 @@ model HrmsOnboarding {
   updatedAt       DateTime        @updatedAt
 
   @@map("hrms_onboarding")
+}
+
+
+// ---------------------------------------------------------------------------
+// Daily todos
+//
+// What someone plans to do today. Separate from Task: a Task is a unit of work that
+// lives until it is finished, while a DailyTodo is a commitment for one date. A task
+// due today is mirrored into that day's list (taskId set) so progress is reported in
+// one place; anything else the person types is a standalone entry.
+// ---------------------------------------------------------------------------
+
+enum TodoStatus {
+  PENDING
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CARRIED_OVER
+}
+
+model DailyTodo {
+  id     String   @id @default(cuid())
+  userId Int
+  /// The day this belongs to, at midnight. Date-only so "today" is unambiguous.
+  date   DateTime
+
+  title  String
+  notes  String? @db.Text
+
+  status   TodoStatus @default(PENDING)
+  /// 0-100. Kept alongside status because "in progress" alone does not tell a manager
+  /// whether something is nearly done or barely started.
+  progress Int        @default(0)
+  /// What is stopping this, in the person's own words. The EOD report leads with these.
+  blocker  String?    @db.Text
+
+  /// Set when this entry mirrors a Task due today.
+  taskId String?
+
+  position    Int       @default(0)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User  @relation("UserTodos", fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  /// One entry per task per person per day. MySQL allows repeated NULLs, so manually
+  /// added todos are not constrained by this.
+  @@unique([userId, date, taskId])
+  @@index([userId, date])
+  @@index([date])
+  @@map("daily_todos")
 }

@@ -3,25 +3,23 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PayrollService } from "@/lib/payroll/payroll-service";
+import { can, hasPermission, requireCan } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const auth = await requireCan("salary", "read");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { userId: userIdStr } = await params;
     const targetUserId = Number(userIdStr);
     const currentUserId = Number(session.user.id);
-    const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR", "FINANCE"].includes(userRole);
+    const isPrivileged = (await can(session, "salary", "read"));
 
     // Permission check: employees can only see their own salary structure
-    if (!isStaffOrAdmin && currentUserId !== targetUserId) {
+    if (!isPrivileged && currentUserId !== targetUserId) {
       return NextResponse.json({ error: "Forbidden: You can only view your own salary" }, { status: 403 });
     }
 
@@ -43,13 +41,11 @@ export async function POST(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role || "";
-    if (!["ADMIN", "HR", "FINANCE"].includes(userRole)) {
+    const auth = await requireCan("salary", "update");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
+    const canEdit = (await can(session, "salary", "update"));
+    if (!canEdit) {
       return NextResponse.json({ error: "Forbidden: Only HR/Admin/Finance can edit salary" }, { status: 403 });
     }
 

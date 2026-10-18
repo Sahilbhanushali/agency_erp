@@ -3,7 +3,7 @@ import Link from "next/link"
 import { getServerSession } from "next-auth"
 import { Plus } from "lucide-react"
 import { authOptions } from "@/lib/auth"
-import { hasPermission } from "@/lib/api-auth"
+import { can } from "@/lib/api-auth"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/ui/page-header"
 import QuotationTable from "@/components/finance/quotation-table"
@@ -13,8 +13,8 @@ export const metadata: Metadata = { title: "Quotations" }
 
 export default async function QuotationsPage() {
   const session = await getServerSession(authOptions)
-  if (!(await hasPermission(session, "View-quotations"))) return <NoAccess what="quotations" />
-  const canManage = await hasPermission(session, "Manage-quotations")
+  if (!(await can(session, "quotations", "read"))) return <NoAccess what="quotations" />
+  const canCreate = await can(session, "quotations", "create")
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
@@ -22,7 +22,7 @@ export default async function QuotationsPage() {
         title="Quotations & Proposals"
         description="Formal priced proposals issued to clients with GST tax itemization, shareable links, and letterhead."
       >
-        {canManage && (
+        {canCreate && (
           <Button asChild size="sm" className="gap-1.5">
             <Link href="/dashboard/quotations/new">
               <Plus className="size-3.5" />

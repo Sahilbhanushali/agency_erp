@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasPermission } from "@/lib/api-auth";
+import { hasPermission, requireCan } from "@/lib/api-auth";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -27,10 +27,9 @@ async function deleteFileFromDisk(fileUrl: string): Promise<void> {
 // POST bulk delete assets
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireCan("assets", "create");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     if (!(await hasPermission(session, "Manage-assets"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

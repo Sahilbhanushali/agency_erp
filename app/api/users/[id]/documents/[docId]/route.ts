@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { deleteLocalFile } from "@/lib/storage";
 import path from "path";
 import fs from "fs/promises";
+import { can } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function PATCH(
 
     const currentUserId = parseInt(session.user.id, 10);
     const userRole = (session.user as any).role;
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "Manager", "HR"].includes(userRole);
+    const isStaffOrAdmin = await can(session, "users", "update");
     const userId = parseInt(id, 10);
 
     const doc = await prisma.userDocument.findUnique({
@@ -32,8 +33,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
+    if (doc.userId !== userId) {
+      return NextResponse.json({ error: "Document does not belong to specified user" }, { status: 400 });
+    }
+
     // Permission check
-    if (!isStaffOrAdmin && currentUserId !== userId) {
+    if (!isStaffOrAdmin && currentUserId !== doc.userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -164,6 +169,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string; docId: string }> }
 ) {
   const { id, docId } = await context.params;
+  const userId = parseInt(id, 10);
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -172,20 +178,22 @@ export async function DELETE(
 
     const currentUserId = parseInt(session.user.id, 10);
     const userRole = (session.user as any).role;
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "Manager", "HR"].includes(userRole);
-    const userId = parseInt(id, 10);
-
-    // Permission check
-    if (!isStaffOrAdmin && currentUserId !== userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
+    const isStaffOrAdmin = await can(session, "users", "update");
     const doc = await prisma.userDocument.findUnique({
       where: { id: docId },
     });
 
     if (!doc) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    }
+
+    if (doc.userId !== userId) {
+      return NextResponse.json({ error: "Document does not belong to specified user" }, { status: 400 });
+    }
+
+    // Permission check
+    if (!isStaffOrAdmin && currentUserId !== doc.userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Physical deletion of local file from disk

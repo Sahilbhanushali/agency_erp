@@ -2,16 +2,14 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { requireCan } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session || !["ADMIN", "MANAGER"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const auth = await requireCan("posts", "publish");
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
     const { platform } = await request.json()
     const postId = params.id
 

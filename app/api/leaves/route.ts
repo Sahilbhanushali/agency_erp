@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeaveService } from "@/lib/payroll/leave-service";
 import { LeaveStatus } from "@prisma/client";
+import { can } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +19,10 @@ export async function GET(request: NextRequest) {
     const yearParam = searchParams.get("year");
 
     const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR"].includes(userRole);
+    // Permission-driven scoping. "HR" was never a role in this database, so the
+    // old list silently limited this to ADMIN/MANAGER. Employees without
+    // leaves:read still see their own rows, which is the point of the endpoint.
+    const isStaffOrAdmin = await can(session, "leaves", "read");
     const currentUserId = Number(session.user.id);
 
     const where: any = {};
@@ -66,7 +70,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const currentUserId = Number(session.user.id);
     const userRole = (session.user as any).role || "";
-    const isStaffOrAdmin = ["ADMIN", "MANAGER", "HR"].includes(userRole);
+    // Permission-driven scoping. "HR" was never a role in this database, so the
+    // old list silently limited this to ADMIN/MANAGER. Employees without
+    // leaves:read still see their own rows, which is the point of the endpoint.
+    const isStaffOrAdmin = await can(session, "leaves", "read");
 
     const targetUserId = isStaffOrAdmin && body.userId ? Number(body.userId) : currentUserId;
 
