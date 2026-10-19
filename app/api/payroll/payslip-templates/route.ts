@@ -22,6 +22,17 @@ export const templateFields = {
   showAmountInWords: z.boolean().optional(),
   isDefault: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  /** Ordered body sections. Unknown keys are ignored by the renderer. */
+  sections: z
+    .array(z.object({ key: z.string().trim().min(1).max(40), visible: z.boolean() }))
+    .max(20)
+    .optional(),
+  accentColor: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Accent colour must be a hex value like #0F172A")
+    .optional(),
+  paperSize: z.enum(["A4", "LETTER"]).optional(),
 }
 
 const CreateTemplate = z.object(templateFields)

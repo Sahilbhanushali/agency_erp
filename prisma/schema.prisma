@@ -2182,6 +2182,13 @@ model PayrollRun {
   totalEmployerCost Int              @default(0)
   currency          String           @default("INR")
 
+  /**
+   * Payslip template every payslip in this run renders with. Null falls back to the
+   * default template, so an existing run is unaffected.
+   */
+  payslipTemplateId String?
+  payslipTemplate   PayslipTemplate? @relation("RunPayslipTemplate", fields: [payslipTemplateId], references: [id], onDelete: SetNull)
+
   settingsSnapshot  String?          @db.Text
   statutorySnapshot String?          @db.Text
 
@@ -2803,9 +2810,22 @@ model PayslipTemplate {
   showEmployerCost  Boolean @default(false)
   showAmountInWords Boolean @default(true)
 
+  /**
+   * Body layout: an ordered [{ key, visible }] list naming which sections the payslip
+   * prints and in what order. Null means the built-in order, so templates created
+   * before this existed keep rendering exactly as they did.
+   */
+  sections    Json?
+  /// Hex colour for the header bar and section accents.
+  accentColor String  @default("#0F172A")
+  /// A4 or LETTER.
+  paperSize   String  @default("A4")
+
   /// Exactly one template is the default; the API keeps that true.
   isDefault Boolean @default(false)
   isActive  Boolean @default(true)
+
+  payrollRuns PayrollRun[] @relation("RunPayslipTemplate")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

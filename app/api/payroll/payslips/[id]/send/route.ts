@@ -6,7 +6,7 @@ import { logAuditAction } from "@/lib/audit"
 import { sendMail } from "@/lib/smtp"
 import { PayrollService } from "@/lib/payroll/payroll-service"
 import { PayrollPdfGenerator } from "@/lib/payroll/pdf-generator"
-import { resolvePayslipTemplate } from "@/lib/payroll/payslip-template"
+import { resolveTemplateForPayslip } from "@/lib/payroll/payslip-template"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Same generator the download uses; `true` because the sender already holds
     // payroll:update, which is strictly more than the read this needs.
     const data = await PayrollService.getPayslipForPdf(id, Number(auth.userId), true)
-    const template = await resolvePayslipTemplate(parsed.data.templateId)
+    const template = await resolveTemplateForPayslip(id, parsed.data.templateId)
     const pdf = PayrollPdfGenerator.generatePayslipPdf({ ...data, template })
 
     const period = `${MONTHS[payslip.month - 1] ?? payslip.month} ${payslip.year}`

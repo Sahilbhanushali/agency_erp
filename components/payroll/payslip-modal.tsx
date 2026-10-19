@@ -145,6 +145,20 @@ export default function PayslipModal({
   const [emailTo, setEmailTo] = React.useState("");
   const [emailNote, setEmailNote] = React.useState("");
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  /**
+   * Which template to render with. Empty means "whatever the payroll run or the
+   * default says", which is the normal case — this is an override for one document.
+   */
+  const [templateId, setTemplateId] = React.useState("");
+  const [templates, setTemplates] = React.useState<{ id: string; name: string; isDefault: boolean }[]>([]);
+
+  React.useEffect(() => {
+    if (!isOpen || !canManage) return;
+    fetch("/api/payroll/payslip-templates")
+      .then((r) => (r.ok ? r.json() : { templates: [] }))
+      .then((d) => setTemplates(d.templates ?? []))
+      .catch(() => setTemplates([]));
+  }, [isOpen, canManage]);
 
   React.useEffect(() => {
     if (isOpen && payslip) {
@@ -194,6 +208,7 @@ export default function PayslipModal({
         body: JSON.stringify({
           to: emailTo.trim() || undefined,
           message: emailNote.trim() || undefined,
+          templateId: templateId || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -275,7 +290,10 @@ export default function PayslipModal({
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <a href={`/api/payroll/payslips/${payslip.id}/pdf`} download>
+            <a
+              href={`/api/payroll/payslips/${payslip.id}/pdf${templateId ? `?templateId=${templateId}` : ""}`}
+              download
+            >
               <Button variant="outline" size="xs" className="gap-1.5 text-xs">
                 <Download className="size-3.5" />
                 <span>Download PDF</span>
@@ -285,6 +303,24 @@ export default function PayslipModal({
               <Printer className="size-3.5" />
               <span>Print</span>
             </Button>
+
+            {canManage && templates.length > 0 && (
+              <select
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value)}
+                aria-label="Payslip template to render with"
+                className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+                title="Which template the download and email use"
+              >
+                <option value="">Template: run default</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.isDefault ? " (default)" : ""}
+                  </option>
+                ))}
+              </select>
+            )}
 
             {canManage && (
               <>

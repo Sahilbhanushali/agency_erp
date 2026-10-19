@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { PayrollService } from "@/lib/payroll/payroll-service";
 import { PayrollRunStatus } from "@prisma/client";
 import { requireCan } from "@/lib/api-auth";
+import { logAuditAction } from "@/lib/audit";
 
 export async function GET(
   request: NextRequest,
@@ -65,6 +66,49 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
+
+    /**
+     * Attach a payslip template to this run.
+     *
+     * Every payslip in the run then renders with it, downloaded or emailed, without
+     * having to pick a template each time. Sent on its own — no status change — so
+     * choosing a template never moves the run through its workflow by accident.
+     */
+    if (body.payslipTemplateId !== undefined) {
+      const templateId: string | null = body.payslipTemplateId || null;
+
+      if (templateId) {
+        const exists = await prisma.payslipTemplate.findUnique({
+          where: { id: templateId },
+          select: { id: true },
+        });
+        if (!exists) {
+          return NextResponse.json({ error: "That payslip template no longer exists" }, { status: 404 });
+        }
+      }
+
+      const run = await prisma.payrollRun.update({
+        where: { id },
+        data: { payslipTemplateId: templateId },
+        select: {
+          id: true,
+          payslipTemplateId: true,
+          payslipTemplate: { select: { id: true, name: true } },
+        },
+      });
+
+      await logAuditAction({
+        userId: String(auth.userId),
+        action: "UPDATE",
+        entityType: "PayrollRun",
+        entityId: id,
+        newValues: JSON.stringify({ payslipTemplate: run.payslipTemplate?.name ?? null }),
+        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+        userAgent: request.headers.get("user-agent") || "unknown",
+      });
+
+      return NextResponse.json(run);
+    }
 
     const updated = await PayrollService.updateRunStatus({
       payrollRunId: id,

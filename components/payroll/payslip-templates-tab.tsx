@@ -5,6 +5,9 @@ import useSWR from "swr"
 import toast from "react-hot-toast"
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  Eye,
   Check,
   FileText,
   ImageIcon,
@@ -24,6 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import { resizeImageFile } from "@/lib/resize-image"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,9 +53,23 @@ interface PayslipTemplate {
   showLeaveSummary: boolean
   showEmployerCost: boolean
   showAmountInWords: boolean
+  sections: { key: string; visible: boolean }[] | null
+  accentColor: string
+  paperSize: string
   isDefault: boolean
   isActive: boolean
 }
+
+/** The payslip body, in the order it prints. Keys match the PDF generator's sections. */
+const SECTION_LABELS: Record<string, string> = {
+  employee: "Employee & bank information",
+  attendance: "Attendance and days",
+  earnings: "Earnings & deductions",
+  netpay: "Net pay card",
+  employerCost: "Employer cost (CTC)",
+  footer: "Signature & footer",
+}
+const DEFAULT_SECTIONS = ["employee", "attendance", "earnings", "netpay", "employerCost", "footer"]
 
 const BLANK = {
   name: "",
@@ -65,6 +83,8 @@ const BLANK = {
   showLeaveSummary: true,
   showEmployerCost: false,
   showAmountInWords: true,
+  accentColor: "#0F172A",
+  paperSize: "A4",
 }
 
 const TOGGLES: { key: keyof typeof BLANK; label: string; hint: string }[] = [
@@ -96,6 +116,10 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<typeof BLANK>({ ...BLANK })
+  /** Section order and visibility, edited separately from the plain fields. */
+  const [sections, setSections] = useState<{ key: string; visible: boolean }[]>(
+    DEFAULT_SECTIONS.map((key) => ({ key, visible: key !== "employerCost" })),
+  )
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<PayslipTemplate | null>(null)
@@ -103,10 +127,32 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
 
   const templates = data?.templates ?? []
 
+  /**
+   * Preview renders a genuine payslip with the chosen template, which is the only
+   * honest way to show a layout — a mock would not prove the real data fits.
+   */
+  const { data: sample } = useSWR<any>("/api/payroll/payslips?limit=1", fetcher)
+  const previewPayslipId: string | null = (() => {
+    const list = Array.isArray(sample) ? sample : (sample?.payslips ?? sample?.data ?? [])
+    return list?.[0]?.id ?? null
+  })()
+
   const openNew = () => {
     setForm({ ...BLANK })
+    setSections(DEFAULT_SECTIONS.map((key) => ({ key, visible: key !== "employerCost" })))
     setEditingId("new")
     setFormError(null)
+  }
+
+  /** Move a section one place up or down. Buttons, not drag: keyboard-reachable. */
+  const moveSection = (index: number, delta: number) => {
+    setSections((prev) => {
+      const next = [...prev]
+      const target = index + delta
+      if (target < 0 || target >= next.length) return prev
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
   }
 
   const openEdit = (t: PayslipTemplate) => {
@@ -122,7 +168,18 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
       showLeaveSummary: t.showLeaveSummary,
       showEmployerCost: t.showEmployerCost,
       showAmountInWords: t.showAmountInWords,
+      accentColor: t.accentColor || "#0F172A",
+      paperSize: t.paperSize || "A4",
     })
+    // Append anything the saved template predates, so no section is silently lost.
+    const saved = t.sections ?? DEFAULT_SECTIONS.map((key) => ({ key, visible: true }))
+    setSections([
+      ...saved,
+      ...DEFAULT_SECTIONS.filter((k) => !saved.some((x) => x.key === k)).map((key) => ({
+        key,
+        visible: true,
+      })),
+    ])
     setEditingId(t.id)
     setFormError(null)
   }
@@ -141,6 +198,7 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...form,
+            sections,
             description: form.description.trim() || null,
             companyAddress: form.companyAddress.trim() || null,
             footerNote: form.footerNote.trim() || null,
@@ -196,9 +254,20 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
     }
   }
 
-  const uploadLogo = async (t: PayslipTemplate, file: File) => {
+  const uploadLogo = async (t: PayslipTemplate, picked: File) => {
     setUploadingFor(t.id)
     try {
+      /**
+       * Shrink before sending. The payslip draws the logo at 14mm, so 512px is already
+       * generous, and it keeps the embedded PDF image small enough to email. Without
+       * this the server rejects a full-resolution brand asset and leaves the person to
+       * resize it themselves.
+       */
+      const { file, resized, from } = await resizeImageFile(picked, 512)
+      if (resized && from) {
+        toast.success(`Resized from ${from.width}x${from.height} to fit the payslip`)
+      }
+
       const body = new FormData()
       body.append("logo", file)
       const res = await fetch(`/api/payroll/payslip-templates/${t.id}/logo`, {
@@ -335,7 +404,7 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
                       <label className="cursor-pointer">
                         <input
                           type="file"
-                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                          accept="image/png,image/jpeg,image/webp"
                           className="sr-only"
                           onChange={(e) => {
                             const file = e.target.files?.[0]
@@ -365,6 +434,17 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
                         >
                           <X className="size-3.5" aria-hidden="true" />
                         </Button>
+                      )}
+                      {previewPayslipId && (
+                        <a
+                          href={`/api/payroll/payslips/${previewPayslipId}/pdf?templateId=${t.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input px-2.5 text-xs hover:bg-muted"
+                        >
+                          <Eye className="size-3.5" aria-hidden="true" />
+                          Preview
+                        </a>
                       )}
                       <Button
                         size="sm"
@@ -498,6 +578,103 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
                     </span>
                   </label>
                 ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+              <legend className="px-1 text-xs font-medium">Layout — section order</legend>
+              <p className="text-[11px] text-muted-foreground">
+                The payslip prints these top to bottom. Untick to leave a section out; use
+                the arrows to reorder. The letterhead always stays at the top.
+              </p>
+              <ol className="space-y-1">
+                {sections.map((section, index) => (
+                  <li
+                    key={section.key}
+                    className="flex items-center gap-2 rounded-md border border-border/60 bg-background p-1.5"
+                  >
+                    <span className="w-5 text-center text-[11px] text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <Checkbox
+                      checked={section.visible}
+                      onCheckedChange={(v) =>
+                        setSections((prev) =>
+                          prev.map((x, i) => (i === index ? { ...x, visible: Boolean(v) } : x)),
+                        )
+                      }
+                      aria-label={`Show ${SECTION_LABELS[section.key] ?? section.key}`}
+                    />
+                    <span
+                      className={`min-w-0 flex-1 truncate text-xs ${section.visible ? "" : "text-muted-foreground line-through"}`}
+                    >
+                      {SECTION_LABELS[section.key] ?? section.key}
+                    </span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="size-7"
+                      disabled={index === 0}
+                      onClick={() => moveSection(index, -1)}
+                      aria-label={`Move ${SECTION_LABELS[section.key] ?? section.key} up`}
+                    >
+                      <ArrowUp className="size-3.5" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="size-7"
+                      disabled={index === sections.length - 1}
+                      onClick={() => moveSection(index, 1)}
+                      aria-label={`Move ${SECTION_LABELS[section.key] ?? section.key} down`}
+                    >
+                      <ArrowDown className="size-3.5" aria-hidden="true" />
+                    </Button>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="grid gap-3 pt-1 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="tpl-accent" className="text-xs font-medium">
+                    Accent colour
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="tpl-accent"
+                      type="color"
+                      value={form.accentColor}
+                      onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
+                      className="h-9 w-12 cursor-pointer rounded-md border border-input bg-background p-1"
+                      aria-label="Accent colour"
+                    />
+                    <Input
+                      value={form.accentColor}
+                      onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
+                      className="h-9 font-mono text-xs"
+                      placeholder="#0F172A"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Header bar, net-pay card and section rules.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tpl-paper" className="text-xs font-medium">
+                    Paper size
+                  </Label>
+                  <select
+                    id="tpl-paper"
+                    value={form.paperSize}
+                    onChange={(e) => setForm({ ...form, paperSize: e.target.value })}
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="A4">A4</option>
+                    <option value="LETTER">US Letter</option>
+                  </select>
+                </div>
               </div>
             </fieldset>
 

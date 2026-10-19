@@ -17,11 +17,15 @@ const ALLOWED = new Map([
 const MAX_BYTES = 2 * 1024 * 1024
 
 /**
- * jsPDF embeds images as raw pixels, so dimensions decide the PDF size, not file size:
- * a 1500x1500 PNG of only 55KB produced a 9MB payslip, which mail servers reject. A
- * logo is drawn at 14mm square, so 600px is already far more than it can show.
+ * jsPDF embeds images as pixels, so dimensions decide the PDF size, not file size: a
+ * 1500x1500 PNG of only 55KB once produced a 9MB payslip, which mail servers reject.
+ *
+ * The upload form downscales to 512px before sending, which is already generous for a
+ * logo drawn at 14mm. This limit is the backstop for anything bypassing that — a direct
+ * API call, or a browser without canvas — so it is set well above what the form sends
+ * rather than at the same value.
  */
-const MAX_LOGO_EDGE = 600
+const MAX_LOGO_EDGE = 1024
 
 /**
  * Replace a template's logo.
@@ -74,7 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (size.width > MAX_LOGO_EDGE || size.height > MAX_LOGO_EDGE) {
       return NextResponse.json(
         {
-          error: `Logo is ${size.width}x${size.height}px. Please resize it to ${MAX_LOGO_EDGE}x${MAX_LOGO_EDGE}px or smaller — larger images make the payslip PDF too big to email.`,
+          error: `Logo is ${size.width}x${size.height}px, which is too large to embed in a payslip (the limit is ${MAX_LOGO_EDGE}px). Uploading through Payroll → Payslip Templates resizes it for you.`,
         },
         { status: 422 },
       )

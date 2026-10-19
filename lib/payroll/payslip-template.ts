@@ -32,6 +32,10 @@ export interface PayslipTemplateView {
    * simply not drawn rather than corrupting the page.
    */
   logoDataUrl?: string | null
+  /** Ordered body sections; null means the built-in order. */
+  sections?: { key: string; visible: boolean }[] | null
+  accentColor?: string | null
+  paperSize?: string | null
 }
 
 const SELECT = {
@@ -47,6 +51,9 @@ const SELECT = {
   showLeaveSummary: true,
   showEmployerCost: true,
   showAmountInWords: true,
+  sections: true,
+  accentColor: true,
+  paperSize: true,
 } as const
 
 /** Used when no template exists yet. Company name comes from payroll settings. */
@@ -68,7 +75,27 @@ export async function fallbackTemplate(): Promise<PayslipTemplateView> {
     showLeaveSummary: true,
     showEmployerCost: false,
     showAmountInWords: true,
+    sections: null,
+    accentColor: "#0F172A",
+    paperSize: "A4",
   }
+}
+
+/**
+ * Narrow the stored JSON into the section list.
+ *
+ * `sections` is a Json column, so Prisma hands back `JsonValue`. Anything that is not
+ * a well-formed list is treated as "not configured", which falls back to the built-in
+ * order — a corrupt value must not stop a payslip rendering.
+ */
+export function parseSections(value: unknown): { key: string; visible: boolean }[] | null {
+  if (!Array.isArray(value)) return null
+  const parsed = value.flatMap((entry) =>
+    entry && typeof entry === "object" && typeof (entry as any).key === "string"
+      ? [{ key: (entry as any).key, visible: (entry as any).visible !== false }]
+      : [],
+  )
+  return parsed.length > 0 ? parsed : null
 }
 
 /**
@@ -80,7 +107,12 @@ export async function resolvePayslipTemplate(id?: string | null): Promise<Paysli
   try {
     if (id) {
       const named = await prisma.payslipTemplate.findUnique({ where: { id }, select: SELECT })
-      if (named) return { ...named, logoDataUrl: await loadLogoDataUrl(named.logoUrl) }
+      if (named)
+        return {
+          ...named,
+          sections: parseSections(named.sections),
+          logoDataUrl: await loadLogoDataUrl(named.logoUrl),
+        }
     }
     const chosen =
       (await prisma.payslipTemplate.findFirst({
@@ -92,7 +124,12 @@ export async function resolvePayslipTemplate(id?: string | null): Promise<Paysli
         orderBy: { createdAt: "asc" },
         select: SELECT,
       }))
-    if (chosen) return { ...chosen, logoDataUrl: await loadLogoDataUrl(chosen.logoUrl) }
+    if (chosen)
+      return {
+        ...chosen,
+        sections: parseSections(chosen.sections),
+        logoDataUrl: await loadLogoDataUrl(chosen.logoUrl),
+      }
   } catch (error) {
     console.error("[payslip-template] could not resolve, using fallback:", error)
   }
@@ -131,4 +168,32 @@ export async function setDefaultTemplate(id: string) {
     }),
     prisma.payslipTemplate.update({ where: { id }, data: { isDefault: true, isActive: true } }),
   ])
+}
+
+/**
+ * Which template a given payslip renders with, in priority order:
+ *
+ *   1. an explicit id — a one-off preview or "download with this template"
+ *   2. the template attached to that payslip's payroll run
+ *   3. the default template
+ *
+ * The run-level choice is what makes "use this template for this payroll" work: set it
+ * once on the run and every payslip in it, downloaded or emailed, matches.
+ */
+export async function resolveTemplateForPayslip(
+  payslipId: string,
+  explicitId?: string | null,
+): Promise<PayslipTemplateView> {
+  if (explicitId) return resolvePayslipTemplate(explicitId)
+  try {
+    const payslip = await prisma.payslip.findUnique({
+      where: { id: payslipId },
+      select: { payrollRun: { select: { payslipTemplateId: true } } },
+    })
+    const fromRun = payslip?.payrollRun?.payslipTemplateId
+    if (fromRun) return resolvePayslipTemplate(fromRun)
+  } catch (error) {
+    console.error("[payslip-template] run lookup failed:", error)
+  }
+  return resolvePayslipTemplate(null)
 }

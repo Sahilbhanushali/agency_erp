@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Camera, Loader2 } from "lucide-react"
+import { resizeImageFile } from "@/lib/resize-image"
 
 export default function ProfilePage() {
   const { data: session, update } = useSession()
@@ -118,9 +119,13 @@ export default function ProfilePage() {
     }
   }
 
-  const uploadAvatar = async (file: File) => {
+  const uploadAvatar = async (picked: File) => {
     setUploadingAvatar(true)
     try {
+      // An avatar is never shown larger than a few dozen pixels, so sending a phone
+      // photo at full resolution only wastes storage and bandwidth.
+      const { file } = await resizeImageFile(picked, 512)
+
       const body = new FormData()
       body.append("avatar", file)
       const res = await fetch("/api/profile/avatar", { method: "POST", body })
