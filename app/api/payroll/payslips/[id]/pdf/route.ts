@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
 import { PayrollPdfGenerator } from "@/lib/payroll/pdf-generator";
 import { can } from "@/lib/api-auth"
+import { resolveTemplateForPayslip } from "@/lib/payroll/payslip-template"
 
 export async function GET(
   request: NextRequest,
@@ -21,7 +22,13 @@ export async function GET(
     const canSeeAnyone = await can(session, "payroll", "read");
 
     const payslipData = await PayrollService.getPayslipForPdf(id, currentUserId, canSeeAnyone);
-    const pdfBuffer = PayrollPdfGenerator.generatePayslipPdf(payslipData);
+    // Branding and layout come from the chosen Payslip Template, so a download and an
+    // emailed copy are always the same document.
+    const template = await resolveTemplateForPayslip(
+      id,
+      request.nextUrl.searchParams.get("templateId"),
+    );
+    const pdfBuffer = PayrollPdfGenerator.generatePayslipPdf({ ...payslipData, template });
 
     const safeName = (payslipData.user.name || "Employee").replace(/[^a-zA-Z0-9_-]/g, "_");
     const filename = `Payslip_${safeName}_${payslipData.month}_${payslipData.year}.pdf`;

@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { NotificationCenter } from "./notification-center"
 import DesktopNotifications from "@/components/notifications/desktop-notifications"
+import { BrandLogo } from "@/components/brand/brand-logo"
 
 type NavigationItem = {
   name: string
@@ -316,13 +317,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       >
         {/* Workspace Brand Header */}
         <div className="flex h-14 items-center justify-between border-b border-border/70 px-4">
-          <Link href="/dashboard" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-2xs font-bold text-xs">
-              iD
-            </span>
+          <Link
+            href="/dashboard"
+            aria-label="itsmeDezino — go to dashboard"
+            className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {/* Square brand mark, correct in both themes. The lockup's own wording is
+                too small to read at this size, so the label stays beside it. */}
+            <BrandLogo size={32} priority className="size-8 shrink-0" />
             <div className="flex flex-col">
-              <span className="text-xs font-bold tracking-tight text-foreground leading-none">itsmeDezino</span>
-              <span className="text-[10px] text-muted-foreground/80 mt-0.5 font-medium leading-none">Agency Platform</span>
+              <span className="text-xs font-bold leading-none tracking-tight text-foreground">
+                itsmeDezino
+              </span>
+              <span className="mt-0.5 text-[10px] font-medium leading-none text-muted-foreground/80">
+                Agency Platform
+              </span>
             </div>
           </Link>
           

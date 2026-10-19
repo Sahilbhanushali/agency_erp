@@ -11,14 +11,16 @@ export const dynamic = "force-dynamic";
 function generateStrategiesData(
   startDate: Date,
   postTypes: Record<string, number>,
-  projectId: number
-): Array<{ month: number; year: number; postTypes: Record<string, number>; total: number; projectId: number }> {
+  // Project ids are cuid strings; this was typed as a number, which is what the two
+  // type errors in the create path were pointing at.
+  projectId: string
+): Array<{ month: number; year: number; postTypes: Record<string, number>; total: number; projectId: string }> {
   const start = new Date(startDate);
   const startMonth = start.getMonth() + 1; // JS months are 0-based
   const startYear = start.getFullYear();
   const total = Object.values(postTypes).reduce((a: number, b: number) => a + b, 0);
 
-  const strategiesData: Array<{ month: number; year: number; postTypes: Record<string, number>; total: number; projectId: number }> = [];
+  const strategiesData: Array<{ month: number; year: number; postTypes: Record<string, number>; total: number; projectId: string }> = [];
 
   // Generate for 50 years starting from startMonth/year
   let currentYear = startYear;
@@ -137,26 +139,16 @@ export async function POST(request: NextRequest) {
     const auth = await requireCan("projects", "create");
     if (!auth.ok) return auth.response;
     const session = auth.session;
-    // Fetch user permissions
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const permissions = user?.role?.permissions.map((rp: any) => rp.permission.name) || [];
-    if (!permissions.includes("Manage-projects")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    /**
+     * The requireCan() above is the authorization check for this handler.
+     *
+     * A second gate used to follow it: it re-read the role and demanded the legacy
+     * permission name "Manage-projects" by exact string. requireCan already accepts
+     * that name as an alias for this action, so the extra check only ever rejected
+     * roles it should have allowed — a role created in the permission matrix holds
+     * `projects:create`/`projects:update`/`projects:delete` and never the legacy name,
+     * so every such role got 401 here however it was granted.
+     */
 
     const formData = await request.formData();
     const name = formData.get("name") as string;
@@ -286,26 +278,16 @@ export async function PUT(request: NextRequest) {
     const auth = await requireCan("projects", "update");
     if (!auth.ok) return auth.response;
     const session = auth.session;
-    // Fetch user permissions
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const permissions = user?.role?.permissions.map((rp: any) => rp.permission.name) || [];
-    if (!permissions.includes("Manage-projects")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    /**
+     * The requireCan() above is the authorization check for this handler.
+     *
+     * A second gate used to follow it: it re-read the role and demanded the legacy
+     * permission name "Manage-projects" by exact string. requireCan already accepts
+     * that name as an alias for this action, so the extra check only ever rejected
+     * roles it should have allowed — a role created in the permission matrix holds
+     * `projects:create`/`projects:update`/`projects:delete` and never the legacy name,
+     * so every such role got 401 here however it was granted.
+     */
 
     const { id, name, description, startDate, endDate, clientId, managerId, isActive, postTypes, assignedUserIds = [] } = await request.json();
 
@@ -397,21 +379,11 @@ export async function DELETE(request: NextRequest) {
     const auth = await requireCan("projects", "delete");
     if (!auth.ok) return auth.response;
     const session = auth.session;
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
-      include: {
-        role: {
-          include: {
-            permissions: { include: { permission: true } },
-          },
-        },
-      },
-    });
-
-    const permissions = user?.role?.permissions.map((rp: any) => rp.permission.name) || [];
-    if (!permissions.includes("Manage-projects")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    /**
+     * requireCan("projects", "delete") above is the authorization check. A second gate
+     * demanding the legacy name "Manage-projects" used to follow it, which rejected
+     * every role created in the permission matrix — see the note on POST.
+     */
 
     const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get("id");

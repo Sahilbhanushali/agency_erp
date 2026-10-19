@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 import {
   Dialog,
@@ -140,6 +140,45 @@ export default function RunReviewModal({
     data: varianceData,
     mutate: mutateVariance,
   } = useSWR(runId ? `/api/payroll/runs/${runId}/variance` : null, fetcher);
+
+  // Payslip templates available for this run. Hooks run before the guard below, which
+  // is why they sit here rather than next to the markup that uses them.
+  const { data: templatesData } = useSWR("/api/payroll/payslip-templates", fetcher);
+  const payslipTemplates: { id: string; name: string; isDefault: boolean }[] =
+    templatesData?.templates ?? [];
+
+  const [runTemplateId, setRunTemplateId] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  useEffect(() => {
+    if (run?.payslipTemplateId !== undefined) {
+      setRunTemplateId(run.payslipTemplateId ?? "");
+    }
+  }, [run?.payslipTemplateId]);
+
+  const saveRunTemplate = async (value: string) => {
+    setRunTemplateId(value);
+    setSavingTemplate(true);
+    try {
+      const res = await fetch(`/api/payroll/runs/${runId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payslipTemplateId: value || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not set the template");
+      toast.success(
+        value
+          ? `Payslips in this run will use "${payslipTemplates.find((t) => t.id === value)?.name}"`
+          : "Payslips in this run will use the default template",
+      );
+      mutateRun();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
 
   if (!runId || !run) return null;
 
@@ -317,6 +356,41 @@ export default function RunReviewModal({
         <DialogContent className="w-[96vw] max-w-7xl sm:max-w-7xl max-h-[92vh] h-[90vh] p-0 flex flex-col gap-0 rounded-2xl overflow-hidden bg-background shadow-2xl border border-border">
           {/* Header */}
           <div className="px-6 py-4 border-b border-border bg-card shrink-0 space-y-4">
+            {/*
+              The payslip template for this whole run. Setting it here means every
+              payslip in the run — downloaded or emailed — uses it, rather than picking
+              a template one document at a time.
+            */}
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+              <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <label htmlFor="run-payslip-template" className="text-xs font-medium">
+                Payslip template for this run
+              </label>
+              <select
+                id="run-payslip-template"
+                value={runTemplateId}
+                onChange={(e) => saveRunTemplate(e.target.value)}
+                disabled={savingTemplate}
+                className="h-8 min-w-[180px] rounded-md border border-input bg-background px-2 text-xs"
+              >
+                <option value="">Use the default template</option>
+                {payslipTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.isDefault ? " (default)" : ""}
+                  </option>
+                ))}
+              </select>
+              {savingTemplate && (
+                <span className="text-[11px] text-muted-foreground">Saving…</span>
+              )}
+              {payslipTemplates.length === 0 && (
+                <span className="text-[11px] text-muted-foreground">
+                  No templates yet — create one under Payroll → Payslip Templates.
+                </span>
+              )}
+            </div>
+
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2.5 flex-wrap">

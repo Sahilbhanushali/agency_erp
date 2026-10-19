@@ -9,26 +9,12 @@ export async function PUT(request: NextRequest) {
     const auth = await requireCan("projects", "update");
     if (!auth.ok) return auth.response;
     const session = auth.session;
-    // Fetch user permissions
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const permissions = user?.role?.permissions.map((rp) => rp.permission.name) || [];
-    if (!permissions.includes("Manage-projects")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    /**
+     * requireCan("projects", "update") above is the authorization check. A second gate
+     * demanding the legacy name "Manage-projects" used to follow it, so a role granted
+     * projects:update in the permission matrix could not activate or deactivate a
+     * project — it got 401 despite holding the permission.
+     */
 
     const { id, isActive } = await request.json();
 

@@ -1,0 +1,13 @@
+{
+  "name": "itsmeDezino Agency ERP",
+  "short_name": "itsmeDezino",
+  "description": "Content planning, design approvals and client sign-off.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable any" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable any" }
+  ]
+}

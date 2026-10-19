@@ -2182,6 +2182,13 @@ model PayrollRun {
   totalEmployerCost Int              @default(0)
   currency          String           @default("INR")
 
+  /**
+   * Payslip template every payslip in this run renders with. Null falls back to the
+   * default template, so an existing run is unaffected.
+   */
+  payslipTemplateId String?
+  payslipTemplate   PayslipTemplate? @relation("RunPayslipTemplate", fields: [payslipTemplateId], references: [id], onDelete: SetNull)
+
   settingsSnapshot  String?          @db.Text
   statutorySnapshot String?          @db.Text
 
@@ -2776,4 +2783,53 @@ model JobRun {
 
   @@index([jobId, startedAt])
   @@map("job_runs")
+}
+
+/**
+ * How a payslip PDF is branded and which blocks it shows.
+ *
+ * The generator used to hardcode every one of these, including a placeholder company
+ * address that printed on real payslips sent to employees. One template is the default
+ * and is used whenever a payslip is rendered or emailed.
+ */
+model PayslipTemplate {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String? @db.Text
+
+  companyName    String
+  companyAddress String? @db.Text
+  /// Served from public/uploads; drawn top-left on the PDF.
+  logoUrl        String?
+  signatoryText  String  @default("Authorized Signatory")
+  footerNote     String? @db.Text
+
+  showBankDetails   Boolean @default(true)
+  showPan           Boolean @default(true)
+  showLeaveSummary  Boolean @default(true)
+  showEmployerCost  Boolean @default(false)
+  showAmountInWords Boolean @default(true)
+
+  /**
+   * Body layout: an ordered [{ key, visible }] list naming which sections the payslip
+   * prints and in what order. Null means the built-in order, so templates created
+   * before this existed keep rendering exactly as they did.
+   */
+  sections    Json?
+  /// Hex colour for the header bar and section accents.
+  accentColor String  @default("#0F172A")
+  /// A4 or LETTER.
+  paperSize   String  @default("A4")
+
+  /// Exactly one template is the default; the API keeps that true.
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  payrollRuns PayrollRun[] @relation("RunPayslipTemplate")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isDefault])
+  @@map("payslip_templates")
 }

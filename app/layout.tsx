@@ -12,9 +12,18 @@ export const metadata: Metadata = {
   title: "itsmeDezino Agency ERP",
   description: "Content planning, design approvals and client sign-off.",
   icons: {
-    icon: "/icon.svg",
+    /**
+     * `app/favicon.ico` is picked up by Next automatically and covers older browsers.
+     * The SVG is listed first so browsers that support it use the sharp version, and
+     * the 96px PNG is the fallback for those that do not.
+     */
+    icon: [
+      { url: "/brand/favicon.svg", type: "image/svg+xml" },
+      { url: "/brand/favicon-96x96.png", type: "image/png", sizes: "96x96" },
+    ],
+    apple: "/brand/apple-touch-icon.png",
   },
-  generator: "v0.app",
+  manifest: "/manifest.webmanifest",
 }
 
 export default function RootLayout({

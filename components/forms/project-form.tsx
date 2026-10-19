@@ -54,8 +54,15 @@ interface DesignerHead {
 
 interface User {
   id: string;
-  name: string;
-  role: string;
+  /** Can be empty for an invited account that has not set a name yet. */
+  name: string | null;
+  /**
+   * Null when the account has no role — which is the normal state after a role is
+   * deleted, since that unassigns everyone who held it. Calling .toLowerCase() on
+   * this unguarded crashed the whole form with
+   * "Cannot read properties of null (reading 'toLowerCase')".
+   */
+  role: string | null;
 }
 
 interface PostTypeCount {
@@ -274,7 +281,7 @@ export default function ProjectForm({
   };
 
   const getInitialDesignerHeadId = () => {
-    const existing = project?.assignedUsers?.find((user) => user.role.name === "Team Lead")?.id.toString();
+    const existing = project?.assignedUsers?.find((user) => user.role?.name === "Team Lead")?.id.toString();
     if (existing) return existing;
     if (!isEditing && currentUser && (currentUser.role?.toLowerCase() === "team lead" || currentUser.role?.toLowerCase() === "designer head")) {
       const isDesignerHead = designerHeads.some((d) => d.id.toString() === currentUser.id.toString());
@@ -377,26 +384,36 @@ export default function ProjectForm({
     });
   };
 
-  const getSelectedUsers = () => {
-    const excludedRoles = ["manager", "admin"];
-    return users.filter((user) =>
-      formData.assignedTeamIds.includes(user.id.toString()) &&
-      !excludedRoles.includes(user.role.toLowerCase())
+  /**
+   * Managers and admins are offered in the dedicated manager field rather than as team
+   * members, so they are left out of this list. Matching on the role *name* is a known
+   * weakness — a role called something else is not excluded — but it only decides
+   * convenience here, never access.
+   */
+  const isExcludedFromTeam = (user: User) =>
+    ["manager", "admin"].includes((user.role ?? "").toLowerCase());
+
+  const matchesTeamSearch = (user: User, query: string) => {
+    const needle = query.toLowerCase();
+    return (
+      (user.name ?? "").toLowerCase().includes(needle) ||
+      (user.role ?? "").toLowerCase().includes(needle)
     );
   };
+
+  const getSelectedUsers = () =>
+    users.filter(
+      (user) =>
+        formData.assignedTeamIds.includes(user.id.toString()) && !isExcludedFromTeam(user),
+    );
 
   const getFilteredUsers = () => {
-    const excludedRoles = ["manager", "admin"];
-    const filtered = users.filter((user) => !excludedRoles.includes(user.role.toLowerCase()));
+    const filtered = users.filter((user) => !isExcludedFromTeam(user));
     if (!teamSearchQuery) return filtered;
-    return filtered.filter(
-      (user) =>
-        user.name.toLowerCase().includes(teamSearchQuery.toLowerCase()) ||
-        user.role.toLowerCase().includes(teamSearchQuery.toLowerCase())
-    );
+    return filtered.filter((user) => matchesTeamSearch(user, teamSearchQuery));
   };
 
-  const getRoleBadgeVariant = (role: string) => {
+  const getRoleBadgeVariant = (role: string | null) => {
     switch (role) {
       case "Team Lead":
         return "warning";
@@ -458,13 +475,15 @@ export default function ProjectForm({
     if (!formData.designerHeadId) {
       return "Please select a Team Lead (Team Lead).";
     }
-    const hasDesigner = formData.assignedTeamIds.some((id) => {
-      const user = users.find((u) => u.id.toString() === id);
-      return user?.role === "Designer";
-    });
-    if (!hasDesigner) {
-      return "At least one Designer must be assigned to the team.";
-    }
+    /**
+     * Team members are optional.
+     *
+     * This required at least one assignee whose role was named exactly "Designer".
+     * Two problems: a project legitimately starts before anyone is assigned to it, and
+     * the check keyed on a role *name*, so on an install with its own roles it could
+     * never be satisfied — the form refused every project no matter who was picked.
+     * The API already accepts an empty team, so nothing downstream depends on this.
+     */
 
     const hasTarget = Object.values(formData.postTypes).some(val => {
       const num = Number(val);
@@ -840,7 +859,10 @@ export default function ProjectForm({
             {/* Team Members */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Assigned Designers & Developers <span className="text-destructive">*</span></Label>
+                <Label className="text-xs font-medium">
+                  Assigned Designers &amp; Developers{" "}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
                 {formData.assignedTeamIds.length > 0 && (
                   <Button
                     type="button"
@@ -863,7 +885,7 @@ export default function ProjectForm({
                       className="gap-1.5 px-2 py-0.5 text-xs"
                     >
                       <span>{user.name}</span>
-                      <span className="opacity-75 text-[10px]">({user.role})</span>
+                      <span className="opacity-75 text-[10px]">({user.role ?? "no role"})</span>
                       <button
                         type="button"
                         onClick={() => removeTeamMember(user.id.toString())}
@@ -934,7 +956,7 @@ export default function ProjectForm({
                               <span className="font-medium text-foreground">{user.name}</span>
                             </div>
                             <Badge variant={getRoleBadgeVariant(user.role)} className="text-[10px]">
-                              {user.role}
+                              {user.role ?? "No role"}
                             </Badge>
                           </CommandItem>
                         ))}

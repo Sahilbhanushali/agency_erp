@@ -11,6 +11,7 @@ import path from "path";
 
 import { PostStatus, Platform, PostType, ContentStatus } from '@prisma/client';
 import { can, contentScope, isClientContact, requireCan } from "@/lib/api-auth";
+import { namesSatisfying } from "@/lib/permissions/catalog";
 
 export async function POST(request: NextRequest) {
   try {
@@ -127,24 +128,39 @@ export async function POST(request: NextRequest) {
     if (validatedAssignedUserIds.length > 0) {
       assignedUsers = await prisma.user.findMany({
         where: { id: { in: validatedAssignedUserIds } },
-        select: { id: true, name: true, email: true, role: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: {
+            select: {
+              name: true,
+              permissions: { select: { permission: { select: { name: true } } } },
+            },
+          },
+        },
       });
       
       if (assignedUsers.length === 0) {
         return NextResponse.json({ error: 'Invalid assigned designer IDs' }, { status: 400 });
       }
 
+      /**
+       * Whoever a post is assigned to has to be able to work on it, which is
+       * `posts:update` — not a role whose name happens to be one of three strings.
+       *
+       * The previous check listed "designer", "video editor" and
+       * "Creative Executive(Design & Media)" literally, so on an install with its own
+       * roles there was nobody a post could be assigned to at all.
+       */
+      const accepted = namesSatisfying("posts", "update");
       for (const user of assignedUsers) {
-        if (
-          !user.role ||
-          (
-            user.role.name.toLowerCase() !== "designer" &&
-            user.role.name.toLowerCase() !== "video editor" &&
-            user.role.name !== "Creative Executive(Design & Media)"
-          )
-        ) {
+        const held = user.role?.permissions.map((rp: any) => rp.permission.name) ?? [];
+        if (!accepted.some((name: string) => held.includes(name))) {
           return NextResponse.json(
-            { error: `Assigned user ${user.name} must have Designer/Video Editor role` },
+            {
+              error: `${user.name ?? user.email} cannot be assigned work on posts — their role needs the "Update" permission for Content & Posts.`,
+            },
             { status: 400 }
           );
         }
