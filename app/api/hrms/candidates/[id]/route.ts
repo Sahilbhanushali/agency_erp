@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCan, requireSession } from "@/lib/api-auth";
+import { deleteLocalFile } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,17 @@ export async function PATCH(
       data.noticePeriodDays = data.noticePeriodDays ? Number(data.noticePeriodDays) : null;
     if (data.rating !== undefined) data.rating = Number(data.rating);
 
+    // If resumeUrl is updated, clean up previous file
+    if (data.resumeUrl !== undefined) {
+      const existing = await prisma.hrmsCandidate.findUnique({
+        where: { id },
+        select: { resumeUrl: true },
+      });
+      if (existing?.resumeUrl && existing.resumeUrl !== data.resumeUrl) {
+        await deleteLocalFile(existing.resumeUrl);
+      }
+    }
+
     const updated = await prisma.hrmsCandidate.update({
       where: { id },
       data,
@@ -102,6 +114,14 @@ export async function DELETE(
 
   try {
     const { id } = await params;
+    const candidate = await prisma.hrmsCandidate.findUnique({
+      where: { id },
+      select: { resumeUrl: true },
+    });
+    if (candidate?.resumeUrl) {
+      await deleteLocalFile(candidate.resumeUrl);
+    }
+
     await prisma.hrmsCandidate.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: any) {

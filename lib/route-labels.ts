@@ -18,6 +18,7 @@ const breadcrumbCache: Record<string, string> = {
   festivals: "Festival Posts",
   reports: "Reports & Analytics",
   settings: "Settings",
+  profile: "Profile Settings",
   smtp: "SMTP Config",
   credentials: "Credentials",
   approvals: "Approvals",

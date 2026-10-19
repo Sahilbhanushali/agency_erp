@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { imageDimensions } from "@/lib/images"
+import { deleteLocalFile } from "@/lib/storage"
 
 export const dynamic = "force-dynamic"
 
@@ -94,10 +95,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await prisma.payslipTemplate.update({ where: { id }, data: { logoUrl } })
 
     // Remove the file this one replaced, best effort — a stale logo is dead weight.
-    if (template.logoUrl?.startsWith("/uploads/payslips/")) {
-      await fs
-        .unlink(path.join(process.cwd(), "public", template.logoUrl))
-        .catch(() => undefined)
+    if (template.logoUrl) {
+      await deleteLocalFile(template.logoUrl)
     }
 
     await logAuditAction({
@@ -136,10 +135,8 @@ export async function DELETE(
 
     await prisma.payslipTemplate.update({ where: { id }, data: { logoUrl: null } })
 
-    if (template.logoUrl?.startsWith("/uploads/payslips/")) {
-      await fs
-        .unlink(path.join(process.cwd(), "public", template.logoUrl))
-        .catch(() => undefined)
+    if (template.logoUrl) {
+      await deleteLocalFile(template.logoUrl)
     }
 
     return NextResponse.json({ removed: true })

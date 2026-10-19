@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { setDefaultTemplate } from "@/lib/payroll/payslip-template"
+import { deleteLocalFile } from "@/lib/storage"
 import { templateFields } from "../route"
 
 export const dynamic = "force-dynamic"
@@ -37,7 +38,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const before = await prisma.payslipTemplate.findUnique({
       where: { id },
-      select: { id: true, name: true, isDefault: true },
+      select: { id: true, name: true, isDefault: true, logoUrl: true },
     })
     if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -54,6 +55,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         },
         { status: 409 },
       )
+    }
+
+    // Clean up replaced logo if changed
+    const patchLogo = (patch as any).logoUrl
+    if (patchLogo !== undefined && before.logoUrl && patchLogo !== before.logoUrl) {
+      await deleteLocalFile(before.logoUrl)
     }
 
     const { isDefault, ...rest } = patch
@@ -99,7 +106,7 @@ export async function DELETE(
   try {
     const template = await prisma.payslipTemplate.findUnique({
       where: { id },
-      select: { id: true, name: true, isDefault: true },
+      select: { id: true, name: true, isDefault: true, logoUrl: true },
     })
     if (!template) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -113,6 +120,10 @@ export async function DELETE(
         },
         { status: 409 },
       )
+    }
+
+    if (template.logoUrl) {
+      await deleteLocalFile(template.logoUrl)
     }
 
     await prisma.payslipTemplate.delete({ where: { id } })

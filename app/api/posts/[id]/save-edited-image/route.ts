@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { promises as fs } from "fs";
 import path from "path";
 import { requireCan } from "@/lib/api-auth";
+import { deleteLocalFile } from "@/lib/storage";
 
 export async function POST(
   request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -59,17 +60,7 @@ export async function POST(
 
     if (existingEditedAsset) {
       // Delete file from storage
-      const existingFilePath = path.join(
-        process.cwd(),
-        "public",
-        "uploads",
-        path.basename(existingEditedAsset.url)
-      );
-      try {
-        await fs.unlink(existingFilePath);
-      } catch (err) {
-        console.warn("Failed to delete old edited image file:", err);
-      }
+      await deleteLocalFile(existingEditedAsset.url);
 
       // Delete asset record from DB
       await prisma.asset.delete({ where: { id: existingEditedAsset.id } });

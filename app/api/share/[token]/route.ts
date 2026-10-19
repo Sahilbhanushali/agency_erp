@@ -9,6 +9,7 @@ import {
 } from "@/lib/export-link"
 import { promises as fs } from "fs"
 import path from "path"
+import { deleteLocalFile } from "@/lib/storage"
 
 interface RouteParams {
   params: Promise<{ token: string }>
@@ -578,11 +579,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         where: { postId, isEdited: true, order: originalAsset.order },
       })
       if (existingAnnotated) {
-        const existingFilePath = path.join(
-          process.cwd(), "public", "uploads",
-          path.basename(existingAnnotated.url)
-        )
-        try { await fs.unlink(existingFilePath) } catch {}
+        await deleteLocalFile(existingAnnotated.url);
         await prisma.asset.delete({ where: { id: existingAnnotated.id } })
       }
 

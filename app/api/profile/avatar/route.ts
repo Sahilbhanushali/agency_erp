@@ -3,6 +3,7 @@ import path from "path"
 import fs from "fs/promises"
 import { prisma } from "@/lib/prisma"
 import { requireSession } from "@/lib/api-auth"
+import { deleteLocalFile } from "@/lib/storage"
 
 export const dynamic = "force-dynamic"
 
@@ -62,10 +63,9 @@ export async function POST(request: NextRequest) {
 
     await prisma.user.update({ where: { id: auth.userId }, data: { avatar } })
 
-    // Clear away the picture this one replaced. Best effort: a leftover file is
-    // untidy, but failing to delete it must not fail the upload.
-    if (current.avatar?.startsWith("/uploads/avatars/")) {
-      await fs.unlink(path.join(process.cwd(), "public", current.avatar)).catch(() => undefined)
+    // Clear away the picture this one replaced.
+    if (current.avatar) {
+      await deleteLocalFile(current.avatar)
     }
 
     return NextResponse.json({ avatar })
@@ -89,8 +89,8 @@ export async function DELETE() {
 
     await prisma.user.update({ where: { id: auth.userId }, data: { avatar: null } })
 
-    if (current.avatar?.startsWith("/uploads/avatars/")) {
-      await fs.unlink(path.join(process.cwd(), "public", current.avatar)).catch(() => undefined)
+    if (current.avatar) {
+      await deleteLocalFile(current.avatar)
     }
 
     return NextResponse.json({ removed: true })

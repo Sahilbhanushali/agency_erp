@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { can, requireCan } from "@/lib/api-auth";
+import { deleteLocalFile } from "@/lib/storage";
 
 // PATCH: Edit comment content
 export async function PATCH(
@@ -39,6 +40,13 @@ export async function PATCH(
 
     if (!isAuthor && !(await can(session, "posts", "update"))) {
       return NextResponse.json({ error: "You are not authorized to edit this comment" }, { status: 403 })
+    }
+
+    // Clean up audio file if removed or changed
+    const oldAudioMatch = existingComment.content?.match(/\[AUDIO:(.*?)\]/)
+    const newAudioMatch = content.match(/\[AUDIO:(.*?)\]/)
+    if (oldAudioMatch && oldAudioMatch[1] && (!newAudioMatch || newAudioMatch[1] !== oldAudioMatch[1])) {
+      await deleteLocalFile(oldAudioMatch[1])
     }
 
     const updatedComment = await prisma.comment.update({
@@ -91,6 +99,12 @@ export async function DELETE(
 
     if (!isAuthor && !(await can(session, "posts", "delete"))) {
       return NextResponse.json({ error: "You are not authorized to delete this comment" }, { status: 403 })
+    }
+
+    // Clean up associated audio file if present
+    const audioMatch = existingComment.content?.match(/\[AUDIO:(.*?)\]/)
+    if (audioMatch && audioMatch[1]) {
+      await deleteLocalFile(audioMatch[1])
     }
 
     await prisma.comment.delete({
