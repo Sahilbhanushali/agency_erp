@@ -36,16 +36,8 @@ export const authOptions: NextAuthOptions = {
           id: user.id.toString(),
           email: user.email,
           name: user.name,
+          image: user.avatar,
           roleId: user.role?.id?.toString() || null,
-          /**
-           * Null when the account has no role, never a guessed one.
-           *
-           * This used to fall back to "CLIENT", which invented an identity nobody had
-           * granted: an account whose role had been deleted reported itself as a client
-           * and was scoped like one, while the real problem — no role at all — was
-           * invisible. It also made the session look healthy while every permission
-           * check returned nothing.
-           */
           role: user.role?.name ?? null,
         }
       },
@@ -55,11 +47,18 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.sub = user.id
         token.roleId = (user as any).roleId
         token.role = (user as any).role
+        token.picture = (user as any).image ?? null
+      }
+      if (trigger === "update" && session) {
+        if (session.name) token.name = session.name
+        if (session.image !== undefined) token.picture = session.image
+        if (session.user?.name) token.name = session.user.name
+        if (session.user?.image !== undefined) token.picture = session.user.image
       }
       return token
     },
@@ -68,6 +67,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub!
         ;(session.user as any).roleId = token.roleId as string | null
         ;(session.user as any).role = token.role as string
+        if (token.name) session.user.name = token.name
+        if (token.picture) session.user.image = token.picture as string
       }
       return session
     },

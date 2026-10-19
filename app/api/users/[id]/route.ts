@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { logAuditAction } from "@/lib/audit";
 import { can, hasPermission } from "@/lib/api-auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
+import { deleteLocalFile } from "@/lib/storage";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
@@ -194,6 +195,19 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       data.roleId = roleObj.id;
     }
 
+    // Check existing files to clean up if replaced
+    const existingUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { avatar: true, offerLetterUrl: true },
+    });
+
+    if (present("avatar") && existingUser?.avatar && existingUser.avatar !== body.avatar) {
+      await deleteLocalFile(existingUser.avatar);
+    }
+    if (present("offerLetterUrl") && existingUser?.offerLetterUrl && existingUser.offerLetterUrl !== offerLetterUrl) {
+      await deleteLocalFile(existingUser.offerLetterUrl);
+    }
+
     const user = await prisma.user.update({
       where: { id: targetUserId },
       data,
@@ -319,6 +333,17 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     if (user.id.toString() === session.user.id) {
       return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
     }
+
+    // Clean up all local files belonging to this user
+    const userDocs = await prisma.userDocument.findMany({
+      where: { userId: parseInt(params.id) },
+      select: { fileUrl: true },
+    });
+    for (const doc of userDocs) {
+      if (doc.fileUrl) await deleteLocalFile(doc.fileUrl);
+    }
+    if (user.avatar) await deleteLocalFile(user.avatar);
+    if ((user as any).offerLetterUrl) await deleteLocalFile((user as any).offerLetterUrl);
 
     await prisma.user.delete({
       where: { id: parseInt(params.id) },

@@ -156,6 +156,34 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
           await deleteLocalFile(a.url);
         }
 
+        // Clean up approval attachments
+        const flows = await tx.approvalFlow.findMany({
+          where: { postId: postId },
+          select: { id: true },
+        });
+        if (flows.length > 0) {
+          const flowIds = flows.map((f: any) => f.id);
+          const attachments = await tx.approvalAttachment.findMany({
+            where: { approvalFlowId: { in: flowIds } },
+            select: { url: true },
+          });
+          for (const att of attachments) {
+            await deleteLocalFile(att.url);
+          }
+        }
+
+        // Clean up audio in comments
+        const comments = await tx.comment.findMany({
+          where: { postId: postId },
+          select: { content: true },
+        });
+        for (const c of comments) {
+          const match = c.content?.match(/\[AUDIO:(.*?)\]/);
+          if (match && match[1]) {
+            await deleteLocalFile(match[1]);
+          }
+        }
+
         await tx.asset.deleteMany({
           where: { postId: postId },
         });

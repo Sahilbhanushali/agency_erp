@@ -14,17 +14,26 @@ export async function deleteLocalFile(fileUrlOrPath?: string | null): Promise<bo
   }
 
   try {
-    // Normalize and extract the relative path
-    let cleanedPath = fileUrlOrPath
-      .replace(/^\/api\/uploads\//, "")
-      .replace(/^\/uploads\//, "")
-      .replace(/^uploads\//, "");
-
-    // Prevent directory traversal
-    cleanedPath = path.normalize(cleanedPath).replace(/^(\.\.[\/\\])+/, "");
+    // Strip query strings or hash parameters (e.g., ?v=123 or #preview)
+    const cleanUrl = fileUrlOrPath.split("?")[0].split("#")[0].trim();
+    if (!cleanUrl) return false;
 
     const publicUploadsDir = path.join(process.cwd(), "public", "uploads");
-    const targetFilePath = path.join(publicUploadsDir, cleanedPath);
+    let targetFilePath: string;
+
+    if (path.isAbsolute(cleanUrl) && cleanUrl.startsWith(publicUploadsDir)) {
+      targetFilePath = cleanUrl;
+    } else {
+      // Normalize and extract the relative path
+      let cleanedPath = cleanUrl
+        .replace(/^\/?api\/uploads\//i, "")
+        .replace(/^\/?public\/uploads\//i, "")
+        .replace(/^\/?uploads\//i, "");
+
+      // Prevent directory traversal
+      cleanedPath = path.normalize(cleanedPath).replace(/^(\.\.[\/\\])+/, "");
+      targetFilePath = path.join(publicUploadsDir, cleanedPath);
+    }
 
     // Ensure the target is strictly inside public/uploads
     if (!targetFilePath.startsWith(publicUploadsDir)) {
@@ -32,21 +41,49 @@ export async function deleteLocalFile(fileUrlOrPath?: string | null): Promise<bo
       return false;
     }
 
+    // Attempt direct deletion first
     try {
       await fs.access(targetFilePath);
       await fs.unlink(targetFilePath);
       console.log(`[storage] Successfully deleted local file: ${targetFilePath}`);
       return true;
     } catch (err: any) {
-      if (err.code === "ENOENT") {
-        // File already absent
+      if (err.code !== "ENOENT") {
+        console.warn(`[storage] Could not delete ${targetFilePath}:`, err.message);
         return false;
       }
-      console.warn(`[storage] Could not access or delete ${targetFilePath}:`, err.message);
-      return false;
     }
+
+    // If direct target was not found and the path has no directory separators (just a filename),
+    // check known upload subdirectories as a fallback
+    const baseName = path.basename(targetFilePath);
+    if (baseName && !cleanUrl.includes("/") && !cleanUrl.includes("\\")) {
+      const knownSubdirs = ["avatars", "projects", "clients", "audio", "finance", "contracts", "expenses", "payslips", "users"];
+      for (const subdir of knownSubdirs) {
+        const fallbackPath = path.join(publicUploadsDir, subdir, baseName);
+        try {
+          await fs.access(fallbackPath);
+          await fs.unlink(fallbackPath);
+          console.log(`[storage] Successfully deleted local file from subdirectory: ${fallbackPath}`);
+          return true;
+        } catch {
+          // Continue to next subdir
+        }
+      }
+    }
+
+    return false;
   } catch (error) {
     console.error(`[storage] Error deleting file for ${fileUrlOrPath}:`, error);
     return false;
   }
+}
+
+/**
+ * Batch delete multiple local files safely.
+ */
+export async function deleteLocalFiles(fileUrlsOrPaths: (string | null | undefined)[]): Promise<number> {
+  if (!Array.isArray(fileUrlsOrPaths) || fileUrlsOrPaths.length === 0) return 0;
+  const results = await Promise.allSettled(fileUrlsOrPaths.filter(Boolean).map((u) => deleteLocalFile(u)));
+  return results.filter((r) => r.status === "fulfilled" && r.value === true).length;
 }

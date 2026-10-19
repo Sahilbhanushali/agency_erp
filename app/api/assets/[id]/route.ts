@@ -3,25 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireCan } from "@/lib/api-auth";
+import { deleteLocalFile } from "@/lib/storage";
 import { promises as fs } from "fs";
 import path from "path";
 
 // Helper function to delete file from filesystem
 async function deleteFileFromDisk(fileUrl: string): Promise<void> {
-  try {
-    const filename = fileUrl.replace('/api/uploads/', '').replace('/uploads/', '').replace('/Uploads/', '');
-    const filePath = path.join(process.cwd(), "public", "uploads", filename)
-    
-    try {
-      await fs.access(filePath)
-      await fs.unlink(filePath)
-      console.log(`Successfully deleted file: ${filePath}`)
-    } catch (fileError) {
-      console.warn(`File not found or already deleted: ${filePath}`)
-    }
-  } catch (error) {
-    console.error(`Failed to delete file: ${fileUrl}`, error)
-  }
+  await deleteLocalFile(fileUrl);
 }
 
 // DELETE single asset

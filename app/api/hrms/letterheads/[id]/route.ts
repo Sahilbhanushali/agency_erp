@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCan, requireSession } from "@/lib/api-auth";
+import { deleteLocalFile } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,14 @@ export async function PATCH(
     const data: any = { ...body };
     delete data.action;
 
+    // Clean up replaced logo or watermark if changed
+    if (data.logoUrl !== undefined && existing.logoUrl && data.logoUrl !== existing.logoUrl) {
+      await deleteLocalFile(existing.logoUrl);
+    }
+    if (data.watermarkUrl !== undefined && existing.watermarkUrl && data.watermarkUrl !== existing.watermarkUrl) {
+      await deleteLocalFile(existing.watermarkUrl);
+    }
+
     if (data.isDefault) {
       await prisma.hrmsLetterhead.updateMany({
         where: { id: { not: id } },
@@ -137,6 +146,9 @@ export async function DELETE(
           { status: 400 }
         );
       }
+
+      if (existing.logoUrl) await deleteLocalFile(existing.logoUrl);
+      if (existing.watermarkUrl) await deleteLocalFile(existing.watermarkUrl);
 
       await prisma.hrmsLetterhead.delete({ where: { id } });
       return NextResponse.json({ success: true, deleted: true });

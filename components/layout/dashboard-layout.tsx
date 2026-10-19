@@ -38,7 +38,7 @@ import {
   Briefcase,
 } from "lucide-react"
 import { useBreadcrumbs } from "@/lib/route-labels"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -425,6 +425,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-auto w-full justify-start gap-2.5 p-2 text-left hover:bg-muted/60">
                 <Avatar className="size-7 shrink-0 border border-border/60">
+                  {session.user.image && (
+                    <AvatarImage src={session.user.image} alt={session.user.name || "User"} />
+                  )}
                   <AvatarFallback className="bg-muted text-[11px] font-bold text-foreground">{userInitial}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
@@ -452,7 +455,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="text-xs cursor-pointer">
-                <Link href="/profile"><User className="mr-2 size-3.5" />Profile Settings</Link>
+                <Link href="/dashboard/profile"><User className="mr-2 size-3.5" />Profile Settings</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="text-xs cursor-pointer">
                 <Link href="/dashboard/settings"><Settings className="mr-2 size-3.5" />System Settings</Link>
