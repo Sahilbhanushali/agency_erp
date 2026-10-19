@@ -6,7 +6,7 @@ import { z } from "zod";
 import path from "path";
 import fs from "fs/promises";
 import { deleteLocalFile } from "@/lib/storage";
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -579,12 +579,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         return NextResponse.json({ error: "Post not found" }, { status: 404 });
       }
   
-      // Permission check: has "View-post" OR is owner OR is client linked to the project
-      const canView =
-        permissions.includes("View-posts") 
-        // post.createdById === parseInt(session.user.id, 10) ||
-        // (session.user.role === "CLIENT" && post.project.client.email === session.user.email);
-        console.log("Can view post:", canView);
+      /**
+       * posts:read resolved through the catalog, rather than the legacy name
+       * "View-posts" matched as an exact string — which a role created in the
+       * permission matrix never holds, so opening a post returned 403 however the
+       * role was granted.
+       */
+      const canView = await can(session, "posts", "read");
   
       if (!canView) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });

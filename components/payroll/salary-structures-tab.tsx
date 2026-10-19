@@ -50,6 +50,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -125,6 +126,13 @@ export function SalaryStructuresTab({
   // Assign Structure to User Modal
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  /**
+   * Employees receiving the structure. A list, because a band or grade normally applies
+   * to several people and assigning it one at a time was the only option before.
+   * `selectedUser` is kept as "the one whose current salary seeded the amounts".
+   */
+  const [assignUserIds, setAssignUserIds] = useState<number[]>([]);
+  const [assignSearch, setAssignSearch] = useState("");
   const [assignTemplateId, setAssignTemplateId] = useState<string>("");
   const [annualCtcRupees, setAnnualCtcRupees] = useState<number>(600000);
   const [monthlyGrossRupees, setMonthlyGrossRupees] = useState<number>(50000);
@@ -269,8 +277,8 @@ export function SalaryStructuresTab({
 
   const handleExecuteAssign = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser || !assignTemplateId) {
-      toast.error("Please select an employee and a salary structure template");
+    if (assignUserIds.length === 0 || !assignTemplateId) {
+      toast.error("Please select at least one employee and a salary structure template");
       return;
     }
 
@@ -280,7 +288,8 @@ export function SalaryStructuresTab({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: selectedUser.id,
+          // The same structure can go to several people at once.
+          userIds: assignUserIds,
           templateId: assignTemplateId,
           monthlyGross: monthlyGrossRupees,
           annualCtc: annualCtcRupees,
@@ -292,8 +301,19 @@ export function SalaryStructuresTab({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to assign structure");
 
-      toast.success(`Assigned ${data.templateName} to ${data.employeeName}!`);
+      toast.success(data.message || `Assigned ${data.templateName}`);
+      // 207 means some landed and some did not; say which, rather than claiming success.
+      if (Array.isArray(data.failed) && data.failed.length > 0) {
+        toast.error(
+          `Could not assign to ${data.failed
+            .map((f: any) => f.name ?? f.userId)
+            .join(", ")}`,
+          { duration: 6000 },
+        );
+      }
       setIsAssignModalOpen(false);
+      setAssignUserIds([]);
+      setAssignSearch("");
       mutateTemplates();
       if (onRefresh) onRefresh();
     } catch (err: any) {
@@ -817,30 +837,88 @@ export function SalaryStructuresTab({
             <div className="space-y-4 py-3 text-xs">
               {/* Employee Selector */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Employee *</Label>
-                <Select
-                  value={selectedUser ? String(selectedUser.id) : ""}
-                  onValueChange={(val) => {
-                    const u = users.find((user: any) => String(user.id) === val);
-                    if (u) {
-                      setSelectedUser(u);
-                      const currentSalary = Number(u.currentSalary) || 50000;
-                      setMonthlyGrossRupees(currentSalary);
-                      setAnnualCtcRupees(currentSalary * 12);
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((u: any) => (
-                      <SelectItem key={u.id} value={String(u.id)} className="text-xs">
-                        {u.name} ({u.designation || u.department || u.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs font-semibold">
+                  Employees *{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ({assignUserIds.length} selected)
+                  </span>
+                </Label>
+
+                <Input
+                  value={assignSearch}
+                  onChange={(e) => setAssignSearch(e.target.value)}
+                  placeholder="Search employees..."
+                  className="h-8 text-xs"
+                  aria-label="Search employees to assign"
+                />
+
+                {/* Tick as many people as the structure applies to. */}
+                <div className="max-h-44 space-y-0.5 overflow-y-auto rounded-lg border border-border/60 p-1.5">
+                  {users.filter((u: any) =>
+                    !assignSearch.trim()
+                      ? true
+                      : `${u.name ?? ""} ${u.email ?? ""} ${u.designation ?? ""} ${u.department ?? ""}`
+                          .toLowerCase()
+                          .includes(assignSearch.trim().toLowerCase()),
+                  ).length === 0 ? (
+                    <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+                      No employees match that search.
+                    </p>
+                  ) : (
+                    users
+                      .filter((u: any) =>
+                        !assignSearch.trim()
+                          ? true
+                          : `${u.name ?? ""} ${u.email ?? ""} ${u.designation ?? ""} ${u.department ?? ""}`
+                              .toLowerCase()
+                              .includes(assignSearch.trim().toLowerCase()),
+                      )
+                      .map((u: any) => {
+                        const checked = assignUserIds.includes(Number(u.id));
+                        return (
+                          <label
+                            key={u.id}
+                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted/60"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(value) => {
+                                const id = Number(u.id);
+                                if (value) {
+                                  setAssignUserIds((prev) => [...prev, id]);
+                                  // The first person picked seeds the amounts from their
+                                  // current salary; after that the figures are the
+                                  // structure's, shared by everyone selected.
+                                  if (assignUserIds.length === 0) {
+                                    setSelectedUser(u);
+                                    const currentSalary = Number(u.currentSalary) || 50000;
+                                    setMonthlyGrossRupees(currentSalary);
+                                    setAnnualCtcRupees(currentSalary * 12);
+                                  }
+                                } else {
+                                  setAssignUserIds((prev) => prev.filter((x) => x !== id));
+                                }
+                              }}
+                              aria-label={`Assign to ${u.name ?? u.email}`}
+                            />
+                            <span className="min-w-0 flex-1 truncate">
+                              {u.name}{" "}
+                              <span className="text-muted-foreground">
+                                ({u.designation || u.department || u.email})
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })
+                  )}
+                </div>
+
+                {assignUserIds.length > 1 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    All {assignUserIds.length} employees get the same components and the same
+                    effective date. Each still gets their own versioned revision.
+                  </p>
+                )}
               </div>
 
               {/* Structure Template Selector */}

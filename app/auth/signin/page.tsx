@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { AlertCircle, Lock, Mail } from "lucide-react"
+import { BrandLogo } from "@/components/brand/brand-logo"
 
 export default function SignInPage() {
   const [email, setEmail] = useState("")
@@ -49,6 +50,8 @@ export default function SignInPage() {
     <AuthShell>
       <Card className="w-full shadow-2xs border-border/70">
         <CardHeader className="text-center pb-4">
+          {/* The first screen anyone sees should carry the real mark. */}
+          <BrandLogo size={72} priority className="mx-auto mb-3 size-16" />
           <CardTitle className="text-lg">Sign In</CardTitle>
           <CardDescription className="text-xs">
             Enter your email and password to access your agency workspace

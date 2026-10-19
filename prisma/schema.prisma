@@ -2777,3 +2777,39 @@ model JobRun {
   @@index([jobId, startedAt])
   @@map("job_runs")
 }
+
+/**
+ * How a payslip PDF is branded and which blocks it shows.
+ *
+ * The generator used to hardcode every one of these, including a placeholder company
+ * address that printed on real payslips sent to employees. One template is the default
+ * and is used whenever a payslip is rendered or emailed.
+ */
+model PayslipTemplate {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String? @db.Text
+
+  companyName    String
+  companyAddress String? @db.Text
+  /// Served from public/uploads; drawn top-left on the PDF.
+  logoUrl        String?
+  signatoryText  String  @default("Authorized Signatory")
+  footerNote     String? @db.Text
+
+  showBankDetails   Boolean @default(true)
+  showPan           Boolean @default(true)
+  showLeaveSummary  Boolean @default(true)
+  showEmployerCost  Boolean @default(false)
+  showAmountInWords Boolean @default(true)
+
+  /// Exactly one template is the default; the API keeps that true.
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isDefault])
+  @@map("payslip_templates")
+}

@@ -24,6 +24,24 @@ export interface PayslipPdfData {
   breakdownJson?: string;
   agencyName?: string;
   agencyAddress?: string;
+  /**
+   * Branding and layout from the chosen Payslip Template. When absent the renderer
+   * falls back to agencyName/agencyAddress and shows every block, which is how this
+   * behaved before templates existed.
+   */
+  template?: {
+    companyName: string;
+    companyAddress: string | null;
+    logoUrl: string | null;
+    signatoryText: string;
+    footerNote: string | null;
+    showBankDetails: boolean;
+    showPan: boolean;
+    showLeaveSummary: boolean;
+    showEmployerCost: boolean;
+    showAmountInWords: boolean;
+    logoDataUrl?: string | null;
+  } | null;
   user: {
     id: number;
     name: string;
@@ -109,8 +127,21 @@ export class PayrollPdfGenerator {
       format: "a4",
     });
 
-    const agencyName = data.agencyName || "Marketing Agency Private Limited";
-    const agencyAddress = data.agencyAddress || "101 Creative Avenue, Tech City, Karnataka 560001";
+    const tpl = data.template ?? null;
+    /**
+     * The address used to default to "101 Creative Avenue, Tech City, Karnataka 560001"
+     * — a placeholder that printed on payslips actually sent to employees. There is no
+     * invented default now: an unset address simply does not appear.
+     */
+    const agencyName = tpl?.companyName || data.agencyName || "Your Company";
+    const agencyAddress = tpl?.companyAddress ?? data.agencyAddress ?? "";
+    const show = {
+      bankDetails: tpl ? tpl.showBankDetails : true,
+      pan: tpl ? tpl.showPan : true,
+      leaveSummary: tpl ? tpl.showLeaveSummary : true,
+      employerCost: tpl ? tpl.showEmployerCost : true,
+      amountInWords: tpl ? tpl.showAmountInWords : true,
+    };
     const monthLabel = `${MONTH_NAMES[data.month - 1]} ${data.year}`;
 
     let calc: any = data.calculationBreakdown || null;
@@ -132,12 +163,27 @@ export class PayrollPdfGenerator {
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
-    doc.text(agencyName.toUpperCase(), 14, 11);
+    /**
+     * Draw the logo when the template has one, and shift the company name across so
+     * the two never overlap. A failed draw must not lose the whole payslip, so the
+     * name is still written either way.
+     */
+    let textX = 14;
+    if (tpl?.logoDataUrl) {
+      try {
+        doc.addImage(tpl.logoDataUrl, 14, 4, 14, 14);
+        textX = 32;
+      } catch (error) {
+        console.error("[payslip-pdf] logo could not be drawn:", error);
+      }
+    }
+
+    doc.text(agencyName.toUpperCase(), textX, 11);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(226, 232, 240);
-    doc.text(agencyAddress, 14, 17);
+    if (agencyAddress) doc.text(agencyAddress, textX, 17);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
@@ -172,11 +218,22 @@ export class PayrollPdfGenerator {
     ];
 
     const empInfoRight = [
-      ["Bank Name", data.user.bankName || "—"],
-      ["Account Number", data.user.bankAccountNumber ? `••••${data.user.bankAccountNumber.slice(-4)}` : "—"],
-      ["IFSC Code", data.user.bankIfsc || "—"],
-      ["PAN Number", data.user.panNumber || "—"],
-      ["UAN / PF No.", data.user.uan || "N/A"],
+      ...(show.bankDetails
+        ? [
+            ["Bank Name", data.user.bankName || "—"],
+            [
+              "Account Number",
+              data.user.bankAccountNumber ? `••••${data.user.bankAccountNumber.slice(-4)}` : "—",
+            ],
+            ["IFSC Code", data.user.bankIfsc || "—"],
+          ]
+        : []),
+      ...(show.pan
+        ? [
+            ["PAN Number", data.user.panNumber || "—"],
+            ["UAN / PF No.", data.user.uan || "N/A"],
+          ]
+        : []),
     ];
 
     autoTable(doc, {
@@ -377,8 +434,9 @@ export class PayrollPdfGenerator {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(203, 213, 225);
-    const words = numberToWords(data.netSalary);
-    doc.text(words, 20, currentY + 13);
+    if (show.amountInWords) {
+      doc.text(numberToWords(data.netSalary), 20, currentY + 13);
+    }
 
     doc.setTextColor(52, 211, 153); // Emerald 400
     doc.setFont("helvetica", "bold");
@@ -387,38 +445,41 @@ export class PayrollPdfGenerator {
 
     currentY += 24;
 
-    // Section 5: Employer Statutory Contributions & Cost-to-Company (CTC)
-    const employerPf = calc?.pfEmployer || 0;
-    const employerEsi = calc?.esiEmployer || 0;
-    const monthlyCtc = data.employerCost || (data.grossSalary + employerPf + employerEsi);
+    // Section 5: employer contributions and cost-to-company. Hidden when the
+    // template says so — employer cost is not something every agency shows staff.
+    if (show.employerCost) {
+      // Section 5: Employer Statutory Contributions & Cost-to-Company (CTC)
+      const employerPf = calc?.pfEmployer || 0;
+      const employerEsi = calc?.esiEmployer || 0;
+      const monthlyCtc = data.employerCost || (data.grossSalary + employerPf + employerEsi);
 
-    autoTable(doc, {
-      startY: currentY,
-      margin: { left: 14, right: 14 },
-      theme: "plain",
-      headStyles: {
-        fillColor: [248, 250, 252],
-        textColor: mutedColor,
-        fontStyle: "bold",
-        fontSize: 7.5,
-      },
-      bodyStyles: {
-        fontSize: 8,
-        cellPadding: 1.5,
-      },
-      head: [["EMPLOYER CONTRIBUTIONS (NOT DEDUCTED FROM SALARY)", "AMOUNT"]],
-      body: [
-        ["Employer Provident Fund (PF Share)", formatCurrency(employerPf)],
-        ["Employer State Insurance (ESI Share)", formatCurrency(employerEsi)],
-        ["Total Monthly Cost to Company (CTC)", formatCurrency(monthlyCtc)],
-      ],
-      columnStyles: {
-        0: { cellWidth: 140, fontStyle: "normal", textColor: mutedColor },
-        1: { cellWidth: 42, halign: "right", fontStyle: "bold", textColor: primaryColor },
-      },
-    });
-
-    currentY = (doc as any).lastAutoTable.finalY + 10;
+      autoTable(doc, {
+        startY: currentY,
+        margin: { left: 14, right: 14 },
+        theme: "plain",
+        headStyles: {
+          fillColor: [248, 250, 252],
+          textColor: mutedColor,
+          fontStyle: "bold",
+          fontSize: 7.5,
+        },
+        bodyStyles: {
+          fontSize: 8,
+          cellPadding: 1.5,
+        },
+        head: [["EMPLOYER CONTRIBUTIONS (NOT DEDUCTED FROM SALARY)", "AMOUNT"]],
+        body: [
+          ["Employer Provident Fund (PF Share)", formatCurrency(employerPf)],
+          ["Employer State Insurance (ESI Share)", formatCurrency(employerEsi)],
+          ["Total Monthly Cost to Company (CTC)", formatCurrency(monthlyCtc)],
+        ],
+        columnStyles: {
+          0: { cellWidth: 140, fontStyle: "normal", textColor: mutedColor },
+          1: { cellWidth: 42, halign: "right", fontStyle: "bold", textColor: primaryColor },
+        },
+      });
+      currentY = (doc as any).lastAutoTable.finalY + 10;
+    }
 
     // Section 6: Authentication & Signature Footer
     doc.setDrawColor(226, 232, 240);
@@ -430,12 +491,14 @@ export class PayrollPdfGenerator {
     doc.setFontSize(8);
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.text("HR & ACCOUNTS DEPARTMENT", 14, currentY);
-    doc.text("AUTHORIZED SIGNATORY", 196, currentY, { align: "right" });
+    doc.text((tpl?.signatoryText || "Authorized Signatory").toUpperCase(), 196, currentY, {
+      align: "right",
+    });
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(mutedColor[0], mutedColor[1], mutedColor[2]);
-    doc.text("Generated securely via Internal Agency ERP", 14, currentY + 4);
+    doc.text(tpl?.footerNote || "Generated securely via Internal Agency ERP", 14, currentY + 4);
     doc.text(agencyName, 196, currentY + 4, { align: "right" });
 
     doc.setFontSize(7);

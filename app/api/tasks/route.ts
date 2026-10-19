@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic"
 
 /**
  * List tasks. Filters: `?status=`, `?priority=`, `?assigneeId=`, `?postId=`,
- * `?projectId=`, `?clientId=`, `?search=`, `?mine=1`, `?overdue=1`,
+ * `?projectId=`, `?clientId=`, `?search=`, `?mine=1` (assigned to me),
+ * `?createdByMe=1` (assigned by me), `?overdue=1`,
  * and `?standalone=1` for internal tasks with no linked record.
  * Paged with `?page=` and `?limit=` (max 200).
  *
@@ -48,6 +49,8 @@ export async function GET(request: NextRequest) {
         : Number.isFinite(assigneeId) && assigneeId > 0
           ? { assignees: { some: { id: assigneeId } } }
           : {}),
+      // Work this person handed out, as opposed to work handed to them.
+      ...(query.get("createdByMe") === "1" ? { createdById: auth.userId } : {}),
       // Overdue means past due and not yet finished — a done task is never overdue.
       ...(query.get("overdue") === "1"
         ? { dueDate: { lt: new Date() }, status: { notIn: ["DONE", "CANCELLED"] } }

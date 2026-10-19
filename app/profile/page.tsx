@@ -13,11 +13,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Camera, Loader2 } from "lucide-react"
 
 export default function ProfilePage() {
   const { data: session, update } = useSession()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  /** The stored avatar path. `session.user.image` is only as fresh as the last sign-in. */
+  const [avatarUrl, setAvatarUrl] = useState<string>("")
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -36,6 +40,8 @@ export default function ProfilePage() {
         email: session.user.email || "",
         avatar: session.user.image || "",
       })
+      // Keep a just-uploaded picture rather than reverting to the session's older value.
+      setAvatarUrl((current) => current || session.user.image || "")
     }
   }, [session])
 
@@ -112,6 +118,41 @@ export default function ProfilePage() {
     }
   }
 
+  const uploadAvatar = async (file: File) => {
+    setUploadingAvatar(true)
+    try {
+      const body = new FormData()
+      body.append("avatar", file)
+      const res = await fetch("/api/profile/avatar", { method: "POST", body })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? "Could not upload the picture")
+      setAvatarUrl(data.avatar)
+      // Refresh the session so the sidebar avatar updates without a sign-out.
+      await update({ image: data.avatar })
+      toast.success("Profile picture updated")
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const removeAvatar = async () => {
+    setUploadingAvatar(true)
+    try {
+      const res = await fetch("/api/profile/avatar", { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? "Could not remove the picture")
+      setAvatarUrl("")
+      await update({ image: null })
+      toast.success("Profile picture removed")
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   if (!session) {
     return <div>Loading...</div>
   }
@@ -119,15 +160,61 @@ export default function ProfilePage() {
   return (
     <div className="container mx-auto py-6">
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={session.user.image || ""} />
-            <AvatarFallback>{session.user.name?.[0]?.toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div>
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          {/*
+            The avatar is a label wrapping a hidden file input, so clicking the picture
+            itself opens the picker — there was previously no way at all to set one.
+          */}
+          <div className="relative">
+            <label
+              className="group block cursor-pointer rounded-full focus-within:ring-2 focus-within:ring-ring"
+              title="Change your profile picture"
+            >
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="sr-only"
+                aria-label="Upload a profile picture"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) uploadAvatar(file)
+                  e.target.value = ""
+                }}
+              />
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={avatarUrl || undefined} alt="" />
+                <AvatarFallback>{session.user.name?.[0]?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                {uploadingAvatar ? (
+                  <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Camera className="size-5" aria-hidden="true" />
+                )}
+              </span>
+            </label>
+          </div>
+
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold">{session.user.name}</h1>
             <p className="text-gray-600">{session.user.email}</p>
-            <Badge variant="secondary">{session.user.role}</Badge>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">{session.user.role ?? "No role"}</Badge>
+              {avatarUrl && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                  onClick={removeAvatar}
+                  disabled={uploadingAvatar}
+                >
+                  Remove picture
+                </Button>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              PNG, JPEG or WebP, up to 3MB.
+            </p>
           </div>
         </div>
 

@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       userId,
+      userIds,
       templateId,
       monthlyGross, // in rupees or paise
       annualCtc,    // in rupees or paise
@@ -32,14 +33,42 @@ export async function POST(request: NextRequest) {
       tdsMonthly,
     } = body;
 
-    const targetUserId = Number(userId);
-    if (!targetUserId) {
-      return NextResponse.json({ error: "Employee userId is required" }, { status: 400 });
+    /**
+     * One structure, any number of employees.
+     *
+     * `userIds` assigns the same structure to several people in one go — the usual case
+     * when a band or grade applies to a whole team. `userId` is still accepted so the
+     * single-employee form keeps working unchanged. The amounts are computed once below
+     * and applied to everyone, which is what "the same structure" has to mean.
+     */
+    const rawIds: unknown[] = Array.isArray(userIds)
+      ? userIds
+      : userId !== undefined && userId !== null
+        ? [userId]
+        : [];
+
+    const targetUserIds = Array.from(
+      new Set(rawIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)),
+    );
+
+    if (targetUserIds.length === 0) {
+      return NextResponse.json(
+        { error: "Select at least one employee to assign this structure to" },
+        { status: 400 },
+      );
     }
 
-    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
-    if (!targetUser) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+    const targetUsers = await prisma.user.findMany({
+      where: { id: { in: targetUserIds } },
+      select: { id: true, name: true, email: true },
+    });
+
+    if (targetUsers.length !== targetUserIds.length) {
+      const found = new Set(targetUsers.map((u) => u.id));
+      return NextResponse.json(
+        { error: `Employee not found: ${targetUserIds.filter((id) => !found.has(id)).join(", ")}` },
+        { status: 404 },
+      );
     }
 
     let template = null;
@@ -98,28 +127,68 @@ export async function POST(request: NextRequest) {
 
     const compTds = Math.round(Number(tdsMonthly || 0) * (Number(tdsMonthly || 0) < 1000000 ? 100 : 1));
 
-    const result = await PayrollService.upsertSalaryStructure({
-      userId: targetUserId,
-      templateId: template?.id,
-      basicSalary: compBasic,
-      hra: compHra,
-      specialAllowance: compSpecial,
-      otherAllowances: compOther,
-      pfDeduction: compPf,
-      esiDeduction: compEsi,
-      professionalTax: compPt,
-      tdsMonthly: compTds,
-      effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
-      revisionReason: revisionReason || (template ? `Assigned structure: ${template.name}` : "Salary structure assignment"),
-      actorUserId: Number(session.user.id),
-    });
+    /**
+     * Each employee is assigned in turn rather than in one transaction: a structure is
+     * per-person history, so one failure must not roll back the people it already
+     * worked for. Failures are reported per employee instead of as a single 500.
+     */
+    const assigned: { userId: number; name: string | null; structureId: string }[] = [];
+    const failed: { userId: number; name: string | null; error: string }[] = [];
+
+    for (const target of targetUsers) {
+      try {
+        const result = await PayrollService.upsertSalaryStructure({
+          userId: target.id,
+          templateId: template?.id,
+          basicSalary: compBasic,
+          hra: compHra,
+          specialAllowance: compSpecial,
+          otherAllowances: compOther,
+          pfDeduction: compPf,
+          esiDeduction: compEsi,
+          professionalTax: compPt,
+          tdsMonthly: compTds,
+          effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
+          revisionReason:
+            revisionReason ||
+            (template ? `Assigned structure: ${template.name}` : "Salary structure assignment"),
+          actorUserId: Number(session.user.id),
+        });
+        assigned.push({ userId: target.id, name: target.name, structureId: (result as any)?.id });
+      } catch (error: any) {
+        console.error(`[structures/assign] user ${target.id} failed:`, error);
+        failed.push({
+          userId: target.id,
+          name: target.name,
+          error: error?.message || "Could not assign",
+        });
+      }
+    }
+
+    const templateName = template?.name || "Custom Structure";
+
+    // Nothing landed at all — that is a failure, not a partial success.
+    if (assigned.length === 0) {
+      return NextResponse.json(
+        { error: failed[0]?.error || "Could not assign the structure", failed },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      structure: result,
-      employeeName: targetUser.name,
-      templateName: template?.name || "Custom Structure",
-    }, { status: 200 });
+      assigned,
+      failed,
+      count: assigned.length,
+      templateName,
+      // Kept so the existing single-employee form reads the same fields as before.
+      structure: assigned.length === 1 ? assigned[0] : undefined,
+      employeeName: assigned.length === 1 ? assigned[0].name : undefined,
+      message:
+        assigned.length === 1
+          ? `${templateName} assigned to ${assigned[0].name ?? "the employee"}`
+          : `${templateName} assigned to ${assigned.length} employees`,
+    }, { status: failed.length > 0 ? 207 : 200 });
   } catch (error: any) {
     console.error("POST /api/payroll/structures/assign error:", error);
     return NextResponse.json({ error: error.message || "Failed to assign salary structure" }, { status: 500 });

@@ -65,6 +65,9 @@ import {
 
 const fetcher = (url: string) => fetch(url).then((response) => response.json())
 
+/** Whose tasks the board is showing. */
+type TaskScope = "mine" | "assignedByMe" | "all"
+
 type ViewMode = "kanban" | "cards" | "table"
 
 const VIEWS: { key: ViewMode; label: string; icon: typeof Kanban }[] = [
@@ -98,7 +101,11 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
   const [viewMode, setViewMode] = useState<ViewMode>("kanban")
   const [search, setSearch] = useState("")
   const [priority, setPriority] = useState<string>("ALL")
-  const [scope, setScope] = useState<"all" | "mine">("all")
+  /**
+   * Whose tasks the board shows. Defaults to the viewer's own work — opening the board
+   * on everyone's tasks buries what the person is actually responsible for.
+   */
+  const [scope, setScope] = useState<TaskScope>("mine")
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<TaskStatus | null>(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -110,6 +117,7 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
   const query = new URLSearchParams({ limit: "200" })
   if (priority !== "ALL") query.set("priority", priority)
   if (scope === "mine") query.set("mine", "1")
+  if (scope === "assignedByMe") query.set("createdByMe", "1")
   if (search.trim()) query.set("search", search.trim())
 
   const { data, error, isLoading, mutate } = useSWR<{ tasks: Task[]; total: number; error?: string }>(
@@ -302,7 +310,7 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
     )
   }
 
-  const isFiltered = search.trim() !== "" || priority !== "ALL" || scope === "mine"
+  const isFiltered = search.trim() !== "" || priority !== "ALL" || scope !== "mine"
 
   return (
     <div className="space-y-4">
@@ -318,13 +326,14 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
           />
         </div>
 
-        <Select value={scope} onValueChange={(value) => setScope(value as "all" | "mine")}>
-          <SelectTrigger className="w-[150px]" aria-label="Whose tasks">
+        <Select value={scope} onValueChange={(value) => setScope(value as TaskScope)}>
+          <SelectTrigger className="w-[170px]" aria-label="Whose tasks">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Everyone</SelectItem>
             <SelectItem value="mine">Assigned to me</SelectItem>
+            <SelectItem value="assignedByMe">Assigned by me</SelectItem>
+            <SelectItem value="all">Everyone</SelectItem>
           </SelectContent>
         </Select>
 
@@ -384,15 +393,40 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
         <Card>
           <CardContent className="p-12 text-center">
             <ListTodo className="mx-auto h-10 w-10 text-muted-foreground/50" />
+            {/*
+              The board opens on "Assigned to me", so an empty result usually means
+              "nothing is assigned to you" rather than "this agency has no tasks".
+              Saying "No tasks yet" there, with a Create button, was simply wrong.
+            */}
             <h2 className="mt-4 text-base font-medium">
-              {isFiltered ? "No tasks match those filters" : "No tasks yet"}
+              {search.trim() !== "" || priority !== "ALL"
+                ? "No tasks match those filters"
+                : scope === "mine"
+                  ? "Nothing assigned to you"
+                  : scope === "assignedByMe"
+                    ? "You haven't assigned any tasks"
+                    : "No tasks yet"}
             </h2>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-              {isFiltered
-                ? "Try a different priority or clear the search."
-                : "Tasks can stand alone, or hang off a post, project or client."}
+              {search.trim() !== "" || priority !== "ALL" ? (
+                "Try a different priority or clear the search."
+              ) : scope === "mine" ? (
+                <>
+                  Work assigned to you shows up here. Switch to{" "}
+                  <strong className="font-medium">Everyone</strong> to see the whole board.
+                </>
+              ) : scope === "assignedByMe" ? (
+                "Tasks you create for other people show up here."
+              ) : (
+                "Tasks can stand alone, or hang off a post, project or client."
+              )}
             </p>
-            {!isFiltered && perms.create && (
+            {scope !== "all" && search.trim() === "" && priority === "ALL" && (
+              <Button variant="outline" className="mt-5" onClick={() => setScope("all")}>
+                Show everyone's tasks
+              </Button>
+            )}
+            {scope === "all" && !isFiltered && perms.create && (
               <Button
                 className="mt-5"
                 onClick={() => {

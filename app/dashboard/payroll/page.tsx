@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import useSWR from "swr";
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "react-hot-toast";
 import {
   Banknote,
@@ -60,6 +61,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import PayslipModal from "@/components/payroll/payslip-modal";
+import PayslipTemplatesTab from "@/components/payroll/payslip-templates-tab";
 import RunReviewModal from "@/components/payroll/run-review-modal";
 import EmployeeSelfService from "@/components/payroll/employee-self-service";
 import StatutoryReportsTab from "@/components/payroll/statutory-reports-tab";
@@ -93,6 +95,9 @@ function formatInr(minorUnits: number): string {
 }
 
 export default function PayrollPage() {
+  // Decides only whether payslip edit/email/delete controls are shown; the server
+  // re-checks payroll:update and payroll:delete on every one of those calls.
+  const { can } = usePermissions();
   const { data: session } = useSession();
   const userRole = (session?.user as any)?.role || "";
   const isHRorAdmin = ["ADMIN", "MANAGER", "HR", "FINANCE"].includes(userRole);
@@ -493,6 +498,7 @@ export default function PayrollPage() {
           <TabsList className="bg-muted/60 p-1 border border-border/60 rounded-lg flex-wrap">
             <TabsTrigger value="runs" className="text-xs">Payroll Runs</TabsTrigger>
             <TabsTrigger value="salaries" className="text-xs">Salary Structures</TabsTrigger>
+            <TabsTrigger value="payslip-templates" className="text-xs">Payslip Templates</TabsTrigger>
             <TabsTrigger value="adjustments" className="text-xs">Monthly Adjustments</TabsTrigger>
             <TabsTrigger value="loans" className="text-xs">Loans & Advances</TabsTrigger>
             <TabsTrigger value="fnf" className="text-xs">Full & Final (FnF)</TabsTrigger>
@@ -625,6 +631,10 @@ export default function PayrollPage() {
           </TabsContent>
 
           {/* TAB 2: SALARY STRUCTURES & COMPENSATION */}
+          <TabsContent value="payslip-templates" className="space-y-4">
+            <PayslipTemplatesTab canManage={can("payroll", "update")} />
+          </TabsContent>
+
           <TabsContent value="salaries" className="space-y-4">
             <SalaryStructuresTab users={safeUsers} onRefresh={mutateRuns} />
           </TabsContent>
@@ -1021,6 +1031,13 @@ export default function PayrollPage() {
           isOpen={!!selectedPayslip}
           onClose={() => setSelectedPayslip(null)}
           payslip={selectedPayslip}
+          // Editing, emailing and deleting a payslip are all payroll:update or
+          // stricter on the server; this only decides whether the controls show.
+          canManage={can("payroll", "update")}
+          onChanged={() => {
+            mutateSelectedRun();
+            mutateRuns();
+          }}
           agencyName={settings?.companyName || "Marketing Agency"}
         />
       )}
