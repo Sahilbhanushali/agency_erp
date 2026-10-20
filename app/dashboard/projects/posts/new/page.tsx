@@ -66,15 +66,8 @@ export default async function NewPostPage({
   }
   
   try {
-    // Fetch designers and video editors
+    // Fetch all active agency users so any added user appears as an assignable creator
     designers = await prisma.user.findMany({
-      where: {
-        role: {
-          name: {
-            in: ["Designer", "Video Editor", "Creative Executive(Design & Media)"],
-          }
-        }
-      },
       include: {
         role: {
           select: {
@@ -98,7 +91,7 @@ export default async function NewPostPage({
   const formattedDesigners = designers.map((user: any) => ({
     id: user.id.toString(),
     name: user.name || "Unknown",
-    role: user.role?.name || "Designer",
+    role: user.role?.name || "Team Member",
     email: user.email || "",
     assignedProjects: user.assignedProjects
       ? user.assignedProjects.map((proj: any) => ({

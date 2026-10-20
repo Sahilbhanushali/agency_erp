@@ -80,6 +80,7 @@ export const MODULES: PermissionModule[] = [
     actions: [
       { action: "read", label: "See team's day", legacy: [] },
       { action: "update", label: "Edit team's todos", legacy: [] },
+      { action: "delete", label: "Delete team's todos", legacy: [] },
       { action: "export", label: "Receive EOD report", legacy: [] },
     ] },
   { key: "projects", label: "Projects", href: "/dashboard/projects", group: "Delivery",

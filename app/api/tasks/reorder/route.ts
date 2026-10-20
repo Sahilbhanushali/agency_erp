@@ -54,6 +54,29 @@ export async function PATCH(request: NextRequest) {
       ),
     )
 
+    // Sync blocker reason to any linked DailyTodo items if marked BLOCKED
+    if (status === "BLOCKED" && parsed.data.blockerReason && moved.length > 0) {
+      const movedIds = moved.map((t) => t.id)
+      const linkedTodos = await prisma.dailyTodo.findMany({
+        where: { taskId: { in: movedIds } },
+        select: { id: true },
+      })
+      for (const lt of linkedTodos) {
+        await prisma.dailyTodo.update({
+          where: { id: lt.id },
+          data: { status: "BLOCKED", blocker: parsed.data.blockerReason },
+        })
+        await prisma.todoBlocker.create({
+          data: {
+            todoId: lt.id,
+            title: parsed.data.blockerReason,
+            category: (parsed.data.blockerCategory as any) || "TECHNICAL_ISSUE",
+            status: "OPEN",
+          },
+        })
+      }
+    }
+
     // A drag is how most status changes happen, so it has to leave a trail — without
     // this, the only record of a task moving was its updatedAt timestamp.
     if (moved.length > 0) {

@@ -37,6 +37,8 @@ export const taskSchema = z.object({
   postId: optionalId,
   projectId: optionalId,
   clientId: optionalId,
+  blockerReason: z.string().trim().max(2000).optional().nullable(),
+  blockerCategory: z.string().trim().optional().nullable(),
 })
 
 export const taskUpdateSchema = taskSchema.partial()
@@ -44,12 +46,16 @@ export const taskUpdateSchema = taskSchema.partial()
 /** What an assignee may change on their own task without Manage-tasks. */
 export const taskSelfUpdateSchema = z.object({
   status: z.enum(TASK_STATUSES),
+  blockerReason: z.string().trim().max(2000).optional().nullable(),
+  blockerCategory: z.string().trim().optional().nullable(),
 })
 
 export const taskReorderSchema = z.object({
   status: z.enum(TASK_STATUSES),
   /** Task ids in their new top-to-bottom order within that column. */
   taskIds: z.array(z.string().trim().min(1)).max(500),
+  blockerReason: z.string().trim().max(2000).optional().nullable(),
+  blockerCategory: z.string().trim().optional().nullable(),
 })
 
 export type TaskInput = z.infer<typeof taskSchema>

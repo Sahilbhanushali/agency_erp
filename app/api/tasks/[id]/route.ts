@@ -67,7 +67,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (access.level === "status") {
       // Assignees and the person who created the task may move it, nothing more.
       const selfParsed = taskSelfUpdateSchema.safeParse(body)
-      if (!selfParsed.success || Object.keys(body).length !== 1) {
+      const allowedKeys = new Set(["status", "blockerReason", "blockerCategory"])
+      const hasOnlyAllowed = Object.keys(body).every((k) => allowedKeys.has(k))
+      if (!selfParsed.success || !hasOnlyAllowed) {
         return NextResponse.json(
           { error: `You can only change the status of this task (${access.reason})` },
           { status: 403 },
@@ -75,6 +77,28 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       }
 
       const task = await applyUpdate(id, { status: selfParsed.data.status }, existing.status)
+
+      // Sync blocker to linked daily todos if task is marked BLOCKED
+      if (selfParsed.data.status === "BLOCKED" && selfParsed.data.blockerReason) {
+        const linkedTodos = await prisma.dailyTodo.findMany({
+          where: { taskId: id },
+          select: { id: true },
+        })
+        for (const lt of linkedTodos) {
+          await prisma.dailyTodo.update({
+            where: { id: lt.id },
+            data: { status: "BLOCKED", blocker: selfParsed.data.blockerReason },
+          })
+          await prisma.todoBlocker.create({
+            data: {
+              todoId: lt.id,
+              title: selfParsed.data.blockerReason,
+              category: (selfParsed.data.blockerCategory as any) || "TECHNICAL_ISSUE",
+              status: "OPEN",
+            },
+          })
+        }
+      }
 
       if (selfParsed.data.status !== existing.status) {
         await notifyTaskStatusChange(
@@ -140,6 +164,29 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         auth.session.user?.name ?? null,
         { assigneeIds: existing.assignees.map((a) => a.id), createdById: existing.createdById },
       )
+
+      if (input.status === "BLOCKED" && (input.blockerReason || body.blockerReason)) {
+        const reason = input.blockerReason || body.blockerReason
+        const category = input.blockerCategory || body.blockerCategory || "TECHNICAL_ISSUE"
+        const linkedTodos = await prisma.dailyTodo.findMany({
+          where: { taskId: id },
+          select: { id: true },
+        })
+        for (const lt of linkedTodos) {
+          await prisma.dailyTodo.update({
+            where: { id: lt.id },
+            data: { status: "BLOCKED", blocker: reason },
+          })
+          await prisma.todoBlocker.create({
+            data: {
+              todoId: lt.id,
+              title: reason,
+              category,
+              status: "OPEN",
+            },
+          })
+        }
+      }
     }
 
     await logAuditAction({
