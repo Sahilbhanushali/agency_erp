@@ -2672,6 +2672,21 @@ enum TodoStatus {
   CARRIED_OVER
 }
 
+enum BlockerCategory {
+  DEPENDENCY
+  APPROVAL_PENDING
+  TECHNICAL_ISSUE
+  MISSING_INFORMATION
+  RESOURCE_ISSUE
+  OTHER
+}
+
+enum BlockerStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
 model DailyTodo {
   id     String   @id @default(cuid())
   userId Int
@@ -2681,12 +2696,13 @@ model DailyTodo {
   title  String
   notes  String? @db.Text
 
-  status   TodoStatus @default(PENDING)
+  status   TodoStatus   @default(PENDING)
+  priority TaskPriority @default(MEDIUM)
   /// 0-100. Kept alongside status because "in progress" alone does not tell a manager
   /// whether something is nearly done or barely started.
-  progress Int        @default(0)
+  progress Int          @default(0)
   /// What is stopping this, in the person's own words. The EOD report leads with these.
-  blocker  String?    @db.Text
+  blocker  String?      @db.Text
 
   /// Set when this entry mirrors a Task due today.
   taskId String?
@@ -2697,16 +2713,44 @@ model DailyTodo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User  @relation("UserTodos", fields: [userId], references: [id], onDelete: Cascade)
-  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user     User          @relation("UserTodos", fields: [userId], references: [id], onDelete: Cascade)
+  task     Task?         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  blockers TodoBlocker[]
 
   /// One entry per task per person per day. MySQL allows repeated NULLs, so manually
   /// added todos are not constrained by this.
   @@unique([userId, date, taskId])
   @@index([userId, date])
   @@index([date])
+  @@index([status])
+  @@index([priority])
   @@map("daily_todos")
 }
+
+model TodoBlocker {
+  id                 String          @id @default(cuid())
+  todoId             String
+  title              String
+  description        String?         @db.Text
+  category           BlockerCategory @default(TECHNICAL_ISSUE)
+  impact             String?         @db.Text
+  assistanceRequired String?         @db.Text
+  status             BlockerStatus   @default(OPEN)
+  responsibleParty   String?
+  expectedResolution DateTime?
+  resolutionNotes    String?         @db.Text
+  resolvedAt         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  todo DailyTodo @relation(fields: [todoId], references: [id], onDelete: Cascade)
+
+  @@index([todoId])
+  @@index([status])
+  @@index([category])
+  @@map("todo_blockers")
+}
+
 
 
 // ---------------------------------------------------------------------------

@@ -158,10 +158,9 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
         hasError = true;
       }
 
-      // Fetch designers
+      // Fetch all staff users
       try {
-        // Only fetch users with roles Designer or Video Editor
-        const usersResponse = await fetch(`/api/users?role=Designer,Video%20Editor,Creative%20Executive%28Design%20%26%20Media%29`);
+        const usersResponse = await fetch(`/api/users`);
         if (!usersResponse.ok) {
           const errorData = await usersResponse.json();
           throw new Error(errorData.error || "Failed to fetch designers data");

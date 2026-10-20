@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import useSWR from "swr"
 import toast from "react-hot-toast"
 import {
+  AlertTriangle,
   Edit,
   Eye,
   Grid3X3,
@@ -19,6 +20,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   DropdownMenu,
@@ -113,6 +116,13 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
   const [viewing, setViewing] = useState<Task | null>(null)
   const [deleting, setDeleting] = useState<Task | null>(null)
   const [busy, setBusy] = useState(false)
+  const [blockingTarget, setBlockingTarget] = useState<{
+    task: Task
+    type: "drop" | "select"
+    destination?: string[]
+  } | null>(null)
+  const [blockerReason, setBlockerReason] = useState("")
+  const [blockerCategory, setBlockerCategory] = useState("TECHNICAL_ISSUE")
 
   const query = new URLSearchParams({ limit: "200" })
   if (priority !== "ALL") query.set("priority", priority)
@@ -151,6 +161,18 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
     // Dropped cards go to the top of the destination column.
     const destination = [taskId, ...(columns.get(status) ?? []).map((item) => item.id)]
 
+    // Intercept BLOCKED status to prompt user for reason popup
+    if (status === "BLOCKED") {
+      setBlockingTarget({
+        task,
+        type: "drop",
+        destination,
+      })
+      setBlockerReason("")
+      setBlockerCategory("TECHNICAL_ISSUE")
+      return
+    }
+
     // Optimistic: move the card now so it does not visibly snap back.
     mutate(
       {
@@ -185,6 +207,18 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
   /** Status change outside the kanban, where there is nothing to drag. */
   const setStatus = async (task: Task, status: TaskStatus) => {
     if (task.status === status) return
+
+    // Intercept BLOCKED status to prompt user for reason popup
+    if (status === "BLOCKED") {
+      setBlockingTarget({
+        task,
+        type: "select",
+      })
+      setBlockerReason("")
+      setBlockerCategory("TECHNICAL_ISSUE")
+      return
+    }
+
     setBusy(true)
     mutate(
       {
@@ -210,6 +244,79 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
     } finally {
       setBusy(false)
       mutate()
+    }
+  }
+
+  const confirmBlock = async () => {
+    if (!blockingTarget || !blockerReason.trim()) return
+    const { task, destination, type } = blockingTarget
+    const reason = blockerReason.trim()
+    const category = blockerCategory
+    setBlockingTarget(null)
+
+    if (type === "drop" && destination) {
+      mutate(
+        {
+          ...(data ?? { tasks: [], total: 0 }),
+          tasks: tasks.map((item) => (item.id === task.id ? { ...item, status: "BLOCKED" as TaskStatus } : item)),
+        },
+        false,
+      )
+      setBusy(true)
+      try {
+        const response = await fetch("/api/tasks/reorder", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "BLOCKED",
+            taskIds: destination,
+            blockerReason: reason,
+            blockerCategory: category,
+          }),
+        })
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}))
+          toast.error(body.error ?? "Could not move the task")
+          return
+        }
+        toast.success("Task marked as Blocked")
+      } catch {
+        toast.error("Network error — please try again")
+      } finally {
+        setBusy(false)
+        mutate()
+      }
+    } else {
+      setBusy(true)
+      mutate(
+        {
+          ...(data ?? { tasks: [], total: 0 }),
+          tasks: tasks.map((item) => (item.id === task.id ? { ...item, status: "BLOCKED" as TaskStatus } : item)),
+        },
+        false,
+      )
+      try {
+        const response = await fetch(`/api/tasks/${task.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "BLOCKED",
+            blockerReason: reason,
+            blockerCategory: category,
+          }),
+        })
+        const body = await response.json()
+        if (!response.ok) {
+          toast.error(body.error ?? "Could not update the task")
+          return
+        }
+        toast.success("Task marked as Blocked")
+      } catch {
+        toast.error("Network error — please try again")
+      } finally {
+        setBusy(false)
+        mutate()
+      }
     }
   }
 
@@ -635,6 +742,61 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
         onSaved={() => mutate()}
         canManage={perms.update}
       />
+
+      <AlertDialog open={Boolean(blockingTarget)} onOpenChange={(open) => !open && setBlockingTarget(null)}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Mark Task as Blocked
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Please specify why &ldquo;{blockingTarget?.task.title}&rdquo; is blocked and cannot proceed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">Blocker Category *</Label>
+              <Select value={blockerCategory} onValueChange={setBlockerCategory}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TECHNICAL_ISSUE">Technical Issue</SelectItem>
+                  <SelectItem value="DEPENDENCY">Dependency / Waiting on Others</SelectItem>
+                  <SelectItem value="APPROVAL_PENDING">Approval Pending</SelectItem>
+                  <SelectItem value="MISSING_INFORMATION">Missing Information / Brief</SelectItem>
+                  <SelectItem value="RESOURCE_ISSUE">Resource / Asset Missing</SelectItem>
+                  <SelectItem value="OTHER">Other Reason</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">Blocker Reason / Details *</Label>
+              <Textarea
+                placeholder="What is stopping this task? Mention who or what is needed to unblock it..."
+                value={blockerReason}
+                onChange={(e) => setBlockerReason(e.target.value)}
+                rows={3}
+                className="text-sm"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy} onClick={() => setBlockingTarget(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={!blockerReason.trim() || busy}
+              onClick={confirmBlock}
+            >
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Confirm Blocker
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>

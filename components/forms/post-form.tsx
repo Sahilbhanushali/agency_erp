@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -895,11 +896,11 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
           </Alert>
         )}
 
-        {filteredDesigners.length === 0 && formData.projectId && (
+        {filteredDesigners.length === 0 && (
           <Alert className="mb-6">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              No designers or video editors available for the selected project. Please assign users to this project.
+              No team members available. Please add users in Settings to assign them to posts.
             </AlertDescription>
           </Alert>
         )}
@@ -935,34 +936,26 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
               <Label htmlFor="project" className={fieldErrors.projectId ? "text-red-600 font-semibold" : ""}>
                 Project *
               </Label>
-              <Select
+              <SearchableSelect
                 value={formData.projectId}
                 onValueChange={(value) => {
                   setFormData({ ...formData, projectId: value });
                   if (fieldErrors.projectId) setFieldErrors((prev) => ({ ...prev, projectId: "" }));
                 }}
                 disabled={projects.length === 0}
-              >
-                <SelectTrigger
-                  className={`transition-all duration-200 focus:ring-2 ${
-                    fieldErrors.projectId
-                      ? "border-red-500 ring-2 ring-red-500/30 bg-red-50/30 text-red-900"
-                      : "focus:ring-blue-500"
-                  }`}
-                >
-                  <SelectValue placeholder={projects.length === 0 ? "No projects available" : "Select project"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{project.name}</span>
-                        <span className="text-xs text-gray-500">{project.client?.company || "No Client"}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder={projects.length === 0 ? "No active projects available" : "Select or search project..."}
+                options={projects.map((project) => ({
+                  id: project.id,
+                  label: project.name,
+                  subLabel: project.client?.company || project.client?.name || "Internal",
+                }))}
+                maxDisplay={100}
+                className={`transition-all duration-200 ${
+                  fieldErrors.projectId
+                    ? "border-red-500 ring-2 ring-red-500/30 bg-red-50/30 text-red-900"
+                    : ""
+                }`}
+              />
               {fieldErrors.projectId && (
                 <p className="text-xs text-red-600 flex items-center font-medium mt-1">
                   <AlertTriangle className="h-3 w-3 mr-1 shrink-0" />
@@ -1010,7 +1003,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
 
             <div className="space-y-2">
               <Label htmlFor="assignedToId" className={fieldErrors.assignedToIds || fieldErrors.assignedToId ? "text-red-600 font-semibold" : ""}>
-                Assigned Designer/Video Editor
+                Assigned Creator / Team Member
               </Label>
               <div className="relative">
                 <button
@@ -1025,10 +1018,10 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                 >
                   <span className={formData.assignedToIds?.length ? "text-gray-900" : "text-gray-500"}>
                     {formData.assignedToIds?.length
-                      ? `${formData.assignedToIds.length} designer(s) selected`
+                      ? `${formData.assignedToIds.length} member(s) selected`
                       : filteredDesigners.length === 0
-                        ? "No designers available for this project"
-                        : "Select designer(s)"}
+                        ? "No team members available"
+                        : "Select team member(s)"}
                   </span>
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDesignerDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -1039,7 +1032,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                       <div className="relative">
                         <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                         <Input
-                          placeholder="Search designer..."
+                          placeholder="Search team member..."
                           value={designerSearch}
                           onChange={(e) => setDesignerSearch(e.target.value)}
                           className="pl-10 h-8"
@@ -1087,7 +1080,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                 </p>
               )}
               <p className="text-xs text-gray-500">
-                Select a designer or video editor to assign this post to. Leave as "Unassigned" if no one is assigned.
+                Select one or more team members to assign this post to. Leave unassigned if not yet assigned.
               </p>
             </div>
 
