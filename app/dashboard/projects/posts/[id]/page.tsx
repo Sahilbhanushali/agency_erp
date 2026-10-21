@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, FolderOpen } from "lucide-react";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
 import TaskPanel from "@/components/tasks/task-panel";
+import { InstagramPublishCard } from "@/components/social/instagram-publish-card";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: "no-store" });
@@ -72,6 +73,10 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-6">
       <PostDetail post={post} />
+      {/* Mounted here rather than inside PostDetail, which is also rendered for
+          clients on the public share link. Publishing controls must never appear
+          there, and keeping the component out of that tree guarantees it. */}
+      <InstagramPublishCard postId={id} />
       {/* Work on this post that is not the post itself — revisions, approvals chasing,
           asset sourcing. Pre-linked to the post and its project. */}
       <TaskPanel

@@ -36,6 +36,8 @@ import {
   CalendarClock,
   Banknote,
   Briefcase,
+  Share2,
+  TrendingUp,
 } from "lucide-react"
 import { useBreadcrumbs } from "@/lib/route-labels"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -89,6 +91,8 @@ const navigation: NavigationItem[] = [
   { name: "Pending Approvals", href: "/dashboard/approvals", module: "approvals", icon: FileClock, permissions: ["Manage-approvals"] },
   { name: "Assets", href: "/dashboard/assets", module: "assets", icon: ImageIcon, permissions: ["View-assets"] },
   { name: "Reports", href: "/dashboard/reports", module: "reports", icon: BarChart3, permissions: ["View-reports"] },
+  { name: "Social Accounts", href: "/dashboard/social/accounts", module: "social_accounts", icon: Share2 },
+  { name: "Social Insights", href: "/dashboard/social/insights", module: "social_accounts", icon: TrendingUp },
   { name: "Leads Pipeline", href: "/dashboard/leads", module: "leads", icon: Target, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
   { name: "Clients", href: "/dashboard/clients", module: "clients", icon: Users, permissions: ["Manage-clients", "View-clients"] },
   { name: "Contracts & SOW", href: "/dashboard/contracts", module: "contracts", icon: FileSignature, permissions: ["Manage-clients", "View-clients"] },
@@ -107,7 +111,7 @@ const navigation: NavigationItem[] = [
 
 const navigationGroups = [
   { label: "Overview", names: ["Dashboard"] },
-  { label: "Delivery", names: ["My Tasks", "My Day", "Projects", "Calendar", "Pending Approvals", "Assets", "Reports"] },
+  { label: "Delivery", names: ["My Tasks", "My Day", "Projects", "Calendar", "Pending Approvals", "Assets", "Reports", "Social Accounts", "Social Insights"] },
   { label: "Agency", names: ["Leads Pipeline", "Clients", "Contracts & SOW", "Expenses & Margins", "Companies", "Quotations", "Invoices", "User Management", "Recruitment & HRMS", "Attendance & Leaves", "Payroll", "Utilities", "Credentials"] },
   { label: "Preferences", names: ["Settings"] },
 ]

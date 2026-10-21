@@ -196,6 +196,26 @@ export const MODULES: PermissionModule[] = [
       { action: "update", label: "Update", legacy: ["Manage-salary"] },
     ] },
 
+  /**
+   * Connected Instagram accounts.
+   *
+   * No legacy names: this module is new, so nothing is grandfathered and every role
+   * starts without it. Connecting an account hands this app a credential that can
+   * publish in a client's name, so it is deliberately separate from `posts` — a
+   * content creator who may draft and schedule should not also be able to attach or
+   * detach the account those posts go out on.
+   *
+   * Publishing itself stays on `posts:publish`, which already exists; a second
+   * publish permission would be two sources of truth for the same decision.
+   */
+  { key: "social_accounts", label: "Social Accounts", href: "/dashboard/social/accounts", group: "Delivery",
+    actions: [
+      { action: "read", label: "Read", legacy: [] },
+      { action: "create", label: "Connect an account", legacy: [] },
+      { action: "update", label: "Reconnect / rename", legacy: [] },
+      { action: "delete", label: "Disconnect", legacy: [] },
+    ] },
+
   // ---- System ----
   { key: "roles", label: "Roles & Permissions", href: "/dashboard/users", group: "System",
     actions: [
