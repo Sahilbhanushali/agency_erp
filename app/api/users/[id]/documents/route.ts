@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { can, requireSession } from "@/lib/api-auth";
 import { AttachmentRuleError } from "@/lib/chat/file-rules";
-import { documentFileUrl, removeDocumentFile, saveDocumentFile, validateDocument } from "@/lib/hr-documents";
+import { documentFileUrl, notifyVerifiers, removeDocumentFile, saveDocumentFile, validateDocument } from "@/lib/hr-documents";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,8 @@ export async function GET(
     }
 
     const currentUserId = parseInt(session.user.id, 10);
-    const isHrOrAdmin = await can(session, "users", "read");
+    const isHrOrAdmin =
+      (await can(session, "users", "read")) || (await can(session, "users", "approve"));
 
     if (!isHrOrAdmin && currentUserId !== userId) {
       return NextResponse.json({ error: "Forbidden: You can only view your own documents" }, { status: 403 });
@@ -78,11 +79,17 @@ export async function GET(
         // Always the authorized route, also for rows whose fileUrl predates it.
         fileUrl: documentFileUrl(userId, doc.id, doc.uploadedAt),
         status,
-        normalizedCategory: normalizeCategory(doc.category),
+        // The vault filters on these ids; older rows hold names like "ID_PROOF".
+        category: normalizeCategory(doc.category),
       };
     });
 
-    return NextResponse.json(documents);
+    // The vault reads { documents, counts }. Returning a bare array left it empty
+    // no matter how many documents had been uploaded.
+    const counts: Record<string, number> = { ALL: documents.length };
+    for (const d of documents) counts[d.category] = (counts[d.category] ?? 0) + 1;
+
+    return NextResponse.json({ documents, counts });
   } catch (error) {
     console.error("[users/documents GET] error:", error);
     return NextResponse.json({ error: "Could not load documents" }, { status: 500 });
@@ -183,6 +190,8 @@ export async function POST(
 
       createdDocs.push(doc);
     }
+
+    await notifyVerifiers(userId, currentUserId, createdDocs.map((d) => d.title));
 
     return NextResponse.json(
       createdDocs.length === 1 ? createdDocs[0] : { count: createdDocs.length, documents: createdDocs },

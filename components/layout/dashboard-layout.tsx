@@ -39,6 +39,7 @@ import {
   Share2,
   TrendingUp,
   MessagesSquare,
+  FileCheck2,
 } from "lucide-react"
 import { useBreadcrumbs } from "@/lib/route-labels"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -81,6 +82,8 @@ type NavigationItem = {
    * proof of authorization — two installs can give the same role different permissions.
    */
   allowedRoles?: string[]
+  /** A specific `module:action` this entry needs, when reading the module is not enough. */
+  need?: string
   subItems?: { name: string; href: string; icon: any }[]
 }
 
@@ -104,6 +107,7 @@ const navigation: NavigationItem[] = [
   { name: "Quotations", href: "/dashboard/quotations", module: "quotations", icon: FileText, permissions: ["Manage-quotations", "View-quotations"] },
   { name: "Invoices", href: "/dashboard/invoices", module: "invoices", icon: Receipt, permissions: ["Manage-invoices", "View-invoices"] },
   { name: "User Management", href: "/dashboard/users", module: "users", icon: UserCog, permissions: ["Manage-User"], allowedRoles: ["ADMIN", "MANAGER"] },
+  { name: "Document Verification", href: "/dashboard/documents", icon: FileCheck2, need: "users:approve" },
   { name: "Recruitment & HRMS", href: "/dashboard/hrms", module: "hrms", icon: Briefcase, allowedRoles: ["ADMIN", "MANAGER", "TEAM_LEAD"] },
   { name: "Attendance & Leaves", href: "/dashboard/attendance", module: "attendance", icon: CalendarClock },
   { name: "Payroll", href: "/dashboard/payroll", module: "payroll", icon: Banknote },
@@ -115,7 +119,7 @@ const navigation: NavigationItem[] = [
 const navigationGroups = [
   { label: "Overview", names: ["Dashboard"] },
   { label: "Delivery", names: ["My Tasks", "My Day", "Chat", "Projects", "Calendar", "Pending Approvals", "Assets", "Reports", "Social Accounts", "Social Insights"] },
-  { label: "Agency", names: ["Leads Pipeline", "Clients", "Contracts & SOW", "Expenses & Margins", "Companies", "Quotations", "Invoices", "User Management", "Recruitment & HRMS", "Attendance & Leaves", "Payroll", "Utilities", "Credentials"] },
+  { label: "Agency", names: ["Leads Pipeline", "Clients", "Contracts & SOW", "Expenses & Margins", "Companies", "Quotations", "Invoices", "User Management", "Document Verification", "Recruitment & HRMS", "Attendance & Leaves", "Payroll", "Utilities", "Credentials"] },
   { label: "Preferences", names: ["Settings"] },
 ]
 
@@ -126,6 +130,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme()
   const [userPermissions, setUserPermissions] = useState<string[]>([])
   const [accessibleModules, setAccessibleModules] = useState<string[]>([])
+  const [grantedActions, setGrantedActions] = useState<string[]>([])
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true)
   /** The role the server resolved from the database, or null when none is assigned. */
   const [resolvedRole, setResolvedRole] = useState<string | null>(null)
@@ -166,6 +171,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           if (effectiveRes.ok) {
             const effective = await effectiveRes.json()
             setAccessibleModules(effective.modules || [])
+            setGrantedActions(effective.permissions || [])
             // The role is read from the database here, not the sign-in token, so a role
             // assigned a moment ago is reflected without signing out again.
             setResolvedRole(effective.role ?? null)
@@ -237,6 +243,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   // permission the page and its API enforce, so a visible link always leads somewhere
   // the user can actually open — and a hidden one is never the only protection.
   const filteredNavigation = navigation.filter((item) => {
+    if (item.need) return grantedActions.includes(item.need)
     if (item.module) return accessibleModules.includes(item.module)
     // Entries not yet mapped to a module fall back to the legacy names.
     if (item.permissions?.length) {

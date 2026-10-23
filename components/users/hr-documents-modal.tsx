@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useMemo } from "react";
 import useSWR from "swr";
+import { useCan } from "@/hooks/use-can";
 import { toast } from "react-hot-toast";
 import {
   Dialog,
@@ -157,6 +158,10 @@ export default function HrDocumentsModal({
     isOpen && userId ? `/api/users/${userId}/documents` : null,
     fetcher
   );
+
+  // Verify/Reject only for Admin, Manager or HR; the server refuses anyone else anyway.
+  const { can } = useCan();
+  const canVerify = can("users", "approve");
 
   const documents = docsResponse?.documents || [];
   const counts = docsResponse?.counts || {
@@ -1064,20 +1069,21 @@ export default function HrDocumentsModal({
                         <RefreshCw className="size-3.5" />
                       </Button>
 
-                      {/* Verification Controls (For HR / Admin) */}
-                      {doc.status !== "VERIFIED" && (
+                      {/* Verification Controls (Admin / Manager / HR) */}
+                      {canVerify && doc.status !== "VERIFIED" && (
                         <Button
                           variant="ghost"
                           size="icon-xs"
                           onClick={() => handleVerify(doc)}
                           title="Verify document"
+                          aria-label={`Verify ${doc.title}`}
                           className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
                         >
                           <CheckCircle2 className="size-3.5" />
                         </Button>
                       )}
 
-                      {doc.status !== "REJECTED" && (
+                      {canVerify && doc.status !== "REJECTED" && (
                         <Button
                           variant="ghost"
                           size="icon-xs"
@@ -1086,6 +1092,7 @@ export default function HrDocumentsModal({
                             setRejectionReason("");
                           }}
                           title="Reject document"
+                          aria-label={`Reject ${doc.title}`}
                           className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
                         >
                           <XCircle className="size-3.5" />
