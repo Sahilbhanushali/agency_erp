@@ -3,7 +3,7 @@ import { z } from "zod"
 import { requireCan } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { publish } from "@/lib/realtime/hub"
-import { activeMemberIds, memberAccess, notFound } from "@/lib/chat/service"
+import { activeMemberIds, advanceReceipt, memberAccess, notFound } from "@/lib/chat/service"
 
 /**
  * Marks messages read up to a seq. Only ever moves forward, and never past what exists
@@ -33,16 +33,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   const seq = Math.min(parsed.data.seq, cap)
 
   // Conditional write: a stale tab reporting an older seq cannot move the marker back.
-  const { count } = await prisma.conversationMember.updateMany({
-    where: { conversationId: id, userId: auth.userId, lastReadSeq: { lt: seq } },
-    data: { lastReadSeq: seq },
-  })
-
-  // Reading something means it was delivered, even if no tab was open when it arrived.
-  await prisma.conversationMember.updateMany({
-    where: { conversationId: id, userId: auth.userId, lastDeliveredSeq: { lt: seq } },
-    data: { lastDeliveredSeq: seq },
-  })
+  // Delivered first: reading something means it was delivered, even if no tab was
+  // open when it arrived, and Message info should never show "read" before "delivered".
+  await advanceReceipt(id, [auth.userId], "DELIVERED", seq, true)
+  const count = await advanceReceipt(id, [auth.userId], "READ", seq, true)
 
   if (count > 0) {
     const recipients = new Set([auth.userId, ...(access.active ? await activeMemberIds(id) : [])])

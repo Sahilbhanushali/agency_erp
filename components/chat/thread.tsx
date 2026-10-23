@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { format, isSameDay, isToday, isYesterday } from "date-fns"
-import { AlertCircle, ArrowLeft, BellOff, Info, Loader2, UserPlus, Users } from "lucide-react"
+import { AlertCircle, ArrowDown, ArrowLeft, BellOff, ChevronDown, ChevronUp, Info, Loader2, Search, UserPlus, Users, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -14,6 +14,7 @@ import { Composer } from "./composer"
 import { MessageBubble } from "./message-bubble"
 import { ForwardDialog } from "./forward-dialog"
 import { NewConversationDialog } from "./new-conversation-dialog"
+import { MessageInfoDialog } from "./message-info-dialog"
 import type { ChatConversation, ChatMessage } from "./types"
 
 interface Member {
@@ -84,6 +85,25 @@ export function Thread({
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null)
   const [highlight, setHighlight] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [infoFor, setInfoFor] = useState<ChatMessage | null>(null)
+  /**
+   * True when the loaded window ends before the latest message — after jumping to an
+   * old search hit. Live messages are then not appended (they would sit after a gap);
+   * scrolling down or "Jump to latest" loads them.
+   */
+  const [hasNewer, setHasNewer] = useState(false)
+  const hasNewerRef = useRef(false)
+  hasNewerRef.current = hasNewer
+  const [loadingNewer, setLoadingNewer] = useState(false)
+  const [awayFromBottom, setAwayFromBottom] = useState(false)
+
+  // In-thread search
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const [hits, setHits] = useState<{ id: string; seq: number }[] | null>(null)
+  const [hitIndex, setHitIndex] = useState(0)
+  const [searchingThread, setSearchingThread] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const atBottom = useRef(true)
@@ -113,7 +133,7 @@ export function Thread({
     atBottom.current = true
 
     const url = jumpTo
-      ? `/api/chat/conversations/${id}/messages?before=${jumpTo.seq + 25}`
+      ? `/api/chat/conversations/${id}/messages?around=${jumpTo.seq}`
       : `/api/chat/conversations/${id}/messages`
     Promise.all([fetch(url, { cache: "no-store" }).then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => ({})) })), loadDetails()])
       .then(([r]) => {
@@ -124,6 +144,7 @@ export function Thread({
         }
         setMessages(r.body.messages)
         setHasMore(r.body.hasMore)
+        setHasNewer(!!r.body.hasNewer)
         if (jumpTo) {
           atBottom.current = false
           requestAnimationFrame(() => {
@@ -142,7 +163,7 @@ export function Thread({
 
   // After a reconnect, read what arrived while the stream was down.
   useEffect(() => {
-    if (chat.resyncToken === 0 || loading) return
+    if (chat.resyncToken === 0 || loading || hasNewerRef.current) return
     const after = messagesRef.current.reduce((n, m) => (m.pending ? n : Math.max(n, m.seq)), 0)
     fetch(`/api/chat/conversations/${id}/messages?after=${after}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
@@ -180,6 +201,135 @@ export function Thread({
     }
   }, [id, hasMore, loadingOlder])
 
+  /** Messages after the loaded window, when it was opened in the past. */
+  const loadNewer = useCallback(async () => {
+    if (loadingNewer || !hasNewerRef.current) return
+    const last = messagesRef.current.reduce((n, m) => (m.pending ? n : Math.max(n, m.seq)), 0)
+    setLoadingNewer(true)
+    try {
+      const r = await fetch(`/api/chat/conversations/${id}/messages?after=${last}`, { cache: "no-store" })
+      const body = await r.json()
+      if (!r.ok) throw new Error(body.error)
+      setMessages((prev) => merge(prev, body.messages))
+      setHasNewer(!!body.truncated)
+    } catch {
+      toast.error("Could not load newer messages")
+    } finally {
+      setLoadingNewer(false)
+    }
+  }, [id, loadingNewer])
+
+  /** Back to the newest page, as when the thread first opens. */
+  const loadLatest = useCallback(async () => {
+    const r = await fetch(`/api/chat/conversations/${id}/messages`, { cache: "no-store" })
+    const body = await r.json().catch(() => ({}))
+    if (!r.ok) {
+      toast.error(body.error ?? "Could not load the latest messages")
+      return false
+    }
+    atBottom.current = true
+    setAwayFromBottom(false)
+    setMessages((prev) => merge(body.messages, prev.filter((m) => m.pending)))
+    setHasMore(body.hasMore)
+    setHasNewer(false)
+    return true
+  }, [id])
+
+  const jumpToLatest = async () => {
+    if (hasNewerRef.current) {
+      await loadLatest()
+      return
+    }
+    const el = scrollRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+  }
+
+  /** Scrolls to a message, loading the history around it first if it is not on screen. */
+  const showMessage = useCallback(
+    async (messageId: string, seq: number, flash = true) => {
+      let el = document.getElementById(`msg-${messageId}`)
+      if (!el) {
+        const r = await fetch(`/api/chat/conversations/${id}/messages?around=${seq}`, { cache: "no-store" })
+        const body = await r.json().catch(() => ({}))
+        if (!r.ok) {
+          toast.error(body.error ?? "Could not open that message")
+          return
+        }
+        atBottom.current = false
+        setMessages(body.messages)
+        setHasMore(body.hasMore)
+        setHasNewer(!!body.hasNewer)
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        el = document.getElementById(`msg-${messageId}`)
+      }
+      if (!el) return
+      atBottom.current = false
+      el.scrollIntoView({ block: "center", behavior: "smooth" })
+      if (flash) {
+        setHighlight(messageId)
+        setTimeout(() => setHighlight((h) => (h === messageId ? null : h)), 2000)
+      }
+    },
+    [id],
+  )
+
+  // --- in-thread search -------------------------------------------------------------
+  const searchTerms = useMemo(
+    () => (searchOpen && query.trim().length >= 2 ? query.trim().split(/\s+/) : undefined),
+    [searchOpen, query],
+  )
+
+  useEffect(() => {
+    const q = query.trim()
+    if (!searchOpen || q.length < 2) {
+      setHits(null)
+      return
+    }
+    setSearchingThread(true)
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/chat/search?conversationId=${encodeURIComponent(id)}&q=${encodeURIComponent(q)}`)
+        const body = r.ok ? await r.json() : { messages: [] }
+        const found: { id: string; seq: number }[] = body.messages.map((m: { id: string; seq: number }) => ({ id: m.id, seq: m.seq }))
+        setHits(found)
+        // Start from the newest match, the way messaging apps do, and step back from there.
+        setHitIndex(found.length - 1)
+        if (found.length) void showMessage(found[found.length - 1].id, found[found.length - 1].seq, false)
+      } finally {
+        setSearchingThread(false)
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [query, searchOpen, id, showMessage])
+
+  const stepHit = (delta: number) => {
+    if (!hits?.length) return
+    const next = (hitIndex + delta + hits.length) % hits.length
+    setHitIndex(next)
+    void showMessage(hits[next].id, hits[next].seq, false)
+  }
+
+  const closeSearch = () => {
+    setSearchOpen(false)
+    setQuery("")
+    setHits(null)
+  }
+
+  // Ctrl/Cmd+F inside a conversation searches the conversation, not the page.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault()
+        setSearchOpen(true)
+        requestAnimationFrame(() => searchInputRef.current?.focus())
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  const currentHitId = searchOpen && hits?.length ? hits[hitIndex]?.id : null
+
   // --- scroll behaviour -----------------------------------------------------------
   useLayoutEffect(() => {
     const el = scrollRef.current
@@ -196,8 +346,11 @@ export function Thread({
   const onScroll = () => {
     const el = scrollRef.current
     if (!el) return
-    atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    atBottom.current = fromBottom < 80 && !hasNewerRef.current
+    setAwayFromBottom(fromBottom > 400 || hasNewerRef.current)
     if (el.scrollTop < 120) void loadOlder()
+    if (fromBottom < 200 && hasNewerRef.current) void loadNewer()
     if (atBottom.current) markRead()
   }
 
@@ -233,7 +386,8 @@ export function Thread({
     () =>
       chat.on((e) => {
         if (e.type === "message" && e.conversationId === id) {
-          setMessages((prev) => merge(prev, [e.message]))
+          // Reading an older window: the new message loads when they scroll down.
+          if (!hasNewerRef.current) setMessages((prev) => merge(prev, [e.message]))
           setTyping((t) => {
             if (!e.message.sender) return t
             const next = { ...t }
@@ -352,7 +506,10 @@ export function Thread({
   // Files kept for a retry. Not part of the message object, which must stay serialisable.
   const pendingFiles = useRef(new Map<string, File>())
 
-  const send = (text: string, file: File | null) => {
+  const send = async (text: string, file: File | null) => {
+    // Sending from an older window: go to the present first, so the message lands where
+    // it belongs instead of after a gap.
+    if (hasNewerRef.current && !(await loadLatest())) return
     const clientId = newClientId()
     const optimistic: ChatMessage = {
       id: `pending-${clientId}`,
@@ -514,12 +671,76 @@ export function Thread({
             <span className="sr-only sm:hidden">Add members</span>
           </Button>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10"
+          onClick={() => {
+            if (searchOpen) closeSearch()
+            else {
+              setSearchOpen(true)
+              requestAnimationFrame(() => searchInputRef.current?.focus())
+            }
+          }}
+          aria-label={searchOpen ? "Close search" : "Search in this conversation"}
+          aria-pressed={searchOpen}
+        >
+          <Search className="h-5 w-5" />
+        </Button>
         <Button variant="ghost" size="icon" className="h-10 w-10" onClick={onShowDetails} aria-label="Conversation details">
           <Info className="h-5 w-5" />
         </Button>
       </div>
 
+      {searchOpen && (
+        <div className="flex items-center gap-1 border-b border-border bg-card px-2 py-1.5 sm:px-4" role="search">
+          <label htmlFor="thread-search" className="sr-only">Search in {conversation.name ?? "this conversation"}</label>
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <input
+              id="thread-search"
+              ref={searchInputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  stepHit(e.shiftKey ? 1 : -1)
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault()
+                  closeSearch()
+                }
+              }}
+              placeholder="Search messages and files"
+              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+          <span className="min-w-[4.5rem] shrink-0 text-center text-xs tabular-nums text-muted-foreground" aria-live="polite">
+            {searchingThread ? (
+              <Loader2 className="mx-auto h-4 w-4 animate-spin" aria-label="Searching" />
+            ) : hits === null ? (
+              ""
+            ) : hits.length === 0 ? (
+              "No matches"
+            ) : (
+              `${hitIndex + 1} of ${hits.length}`
+            )}
+          </span>
+          <Button variant="ghost" size="icon" className="h-10 w-10" disabled={!hits?.length} onClick={() => stepHit(-1)} aria-label="Previous (older) match">
+            <ChevronUp className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-10 w-10" disabled={!hits?.length} onClick={() => stepHit(1)} aria-label="Next (newer) match">
+            <ChevronDown className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={closeSearch} aria-label="Close search">
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
+
       {/* Messages */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={scrollRef}
         onScroll={onScroll}
@@ -580,7 +801,9 @@ export function Thread({
                       showSender={conversation.type === "GROUP" && runStart}
                       meId={meId}
                       receipt={receiptFor(m)}
-                      highlighted={highlight === m.id}
+                      highlighted={highlight === m.id || currentHitId === m.id}
+                      searchTerms={searchTerms}
+                      onInfo={setInfoFor}
                       can={permissionsForBubbles}
                       onReply={setReplyTo}
                       onEdit={setEditing}
@@ -594,9 +817,29 @@ export function Thread({
                 </Fragment>
               )
             })}
+            {hasNewer && (
+              <div className="flex justify-center py-2">
+                <Button variant="ghost" size="sm" onClick={loadNewer} disabled={loadingNewer} className="text-xs">
+                  {loadingNewer ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                  Load newer messages
+                </Button>
+              </div>
+            )}
             <div className="h-3" />
           </>
         )}
+      </div>
+      {!loading && awayFromBottom && (
+        <Button
+          size="icon"
+          variant="secondary"
+          onClick={() => void jumpToLatest()}
+          className="absolute bottom-3 right-4 h-11 w-11 rounded-full border border-border shadow-md"
+          aria-label="Jump to latest message"
+        >
+          <ArrowDown className="h-5 w-5" />
+        </Button>
+      )}
       </div>
 
       <Composer
@@ -623,6 +866,8 @@ export function Thread({
       />
 
       <ForwardDialog message={forwarding} onClose={() => setForwarding(null)} />
+
+      <MessageInfoDialog message={infoFor} onClose={() => setInfoFor(null)} />
 
       <NewConversationDialog
         open={adding}

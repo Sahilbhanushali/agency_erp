@@ -6,10 +6,19 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Non-modal by default. A modal Radix menu sets `pointer-events: none` on <body> and
+ * removes it when it closes. A menu item that opens a Dialog or AlertDialog (Delete,
+ * Forward, Info…) starts the dialog's own lock in the same moment, the two
+ * cleanups race, and <body> can be left unclickable: the page looks frozen until a
+ * refresh. A non-modal menu never takes that lock, and still closes on Escape and on
+ * a click outside. Pass `modal` explicitly where page interaction must be blocked.
+ */
 function DropdownMenu({
+  modal = false,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" modal={modal} {...props} />
 }
 
 function DropdownMenuPortal({

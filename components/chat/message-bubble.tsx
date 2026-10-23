@@ -1,6 +1,6 @@
 "use client"
 
-import { memo } from "react"
+import { memo, useState, type ReactNode } from "react"
 import { format } from "date-fns"
 import {
   AlertCircle,
@@ -10,6 +10,8 @@ import {
   Download,
   FileText,
   Forward,
+  Info,
+  Plus,
   Loader2,
   MoreHorizontal,
   Pencil,
@@ -28,6 +30,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { EmojiPicker } from "./emoji-picker"
+import { isEmojiOnly } from "./emoji-data"
 import type { ChatMessage } from "./types"
 
 export const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "🎉", "🙏"]
@@ -52,6 +56,80 @@ export interface BubbleProps {
   onForward: (m: ChatMessage) => void
   onRetry: (m: ChatMessage) => void
   onJumpTo: (messageId: string) => void
+  /** Message info (who received and read it). Offered on my own messages only. */
+  onInfo: (m: ChatMessage) => void
+  /** Words being searched for in this thread, marked in the text. */
+  searchTerms?: string[]
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+/** The body with every searched word wrapped in <mark>, case-insensitively. */
+function highlight(text: string, terms: string[] | undefined): ReactNode {
+  const words = (terms ?? []).filter((t) => t.length > 0)
+  if (words.length === 0) return text
+  const re = new RegExp(`(${words.map(escapeRe).join("|")})`, "gi")
+  return text.split(re).map((part, i) =>
+    i % 2 === 1 ? (
+      <mark key={i} className="rounded-sm bg-amber-300 px-0.5 text-black">
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  )
+}
+
+/** The six quick reactions, and "+" for the full emoji set. */
+function ReactionPicker({ mine, onPick }: { mine: boolean; onPick: (emoji: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [more, setMore] = useState(false)
+  const choose = (e: string) => {
+    onPick(e)
+    setOpen(false)
+  }
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o)
+        if (!o) setMore(false)
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="React to message">
+          <SmilePlus className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-1" align={mine ? "end" : "start"}>
+        {more ? (
+          <EmojiPicker onPick={choose} />
+        ) : (
+          <div className="flex gap-0.5">
+            {QUICK_REACTIONS.map((e) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => choose(e)}
+                className="grid h-9 w-9 place-items-center rounded-md text-lg hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`React with ${e}`}
+              >
+                {e}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setMore(true)}
+              className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="More reactions"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 /**
@@ -73,6 +151,8 @@ export const MessageBubble = memo(function MessageBubble({
   onForward,
   onRetry,
   onJumpTo,
+  onInfo,
+  searchTerms,
 }: BubbleProps) {
   if (m.type === "SYSTEM") {
     return (
@@ -105,9 +185,7 @@ export const MessageBubble = memo(function MessageBubble({
   return (
     <div
       id={`msg-${m.id}`}
-      className={`group/msg flex px-3 py-0.5 sm:px-4 ${mine ? "justify-end" : "justify-start"} ${
-        highlighted ? "animate-pulse" : ""
-      }`}
+      className={`group/msg flex scroll-my-24 px-3 py-0.5 sm:px-4 ${mine ? "justify-end" : "justify-start"}`}
     >
       <div className={`flex max-w-[85%] items-end gap-1 sm:max-w-[70%] ${mine ? "flex-row-reverse" : "flex-row"}`}>
         <div
@@ -175,7 +253,12 @@ export const MessageBubble = memo(function MessageBubble({
                   )}
                 </div>
               ))}
-              {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+              {m.body &&
+                (isEmojiOnly(m.body) && m.attachments.length === 0 ? (
+                  <p className="text-4xl leading-tight" aria-label={m.body}>{m.body}</p>
+                ) : (
+                  <p className="whitespace-pre-wrap break-words">{highlight(m.body, searchTerms)}</p>
+                ))}
             </>
           )}
 
@@ -239,30 +322,7 @@ export const MessageBubble = memo(function MessageBubble({
           !m.pending && (
             // Always focusable and visible on touch; on desktop it fades in on hover.
             <div className="flex shrink-0 items-center opacity-100 transition-opacity sm:opacity-0 sm:group-hover/msg:opacity-100 sm:focus-within:opacity-100">
-              {can.react && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="React to message">
-                      <SmilePlus className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-1" align={mine ? "end" : "start"}>
-                    <div className="flex gap-0.5">
-                      {QUICK_REACTIONS.map((e) => (
-                        <button
-                          key={e}
-                          type="button"
-                          onClick={() => onReact(m, e)}
-                          className="grid h-9 w-9 place-items-center rounded-md text-lg hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          aria-label={`React with ${e}`}
-                        >
-                          {e}
-                        </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
+              {can.react && <ReactionPicker mine={mine} onPick={(e) => onReact(m, e)} />}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Message actions">
@@ -281,6 +341,11 @@ export const MessageBubble = memo(function MessageBubble({
                   {can.forward && (
                     <DropdownMenuItem onClick={() => onForward(m)}>
                       <Forward className="mr-2 h-4 w-4" /> Forward
+                    </DropdownMenuItem>
+                  )}
+                  {mine && (
+                    <DropdownMenuItem onClick={() => onInfo(m)}>
+                      <Info className="mr-2 h-4 w-4" /> Info
                     </DropdownMenuItem>
                   )}
                   {mine && can.edit && m.type === "TEXT" && (

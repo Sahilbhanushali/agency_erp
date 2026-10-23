@@ -247,12 +247,44 @@ export async function sendMessage(input: SendInput): Promise<{ message: WireMess
  */
 export async function markDelivered(conversationId: string, userIds: number[], seq: number, audience?: number[]) {
   if (userIds.length === 0) return
-  const { count } = await prisma.conversationMember.updateMany({
-    where: { conversationId, userId: { in: userIds }, leftAt: null, lastDeliveredSeq: { lt: seq } },
-    data: { lastDeliveredSeq: seq },
-  })
+  const count = await advanceReceipt(conversationId, userIds, "DELIVERED", seq)
   if (count === 0) return
   publish(audience ?? (await activeMemberIds(conversationId)), { type: "delivered", conversationId, userIds, seq })
+}
+
+/**
+ * Moves read or delivered markers forward to `seq`, and records when, so Message info
+ * can say "Read 14:02". Conditional: a late or repeated call never moves one backwards.
+ * Returns how many members actually moved.
+ */
+export async function advanceReceipt(
+  conversationId: string,
+  userIds: number[],
+  kind: "READ" | "DELIVERED",
+  seq: number,
+  /** A former member still clears their own unread history (capped by the caller). */
+  includeLeft = false,
+): Promise<number> {
+  const field = kind === "READ" ? "lastReadSeq" : "lastDeliveredSeq"
+  const where = { conversationId, userId: { in: userIds }, ...(includeLeft ? {} : { leftAt: null }), [field]: { lt: seq } }
+  const behind = await prisma.conversationMember.findMany({
+    where,
+    select: { userId: true, lastReadSeq: true, lastDeliveredSeq: true },
+  })
+  if (behind.length === 0) return 0
+  const { count } = await prisma.conversationMember.updateMany({ where, data: { [field]: seq } })
+  if (count > 0) {
+    // ponytail: two tabs advancing at once can log overlapping ranges; Message info
+    // takes the earliest time covering a message, which is the true one.
+    // The ticks above are what matter; the times are extra. A failure here (say the
+    // table is not yet created on a server) must never stop messages being read.
+    await prisma.chatReceiptMark
+      .createMany({
+        data: behind.map((m) => ({ conversationId, userId: m.userId, kind, fromSeq: m[field], toSeq: seq })),
+      })
+      .catch((error) => console.error("[chat] could not record receipt time", error))
+  }
+  return count
 }
 
 /**
