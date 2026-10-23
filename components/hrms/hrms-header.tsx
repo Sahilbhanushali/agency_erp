@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -8,11 +8,9 @@ import {
   UserPlus,
   PlusCircle,
   CalendarPlus,
-  Sparkles,
   RefreshCw,
   FileCheck,
 } from "lucide-react";
-import toast from "react-hot-toast";
 
 interface HrmsHeaderProps {
   onNewCandidate?: () => void;
@@ -33,23 +31,6 @@ export function HrmsHeader({
   activeCandidatesCount = 0,
   openingsCount = 0,
 }: HrmsHeaderProps) {
-  const [isSeeding, setIsSeeding] = useState(false);
-
-  const handleSeedData = async () => {
-    setIsSeeding(true);
-    try {
-      const res = await fetch("/api/hrms/seed", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Seed failed");
-      toast.success(data.message || "HRMS demo records loaded!");
-      onRefresh?.();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to initialize demo data");
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4 border-b border-border/60 pb-5 pt-1 sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-1">
@@ -77,18 +58,6 @@ export function HrmsHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSeedData}
-          disabled={isSeeding}
-          className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-          title="Seed realistic demo candidates, templates, and job openings"
-        >
-          <Sparkles className={`size-3.5 ${isSeeding ? "animate-spin" : "text-amber-500"}`} />
-          <span>{isSeeding ? "Loading..." : "Load Sample Data"}</span>
-        </Button>
-
         {onScheduleInterview && (
           <Button
             variant="outline"

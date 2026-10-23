@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { can } from "@/lib/api-auth"
 import MyDay from "@/components/todos/my-day"
+import PersonalTodos from "@/components/todos/personal-todos"
 
 export const metadata: Metadata = { title: "My Day" }
 
@@ -13,6 +14,9 @@ export const metadata: Metadata = { title: "My Day" }
 export default async function MyDayPage() {
   const session = await getServerSession(authOptions)
   const canSeeTeam = await can(session, "todos", "read")
+  // Offered to roles granted personal_todos (Manager and Team Lead by default). The API
+  // checks the same permission and scopes every item to its owner.
+  const canKeepPersonal = await can(session, "personal_todos", "read")
 
   return (
     <div className="space-y-6">
@@ -25,6 +29,8 @@ export default async function MyDayPage() {
       </div>
 
       <MyDay canSeeTeam={canSeeTeam} />
+
+      {canKeepPersonal && <PersonalTodos />}
     </div>
   )
 }

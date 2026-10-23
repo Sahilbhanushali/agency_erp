@@ -1,5 +1,7 @@
 "use client"
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -22,7 +24,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Trash2, Edit, Plus, Search, AlertCircle, AlertTriangle, CheckCircle, Mail, RefreshCw, FileText, Clock, Send, Folder, Briefcase } from "lucide-react"
+import { Trash2, Edit, Plus, Search, AlertCircle, AlertTriangle, CheckCircle, Mail, RefreshCw, FileText, Clock, Send, Folder, Briefcase, Ban, UserCheck } from "lucide-react"
 import SmtpConfigForm from "@/components/SmtpConfigForm"
 import { toast } from "react-hot-toast"
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
@@ -41,6 +43,9 @@ interface User {
   avatar?: string | null
   hasPassword?: boolean
   createdAt: string
+  /** Deactivated accounts keep every record but cannot sign in. */
+  isActive?: boolean
+  deactivatedAt?: string | null
 }
 
 interface Role {
@@ -88,6 +93,7 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeletingUser, setIsDeletingUser] = useState(false)
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null)
   const [selectedHrUserId, setSelectedHrUserId] = useState<string | null>(null)
   const [selectedDocUserId, setSelectedDocUserId] = useState<string | null>(null)
   const [resendingInviteId, setResendingInviteId] = useState<string | null>(null)
@@ -115,10 +121,12 @@ export default function UsersPage() {
     }
   }, [status])
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (opts?: { silent?: boolean }) => {
     try {
-      setIsLoading(true)
-      const response = await fetch("/api/users")
+      if (!opts?.silent) setIsLoading(true)
+      // This is the one screen that must see deactivated accounts — otherwise there
+      // is no way to reactivate one. Everywhere else they are filtered out.
+      const response = await fetch("/api/users?includeInactive=1")
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || "Failed to fetch users")
@@ -132,6 +140,8 @@ export default function UsersPage() {
       setIsLoading(false)
     }
   }
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchUsers({ silent: true }), ["User", "Role", "UserDocument"])
 
   const fetchRoles = async () => {
     try {
@@ -302,6 +312,11 @@ export default function UsersPage() {
     }
   }
 
+  /**
+   * Removes access without removing the person. The endpoint deactivates rather than
+   * deletes, because deleting cascaded away payroll, payslips, attendance and leave,
+   * and blanked the author on everything else they had touched.
+   */
   const handleDeleteUser = async (userId: string) => {
     setIsDeletingUser(true)
     try {
@@ -309,20 +324,39 @@ export default function UsersPage() {
         method: "DELETE",
       })
 
+      const body = await response.json().catch(() => ({}))
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to delete user")
+        throw new Error(body.error || "Failed to deactivate user")
       }
 
       await fetchUsers()
-      toast.success("User deleted successfully")
+      toast.success(body.message || "Account deactivated")
       setUserToDelete(null)
     } catch (error: any) {
       console.error(error)
-      setError(error.message || "Failed to delete user")
-      toast.error(error.message || "Failed to delete user")
+      setError(error.message || "Failed to deactivate user")
+      toast.error(error.message || "Failed to deactivate user")
     } finally {
       setIsDeletingUser(false)
+    }
+  }
+
+  const handleReactivateUser = async (userId: string, name: string) => {
+    setReactivatingId(userId)
+    try {
+      const response = await fetch(`/api/users/${userId}`, { method: "POST" })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(body.error || `Could not reactivate ${name}`)
+      }
+      await fetchUsers()
+      toast.success(body.message || `${name} can sign in again.`)
+    } catch (error: any) {
+      console.error(error)
+      setError(error.message)
+      toast.error(error.message)
+    } finally {
+      setReactivatingId(null)
     }
   }
 
@@ -448,6 +482,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
   }
 
   if (status === "loading") {
+
     return (
       <div className="space-y-6 animate-in fade-in-50 duration-200">
         <div className="space-y-2">
@@ -692,7 +727,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user) => (
-                    <TableRow key={user.id} className="hover:bg-muted/40 transition-colors">
+                    <TableRow key={user.id} className={`hover:bg-muted/40 transition-colors ${user.isActive === false ? "opacity-60" : ""}`}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="size-8 border border-border/60">
@@ -713,7 +748,20 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {user.hasPassword === false ? (
+                        {user.isActive === false ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] gap-1 text-destructive border-destructive/30 bg-destructive/5 font-mono"
+                            title={
+                              user.deactivatedAt
+                                ? `Deactivated ${new Date(user.deactivatedAt).toLocaleDateString("en-GB")}`
+                                : "Deactivated"
+                            }
+                          >
+                            <Ban className="size-2.5" />
+                            Deactivated
+                          </Badge>
+                        ) : user.hasPassword === false ? (
                           <Badge variant="outline" className="text-[10px] gap-1 text-amber-600 border-amber-500/30 bg-amber-500/5 font-mono">
                             <Clock className="size-2.5" />
                             Invite Pending
@@ -809,16 +857,31 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                           >
                             <Edit className="size-3.5" />
                           </Button>
-                          {session?.user?.id !== user.id && (
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={() => setUserToDelete({ id: user.id, name: user.name })}
-                              className="text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          )}
+                          {session?.user?.id !== user.id &&
+                            (user.isActive === false ? (
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                disabled={reactivatingId === user.id}
+                                onClick={() => handleReactivateUser(user.id, user.name)}
+                                className="text-muted-foreground hover:text-emerald-600"
+                                title={`Let ${user.name} sign in again`}
+                                aria-label={`Reactivate ${user.name}`}
+                              >
+                                <UserCheck className="size-3.5" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={() => setUserToDelete({ id: user.id, name: user.name })}
+                                className="text-muted-foreground hover:text-destructive"
+                                title={`Remove ${user.name}'s access`}
+                                aria-label={`Deactivate ${user.name}`}
+                              >
+                                <Ban className="size-3.5" />
+                              </Button>
+                            ))}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -884,7 +947,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
             userId={selectedHrUserId}
             isOpen={!!selectedHrUserId}
             onClose={() => setSelectedHrUserId(null)}
-            onUserUpdated={fetchUsers}
+            onUserUpdated={() => fetchUsers()}
           />
 
           <HrDocumentsModal
@@ -892,7 +955,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
             isOpen={!!selectedDocUserId}
             onClose={() => setSelectedDocUserId(null)}
             user={users.find((u) => u.id === selectedDocUserId)}
-            onUpdate={fetchUsers}
+            onUpdate={() => fetchUsers()}
           />
         </TabsContent>
 
@@ -1107,6 +1170,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
         }}
         itemName={userToDelete?.name || "User"}
         entityType="user"
+        title="Deactivate this account?"
         isLoading={isDeletingUser}
       />
 

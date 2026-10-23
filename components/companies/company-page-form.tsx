@@ -811,34 +811,34 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                           "Registered Office Address"}
                       </p>
                       <p className="text-neutral-500">
-                        {[formData.email, formData.phone].filter(Boolean).join(" · ") || "contact@agency.com"}
+                        {[formData.email, formData.phone].filter(Boolean).join(" · ") || <span className="font-normal italic text-neutral-400">Email · phone not added</span>}
                       </p>
                     </div>
                     <div className="text-right font-mono text-[10px] space-y-0.5">
                       <p>
                         <span className="text-neutral-500">GST:</span>{" "}
-                        <span className="font-bold text-neutral-800">{formData.gstNumber || "27AAAAA0000A1Z5"}</span>
+                        <span className="font-bold text-neutral-800">{formData.gstNumber || <span className="font-normal italic text-neutral-400">Not added</span>}</span>
                       </p>
                       <p>
                         <span className="text-neutral-500">PAN:</span>{" "}
-                        <span className="font-bold text-neutral-800">{formData.panNumber || "AAAAA0000A"}</span>
+                        <span className="font-bold text-neutral-800">{formData.panNumber || <span className="font-normal italic text-neutral-400">Not added</span>}</span>
                       </p>
                     </div>
                   </div>
 
-                  {/* 3. Sample Item Row */}
-                  <div className="rounded bg-neutral-50 p-2 text-[10px] flex justify-between items-center text-neutral-700">
-                    <span>Social Media Marketing & Creative Retainer</span>
-                    <span className="font-bold font-mono">₹75,000</span>
+                  {/* 3. Where line items go. Deliberately not a sample item: a made-up
+                      service and amount on a preview reads as real billing data. */}
+                  <div className="rounded border border-dashed border-neutral-200 p-2 text-[10px] text-center italic text-neutral-400">
+                    Invoice line items appear here
                   </div>
 
                   {/* 4. Bank Details & Signature Section */}
                   <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-100">
                     <div className="bg-neutral-50 p-2 rounded text-[10px] space-y-0.5 text-neutral-600">
                       <p className="font-semibold text-neutral-800 text-[10px]">Payment Remittance:</p>
-                      <p>Bank: {formData.bankName || "HDFC Bank"}</p>
-                      <p>A/C: {formData.bankAccountNumber || "502000XXXXXX"}</p>
-                      <p>IFSC: {formData.bankIfsc || "HDFC000XXXX"}</p>
+                      <p>Bank: {formData.bankName || <span className="font-normal italic text-neutral-400">Not added</span>}</p>
+                      <p>A/C: {formData.bankAccountNumber || <span className="font-normal italic text-neutral-400">Not added</span>}</p>
+                      <p>IFSC: {formData.bankIfsc || <span className="font-normal italic text-neutral-400">Not added</span>}</p>
                     </div>
 
                     <div className="text-right flex flex-col justify-end items-end">

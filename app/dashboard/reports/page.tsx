@@ -2,11 +2,10 @@
 
 import { useState, useMemo } from "react";
 import useSWR from "swr";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, Users, Calendar, CheckCircle, XCircle, X } from "lucide-react";
+import { Users, Calendar, CheckCircle, XCircle, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DesignerPerformanceReport } from "@/components/designer-performance-report";
 
@@ -113,7 +112,6 @@ export default function ReportsPage() {
               <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.approvalRate ?? "0"}%</div>
             )}
             <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-              <TrendingUp className="size-3 text-emerald-600" />
               {selectedMonth === "all" ? "All time rate" : "Selected month rate"}
             </p>
           </div>
@@ -133,7 +131,6 @@ export default function ReportsPage() {
               <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.rejectionRate ?? "0"}%</div>
             )}
             <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-              <TrendingDown className="size-3 text-rose-600" />
               {selectedMonth === "all" ? "All time rate" : "Selected month rate"}
             </p>
           </div>
@@ -156,70 +153,6 @@ export default function ReportsPage() {
           </div>
         </div>
       </div>
-
-      {/* Detailed Metrics */}
-      <Card className="rounded-xl border border-border/70 bg-card shadow-2xs">
-        <CardHeader className="pb-3 pt-5 px-6">
-          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Performance Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <h4 className="font-medium">Workflow Efficiency</h4>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Avg. Review Time</span>
-                  <span>2.3 days</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Revision Rate</span>
-                  <span>18%</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>On-time Delivery</span>
-                  <span>94%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-medium">Content Performance</h4>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Most Popular Type</span>
-                  <Badge variant="secondary">Photo</Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Peak Posting Time</span>
-                  <span>2:00 PM</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Success Rate</span>
-                  <span>96.2%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-medium">Team Productivity</h4>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Posts per Designer</span>
-                  <span>12.4/week</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Active Projects</span>
-                  <span>8</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Workload Balance</span>
-                  <span>Good</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <DesignerPerformanceReport selectedPeriod={selectedMonth} onPeriodChange={setSelectedMonth} />
     </div>

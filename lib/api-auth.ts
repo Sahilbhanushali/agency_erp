@@ -25,6 +25,17 @@ const unauthorized = () =>
 const forbidden = () => NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
 /**
+ * 401, not 403: the account is no longer a valid identity, so the client should sign
+ * out rather than offer a retry. `deactivated` lets the dashboard end the session
+ * instead of leaving a half-working shell on screen.
+ */
+const deactivated = () =>
+  NextResponse.json(
+    { error: "This account has been deactivated.", deactivated: true },
+    { status: 401 },
+  )
+
+/**
  * This user's role and its permissions, read from the database.
  *
  * Never from the session token. `role` is written into the JWT once, at sign-in, and
@@ -35,13 +46,14 @@ const forbidden = () => NextResponse.json({ error: "Forbidden" }, { status: 403 
  */
 export async function roleOf(
   session: Session | null,
-): Promise<{ roleName: string | null; permissions: string[] }> {
+): Promise<{ roleName: string | null; permissions: string[]; active: boolean }> {
   const id = Number(session?.user?.id)
-  if (!Number.isFinite(id)) return { roleName: null, permissions: [] }
+  if (!Number.isFinite(id)) return { roleName: null, permissions: [], active: false }
 
   const user = await prisma.user.findUnique({
     where: { id },
     select: {
+      isActive: true,
       role: {
         select: {
           name: true,
@@ -50,9 +62,17 @@ export async function roleOf(
       },
     },
   })
+
+  // Sessions are JWTs that outlive a deactivation by up to their whole lifetime, so
+  // the flag has to be read here — where every guarded route already pays for one
+  // database round trip — rather than trusted from the token. A deactivated account
+  // holds no permissions and is not ADMIN, whatever its role still says.
+  if (!user || !user.isActive) return { roleName: null, permissions: [], active: false }
+
   return {
-    roleName: user?.role?.name ?? null,
-    permissions: user?.role?.permissions.map((rp) => rp.permission.name) ?? [],
+    roleName: user.role?.name ?? null,
+    permissions: user.role?.permissions.map((rp) => rp.permission.name) ?? [],
+    active: true,
   }
 }
 
@@ -84,6 +104,11 @@ export async function hasPermission(
 export async function requireSession(): Promise<AuthResult> {
   const session = await getServerSession(authOptions)
   if (!session?.user) return { ok: false, response: unauthorized() }
+
+  // Every other guard routes through here, so one check locks a deactivated account
+  // out of the whole API rather than each handler having to remember.
+  if (!(await roleOf(session)).active) return { ok: false, response: deactivated() }
+
   return { ok: true, session, userId: Number(session.user.id) }
 }
 

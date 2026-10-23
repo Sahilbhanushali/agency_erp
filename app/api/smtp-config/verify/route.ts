@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requirePermission } from "@/lib/api-auth"
+import { requireCan } from "@/lib/api-auth";
 import { resetSmtpCache, verifySmtp } from "@/lib/smtp"
 
 export const dynamic = "force-dynamic"
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic"
  * accepted" tells an administrator far more than "email failed".
  */
 export async function GET() {
-  const auth = await requirePermission("Manage-settings")
+  const auth = await requireCan("settings", "update")
   if (!auth.ok) return auth.response
 
   resetSmtpCache()

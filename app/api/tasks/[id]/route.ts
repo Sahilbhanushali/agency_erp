@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { hasPermission, requireCan, requireSession } from "@/lib/api-auth"
+import { can, requireCan, requireSession } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import {
   notifyTaskAssignees,
@@ -30,11 +30,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 }
 
 /**
- * Two levels of write access:
- *   - Manage-tasks edits anything.
- *   - An assignee without it may still move their own task's status, because being
- *     handed work has to come with the ability to report on it. Any other field in
- *     the body is refused rather than silently ignored.
+ * Three levels of write access, resolved by taskAccess() in lib/tasks.ts:
+ *   - `tasks:update` edits any task.
+ *   - The task's creator edits their own task in full. Ownership, not a permission:
+ *     it confers nothing on anyone else's work.
+ *   - An assignee may move that task's status, because being handed work has to come
+ *     with the ability to report on it. Any other field is refused rather than
+ *     silently ignored.
  */
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireSession()
@@ -57,7 +59,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     })
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    const canManage = await hasPermission(auth.session, "Manage-tasks")
+    // `hasPermission` matches a legacy name exactly, so a role created in the
+    // permission matrix — holding tasks:update and never "Manage-tasks" — was told it
+    // could not manage tasks. The client resolves that alias correctly, so the Edit
+    // button appeared and then the save was refused.
+    const canManage = await can(auth.session, "tasks", "update")
     const access = taskAccess(existing, auth.userId, canManage)
 
     if (access.level === "none") {

@@ -12,7 +12,9 @@
     "check:finance": "tsc lib/finance.ts lib/finance.check.ts --outDir node_modules/.cache/finance-check --module commonjs --target es2022 --esModuleInterop --strict && node node_modules/.cache/finance-check/finance.check.js",
     "db:fresh": "prisma db push --force-reset && node prisma/seed.mjs",
     "build:vps": "NODE_OPTIONS=--max-old-space-size=1024 next build",
-    "build:webpack": "next build"
+    "build:webpack": "next build",
+    "check:instagram": "tsc lib/instagram/token-vault.ts lib/instagram/token-vault.check.ts lib/instagram/media-rules.ts lib/instagram/media-rules.check.ts --outDir node_modules/.cache/instagram-check --module commonjs --target es2022 --esModuleInterop --strict && node node_modules/.cache/instagram-check/token-vault.check.js && node node_modules/.cache/instagram-check/media-rules.check.js",
+    "check:chat": "tsc lib/chat/file-rules.ts lib/chat/storage.ts lib/chat/file-rules.check.ts --outDir node_modules/.cache/chat-check --module commonjs --target es2022 --esModuleInterop --strict --skipLibCheck --types node && node node_modules/.cache/chat-check/file-rules.check.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

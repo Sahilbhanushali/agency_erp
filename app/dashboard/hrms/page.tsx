@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -61,6 +63,8 @@ function HrmsPageContent() {
       console.error(e);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(fetchHeaderCounts, ["HrmsJobOpening", "HrmsCandidate", "HrmsApplication", "HrmsInterview", "HrmsOffer", "HrmsOnboarding"])
 
   useEffect(() => {
     fetchHeaderCounts();
@@ -104,6 +108,7 @@ function HrmsPageContent() {
     setOfferInitialJobId(jobOpeningId);
     handleTabChange("offers");
   };
+
 
   return (
     <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">

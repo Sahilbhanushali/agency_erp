@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -39,8 +41,8 @@ export function NotificationCenter() {
     }
   }, [status, session?.user?.id]);
 
-  const fetchNotifications = async () => {
-    setIsLoading(true);
+  const fetchNotifications = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setIsLoading(true);
     setError(null);
     try {
       const response = await fetch("/api/notifications");
@@ -56,6 +58,8 @@ export function NotificationCenter() {
       setIsLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchNotifications({ silent: true }), ["Notification"])
 
   // Mark a single notification as read
   const markAsRead = async (notificationId: string) => {
@@ -100,6 +104,7 @@ export function NotificationCenter() {
       return <MessageSquare className="h-4 w-4 text-blue-500" />;
     return <Clock className="h-4 w-4 text-gray-500" />;
   };
+
 
   return (
     <DropdownMenu>

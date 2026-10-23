@@ -1,4 +1,6 @@
 "use client"
+
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
 import toast from "react-hot-toast";
 
 import { useState, useEffect } from "react"
@@ -53,6 +55,8 @@ export default function CredentialsPage() {
       console.error("Error fetching credentials:", err)
     }
   }
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(fetchCredentials, ["Credential"])
 
   useEffect(() => {
     fetchCredentials()
@@ -243,6 +247,7 @@ export default function CredentialsPage() {
     }
     setVisiblePasswords((prev) => ({ ...prev, [id]: true }))
   }
+
 
 
   return (

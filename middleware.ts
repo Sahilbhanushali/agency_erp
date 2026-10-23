@@ -116,7 +116,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next()
+  // Tells lib/realtime/invalidate.ts whether a database write happened while serving a
+  // read. Always overwritten here, so a client cannot forge it — and the worst a forged
+  // value could do is suppress other people's refresh, never grant anything.
+  const forwarded = new Headers(request.headers)
+  forwarded.set("x-request-method", request.method)
+  return NextResponse.next({ request: { headers: forwarded } })
 }
 
 export const config = {

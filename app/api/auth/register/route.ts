@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { requireCan } from "@/lib/api-auth";
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
-import { requirePermission } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 
 /**
@@ -10,7 +10,7 @@ import { logAuditAction } from "@/lib/audit"
  * anyone to mint an admin. The role now has to exist and is supplied as an id.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requirePermission("Manage-User")
+  const auth = await requireCan("users", "create")
   if (!auth.ok) return auth.response
 
   try {

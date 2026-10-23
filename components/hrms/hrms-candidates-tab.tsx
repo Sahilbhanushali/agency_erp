@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -186,8 +188,8 @@ export function HrmsCandidatesTab({
     notes: "",
   });
 
-  const fetchCandidates = async () => {
-    setLoading(true);
+  const fetchCandidates = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
@@ -206,6 +208,8 @@ export function HrmsCandidatesTab({
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchCandidates({ silent: true }), ["HrmsCandidate", "HrmsApplication", "HrmsCandidateActivity"])
 
   const fetchJobs = async () => {
     try {
@@ -462,6 +466,7 @@ export function HrmsCandidatesTab({
     }
   };
 
+
   return (
     <div className="space-y-4">
       {/* Search and Filters Bar */}
@@ -523,7 +528,7 @@ export function HrmsCandidatesTab({
           <Button
             variant="ghost"
             size="xs"
-            onClick={fetchCandidates}
+            onClick={() => fetchCandidates()}
             className="text-xs text-muted-foreground"
             title="Refresh candidate list"
           >

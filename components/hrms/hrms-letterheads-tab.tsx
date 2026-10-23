@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -118,8 +120,8 @@ export function HrmsLetterheadsTab() {
     status: "ACTIVE",
   });
 
-  const fetchLetterheads = async () => {
-    setLoading(true);
+  const fetchLetterheads = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch("/api/hrms/letterheads?status=ALL");
       if (!res.ok) throw new Error("Failed to fetch letterheads");
@@ -132,6 +134,8 @@ export function HrmsLetterheadsTab() {
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchLetterheads({ silent: true }), ["HrmsLetterhead"])
 
   useEffect(() => {
     fetchLetterheads();
@@ -294,6 +298,7 @@ export function HrmsLetterheadsTab() {
     return lh.status === statusFilter;
   });
 
+
   return (
     <div className="space-y-4">
       {/* Top Header Bar */}
@@ -409,12 +414,12 @@ export function HrmsLetterheadsTab() {
                         <span className="font-extrabold uppercase text-[10px] tracking-tight block" style={{ color: lh.primaryColor }}>
                           {lh.companyName}
                         </span>
-                        <div className="text-[9px] text-slate-500">{lh.city || "Headquarters"}, {lh.country}</div>
+                        <div className="text-[9px] text-slate-500">{[lh.city, lh.country].filter(Boolean).join(", ")}</div>
                       </div>
                     </div>
                     <div className="text-right text-[9px] text-slate-500 shrink-0">
-                      <div>{lh.email || "info@company.com"}</div>
-                      <div>{lh.phone || "+91-XXXXXXXXXX"}</div>
+                      {lh.email && <div>{lh.email}</div>}
+                      {lh.phone && <div>{lh.phone}</div>}
                     </div>
                   </div>
 
@@ -424,7 +429,7 @@ export function HrmsLetterheadsTab() {
 
                   <div className="pt-2 border-t border-slate-200 flex justify-between text-[9px] text-slate-400">
                     <span>Confidential Document</span>
-                    <span>{lh.website || "www.company.com"}</span>
+                    <span>{lh.website || <span className="italic text-slate-400">No website</span>}</span>
                   </div>
                 </div>
 
@@ -874,9 +879,9 @@ export function HrmsLetterheadsTab() {
                 </div>
 
                 <div className="text-right text-xs text-slate-600 space-y-0.5">
-                  <div><strong>Email:</strong> {previewLetterhead.email || "careers@company.com"}</div>
-                  <div><strong>Phone:</strong> {previewLetterhead.phone || "+91 124 456 7890"}</div>
-                  <div><strong>Web:</strong> {previewLetterhead.website || "www.company.com"}</div>
+                  <div><strong>Email:</strong> {previewLetterhead.email || <span className="italic text-slate-400">Not added</span>}</div>
+                  <div><strong>Phone:</strong> {previewLetterhead.phone || <span className="italic text-slate-400">Not added</span>}</div>
+                  <div><strong>Web:</strong> {previewLetterhead.website || <span className="italic text-slate-400">Not added</span>}</div>
                 </div>
               </div>
 

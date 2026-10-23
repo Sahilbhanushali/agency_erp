@@ -80,8 +80,22 @@ export function taskAccess(
   canManage: boolean,
 ): { level: "full" | "status" | "none"; reason: string } {
   if (canManage) return { level: "full", reason: "has tasks:update" }
+
+  /**
+   * The person who created a task may edit it.
+   *
+   * They used to get "status" only, so whoever raised a task could not fix its own
+   * title, due date or assignees — the thing they had just written. Checked before
+   * the assignee branch so a creator who is also assigned is not demoted to status.
+   *
+   * This is ownership, not a permission: it grants nothing on anybody else's task,
+   * and the update schema has no createdById, so it cannot be used to take one over.
+   */
+  if (task.createdById === userId) return { level: "full", reason: "created this task" }
+
+  // Being handed work comes with the ability to report on it, and nothing more.
   if (task.assignees.some((a) => a.id === userId)) return { level: "status", reason: "assignee" }
-  if (task.createdById === userId) return { level: "status", reason: "created this task" }
+
   return {
     level: "none",
     reason: "only the people assigned to this task, or whoever created it, can change it",

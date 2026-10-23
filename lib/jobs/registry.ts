@@ -48,6 +48,45 @@ export const JOB_REGISTRY: JobDefinition[] = [
     autoRecipients: "the task's assignees and whoever created it",
   },
   {
+    key: "instagram-publish-queue",
+    label: "Instagram publishing queue",
+    description:
+      "Publishes posts that are due on Instagram, retries ones that hit a transient error, and picks up work abandoned by a worker that died mid-publish. Each run takes a small batch and leaves the rest to the next tick.",
+    // Every minute: a post scheduled for 09:00 should go out at 09:00. Runs with
+    // nothing due finish on a single indexed query, so the cost of this is nil.
+    defaultCron: "* * * * *",
+    endpoint: "/api/social/instagram/process-queue",
+    // Failures belong on the post and the account, not in somebody's inbox once a
+    // minute. The queue records lastError on the row itself.
+    supportsRecipients: false,
+    autoRecipients: "nobody — a failed post shows its reason on the post itself",
+  },
+  {
+    key: "instagram-insights-sync",
+    label: "Instagram insights sync",
+    description:
+      "Pulls reach, views and engagement for each connected account and its recent posts. Story insights exist for only 24 hours at Meta, so anything a sync misses is lost for good.",
+    // Every six hours: often enough to catch a story inside its 24-hour window, and
+    // to let figures that Meta revises for up to 48 hours settle.
+    defaultCron: "0 */6 * * *",
+    endpoint: "/api/social/instagram/sync-insights",
+    supportsRecipients: false,
+    autoRecipients: "nobody — the numbers appear on the Instagram insights page",
+  },
+  {
+    key: "instagram-token-refresh",
+    label: "Instagram token refresh",
+    description:
+      "Renews Instagram access tokens before their 60-day window closes. A token that lapses cannot be renewed — the client has to authorise again — so this is load-bearing, not housekeeping.",
+    // Daily: Meta will not refresh a token younger than 24 hours, and a missed day
+    // still leaves plenty of room inside the renewal window.
+    defaultCron: "15 3 * * *",
+    endpoint: "/api/social/instagram/refresh-tokens",
+    // Nobody is emailed; failures surface as a reconnect prompt on the account itself.
+    supportsRecipients: false,
+    autoRecipients: "nobody — results appear on the Social Accounts page",
+  },
+  {
     key: "daily-designer-report",
     label: "Daily design submission report",
     description: "Designs submitted for approval today, grouped by designer.",

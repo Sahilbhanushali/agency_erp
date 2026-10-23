@@ -25,6 +25,12 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // A deactivated account cannot sign in. Checked before the password so a
+        // deactivated person learns nothing about whether their password still works.
+        if (!user.isActive) {
+          return null
+        }
+
         // Hash comparison only. A stored value that is not a bcrypt hash can never
         // authenticate — plaintext passwords are not a supported state.
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password)

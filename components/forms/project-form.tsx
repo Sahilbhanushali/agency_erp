@@ -92,7 +92,7 @@ interface Project {
   isActive: boolean;
   image?: string | null;
   postTypes: PostTypeCount | null;
-  assignedUsers?: { id: string; role: { name: string } }[];
+  assignedUsers?: { id: string; name?: string; role?: { name: string } | null }[];
   strategies?: Strategy[];
 }
 
@@ -290,6 +290,14 @@ export default function ProjectForm({
     return "";
   };
 
+  type SelectedTeamMember = {
+    id: string | number;
+    /** Null is possible on an existing record; the chip renders it as empty. */
+    name: string | null;
+    role: string | null;
+    inactive: boolean;
+  };
+
   const getInitialAssignedTeamIds = () => {
     const existing = project?.assignedUsers?.map((user) => user.id.toString());
     if (existing && existing.length > 0) return existing;
@@ -401,11 +409,35 @@ export default function ProjectForm({
     );
   };
 
-  const getSelectedUsers = () =>
-    users.filter(
+  /**
+   * The team currently on this project.
+   *
+   * Someone deactivated after they were assigned is no longer offered by /api/users,
+   * but their id is still in assignedTeamIds and is re-submitted on every save. Only
+   * reading from `users` would leave an invisible member nobody could see or remove,
+   * so they are merged back in from the project's own record and marked.
+   */
+  const getSelectedUsers = (): SelectedTeamMember[] => {
+    const known = users.filter(
       (user) =>
         formData.assignedTeamIds.includes(user.id.toString()) && !isExcludedFromTeam(user),
     );
+    const knownIds = new Set(known.map((u) => u.id.toString()));
+
+    const deactivated = (project?.assignedUsers ?? [])
+      .filter(
+        (u) =>
+          formData.assignedTeamIds.includes(u.id.toString()) && !knownIds.has(u.id.toString()),
+      )
+      .map((u) => ({
+        id: u.id,
+        name: u.name ?? "Deactivated member",
+        role: u.role?.name ?? null,
+        inactive: true,
+      }));
+
+    return [...known.map((u) => ({ ...u, inactive: false })), ...deactivated];
+  };
 
   const getFilteredUsers = () => {
     const filtered = users.filter((user) => !isExcludedFromTeam(user));
@@ -884,8 +916,10 @@ export default function ProjectForm({
                       variant={getRoleBadgeVariant(user.role)}
                       className="gap-1.5 px-2 py-0.5 text-xs"
                     >
-                      <span>{user.name}</span>
-                      <span className="opacity-75 text-[10px]">({user.role ?? "no role"})</span>
+                      <span className={user.inactive ? "line-through" : undefined}>{user.name}</span>
+                      <span className="opacity-75 text-[10px]">
+                        ({user.inactive ? "deactivated" : user.role ?? "no role"})
+                      </span>
                       <button
                         type="button"
                         onClick={() => removeTeamMember(user.id.toString())}

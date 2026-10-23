@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -171,8 +173,8 @@ export function HrmsPipelineTab({
   const [actionNotes, setActionNotes] = useState("");
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
-  const fetchPipeline = async () => {
-    setLoading(true);
+  const fetchPipeline = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
@@ -191,6 +193,8 @@ export function HrmsPipelineTab({
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchPipeline({ silent: true }), ["HrmsApplication", "HrmsCandidate", "HrmsJobOpening"])
 
   const fetchJobs = async () => {
     try {
@@ -337,6 +341,7 @@ export function HrmsPipelineTab({
 
   const displayedStages = STAGE_GROUPS[stageGroup].stages;
 
+
   return (
     <div className="space-y-4">
       {/* Top Filter and Search Bar */}
@@ -385,7 +390,7 @@ export function HrmsPipelineTab({
             <Button
               variant="ghost"
               size="xs"
-              onClick={fetchPipeline}
+              onClick={() => fetchPipeline()}
               className="text-xs text-muted-foreground"
               title="Refresh Pipeline"
             >

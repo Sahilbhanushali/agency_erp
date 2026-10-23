@@ -350,7 +350,7 @@ export default function CompanyDetailPage() {
                     company.addressLine1,
                     company.addressLine2,
                     [company.city, company.state, company.postalCode].filter(Boolean).join(" - "),
-                    company.country || "India",
+                    company.country,
                   ]
                     .filter(Boolean)
                     .join("\n") || "No registered address specified"}
@@ -472,17 +472,17 @@ export default function CompanyDetailPage() {
                   <div className="rounded border border-border/50 bg-muted/10 p-2 text-[10px] space-y-0.5 text-muted-foreground">
                     <div className="flex justify-between font-mono">
                       <span>Bank:</span>
-                      <span className="font-semibold text-foreground">{company.bankName || "HDFC Bank"}</span>
+                      <span className="font-semibold text-foreground">{company.bankName || <span className="font-normal italic text-muted-foreground">Not set</span>}</span>
                     </div>
                     <div className="flex justify-between font-mono">
                       <span>A/C:</span>
                       <span className="font-semibold text-foreground">
-                        {company.bankAccountNumber || "XXXX-XXXX-XXXX"}
+                        {company.bankAccountNumber || <span className="font-normal italic text-muted-foreground">Not set</span>}
                       </span>
                     </div>
                     <div className="flex justify-between font-mono">
                       <span>IFSC:</span>
-                      <span className="font-semibold text-foreground">{company.bankIfsc || "HDFC0001234"}</span>
+                      <span className="font-semibold text-foreground">{company.bankIfsc || <span className="font-normal italic text-muted-foreground">Not set</span>}</span>
                     </div>
                   </div>
 

@@ -1,3 +1,4 @@
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
 // app/dashboard/utilities/page.tsx
 "use client";
 
@@ -53,9 +54,14 @@ export default function UtilitiesPage() {
   });
 
   // Fetch utilities
+  // Live: the loader below lives inside its effect, so a tick in the effect's
+  // dependencies is how a change elsewhere re-runs it.
+  const [liveTick, setLiveTick] = useState(0)
+  useLiveRefresh(() => setLiveTick((t) => t + 1), ["Utility"])
+
   useEffect(() => {
-    const fetchUtilities = async () => {
-      setLoading(true);
+    const fetchUtilities = async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
       try {
         const res = await fetch("/api/utilities");
         if (!res.ok) throw new Error("Failed to fetch utilities");
@@ -68,8 +74,9 @@ export default function UtilitiesPage() {
         setLoading(false);
       }
     };
-    fetchUtilities();
-  }, []);
+    // A live refresh re-reads quietly; the first load shows the spinner.
+    fetchUtilities({ silent: liveTick > 0 });
+  }, [liveTick]);
 
   // Fetch users
   useEffect(() => {
@@ -225,6 +232,7 @@ export default function UtilitiesPage() {
       toast.error("Failed to update user role");
     }
   };
+
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">

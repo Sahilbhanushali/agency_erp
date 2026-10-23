@@ -48,15 +48,16 @@ export function generateOfferLetterPdf(options: OfferPdfOptions): Buffer {
   let cursorY = 22;
 
   const primaryHex = options.letterhead?.primaryColor || "#1e40af";
-  const compName = options.letterhead?.companyName || "It's Me Dezino Digital Technologies Pvt. Ltd.";
-  const compAddress =
-    options.letterhead?.address ||
-    "Level 4, Dezino Tower, Cyber City, Sector 44, Gurugram, Haryana 122002";
-  const compContact = [
-    options.letterhead?.email || "careers@itsmedezino.com",
-    options.letterhead?.phone || "+91 124 456 7890",
-    options.letterhead?.website || "www.itsmedezino.com",
-  ]
+  /**
+   * Only what the letterhead actually says. This used to fall back to a hardcoded company,
+   * an invented Gurugram address and a placeholder phone number, so any letterhead with a
+   * blank field printed made-up contact details on an offer letter sent to a candidate.
+   * The route refuses to generate without a letterhead, so companyName is always real.
+   */
+  const compName = options.letterhead?.companyName ?? "";
+  const compAddress = options.letterhead?.address?.trim() ?? "";
+  const compContact = [options.letterhead?.email, options.letterhead?.phone, options.letterhead?.website]
+    .map((v) => v?.trim())
     .filter(Boolean)
     .join("  |  ");
 
@@ -75,8 +76,8 @@ export function generateOfferLetterPdf(options: OfferPdfOptions): Buffer {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(compAddress, marginX, 22);
-      doc.text(compContact, marginX, 26);
+      // Blank lines are skipped rather than printed empty, and the rest move up.
+      ;[compAddress, compContact].filter(Boolean).forEach((line, i) => doc.text(line, marginX, 22 + i * 4));
 
       // Decorative divider
       doc.setDrawColor(226, 232, 240);

@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -114,8 +116,8 @@ export function HrmsOnboardingTab() {
     temporaryPassword: "",
   });
 
-  const fetchOnboarding = async () => {
-    setLoading(true);
+  const fetchOnboarding = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch("/api/hrms/onboarding");
       if (!res.ok) throw new Error("Failed to fetch onboarding");
@@ -128,6 +130,8 @@ export function HrmsOnboardingTab() {
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchOnboarding({ silent: true }), ["HrmsOnboarding"])
 
   const fetchUsers = async () => {
     try {
@@ -255,6 +259,7 @@ export function HrmsOnboardingTab() {
   };
 
 
+
   return (
     <div className="space-y-4">
       {/* Top Header Card */}
@@ -266,7 +271,7 @@ export function HrmsOnboardingTab() {
           </p>
         </div>
 
-        <Button variant="outline" size="xs" onClick={fetchOnboarding} className="gap-1 text-xs">
+        <Button variant="outline" size="xs" onClick={() => fetchOnboarding()} className="gap-1 text-xs">
           <RefreshCw className={`size-3 ${loading ? "animate-spin" : ""}`} />
           <span>Refresh</span>
         </Button>

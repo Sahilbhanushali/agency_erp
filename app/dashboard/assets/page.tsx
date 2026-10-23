@@ -1,3 +1,4 @@
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
 // app/assets/page.tsx
 "use client";
 
@@ -63,6 +64,8 @@ export default function AssetsPage() {
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(fetchAssets, ["Asset", "Post"])
 
   const fetchPermissions = async () => {
     try {
@@ -85,6 +88,7 @@ export default function AssetsPage() {
   };
 
   if (status === "loading" || loading || isPermissionsLoading) {
+
     return (
       <div className="space-y-6 animate-in fade-in-50 duration-200">
         <div className="flex flex-col gap-2">

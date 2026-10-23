@@ -558,15 +558,15 @@ export default function PayslipModal({
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-semibold">Bank Name</span>
-              <span className="font-medium text-slate-800">{payslip.user.bankName || "HDFC Bank"}</span>
+              <span className="font-medium text-slate-800">{payslip.user.bankName || "Not provided"}</span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-semibold">Account Number</span>
-              <span className="font-mono font-medium text-slate-800">{payslip.user.bankAccountNumber || "N/A"}</span>
+              <span className="font-mono font-medium text-slate-800">{payslip.user.bankAccountNumber || "Not provided"}</span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-semibold">IFSC Code</span>
-              <span className="font-mono font-medium text-slate-800">{payslip.user.bankIfsc || "N/A"}</span>
+              <span className="font-mono font-medium text-slate-800">{payslip.user.bankIfsc || "Not provided"}</span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-semibold">Payable Days</span>

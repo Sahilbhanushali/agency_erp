@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -138,6 +140,12 @@ export default function ProjectDetailsPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedLogo, setSelectedLogo] = useState<{ url: string; filename: string; type: string } | null>(null);
 
+  // Live: the loader below lives inside its effect, so a tick in the effect's
+  // dependencies is how a change elsewhere re-runs it. It never shows a spinner on a
+  // re-run — loading only ever goes from true to false here.
+  const [liveTick, setLiveTick] = useState(0)
+  useLiveRefresh(() => setLiveTick((t) => t + 1), ["Project", "Post", "ProjectStrategy", "Task", "User"])
+
   useEffect(() => {
     async function fetchProject() {
       try {
@@ -153,7 +161,7 @@ export default function ProjectDetailsPage() {
       }
     }
     if (id) fetchProject();
-  }, [id]);
+  }, [id, liveTick]);
 
   // Calculate comprehensive project statistics
   const projectStats = useMemo(() => {
@@ -319,6 +327,7 @@ export default function ProjectDetailsPage() {
   }, [project]);
 
   if (loading) {
+
     return (
       <div className="space-y-6 animate-pulse">
         <div className="flex items-center gap-3">
