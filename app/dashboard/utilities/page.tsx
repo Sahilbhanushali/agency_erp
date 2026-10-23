@@ -1,6 +1,7 @@
-import { useLiveRefresh } from "@/hooks/use-live-refresh"
 // app/dashboard/utilities/page.tsx
 "use client";
+
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
