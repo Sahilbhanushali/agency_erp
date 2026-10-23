@@ -1,6 +1,7 @@
-import { useLiveRefresh } from "@/hooks/use-live-refresh"
 // app/assets/page.tsx
 "use client";
+
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
