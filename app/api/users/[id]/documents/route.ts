@@ -1,10 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import path from "path";
-import fs from "fs/promises";
-import { can } from "@/lib/api-auth";
+import { can, requireSession } from "@/lib/api-auth";
+import { AttachmentRuleError } from "@/lib/chat/file-rules";
+import { documentFileUrl, removeDocumentFile, saveDocumentFile, validateDocument } from "@/lib/hr-documents";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +24,10 @@ export async function GET(
 ) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // requireSession, not getServerSession: it also turns away a deactivated account.
+    const auth = await requireSession();
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const userId = parseInt(params.id, 10);
     if (isNaN(userId)) {
@@ -76,15 +75,17 @@ export async function GET(
       }
       return {
         ...doc,
+        // Always the authorized route, also for rows whose fileUrl predates it.
+        fileUrl: documentFileUrl(userId, doc.id, doc.uploadedAt),
         status,
         normalizedCategory: normalizeCategory(doc.category),
       };
     });
 
     return NextResponse.json(documents);
-  } catch (error: any) {
+  } catch (error) {
     console.error("[users/documents GET] error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Could not load documents" }, { status: 500 });
   }
 }
 
@@ -94,10 +95,10 @@ export async function POST(
 ) {
   const params = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // requireSession, not getServerSession: it also turns away a deactivated account.
+    const auth = await requireSession();
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const userId = parseInt(params.id, 10);
     if (isNaN(userId)) {
@@ -114,9 +115,10 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    const files = formData.getAll("files") as File[];
-    const singleFile = formData.get("file") as File | null;
-    const allFiles = files.length > 0 ? files : singleFile ? [singleFile] : [];
+    const isFile = (v: FormDataEntryValue | null): v is File => v instanceof File;
+    const files = formData.getAll("files").filter(isFile);
+    const singleFile = formData.get("file");
+    const allFiles = files.length > 0 ? files : isFile(singleFile) ? [singleFile] : [];
 
     const title = (formData.get("title") as string) || "";
     const rawCategory = (formData.get("category") as string) || "OTHER";
@@ -129,41 +131,17 @@ export async function POST(
       return NextResponse.json({ error: "No file(s) provided" }, { status: 400 });
     }
 
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "users");
-    await fs.mkdir(uploadDir, { recursive: true });
+    // Check every file before writing any, so a bad third file does not leave two behind.
+    const mimes: string[] = [];
+    for (const file of allFiles) mimes.push((await validateDocument(file)).mime);
 
     const createdDocs = [];
 
     for (let i = 0; i < allFiles.length; i++) {
       const file = allFiles[i];
-
-      // Validate max file size (25MB)
-      if (file.size > 25 * 1024 * 1024) {
-        return NextResponse.json(
-          { error: `File "${file.name}" exceeds the 25MB limit` },
-          { status: 400 }
-        );
-      }
-
-      // Validate allowed mime types
-      const allowedExts = [
-        "pdf", "png", "jpg", "jpeg", "webp", "doc", "docx", "xls", "xlsx", "csv"
-      ];
-      const ext = file.name.split(".").pop()?.toLowerCase() || "";
-      if (!allowedExts.includes(ext)) {
-        return NextResponse.json(
-          { error: `File type .${ext} is not supported. Please upload PDF, images, or Office docs.` },
-          { status: 400 }
-        );
-      }
-
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const safeOriginal = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const filename = `doc-${userId}-${Date.now()}-${i}-${safeOriginal}`;
-      const filePath = path.join(uploadDir, filename);
-      await fs.writeFile(filePath, buffer);
-
-      const publicUrl = `/uploads/users/${filename}`;
+      const id = randomUUID();
+      await saveDocumentFile(id, file);
+      const fileUrl = documentFileUrl(userId, id);
 
       // If user provided a specific title and there's 1 file, use that. Otherwise use filename
       const docTitle = allFiles.length === 1 && title.trim()
@@ -172,14 +150,15 @@ export async function POST(
 
       const doc = await prisma.userDocument.create({
         data: {
+          id,
           userId,
           title: docTitle,
           category,
           status: "PENDING",
-          fileUrl: publicUrl,
+          fileUrl: fileUrl,
           fileName: file.name,
           fileSize: file.size,
-          fileType: file.type || "application/octet-stream",
+          fileType: mimes[i],
           expiryDate,
           uploadedById: currentUserId || null,
           notes,
@@ -189,13 +168,16 @@ export async function POST(
             select: { id: true, name: true, email: true },
           },
         },
+      }).catch(async (error) => {
+        await removeDocumentFile({ id, fileUrl: fileUrl });
+        throw error;
       });
 
       // If this is an offer letter, also link directly to User.offerLetterUrl
       if (category === "EMPLOYMENT" && docTitle.toLowerCase().includes("offer")) {
         await prisma.user.update({
           where: { id: userId },
-          data: { offerLetterUrl: publicUrl },
+          data: { offerLetterUrl: fileUrl },
         });
       }
 
@@ -206,8 +188,11 @@ export async function POST(
       createdDocs.length === 1 ? createdDocs[0] : { count: createdDocs.length, documents: createdDocs },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AttachmentRuleError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("[users/documents POST] error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

@@ -58,6 +58,9 @@ interface TaskFormProps {
   canManage?: boolean
 }
 
+/** Radix Select cannot use "" as a value, so "not linked" needs a stand-in. */
+const NO_PROJECT = "__none__"
+
 const toDateInput = (value: string | null | undefined) =>
   value ? new Date(value).toISOString().slice(0, 10) : ""
 
@@ -80,6 +83,20 @@ export default function TaskForm({
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [assigneeQuery, setAssigneeQuery] = useState("")
+  const [projectId, setProjectId] = useState("")
+
+  /**
+   * Whether the person chooses the project. Not when the form was opened from a project
+   * or a post — that record decides it — and never for a task on a post, which belongs
+   * to that post's project. Everywhere else (the Tasks page, an unlinked task) there was
+   * no way to link a task to a project at all, so it never showed on the project page.
+   */
+  const pickProject = canManage && !link?.postId && !link?.projectId && !task?.postId
+  const { data: projectData } = useSWR<{ projects?: { id: string; name: string; client: string | null }[] }>(
+    open && pickProject ? "/api/projects?view=options" : null,
+    fetcher,
+  )
+  const projectOptions = projectData?.projects ?? []
 
   // Only fetched while the sheet is open — the picker is not worth a request otherwise.
   const { data: users } = useSWR<{ id: string; name: string | null; email: string }[]>(
@@ -104,6 +121,7 @@ export default function TaskForm({
     setDueDate(toDateInput(task?.dueDate))
     setAssigneeIds(task?.assignees.map((user) => user.id) ?? [])
     setAssigneeQuery("")
+    setProjectId(task?.projectId ?? "")
   }, [open, task])
 
   // Search by name or email. Someone already picked stays visible even when they do
@@ -140,6 +158,7 @@ export default function TaskForm({
           dueDate: dueDate || null,
           assigneeIds,
           ...(isEdit ? {} : { ...link }),
+          ...(pickProject ? { projectId: projectId || null } : {}),
         }
       : { status }
 
@@ -255,6 +274,29 @@ export default function TaskForm({
                 className="mt-1"
               />
             </div>
+
+            {pickProject && (
+              <div>
+                <Label htmlFor="task-project">Project</Label>
+                <Select value={projectId || NO_PROJECT} onValueChange={(v) => setProjectId(v === NO_PROJECT ? "" : v)}>
+                  <SelectTrigger id="task-project" className="mt-1" aria-describedby="task-project-hint">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_PROJECT}>No project — an internal task</SelectItem>
+                    {projectOptions.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.client ? `${p.client} — ${p.name}` : p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p id="task-project-hint" className="mt-1 text-xs text-muted-foreground">
+                  Linked tasks appear in that project&apos;s task list.
+                </p>
+                {errors.projectId && <p className="mt-1 text-xs text-destructive">{errors.projectId[0]}</p>}
+              </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>

@@ -34,19 +34,33 @@ export const taskSelect = {
  * Every id from an untrusted caller goes through here, so a bad one becomes a 422
  * instead of a foreign-key 500.
  */
-export async function validateTaskLinks(input: {
-  assigneeIds?: number[]
-  postId?: string | null
-  projectId?: string | null
-  clientId?: string | null
-}): Promise<string | null> {
+/**
+ * Checks every record a task points at, and works out which project it belongs to.
+ *
+ * A task on a post belongs to that post's project. That used to be left to the caller,
+ * so a task created with only a postId had no projectId and never appeared in the
+ * project's task list. Now the project always follows the post, and a post paired with
+ * a different project is refused instead of saved contradicting itself.
+ *
+ * Returns the projectId to store: undefined means "leave it as it is" (an edit that did
+ * not touch the link), null means "not linked to a project".
+ */
+export async function validateTaskLinks(
+  input: {
+    assigneeIds?: number[]
+    postId?: string | null
+    projectId?: string | null
+    clientId?: string | null
+  },
+  /** For an edit: the post the task is already on, if the edit does not change it. */
+  existingPostId?: string | null,
+): Promise<{ error: string } | { projectId: string | null | undefined }> {
+  const postId = input.postId !== undefined ? input.postId : existingPostId
   const [assignees, post, project, client] = await Promise.all([
     input.assigneeIds?.length
       ? prisma.user.findMany({ where: { id: { in: input.assigneeIds } }, select: { id: true } })
       : [],
-    input.postId
-      ? prisma.post.findUnique({ where: { id: input.postId }, select: { id: true } })
-      : null,
+    postId ? prisma.post.findUnique({ where: { id: postId }, select: { id: true, projectId: true } }) : null,
     input.projectId
       ? prisma.project.findUnique({ where: { id: input.projectId }, select: { id: true } })
       : null,
@@ -56,12 +70,20 @@ export async function validateTaskLinks(input: {
   ])
 
   if (input.assigneeIds?.length && assignees.length !== input.assigneeIds.length) {
-    return "One of those users no longer exists"
+    return { error: "One of those users no longer exists" }
   }
-  if (input.postId && !post) return "That post no longer exists"
-  if (input.projectId && !project) return "That project no longer exists"
-  if (input.clientId && !client) return "That client no longer exists"
-  return null
+  if (postId && !post) return { error: "That post no longer exists" }
+  if (input.projectId && !project) return { error: "That project no longer exists" }
+  if (input.clientId && !client) return { error: "That client no longer exists" }
+
+  if (post) {
+    if (input.projectId && input.projectId !== post.projectId) {
+      return { error: "That post belongs to a different project" }
+    }
+    // Only report a project when the link is being set, so an unrelated edit leaves it.
+    return { projectId: input.postId !== undefined || input.projectId !== undefined ? post.projectId : undefined }
+  }
+  return { projectId: input.projectId }
 }
 
 /**

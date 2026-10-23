@@ -54,6 +54,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         status: true,
         completedAt: true,
         createdById: true,
+        postId: true,
         assignees: { select: { id: true } },
       },
     })
@@ -143,10 +144,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
     const input = parsed.data
 
-    const problem = await validateTaskLinks(input)
-    if (problem) return NextResponse.json({ error: problem }, { status: 422 })
+    const links = await validateTaskLinks(input, existing.postId)
+    if ("error" in links) return NextResponse.json({ error: links.error }, { status: 422 })
 
-    const task = await applyUpdate(id, input, existing.status)
+    const task = await applyUpdate(
+      id,
+      links.projectId === undefined ? input : { ...input, projectId: links.projectId },
+      existing.status,
+    )
 
     // Notify only people newly added to the task.
     if (input.assigneeIds) {

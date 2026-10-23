@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeExtension, safePathToken } from "@/lib/storage";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
@@ -35,8 +36,8 @@ export async function POST(request: NextRequest) {
     }
 
     const timestamp = Date.now();
-    const extension = audioFile.name.split(".").pop() || "webm";
-    const filename = `comment-${postId || "general"}-${timestamp}.${extension}`;
+    const extension = safeExtension(audioFile.name, "webm");
+    const filename = `comment-${safePathToken(postId)}-${timestamp}.${extension}`;
     const filepath = path.join(uploadsDir, filename);
 
     const bytes = await audioFile.arrayBuffer();

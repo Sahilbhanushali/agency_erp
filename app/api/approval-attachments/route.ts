@@ -1,5 +1,6 @@
 // app/api/approval-attachments/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { safeExtension, safePathToken } from "@/lib/storage";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
@@ -89,8 +90,8 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename
     const timestamp = Date.now();
-    const extension = audioFile.name.split(".").pop() || "webm";
-    const filename = `rejection-${postId}-${timestamp}.${extension}`;
+    const extension = safeExtension(audioFile.name, "webm");
+    const filename = `rejection-${safePathToken(postId)}-${timestamp}.${extension}`;
     const filepath = path.join(uploadsDir, filename);
 
     // Save file

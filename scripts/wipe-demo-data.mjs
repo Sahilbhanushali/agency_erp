@@ -6,6 +6,7 @@
  *   node scripts/wipe-demo-data.mjs                     # dry run: shows what would go
  *   node scripts/wipe-demo-data.mjs --confirm           # does it
  *   node scripts/wipe-demo-data.mjs --keep=a@x.com,b@y.com --confirm
+ *   node scripts/wipe-demo-data.mjs --only=hr           # HR only: see below
  *
  * The dry run is real: it performs every delete inside a transaction and then rolls it
  * back, so "it would succeed" is proven, not assumed. --confirm commits the same
@@ -14,12 +15,18 @@
  * DELETED  clients, projects, posts and everything under them, leads, quotations,
  *          invoices, payments, contracts, expenses, festivals, shoot events, credentials,
  *          tasks, daily todos, notifications, payroll runs and payslips, and all HRMS
- *          records (jobs, candidates, interviews, offers, letterheads, offer templates).
+ *          records (jobs, candidates, interviews, offers, letterheads, offer templates),
+ *          attendance (punches, regularizations, sync logs) and leave requests, balances
+ *          and ledger. Balances are recreated from the leave types on next view.
  * KEPT     roles, permissions, settings, companies, utilities, leave types, salary and
  *          payslip templates, scheduled jobs, the audit log, and every user with the
  *          ADMIN role plus anyone named in --keep.
  * PEOPLE   everyone else is deactivated, not deleted. That is this app's rule for
  *          people (see CLAUDE.md): their account stays, their access goes.
+ *
+ * --only=hr deletes just the HRMS, attendance and leave records above — for a live
+ * system whose clients and projects are real but whose hiring and attendance screens
+ * still hold sample rows. Nobody is deactivated and no files are touched.
  *
  * Constructs its own PrismaClient, like prisma/seed.mjs: a plain Node script cannot
  * import the TypeScript client in lib/prisma.ts on a server without dev dependencies.
@@ -30,6 +37,7 @@ import path from "node:path"
 
 const args = process.argv.slice(2)
 const CONFIRM = args.includes("--confirm")
+const HR_ONLY = args.includes("--only=hr")
 const keepEmails = new Set(
   (args.find((a) => a.startsWith("--keep="))?.slice(7) ?? "")
     .split(",")
@@ -52,6 +60,15 @@ const TARGET_MODELS = [
   "InstagramPublishJob", "InstagramMediaInsight",
 ]
 
+const HR_MODELS = [
+  "HrmsJobOpening", "HrmsCandidate", "HrmsApplication", "HrmsCandidateActivity",
+  "HrmsInterview", "HrmsInterviewInterviewer", "HrmsOffer", "HrmsOfferRevision",
+  "HrmsOnboarding", "HrmsLetterhead", "HrmsOfferTemplate",
+  "Attendance", "AttendanceRegularization", "AttendanceSyncLog",
+  "LeaveRequest", "LeaveLedger", "LeaveBalance",
+]
+for (const m of HR_MODELS) if (!TARGET_MODELS.includes(m)) TARGET_MODELS.push(m)
+
 const UPLOADS_ROOT = path.resolve(process.cwd(), "public", "uploads")
 
 class Rollback extends Error {}
@@ -61,8 +78,9 @@ const prisma = new PrismaClient()
 async function main() {
   const models = Prisma.dmmf.datamodel.models
   const table = new Map(models.map((m) => [m.name, m.dbName ?? m.name]))
-  const missing = TARGET_MODELS.filter((m) => !table.has(m))
-  const targets = TARGET_MODELS.filter((m) => table.has(m))
+  const wanted = HR_ONLY ? HR_MODELS : TARGET_MODELS
+  const missing = wanted.filter((m) => !table.has(m))
+  const targets = wanted.filter((m) => table.has(m))
   if (missing.length) console.log(`(not in this schema, skipped: ${missing.join(", ")})`)
 
   // Delete children before parents, using this database's actual foreign keys.
@@ -95,13 +113,13 @@ async function main() {
     orderBy: { id: "asc" },
   })
   const kept = users.filter((u) => u.role?.name === "ADMIN" || keepEmails.has(u.email.toLowerCase()))
-  const toDeactivate = users.filter((u) => !kept.includes(u) && u.isActive)
+  const toDeactivate = HR_ONLY ? [] : users.filter((u) => !kept.includes(u) && u.isActive)
   if (kept.length === 0) {
     throw new Error("Refusing to run: no user would keep access. Give someone the ADMIN role or pass --keep=<email>.")
   }
 
   // Files the deleted rows point at, removed only after a committed run.
-  const assetUrls = (await prisma.asset.findMany({ select: { url: true } })).map((a) => a.url)
+  const assetUrls = HR_ONLY ? [] : (await prisma.asset.findMany({ select: { url: true } })).map((a) => a.url)
 
   const counts = {}
   try {
@@ -120,7 +138,7 @@ async function main() {
         }
         await tx.auditLog.create({
           data: {
-            action: "DEMO_DATA_WIPED",
+            action: HR_ONLY ? "HR_DEMO_DATA_WIPED" : "DEMO_DATA_WIPED",
             entityType: "SYSTEM",
             newValues: JSON.stringify({ deleted: counts, deactivated: toDeactivate.map((u) => u.email) }),
             ipAddress: "cli",

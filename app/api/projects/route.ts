@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { safeUploadName } from "@/lib/storage";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -62,6 +63,28 @@ export async function GET(request: NextRequest) {
     const isAdminOrManager = await can(session, "projects", "read");
 
     const searchParams = request.nextUrl.searchParams;
+
+    // A picker needs a name and an id, not every post and asset of every project — which
+    // is what the full response below carries.
+    if (searchParams.get("view") === "options") {
+      const options = await prisma.project.findMany({
+        where: isAdminOrManager
+          ? { isActive: true }
+          : {
+              isActive: true,
+              OR: [
+                { managerId: parseInt(session.user.id) },
+                { assignedUsers: { some: { id: parseInt(session.user.id) } } },
+              ],
+            },
+        select: { id: true, name: true, client: { select: { name: true, company: true } } },
+        orderBy: { name: "asc" },
+        take: 500,
+      });
+      return NextResponse.json({
+        projects: options.map((p) => ({ id: p.id, name: p.name, client: p.client?.company || p.client?.name || null })),
+      });
+    }
     const userId = searchParams.get("userId");
     const monthParam = searchParams.get("month");
     const yearParam = searchParams.get("year");
@@ -212,7 +235,7 @@ export async function POST(request: NextRequest) {
       const uploadDir = path.join(process.cwd(), "public", "uploads", "projects");
       await fs.mkdir(uploadDir, { recursive: true });
 
-      const filename = `${Date.now()}-${imageFile.name}`;
+      const filename = `${Date.now()}-${safeUploadName(imageFile.name, "project-image")}`;
       const filePath = path.join(uploadDir, filename);
       await fs.writeFile(filePath, buffer);
 
