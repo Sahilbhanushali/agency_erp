@@ -188,7 +188,13 @@ export const MODULES: PermissionModule[] = [
 
   // ---- People ----
   { key: "users", label: "User Management", href: "/dashboard/users", group: "People",
-    actions: crud("Manage-User", "Manage-User") },
+    actions: [
+      ...crud("Manage-User", "Manage-User"),
+      // Verifying employee documents used to need users:update, which also lets the holder
+      // edit anyone's profile. This lets an HR role verify without that. users:update stays
+      // a legacy alias so roles that could verify before still can.
+      { action: "approve", label: "Verify documents", legacy: ["Manage-User", "users:update"] },
+    ] },
   { key: "hrms", label: "Recruitment & HRMS", href: "/dashboard/hrms", group: "People",
     actions: [
       ...crud("View-hrms", "Manage-hrms"),

@@ -7,7 +7,7 @@ import { documentDiskPath } from "@/lib/hr-documents";
 
 export const dynamic = "force-dynamic";
 
-/** The bytes of one employee document, for its owner or someone who may read users. */
+/** The bytes of one employee document, for its owner, someone who may read users, or a verifier. */
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string; docId: string }> }
@@ -18,7 +18,11 @@ export async function GET(
 
   const userId = parseInt(id, 10);
   if (isNaN(userId)) return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
-  if (auth.userId !== userId && !(await can(auth.session, "users", "read"))) {
+  if (
+    auth.userId !== userId &&
+    !(await can(auth.session, "users", "read")) &&
+    !(await can(auth.session, "users", "approve"))
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

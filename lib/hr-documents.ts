@@ -2,6 +2,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { AttachmentRuleError, detectType, extensionOf, safeDisplayName } from "@/lib/chat/file-rules"
 import { deleteLocalFile } from "@/lib/storage"
+import { prisma } from "@/lib/prisma"
+import { namesSatisfying } from "@/lib/permissions/catalog"
 
 /**
  * Employee documents — ID proofs, bank and tax papers, contracts.
@@ -71,6 +73,78 @@ export async function removeDocumentFile(doc: { id: string; fileUrl: string }) {
   await rm(storedPath(doc.id), { force: true }).catch((error) =>
     console.error("[hr-documents] could not delete", doc.id, error),
   )
+}
+
+/** Where verifiers work through what is waiting. */
+export const PENDING_DOCUMENTS_HREF = "/dashboard/documents"
+
+/** Everyone who may verify documents: ADMIN, plus any active role holding users:approve. */
+export async function documentVerifierIds(): Promise<number[]> {
+  const users = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      role: {
+        OR: [
+          { name: "ADMIN" },
+          { permissions: { some: { permission: { name: { in: namesSatisfying("users", "approve") } } } } },
+        ],
+      },
+    },
+    select: { id: true },
+  })
+  return users.map((u) => u.id)
+}
+
+/**
+ * Tells every verifier that documents are waiting. Without this nobody learnt of an
+ * upload unless they happened to open that employee's vault.
+ * Never fails the upload: the documents are saved either way.
+ */
+export async function notifyVerifiers(ownerId: number, actorId: number, titles: string[]) {
+  if (titles.length === 0) return
+  try {
+    const [owner, verifiers] = await Promise.all([
+      prisma.user.findUnique({ where: { id: ownerId }, select: { name: true } }),
+      documentVerifierIds(),
+    ])
+    const recipients = verifiers.filter((id) => id !== actorId)
+    if (recipients.length === 0) return
+    const what = titles.length === 1 ? `"${titles[0]}"` : `${titles.length} documents`
+    await prisma.notification.createMany({
+      data: recipients.map((userId) => ({
+        userId,
+        title: "Document waiting for verification",
+        message: `${owner?.name ?? "An employee"} uploaded ${what}.`,
+        link: PENDING_DOCUMENTS_HREF,
+      })),
+    })
+  } catch (error) {
+    console.error("[hr-documents] could not notify verifiers", error)
+  }
+}
+
+/** Tells the employee their document was verified or rejected. */
+export async function notifyOwner(
+  doc: { userId: number; title: string },
+  actorId: number,
+  status: string,
+  reason?: string | null,
+) {
+  if (doc.userId === actorId || (status !== "VERIFIED" && status !== "REJECTED")) return
+  try {
+    await prisma.notification.create({
+      data: {
+        userId: doc.userId,
+        title: status === "VERIFIED" ? "Document verified" : "Document rejected",
+        message:
+          status === "VERIFIED"
+            ? `"${doc.title}" was verified.`
+            : `"${doc.title}" was rejected${reason ? `: ${reason}` : ""}. Upload a corrected file from your documents.`,
+      },
+    })
+  } catch (error) {
+    console.error("[hr-documents] could not notify owner", error)
+  }
 }
 
 function storedPath(docId: string) {

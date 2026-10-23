@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { can, requireSession } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
 import { AttachmentRuleError } from "@/lib/chat/file-rules";
-import { documentFileUrl, removeDocumentFile, saveDocumentFile, validateDocument } from "@/lib/hr-documents";
+import { documentFileUrl, notifyOwner, notifyVerifiers, removeDocumentFile, saveDocumentFile, validateDocument } from "@/lib/hr-documents";
 
 const STATUSES = new Set(["PENDING", "VERIFIED", "REJECTED"]);
 
@@ -22,6 +22,7 @@ export async function PATCH(
 
     const currentUserId = parseInt(session.user.id, 10);
     const isStaffOrAdmin = await can(session, "users", "update");
+    const canVerify = await can(session, "users", "approve");
     const userId = parseInt(id, 10);
 
     const doc = await prisma.userDocument.findUnique({
@@ -37,7 +38,7 @@ export async function PATCH(
     }
 
     // Permission check
-    if (!isStaffOrAdmin && currentUserId !== doc.userId) {
+    if (!isStaffOrAdmin && !canVerify && currentUserId !== doc.userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -66,8 +67,8 @@ export async function PATCH(
         if (!STATUSES.has(status)) {
           return NextResponse.json({ error: "Invalid status" }, { status: 400 });
         }
-        if (!isStaffOrAdmin && status !== doc.status) {
-          return NextResponse.json({ error: "Only HR or Admin can change document verification status" }, { status: 403 });
+        if (!canVerify && status !== doc.status) {
+          return NextResponse.json({ error: "Only Admin, Manager or HR can verify documents" }, { status: 403 });
         }
         updateData.status = status;
         if (status === "VERIFIED") {
@@ -118,8 +119,8 @@ export async function PATCH(
         if (!STATUSES.has(status)) {
           return NextResponse.json({ error: "Invalid status" }, { status: 400 });
         }
-        if (!isStaffOrAdmin && status !== doc.status) {
-          return NextResponse.json({ error: "Only HR or Admin can change document verification status" }, { status: 403 });
+        if (!canVerify && status !== doc.status) {
+          return NextResponse.json({ error: "Only Admin, Manager or HR can verify documents" }, { status: 403 });
         }
         updateData.status = status;
         if (status === "VERIFIED") {
@@ -160,7 +161,10 @@ export async function PATCH(
         oldValues: JSON.stringify({ status: doc.status }),
         newValues: JSON.stringify({ status: updateData.status, rejectionReason: updateData.rejectionReason ?? null }),
       });
+      await notifyOwner(updatedDoc, currentUserId, updateData.status, updateData.rejectionReason);
     }
+    // A replaced file is pending again and needs a fresh look.
+    if (updateData.fileUrl) await notifyVerifiers(doc.userId, currentUserId, [updatedDoc.title]);
 
     return NextResponse.json({ ...updatedDoc, fileUrl: documentFileUrl(doc.userId, doc.id, updatedDoc.uploadedAt) });
   } catch (error) {
