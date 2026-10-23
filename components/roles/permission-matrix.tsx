@@ -129,13 +129,22 @@ export default function PermissionMatrix({
     return () => window.removeEventListener("beforeunload", warn)
   }, [dirty])
 
+  /**
+   * Whether a module has a Read action at all. Not every one does — chat_groups is
+   * create/update/delete only, because membership decides which groups you see. Adding
+   * "read" to such a module sent a permission that does not exist, and the server
+   * rightly refused the whole save with "Unknown permissions: chat_groups:read".
+   */
+  const hasRead = (moduleKey: string) =>
+    modules.find((m) => m.key === moduleKey)?.actions.some((a) => a.action === "read") ?? false
+
   const toggle = (moduleKey: string, action: string, on: boolean) => {
     setSelected((prev) => {
       const next = { ...prev, [moduleKey]: new Set(prev[moduleKey] ?? []) }
       if (on) {
         next[moduleKey].add(action)
-        // Any action implies being able to see the module.
-        if (action !== "read") next[moduleKey].add("read")
+        // Any action implies being able to see the module — where seeing is a permission.
+        if (action !== "read" && hasRead(moduleKey)) next[moduleKey].add("read")
       } else {
         next[moduleKey].delete(action)
         // Losing read closes the module entirely.
@@ -175,7 +184,7 @@ export default function PermissionMatrix({
         }
         if (on) {
           set.add(action)
-          if (action !== "read") set.add("read")
+          if (action !== "read" && hasRead(m.key)) set.add("read")
         } else {
           set.delete(action)
           if (action === "read") set.clear()
@@ -189,7 +198,14 @@ export default function PermissionMatrix({
     setSaving(true)
     setError(null)
     try {
-      const matrix = Object.fromEntries(Object.entries(selected).map(([k, v]) => [k, [...v]]))
+      // Only actions each module actually defines. The server refuses anything else, so
+      // a stray value in local state would otherwise fail the whole save.
+      const matrix = Object.fromEntries(
+        modules.map((m) => {
+          const defined = new Set(m.actions.map((a) => a.action))
+          return [m.key, [...(selected[m.key] ?? [])].filter((a) => defined.has(a))]
+        }),
+      )
       const res = await fetch(`/api/role-permission/role/${encodeURIComponent(roleName)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

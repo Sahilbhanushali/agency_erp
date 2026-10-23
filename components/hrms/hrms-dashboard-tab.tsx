@@ -522,7 +522,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
                   })
                 ) : (
                   <div className="py-6 text-center text-xs text-muted-foreground">
-                    No candidate records found. Click "Load Sample Data" to populate.
+                    No candidates yet. Add one from the Candidates tab, or they appear here when someone applies to a job opening.
                   </div>
                 )}
               </div>

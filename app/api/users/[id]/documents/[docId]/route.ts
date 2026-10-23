@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { deleteLocalFile } from "@/lib/storage";
-import path from "path";
-import fs from "fs/promises";
-import { can } from "@/lib/api-auth";
+import { can, requireSession } from "@/lib/api-auth";
+import { logAuditAction } from "@/lib/audit";
+import { AttachmentRuleError } from "@/lib/chat/file-rules";
+import { documentFileUrl, removeDocumentFile, saveDocumentFile, validateDocument } from "@/lib/hr-documents";
+
+const STATUSES = new Set(["PENDING", "VERIFIED", "REJECTED"]);
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +15,10 @@ export async function PATCH(
 ) {
   const { id, docId } = await context.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // requireSession, not getServerSession: it also turns away a deactivated account.
+    const auth = await requireSession();
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const currentUserId = parseInt(session.user.id, 10);
     const isStaffOrAdmin = await can(session, "users", "update");
@@ -47,7 +47,7 @@ export async function PATCH(
     if (contentType.includes("multipart/form-data")) {
       // File replacement or form-data edit
       const formData = await request.formData();
-      const replacementFile = formData.get("file") as File | null;
+      const replacementFile = formData.get("file");
       const title = formData.get("title") as string | null;
       const category = formData.get("category") as string | null;
       const status = formData.get("status") as string | null;
@@ -63,6 +63,9 @@ export async function PATCH(
       }
 
       if (status) {
+        if (!STATUSES.has(status)) {
+          return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+        }
         if (!isStaffOrAdmin && status !== doc.status) {
           return NextResponse.json({ error: "Only HR or Admin can change document verification status" }, { status: 403 });
         }
@@ -82,29 +85,18 @@ export async function PATCH(
         }
       }
 
-      if (replacementFile) {
-        if (replacementFile.size > 25 * 1024 * 1024) {
-          return NextResponse.json({ error: "File exceeds 25MB limit" }, { status: 400 });
-        }
+      if (replacementFile instanceof File) {
+        const { mime } = await validateDocument(replacementFile);
 
-        // Remove old physical file if exists
-        if (doc.fileUrl) {
-          await deleteLocalFile(doc.fileUrl);
-        }
+        // A row from before private storage keeps its old file until now; drop it.
+        // Otherwise the new bytes overwrite the old under the same id.
+        if (doc.fileUrl.startsWith("/uploads/")) await removeDocumentFile(doc);
+        await saveDocumentFile(doc.id, replacementFile);
 
-        const uploadDir = path.join(process.cwd(), "public", "uploads", "users");
-        await fs.mkdir(uploadDir, { recursive: true });
-
-        const buffer = Buffer.from(await replacementFile.arrayBuffer());
-        const safeOriginal = replacementFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-        const filename = `doc-${userId}-${Date.now()}-${safeOriginal}`;
-        const filePath = path.join(uploadDir, filename);
-        await fs.writeFile(filePath, buffer);
-
-        updateData.fileUrl = `/uploads/users/${filename}`;
+        updateData.fileUrl = documentFileUrl(doc.userId, doc.id);
         updateData.fileName = replacementFile.name;
         updateData.fileSize = replacementFile.size;
-        updateData.fileType = replacementFile.type || "application/octet-stream";
+        updateData.fileType = mime;
         updateData.status = "PENDING"; // Re-verification required
         updateData.verifiedAt = null;
         updateData.verifiedById = null;
@@ -123,6 +115,9 @@ export async function PATCH(
       }
 
       if (status) {
+        if (!STATUSES.has(status)) {
+          return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+        }
         if (!isStaffOrAdmin && status !== doc.status) {
           return NextResponse.json({ error: "Only HR or Admin can change document verification status" }, { status: 403 });
         }
@@ -156,10 +151,24 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json(updatedDoc);
-  } catch (error: any) {
+    if (updateData.status && updateData.status !== doc.status) {
+      await logAuditAction({
+        userId: String(currentUserId),
+        action: `DOCUMENT_${updateData.status}`,
+        entityType: "UserDocument",
+        entityId: doc.id,
+        oldValues: JSON.stringify({ status: doc.status }),
+        newValues: JSON.stringify({ status: updateData.status, rejectionReason: updateData.rejectionReason ?? null }),
+      });
+    }
+
+    return NextResponse.json({ ...updatedDoc, fileUrl: documentFileUrl(doc.userId, doc.id, updatedDoc.uploadedAt) });
+  } catch (error) {
+    if (error instanceof AttachmentRuleError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("[users/documents PATCH] error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Could not update the document" }, { status: 500 });
   }
 }
 
@@ -170,10 +179,10 @@ export async function DELETE(
   const { id, docId } = await context.params;
   const userId = parseInt(id, 10);
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // requireSession, not getServerSession: it also turns away a deactivated account.
+    const auth = await requireSession();
+    if (!auth.ok) return auth.response;
+    const session = auth.session;
 
     const currentUserId = parseInt(session.user.id, 10);
     const isStaffOrAdmin = await can(session, "users", "update");
@@ -194,14 +203,19 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Physical deletion of local file from disk
-    if (doc.fileUrl) {
-      await deleteLocalFile(doc.fileUrl);
-    }
+    await logAuditAction({
+      userId: String(currentUserId),
+      action: "DOCUMENT_DELETED",
+      entityType: "UserDocument",
+      entityId: doc.id,
+      oldValues: JSON.stringify({ userId: doc.userId, title: doc.title, fileName: doc.fileName, status: doc.status }),
+    });
 
     await prisma.userDocument.delete({
       where: { id: docId },
     });
+    // After the row: a failed delete must not leave a record pointing at nothing.
+    await removeDocumentFile(doc);
 
     // If this was the user's offerLetterUrl, clear it
     const user = await prisma.user.findUnique({
@@ -216,8 +230,8 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true, message: "Document deleted" });
-  } catch (error: any) {
+  } catch (error) {
     console.error("[users/documents DELETE] error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Could not delete the document" }, { status: 500 });
   }
 }

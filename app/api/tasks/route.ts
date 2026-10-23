@@ -38,7 +38,11 @@ export async function GET(request: NextRequest) {
         ? { priority: priority as (typeof TASK_PRIORITIES)[number] }
         : {}),
       ...(query.get("postId") ? { postId: query.get("postId")! } : {}),
-      ...(query.get("projectId") ? { projectId: query.get("projectId")! } : {}),
+      // Tasks on the project itself or on any of its posts. Tasks created on a post
+      // before projectId was derived from it have only a postId, and were invisible here.
+      ...(query.get("projectId")
+        ? { AND: [{ OR: [{ projectId: query.get("projectId")! }, { post: { projectId: query.get("projectId")! } }] }] }
+        : {}),
       ...(query.get("clientId") ? { clientId: query.get("clientId")! } : {}),
       // A standalone task is one with no linked record at all.
       ...(query.get("standalone") === "1"
@@ -95,8 +99,8 @@ export async function POST(request: NextRequest) {
 
     // Every reference from an untrusted caller is checked before the write, so a bad id
     // becomes a 422 instead of a foreign-key 500.
-    const problem = await validateTaskLinks(input)
-    if (problem) return NextResponse.json({ error: problem }, { status: 422 })
+    const links = await validateTaskLinks(input)
+    if ("error" in links) return NextResponse.json({ error: links.error }, { status: 422 })
 
     // New tasks go to the top of their column.
     const first = await prisma.task.findFirst({
@@ -116,7 +120,8 @@ export async function POST(request: NextRequest) {
         position: (first?.position ?? 0) - 1,
         createdById: auth.userId,
         postId: input.postId,
-        projectId: input.projectId,
+        // Follows the post when there is one, so post tasks always show on their project.
+        projectId: links.projectId ?? null,
         clientId: input.clientId,
         assignees: { connect: input.assigneeIds.map((id) => ({ id })) },
       },

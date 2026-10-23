@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { logAudit } from "@/lib/audit"
 import fs from "fs/promises"
 import path from "path"
-import { deleteLocalFile } from "@/lib/storage"
+import { deleteLocalFile, safeUploadName } from "@/lib/storage";
 import { requireCan } from "@/lib/api-auth";
 
 // Interface for postTypes JSON object
@@ -228,7 +228,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       const uploadDir = path.join(process.cwd(), "public", "uploads", "projects");
       await fs.mkdir(uploadDir, { recursive: true });
 
-      const filename = `${Date.now()}-${imageFile.name}`;
+      const filename = `${Date.now()}-${safeUploadName(imageFile.name, "project-image")}`;
       const filePath = path.join(uploadDir, filename);
       await fs.writeFile(filePath, buffer);
 

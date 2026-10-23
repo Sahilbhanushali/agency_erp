@@ -65,13 +65,16 @@ export async function GET(
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Construct file path from filename or relative URL
+    // Construct file path from filename or relative URL. asset.url can be user-supplied
+    // (link assets), so the joined path must stay inside public/ — "../../.env" in a
+    // stored URL would otherwise download the app's secrets.
+    const publicRoot = path.resolve(process.cwd(), "public");
     const filename = path.basename(asset.url.split("?")[0]);
     const possiblePaths = [
-      path.join(process.cwd(), "public", "uploads", filename),
-      path.join(process.cwd(), "public", "Uploads", filename),
-      path.join(process.cwd(), "public", asset.url),
-    ];
+      path.join(publicRoot, "uploads", filename),
+      path.join(publicRoot, "Uploads", filename),
+      path.resolve(publicRoot, "." + path.posix.normalize("/" + asset.url.split("?")[0])),
+    ].filter((p) => p.startsWith(publicRoot + path.sep));
 
     let fileBuffer: Buffer | null = null;
     for (const p of possiblePaths) {

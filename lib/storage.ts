@@ -87,3 +87,29 @@ export async function deleteLocalFiles(fileUrlsOrPaths: (string | null | undefin
   const results = await Promise.allSettled(fileUrlsOrPaths.filter(Boolean).map((u) => deleteLocalFile(u)));
   return results.filter((r) => r.status === "fulfilled" && r.value === true).length;
 }
+
+/**
+ * A client-supplied filename made safe to put in a path.
+ *
+ * Upload routes used to build paths like `${Date.now()}-${file.name}`. The browser picks
+ * file.name, and one like "x/../../../../.env" is normalised by path.join to a location
+ * outside the uploads folder — an arbitrary file write. Only the last path component
+ * survives here, reduced to letters, digits, dot, dash and underscore.
+ */
+export function safeUploadName(original: string | null | undefined, fallback = "file"): string {
+  const base = (original ?? "").split(/[\\/]/).pop() ?? ""
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/^\.+/, "")
+  return (cleaned || fallback).slice(0, 120)
+}
+
+/** An id or label from a form, reduced to characters that cannot form a path. */
+export function safePathToken(value: string | null | undefined, fallback = "general"): string {
+  const cleaned = (value ?? "").replace(/[^a-zA-Z0-9_-]/g, "")
+  return (cleaned || fallback).slice(0, 64)
+}
+
+/** A short alphanumeric extension from a filename, or the fallback. */
+export function safeExtension(original: string | null | undefined, fallback: string): string {
+  const ext = (original ?? "").split(".").pop() ?? ""
+  return /^[a-zA-Z0-9]{1,5}$/.test(ext) ? ext.toLowerCase() : fallback
+}

@@ -43,120 +43,15 @@ export interface AttendanceProvider {
 }
 
 /**
- * Deterministic Mock Attendance Provider.
- * Generates realistic attendance records (punches, late marks, overtime)
- * for testing and staging until real biometric hardware / HRMS API is connected.
+ * Raised when a sync is asked for but no attendance source is set up. There used to be a
+ * mock provider here that invented punches, late marks and overtime for every employee,
+ * and it was both the default and the silent fallback when the biometric API key was
+ * missing — so a "sync" on a server with no device filled payroll inputs with fiction.
  */
-export class MockAttendanceProvider implements AttendanceProvider {
-  readonly name = "MOCK";
-
-  async fetchDailyAttendance(
-    date: Date,
-    employees: Array<{ id: number; email: string; name: string }>
-  ): Promise<RawAttendanceRecord[]> {
-    return this.generateForDate(date, employees);
-  }
-
-  async fetchRangeAttendance(
-    startDate: Date,
-    endDate: Date,
-    employees: Array<{ id: number; email: string; name: string }>
-  ): Promise<RawAttendanceRecord[]> {
-    const records: RawAttendanceRecord[] = [];
-    const current = new Date(startDate);
-
-    while (current <= endDate) {
-      const dayRecords = this.generateForDate(new Date(current), employees);
-      records.push(...dayRecords);
-      current.setDate(current.getDate() + 1);
-    }
-
-    return records;
-  }
-
-  private generateForDate(
-    date: Date,
-    employees: Array<{ id: number; email: string; name: string }>
-  ): RawAttendanceRecord[] {
-    const dayOfWeek = date.getDay(); // 0 = Sunday
-    const isSunday = dayOfWeek === 0;
-    const dateStr = date.toISOString().split("T")[0];
-
-    return employees.map((emp) => {
-      // Deterministic hash based on emp.id and date
-      const hash = (emp.id * 31 + date.getDate() * 17 + (date.getMonth() + 1) * 7) % 100;
-
-      if (isSunday) {
-        return {
-          employeeId: emp.id,
-          employeeEmail: emp.email,
-          date: dateStr,
-          checkIn: null,
-          checkOut: null,
-          totalHours: 0,
-          workedMinutes: 0,
-          status: AttendanceStatus.WEEKLY_OFF,
-          lateMinutes: 0,
-          earlyExitMinutes: 0,
-          overtimeHours: 0,
-          source: AttendanceSource.SYSTEM,
-          externalRef: `mock-sun-${emp.id}-${dateStr}`,
-        };
-      }
-
-      // Check-in around 09:30 AM
-      const inHour = 9;
-      // 15% chance of being late (> 15 mins past 9:30 => past 9:45)
-      const isLate = hash < 15;
-      const inMinute = isLate ? 35 + (hash % 25) : 15 + (hash % 15);
-
-      const checkIn = new Date(date);
-      checkIn.setHours(inHour, inMinute, 0, 0);
-
-      // Check-out around 06:30 PM (18:30)
-      const outHour = 18;
-      // 20% chance of overtime (staying till 20:00 or 21:00)
-      const hasOvertime = hash > 80;
-      const outMinute = hasOvertime ? 30 : 25 + (hash % 20);
-      const actualOutHour = hasOvertime ? (hash > 90 ? 21 : 20) : outHour;
-
-      const checkOut = new Date(date);
-      checkOut.setHours(actualOutHour, outMinute, 0, 0);
-
-      const totalMs = checkOut.getTime() - checkIn.getTime();
-      const workedMinutes = Math.max(0, Math.round(totalMs / 60000));
-      const totalHours = parseFloat((workedMinutes / 60).toFixed(2));
-
-      // Late minutes measured from official start time 09:30 AM
-      const officialStart = new Date(date);
-      officialStart.setHours(9, 30, 0, 0);
-      const lateMinutes =
-        checkIn > officialStart ? Math.round((checkIn.getTime() - officialStart.getTime()) / 60000) : 0;
-
-      // Overtime hours above 8.5 hours
-      const overtimeHours = totalHours > 8.5 ? parseFloat((totalHours - 8.5).toFixed(2)) : 0;
-
-      let status: AttendanceStatus = AttendanceStatus.PRESENT;
-      if (isLate && lateMinutes > 15) {
-        status = AttendanceStatus.LATE;
-      }
-
-      return {
-        employeeId: emp.id,
-        employeeEmail: emp.email,
-        date: dateStr,
-        checkIn,
-        checkOut,
-        totalHours,
-        workedMinutes,
-        status,
-        lateMinutes,
-        earlyExitMinutes: 0,
-        overtimeHours,
-        source: AttendanceSource.API,
-        externalRef: `mock-${emp.id}-${dateStr}`,
-      };
-    });
+export class AttendanceNotConfiguredError extends Error {
+  constructor(message = "Biometric sync is not set up. Set ATTENDANCE_API_URL and ATTENDANCE_API_KEY on the server, or upload a CSV instead.") {
+    super(message);
+    this.name = "AttendanceNotConfiguredError";
   }
 }
 
@@ -293,7 +188,7 @@ export class BiometricApiAttendanceProvider implements AttendanceProvider {
   private maxRetries: number;
 
   constructor() {
-    this.apiUrl = process.env.ATTENDANCE_API_URL || "https://api.biometric-provider.com/v1";
+    this.apiUrl = process.env.ATTENDANCE_API_URL || "";
     this.apiKey = process.env.ATTENDANCE_API_KEY || "";
     this.timeoutMs = parseInt(process.env.ATTENDANCE_API_TIMEOUT_MS || "8000", 10);
     this.maxRetries = parseInt(process.env.ATTENDANCE_API_RETRIES || "3", 10);
@@ -311,12 +206,7 @@ export class BiometricApiAttendanceProvider implements AttendanceProvider {
     endDate: Date,
     employees: Array<{ id: number; email: string; name: string }>
   ): Promise<RawAttendanceRecord[]> {
-    if (!this.apiKey) {
-      console.warn(
-        "[BiometricApiAttendanceProvider] ATTENDANCE_API_KEY not configured. Falling back to MockProvider."
-      );
-      return new MockAttendanceProvider().fetchRangeAttendance(startDate, endDate, employees);
-    }
+    if (!this.apiKey || !process.env.ATTENDANCE_API_URL) throw new AttendanceNotConfiguredError();
 
     const startIso = startDate.toISOString().split("T")[0];
     const endIso = endDate.toISOString().split("T")[0];
@@ -404,12 +294,12 @@ export class BiometricApiAttendanceProvider implements AttendanceProvider {
  * Factory to retrieve the configured attendance provider.
  */
 export function getAttendanceProvider(providerType?: string): AttendanceProvider {
-  const type = providerType || process.env.ATTENDANCE_PROVIDER || "MOCK";
+  const type = providerType || process.env.ATTENDANCE_PROVIDER || "BIOMETRIC_API";
   if (type === "REAL" || type === "BIOMETRIC_API") {
     return new BiometricApiAttendanceProvider();
   }
   if (type === "MANUAL_CSV") {
     return new ManualCsvAttendanceProvider();
   }
-  return new MockAttendanceProvider();
+  throw new AttendanceNotConfiguredError(`Unknown attendance provider "${type}".`);
 }

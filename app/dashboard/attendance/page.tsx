@@ -160,7 +160,7 @@ export default function AttendancePage() {
   const [isUploadingCsv, setIsUploadingCsv] = useState(false);
 
   // Handlers
-  const handleSyncAttendance = async (providerType = "MOCK") => {
+  const handleSyncAttendance = async (providerType?: string) => {
     try {
       setIsSyncing(true);
       const res = await fetch("/api/attendance/sync", {
@@ -389,12 +389,12 @@ export default function AttendancePage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleSyncAttendance("MOCK")}
+                onClick={() => handleSyncAttendance()}
                 loading={isSyncing}
                 className="gap-1.5 text-xs font-medium"
               >
                 <RefreshCw className="size-3.5" />
-                Sync Biometric (Mock)
+                Sync Biometric
               </Button>
             </>
           )}
