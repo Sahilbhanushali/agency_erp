@@ -28,8 +28,11 @@ const HARD_MAX_BYTES = Math.max(...Object.values(MAX_BYTES))
 /**
  * Message history.
  *   ?before=<seq>  older messages, for scrolling up
- *   ?after=<seq>   newer messages, for catching up after a reconnect
- *   (neither)      the latest page
+ *   ?after=<seq>   newer messages, for catching up after a reconnect or scrolling down
+ *                  from an older window; `truncated` doubles as "there are more"
+ *   ?around=<seq>  a window centred on one message, for jumping to a search hit; says
+ *                  whether there is more history on each side
+ *   (none)         the latest page
  */
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireCan("chat", "read")
@@ -42,9 +45,34 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const sp = request.nextUrl.searchParams
   const before = Number(sp.get("before")) || null
   const after = sp.has("after") ? Number(sp.get("after")) : null
+  const around = Number(sp.get("around")) || null
 
   // Someone who has left reads the history up to the moment they left, and no further.
   const ceiling = access.maxSeq !== null ? { lte: access.maxSeq } : {}
+
+  if (around !== null && Number.isFinite(around)) {
+    const HALF = PAGE / 2
+    const [older, newer] = await Promise.all([
+      prisma.chatMessage.findMany({
+        where: { conversationId: id, seq: { lte: around, ...ceiling } },
+        select: MESSAGE_SELECT,
+        orderBy: { seq: "desc" },
+        take: HALF + 1,
+      }),
+      prisma.chatMessage.findMany({
+        where: { conversationId: id, seq: { gt: around, ...ceiling } },
+        select: MESSAGE_SELECT,
+        orderBy: { seq: "asc" },
+        take: HALF + 1,
+      }),
+    ])
+    return NextResponse.json({
+      messages: [...older.slice(0, HALF).reverse(), ...newer.slice(0, HALF)].map(toWire),
+      hasMore: older.length > HALF,
+      hasNewer: newer.length > HALF,
+      access: { active: access.active, role: access.role, lastReadSeq: access.lastReadSeq },
+    })
+  }
 
   if (after !== null && Number.isFinite(after)) {
     const rows = await prisma.chatMessage.findMany({

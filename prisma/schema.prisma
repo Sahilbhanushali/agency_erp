@@ -268,6 +268,7 @@ model User {
   personalTodos           PersonalTodo[]        @relation("PersonalTodos")
   conversationsCreated    Conversation[]        @relation("ConversationsCreated")
   chatMemberships         ConversationMember[]  @relation("ChatMemberships")
+  chatReceiptMarks        ChatReceiptMark[]
   chatMessagesSent        ChatMessage[]         @relation("ChatMessagesSent")
   chatReactions           ChatReaction[]        @relation("ChatReactions")
 
@@ -3259,12 +3260,35 @@ model Conversation {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy User?                @relation("ConversationsCreated", fields: [createdById], references: [id], onDelete: SetNull)
-  members   ConversationMember[]
-  messages  ChatMessage[]
+  createdBy    User?                @relation("ConversationsCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  members      ConversationMember[]
+  messages     ChatMessage[]
+  receiptMarks ChatReceiptMark[]
 
   @@index([lastMessageAt])
   @@map("chat_conversations")
+}
+
+/// When a member's read or delivered marker moved forward: every message with
+/// fromSeq < seq <= toSeq reached that state at `at`. One row per advance, not per
+/// message, which is what lets "Message info" show times without a row for every
+/// message × member. Messages from before this table existed show the state without a time.
+model ChatReceiptMark {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         Int
+  /// "READ" or "DELIVERED".
+  kind           String   @db.VarChar(16)
+  fromSeq        Int
+  toSeq          Int
+  at             DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, kind, toSeq])
+  @@index([userId])
+  @@map("chat_receipt_marks")
 }
 
 model ConversationMember {

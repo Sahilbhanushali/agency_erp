@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import toast from "react-hot-toast"
 import { useRouter, useSearchParams } from "next/navigation"
 import { format, isToday, isYesterday } from "date-fns"
 import {
@@ -8,6 +9,7 @@ import {
   Bell,
   BellOff,
   BellRing,
+  FileText,
   Loader2,
   MessageSquarePlus,
   Search,
@@ -32,9 +34,56 @@ import { DetailsSheet } from "./details-sheet"
 import { NewConversationDialog } from "./new-conversation-dialog"
 import type { ChatConversation, ChatMessage } from "./types"
 
+interface SearchMessage {
+  id: string
+  conversationId: string
+  seq: number
+  body: string | null
+  fileName: string | null
+  createdAt: string
+  senderName: string | null
+  conversationName: string
+}
+
 interface SearchResults {
   conversations: { id: string; type: string; name: string }[]
-  messages: { id: string; conversationId: string; seq: number; body: string | null; createdAt: string; senderName: string | null; conversationName: string }[]
+  people: { id: number; name: string; avatar: string | null; role: string | null }[]
+  messages: SearchMessage[]
+  hasMore: boolean
+}
+
+const EMPTY_RESULTS: SearchResults = { conversations: [], people: [], messages: [], hasMore: false }
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+/** Marks each searched word, so it is obvious why a result matched. */
+function Marked({ text, terms }: { text: string; terms: string[] }) {
+  if (terms.length === 0) return <>{text}</>
+  const parts = text.split(new RegExp(`(${terms.map(escapeRe).join("|")})`, "gi"))
+  return (
+    <>
+      {parts.map((p, i) =>
+        i % 2 === 1 ? (
+          <mark key={i} className="rounded-sm bg-amber-200 px-0.5 text-foreground dark:bg-amber-500/40">
+            {p}
+          </mark>
+        ) : (
+          p
+        ),
+      )}
+    </>
+  )
+}
+
+/**
+ * The part of a long message around the first match, so the match is visible in a
+ * two-line preview instead of being cut off past the end.
+ */
+function snippet(body: string, terms: string[]): string {
+  const lower = body.toLowerCase()
+  const at = Math.min(...terms.map((t) => lower.indexOf(t.toLowerCase())).filter((i) => i >= 0), Infinity)
+  if (!Number.isFinite(at) || at < 40) return body
+  return `…${body.slice(at - 30)}`
 }
 
 function listTime(iso: string) {
@@ -65,6 +114,8 @@ export function ChatApp({ meId }: { meId: number }) {
   const [search, setSearch] = useState("")
   const [results, setResults] = useState<SearchResults | null>(null)
   const [searching, setSearching] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
   const [jumpTo, setJumpTo] = useState<{ id: string; seq: number } | null>(null)
   const [newMode, setNewMode] = useState<"direct" | "group" | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -88,16 +139,71 @@ export function ChatApp({ meId }: { meId: number }) {
       return
     }
     setSearching(true)
+    let cancelled = false
     const t = setTimeout(async () => {
       try {
         const r = await fetch(`/api/chat/search?q=${encodeURIComponent(q)}`)
-        setResults(r.ok ? await r.json() : { conversations: [], messages: [] })
+        const body = r.ok ? await r.json() : EMPTY_RESULTS
+        if (!cancelled) setResults(body)
+      } catch {
+        if (!cancelled) setResults(EMPTY_RESULTS)
       } finally {
-        setSearching(false)
+        if (!cancelled) setSearching(false)
       }
-    }, 300)
-    return () => clearTimeout(t)
+    }, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
   }, [search])
+
+  const loadMoreResults = async () => {
+    if (!results) return
+    setLoadingMore(true)
+    try {
+      const r = await fetch(`/api/chat/search?q=${encodeURIComponent(search.trim())}&offset=${results.messages.length}`)
+      if (!r.ok) throw new Error()
+      const body: SearchResults = await r.json()
+      setResults((prev) => (prev ? { ...prev, messages: [...prev.messages, ...body.messages], hasMore: body.hasMore } : prev))
+    } catch {
+      toast.error("Could not load more results")
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  // "/" or Ctrl/Cmd+K jumps to search from anywhere on the chat page.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))
+      if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") || (e.key === "/" && !typing)) {
+        e.preventDefault()
+        searchRef.current?.focus()
+        searchRef.current?.select()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  const startChatWith = async (userId: number) => {
+    try {
+      const r = await fetch("/api/chat/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "DIRECT", userId }),
+      })
+      const body = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(body.error ?? "Could not start the conversation")
+      await chat.refreshConversations()
+      setSearch("")
+      setFilter("")
+      setJumpTo(null)
+      select(body.id)
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
 
   const list = useMemo(() => {
     const all = chat.conversations ?? []
@@ -160,12 +266,21 @@ export function ChatApp({ meId }: { meId: number }) {
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input
               id="chat-search"
+              ref={searchRef}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)
                 setFilter(e.target.value)
               }}
-              placeholder="Search chats and messages"
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && search) {
+                  e.preventDefault()
+                  setSearch("")
+                  setFilter("")
+                }
+              }}
+              placeholder="Search chats, people, messages, files"
+              title="Search (/ or Ctrl+K)"
               className="h-9 pl-8 pr-8"
             />
             {search && (
@@ -210,7 +325,12 @@ export function ChatApp({ meId }: { meId: number }) {
           {results ? (
             <SearchResultsList
               results={results}
+              terms={search.trim().split(/\s+/).filter(Boolean)}
               searching={searching}
+              loadingMore={loadingMore}
+              onMore={loadMoreResults}
+              canStart={canDirect}
+              onStartChat={startChatWith}
               onOpenConversation={(id) => {
                 setJumpTo(null)
                 select(id)
@@ -369,49 +489,107 @@ export function ChatApp({ meId }: { meId: number }) {
 
 function SearchResultsList({
   results,
+  terms,
   searching,
+  loadingMore,
+  onMore,
+  canStart,
+  onStartChat,
   onOpenConversation,
   onOpenMessage,
 }: {
   results: SearchResults
+  terms: string[]
   searching: boolean
+  loadingMore: boolean
+  onMore: () => void
+  canStart: boolean
+  onStartChat: (userId: number) => void
   onOpenConversation: (id: string) => void
-  onOpenMessage: (m: SearchResults["messages"][number]) => void
+  onOpenMessage: (m: SearchMessage) => void
 }) {
-  if (searching && results.conversations.length === 0 && results.messages.length === 0) {
-    return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+  const people = canStart ? results.people : []
+  const nothing = results.conversations.length === 0 && people.length === 0 && results.messages.length === 0
+  if (searching && nothing) {
+    return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Searching" /></div>
   }
-  if (results.conversations.length === 0 && results.messages.length === 0) {
-    return <p className="px-4 py-10 text-center text-sm text-muted-foreground">No chats or messages match.</p>
+  if (nothing) {
+    return (
+      <div className="px-6 py-10 text-center">
+        <p className="text-sm font-medium">Nothing matches “{terms.join(" ")}”</p>
+        <p className="mt-1 text-xs text-muted-foreground">Try fewer or different words. Every word you type has to appear in the message or file name.</p>
+      </div>
+    )
   }
+  const heading = (label: string, count?: number): ReactNode => (
+    <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {label}
+      {count !== undefined && <span className="ml-1 tabular-nums">({count}{results.hasMore ? "+" : ""})</span>}
+    </p>
+  )
+  const row = "flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
   return (
-    <div className="py-1">
+    <div className="py-1" aria-busy={searching}>
       {results.conversations.length > 0 && (
         <>
-          <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Chats</p>
+          {heading("Chats")}
           {results.conversations.map((c) => (
-            <button key={c.id} type="button" onClick={() => onOpenConversation(c.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/60">
-              {c.type === "GROUP" && <Users className="h-4 w-4 text-muted-foreground" aria-hidden />}
-              <span className="truncate">{c.name}</span>
+            <button key={c.id} type="button" onClick={() => onOpenConversation(c.id)} className={`${row} text-sm`}>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                {c.type === "GROUP" ? <Users className="h-4 w-4" aria-hidden /> : c.name.charAt(0).toUpperCase()}
+              </span>
+              <span className="truncate"><Marked text={c.name} terms={terms} /></span>
+            </button>
+          ))}
+        </>
+      )}
+      {people.length > 0 && (
+        <>
+          {heading("Start a chat")}
+          {people.map((p) => (
+            <button key={p.id} type="button" onClick={() => onStartChat(p.id)} className={`${row} text-sm`} aria-label={`Start a chat with ${p.name}`}>
+              <Avatar className="h-8 w-8">
+                {p.avatar && <AvatarImage src={p.avatar} alt="" />}
+                <AvatarFallback className="text-xs">{p.name.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate"><Marked text={p.name} terms={terms} /></span>
+                {p.role && <span className="block truncate text-[11px] text-muted-foreground">{p.role}</span>}
+              </span>
+              <MessageSquarePlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             </button>
           ))}
         </>
       )}
       {results.messages.length > 0 && (
         <>
-          <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Messages</p>
+          {heading("Messages", results.messages.length)}
           {results.messages.map((m) => (
-            <button key={m.id} type="button" onClick={() => onOpenMessage(m)} className="block w-full px-3 py-2 text-left hover:bg-muted/60">
+            <button key={m.id} type="button" onClick={() => onOpenMessage(m)} className="block w-full px-3 py-2 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               <span className="flex justify-between gap-2 text-xs">
                 <span className="truncate font-medium text-foreground">{m.conversationName}</span>
                 <span className="shrink-0 text-muted-foreground">{listTime(m.createdAt)}</span>
               </span>
               <span className="line-clamp-2 text-xs text-muted-foreground">
                 {m.senderName ? `${m.senderName}: ` : ""}
-                {m.body}
+                {m.body && <Marked text={snippet(m.body, terms)} terms={terms} />}
               </span>
+              {m.fileName && (
+                <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                  <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="truncate"><Marked text={m.fileName} terms={terms} /></span>
+                </span>
+              )}
             </button>
           ))}
+          {results.hasMore && (
+            <div className="flex justify-center p-2">
+              <Button variant="ghost" size="sm" onClick={onMore} disabled={loadingMore} className="text-xs">
+                {loadingMore && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                Show more messages
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>

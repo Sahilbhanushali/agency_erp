@@ -42,6 +42,7 @@ import {
   FileCheck2,
 } from "lucide-react"
 import { useBreadcrumbs } from "@/lib/route-labels"
+import { useStuckOverlayGuard } from "@/hooks/use-stuck-overlay-guard"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -124,6 +125,7 @@ const navigationGroups = [
 ]
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  useStuckOverlayGuard()
   const { data: session, status } = useSession()
   const pathname = usePathname()
   const router = useRouter()

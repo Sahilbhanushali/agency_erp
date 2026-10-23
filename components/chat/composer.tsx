@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Paperclip, Pencil, Reply, Send, X } from "lucide-react"
+import { Paperclip, Pencil, Reply, Send, Smile, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { EmojiPicker } from "./emoji-picker"
 import type { ChatMessage } from "./types"
 
 /** Mirrors lib/chat/file-rules.ts, so most bad picks are caught before uploading. */
@@ -41,6 +43,21 @@ export function Composer({
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const lastTyping = useRef(0)
+  const [emojiOpen, setEmojiOpen] = useState(false)
+  // Where the cursor was when the picker opened: focus moves into the picker, and the
+  // emoji must land where the person was typing, not at the end.
+  const caret = useRef<{ start: number; end: number } | null>(null)
+
+  const insertEmoji = (emoji: string) => {
+    const el = inputRef.current
+    const at = caret.current ?? { start: text.length, end: text.length }
+    const next = text.slice(0, at.start) + emoji + text.slice(at.end)
+    if (next.length > 4000) return
+    const pos = at.start + emoji.length
+    caret.current = { start: pos, end: pos }
+    setText(next)
+    requestAnimationFrame(() => el?.setSelectionRange(pos, pos))
+  }
 
   // Entering edit mode loads the message; leaving it clears the box.
   useEffect(() => {
@@ -160,6 +177,40 @@ export function Composer({
             </Button>
           </>
         )}
+        <Popover
+          open={emojiOpen}
+          onOpenChange={(open) => {
+            if (open) {
+              const el = inputRef.current
+              caret.current = el ? { start: el.selectionStart, end: el.selectionEnd } : null
+            }
+            setEmojiOpen(open)
+          }}
+        >
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 shrink-0 text-muted-foreground"
+              aria-label="Insert emoji"
+              aria-expanded={emojiOpen}
+            >
+              <Smile className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            side="top"
+            align="start"
+            className="w-auto p-0"
+            onCloseAutoFocus={(e) => {
+              // Back to the message box, cursor after the last emoji.
+              e.preventDefault()
+              inputRef.current?.focus()
+            }}
+          >
+            <EmojiPicker onPick={insertEmoji} />
+          </PopoverContent>
+        </Popover>
         <Label htmlFor="chat-input" className="sr-only">
           Message
         </Label>
