@@ -14,6 +14,42 @@
  * everything goes through the app, so jobs run exactly the code path the UI runs.
  */
 const cron = require('node-cron');
+const fs = require('node:fs');
+const path = require('node:path');
+
+/**
+ * Loads the same .env files Next.js loads, with the same precedence, so this process
+ * sees exactly the CRON_SECRET the app does.
+ *
+ * Needed because nothing else loads them: Next.js reads .env itself, but this is a
+ * plain Node script and PM2 only passes what is in ecosystem.config.js `env:`. Without
+ * this the supervisor refused to start on a server whose .env plainly had the secret.
+ *
+ * A variable already in the environment (set by PM2 or the shell) wins, as in Next.
+ * ponytail: KEY=value lines, optional quotes and trailing comments. No multi-line
+ * values or ${VAR} expansion — reach for dotenv if a secret ever needs those.
+ */
+function loadEnvFiles() {
+  const root = path.resolve(__dirname, '..');
+  const mode = process.env.NODE_ENV === 'production' ? 'production' : 'development';
+  const files = [`.env.${mode}.local`, '.env.local', `.env.${mode}`, '.env'];
+  const loaded = [];
+  for (const name of files) {
+    const file = path.join(root, name);
+    if (!fs.existsSync(file)) continue;
+    loaded.push(name);
+    for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+      if (!m || process.env[m[1]] !== undefined) continue;
+      let value = m[2];
+      const quoted = value.match(/^(['"])(.*)\1$/);
+      value = quoted ? quoted[2] : value.replace(/\s+#.*$/, '');
+      process.env[m[1]] = value;
+    }
+  }
+  return loaded;
+}
+const envFiles = loadEnvFiles();
 
 const APP_URL = (process.env.CRON_TARGET_URL || `http://127.0.0.1:${process.env.PORT || 3008}`).replace(/\/+$/, '');
 const SECRET = process.env.CRON_SECRET;
@@ -140,6 +176,10 @@ async function poll() {
 
 if (!SECRET || SECRET.length < 16) {
   console.error('CRON_SECRET is missing or shorter than 16 characters — refusing to start.');
+  // Say where we looked: "missing" with a secret plainly in .env is otherwise baffling.
+  console.error(
+    `Looked in: ${envFiles.length ? envFiles.join(', ') : 'no .env files'} under ${path.resolve(__dirname, '..')}, and the process environment.`,
+  );
   console.error('Generate one with:  openssl rand -hex 32   and set it for both the app and this process.');
   process.exit(1);
 }
