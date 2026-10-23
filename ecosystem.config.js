@@ -63,8 +63,10 @@ module.exports = {
        * Separate from the web process on purpose — an API restart must not skip a send,
        * and a report that takes a minute should not hold a request open.
        *
-       * It needs CRON_SECRET from .env, which PM2 caches: after changing it run
-       *   pm2 restart ecosystem.config.js --update-env
+       * It needs the same CRON_SECRET as the app. scripts/cron-job.js reads it from .env
+       * itself (PM2 does not load .env files; only the `env:` block below). After
+       * changing .env, restart it:
+       *   pm2 restart itsmedezinoagencyerp-cron
        */
       name: "itsmedezinoagencyerp-cron",
       cwd: APP_DIR,
@@ -73,6 +75,10 @@ module.exports = {
       exec_mode: "fork",
       instances: 1,
       autorestart: true,
+      // A missing secret is a config error, not a crash: restarting cannot fix it. Cap
+      // the attempts so it stops and shows as errored instead of looping hundreds of times.
+      max_restarts: 10,
+      restart_delay: 5000,
       min_uptime: "20s",
       max_memory_restart: "256M",
       watch: false,
