@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -169,9 +171,9 @@ export default function ClientIdPage() {
    */
 
 
-  const fetchClient = async () => {
+  const fetchClient = async (opts?: { silent?: boolean }) => {
     if (!clientId) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch(`/api/clients/${clientId}`, {
         headers: { "Content-Type": "application/json" },
@@ -192,6 +194,8 @@ export default function ClientIdPage() {
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchClient({ silent: true }), ["Client", "Project", "Credential", "Contract", "Invoice", "Quotation"])
 
   useEffect(() => {
     if (clientId) {
@@ -262,6 +266,7 @@ export default function ClientIdPage() {
   };
 
   if (loading || status === "loading") {
+
     return (
       <div className="space-y-6 animate-pulse">
         <div className="flex items-center gap-3">
@@ -567,7 +572,7 @@ export default function ClientIdPage() {
                   <p>
                     {[client.city, client.state, client.postalCode].filter(Boolean).join(", ") || "—"}
                   </p>
-                  <p>{client.country || "India"}</p>
+                  {client.country && <p>{client.country}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -1278,7 +1283,7 @@ export default function ClientIdPage() {
         onOpenChange={setContractDialogOpen}
         contract={selectedContract}
         preselectedClientId={client.id}
-        onSaved={fetchClient}
+        onSaved={() => fetchClient()}
       />
 
       <ExpenseDialog
@@ -1286,7 +1291,7 @@ export default function ClientIdPage() {
         onOpenChange={setExpenseDialogOpen}
         expense={selectedExpense}
         preselectedClientId={client.id}
-        onSaved={fetchClient}
+        onSaved={() => fetchClient()}
       />
 
       {/* Delete Confirmation Alert */}

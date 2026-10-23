@@ -125,6 +125,18 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Deactivation replaces deletion for people.
+  ///
+  /// A user owns payroll, attendance and leave records that cascade away with them,
+  /// and those are records an agency is normally required to keep. Deactivating
+  /// preserves every row and every attribution while removing all access: sign-in is
+  /// refused, and every API guard rejects an existing session.
+  isActive         Boolean   @default(true)
+  deactivatedAt    DateTime?
+  deactivatedById  Int?
+  deactivatedBy    User?     @relation("UserDeactivations", fields: [deactivatedById], references: [id], onDelete: SetNull)
+  deactivatedUsers User[]    @relation("UserDeactivations")
+
   // Relations
   role             Role?          @relation(fields: [roleId], references: [id])
   clientProjects   Project[]      @relation("ClientProjects")
@@ -253,6 +265,11 @@ model User {
   socialAccountsConnected SocialAccount[]       @relation("SocialAccountsConnected")
   socialOAuthStates       SocialOAuthState[]    @relation("SocialOAuthStates")
   instagramPublishJobs    InstagramPublishJob[] @relation("InstagramPublishJobsCreated")
+  personalTodos           PersonalTodo[]        @relation("PersonalTodos")
+  conversationsCreated    Conversation[]        @relation("ConversationsCreated")
+  chatMemberships         ConversationMember[]  @relation("ChatMemberships")
+  chatMessagesSent        ChatMessage[]         @relation("ChatMessagesSent")
+  chatReactions           ChatReaction[]        @relation("ChatReactions")
 
   @@map("users")
 }
@@ -487,8 +504,12 @@ model Notification {
   userId Int
 
   // Relations
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Declared rather than relying on the implicit foreign-key index: every read of
+  // this table is "notifications for one user", and the FK index is an artefact
+  // that a constraint change can drop.
+  @@index([userId])
   @@map("notifications")
 }
 
@@ -631,7 +652,7 @@ model SmtpDetails {
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   userId     Int        @unique
-  user       User       @relation("UserToSmtpDetails", fields: [userId], references: [id])
+  user       User       @relation("UserToSmtpDetails", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Encryption {
@@ -820,7 +841,7 @@ model UserMetrics {
   userId Int
 
   // Relations
-  user User @relation("UserMetrics", fields: [userId], references: [id])
+  user User @relation("UserMetrics", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, period, periodStart])
   @@index([userId, periodStart])
@@ -3149,4 +3170,196 @@ model InstagramMediaInsight {
   @@index([publishedAt])
   @@index([postId])
   @@map("instagram_media_insights")
+}
+
+/**
+ * A todo only its owner can see.
+ * Deliberately not a flag on DailyTodo. That table is the shared day plan: `todos:read`
+ * shows it to managers, and the 7pm EOD report reads it. A private flag there would be
+ * one forgotten `where` away from leaking into either. A separate table means no
+ * existing reader can see these rows at all, and every query here is scoped by userId.
+ */
+model PersonalTodo {
+  id     String @id @default(cuid())
+  userId Int
+
+  title    String
+  notes    String?      @db.Text
+  priority TaskPriority @default(MEDIUM)
+  /// Optional date and time. Null means "whenever".
+  dueAt    DateTime?
+
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation("PersonalTodos", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, completedAt])
+  @@index([userId, dueAt])
+  @@map("personal_todos")
+}
+
+// ============================================================================
+// Internal chat
+// ============================================================================
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum ChatMemberRole {
+  MEMBER
+  ADMIN
+}
+
+enum ChatMessageType {
+  TEXT
+  ATTACHMENT
+  /// "Priya added Rohit" — written by the server, never by a client.
+  SYSTEM
+}
+
+enum ChatAttachmentKind {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  FILE
+}
+
+/**
+ * A chat. Access is membership, full stop: every read and every event is checked
+ * against ConversationMember on the server. There is no tenant to scope by here —
+ * Company is a billing entity — and membership is the stronger boundary anyway.
+ */
+model Conversation {
+  id   String           @id @default(cuid())
+  type ConversationType
+
+  /// Groups only.
+  name               String? @db.VarChar(120)
+  description        String? @db.Text
+  /// Private storage key, served through the membership-checked attachment route.
+  avatarKey          String? @db.VarChar(255)
+  /// Who may change name/description/avatar: group admins only, or any member.
+  membersCanEditInfo Boolean @default(false)
+
+  /// DIRECT only: "lowId:highId". Unique, so a pair can never end up with two DMs.
+  directKey String? @unique @db.VarChar(64)
+
+  /// Per-conversation message counter. Messages take the next value inside the same
+  /// transaction, which gives a total order that does not depend on clock skew or on
+  /// two messages sharing a millisecond.
+  lastSeq       Int       @default(0)
+  lastMessageAt DateTime?
+
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?                @relation("ConversationsCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  members   ConversationMember[]
+  messages  ChatMessage[]
+
+  @@index([lastMessageAt])
+  @@map("chat_conversations")
+}
+
+model ConversationMember {
+  id             String         @id @default(cuid())
+  conversationId String
+  userId         Int
+  role           ChatMemberRole @default(MEMBER)
+
+  /// Highest message seq this person has read. Unread = messages above it.
+  lastReadSeq      Int       @default(0)
+  /// Highest seq that reached one of their open tabs — the grey double tick. Always
+  /// at least lastReadSeq: reading something implies it was delivered.
+  lastDeliveredSeq Int       @default(0)
+  mutedUntil       DateTime?
+
+  joinedAt  DateTime  @default(now())
+  /// Set on removal or leaving. The row is kept so their earlier messages stay
+  /// attributed, but every access check requires leftAt to be null — a removed member
+  /// cannot read new messages or fetch attachments.
+  leftAt    DateTime?
+  /// Messages at or below this seq stay readable after leaving; nothing above it.
+  leftAtSeq Int?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation("ChatMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, leftAt])
+  @@map("chat_members")
+}
+
+model ChatMessage {
+  id             String          @id @default(cuid())
+  conversationId String
+  seq            Int
+  type           ChatMessageType @default(TEXT)
+  senderId       Int?
+  body           String?         @db.Text
+
+  replyToId String?
+  /// Set when forwarded; the original's text is copied, not linked, so forwarding
+  /// never grants access to the source conversation.
+  forwarded Boolean @default(false)
+
+  /// Client-generated id. A retry after a dropped connection resends the same value
+  /// and gets the original message back instead of a duplicate.
+  clientId String? @db.VarChar(64)
+
+  editedAt  DateTime?
+  /// Tombstone: the body and attachments are actually removed, only the "message
+  /// deleted" placeholder remains so sequence numbers and reply chains stay intact.
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  conversation Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?            @relation("ChatMessagesSent", fields: [senderId], references: [id], onDelete: SetNull)
+  replyTo      ChatMessage?     @relation("ChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      ChatMessage[]    @relation("ChatReplies")
+  attachments  ChatAttachment[]
+  reactions    ChatReaction[]
+
+  @@unique([conversationId, seq])
+  @@unique([senderId, clientId])
+  @@index([conversationId, createdAt])
+  @@map("chat_messages")
+}
+
+model ChatAttachment {
+  id           String             @id @default(cuid())
+  messageId    String
+  /// Random, server-generated. The original filename never touches the filesystem.
+  storageKey   String             @unique @db.VarChar(255)
+  originalName String             @db.VarChar(255)
+  /// Detected from the file's bytes, never taken from the client.
+  mimeType     String             @db.VarChar(127)
+  size         Int
+  kind         ChatAttachmentKind
+  createdAt    DateTime           @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("chat_attachments")
+}
+
+model ChatReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    Int
+  emoji     String   @db.VarChar(16)
+  createdAt DateTime @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation("ChatReactions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@map("chat_reactions")
 }

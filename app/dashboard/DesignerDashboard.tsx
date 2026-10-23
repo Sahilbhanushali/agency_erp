@@ -238,9 +238,8 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
       description: "Total assigned to you",
       icon: FileText,
       color: "text-blue-600",
-      trend: "+12%",
-      trendValue: 12,
-      previousValue: Math.round(totalPosts * 0.89).toString(),
+      // No trend: this used to show a fixed "+12%" against an invented baseline of 89%
+      // of the current count. There is no history to compare with, so nothing is shown.
     },
     {
       title: "Pending Work",
@@ -248,8 +247,9 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
       description: "Awaiting your action",
       icon: Clock,
       color: "text-amber-600",
+      // The label comes from the real count; there is no arrow, because nothing here
+      // measures change over time.
       trend: pendingPosts > 10 ? "High" : "Normal",
-      trendValue: pendingPosts > 10 ? -5 : 3,
     },
     {
       title: "Submitted This Week",
@@ -268,7 +268,6 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
       icon: CheckCircle,
       color: "text-emerald-600",
       trend: approvalRate > 80 ? "Excellent" : approvalRate > 60 ? "Good" : "Needs attention",
-      trendValue: approvalRate > 80 ? 5 : approvalRate > 60 ? 0 : -10,
     },
   ];
 

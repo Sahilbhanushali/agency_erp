@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 
@@ -129,9 +131,9 @@ export default function ContentWriterTasksPage() {
     }
   }, [session]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      if (!opts?.silent) setLoading(true);
       const response = await fetch("/api/content-tasks");
       if (!response.ok) throw new Error("Failed to fetch content tasks");
       const data: ProjectGroup[] = await response.json();
@@ -146,6 +148,8 @@ export default function ContentWriterTasksPage() {
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchTasks({ silent: true }), ["Post", "Task"])
 
   const getAllTasks = () => {
     return projectGroups.flatMap(group => group.tasks);
@@ -321,6 +325,7 @@ export default function ContentWriterTasksPage() {
   }, [projectGroups, searchQuery, filterBy, sortBy]);
 
   if (loading) {
+
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">

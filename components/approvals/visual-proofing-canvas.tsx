@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
@@ -100,6 +102,8 @@ export function VisualProofingCanvas({
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(fetchAnnotations, ["ProofAnnotation", "ProofAnnotationReply"])
 
   useEffect(() => {
     if (postId) {
@@ -217,6 +221,7 @@ export function VisualProofingCanvas({
   });
 
   const activeAnnotation = annotations.find((a) => a.id === activePinId);
+
 
   return (
     <div className="space-y-4">

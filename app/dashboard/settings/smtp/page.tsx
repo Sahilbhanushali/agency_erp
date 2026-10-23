@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import SmtpConfigForm from "@/components/SmtpConfigForm";
@@ -36,9 +38,9 @@ export default function SmtpSettingsPage() {
   const [testingConnection, setTestingConnection] = useState<number | null>(null);
   const [users, setUsers] = useState<any[]>([]);
 
-  const fetchSmtpConfigs = async () => {
+  const fetchSmtpConfigs = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      if (!opts?.silent) setLoading(true);
       const response = await fetch("/api/smtp-config", {
         headers: { "Content-Type": "application/json" },
       });
@@ -54,6 +56,8 @@ export default function SmtpSettingsPage() {
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchSmtpConfigs({ silent: true }), ["SmtpDetails"])
 
   useEffect(() => {
     fetchSmtpConfigs();
@@ -148,6 +152,7 @@ export default function SmtpSettingsPage() {
   };
 
   if (loading) {
+
     return (
       <div className="space-y-6 animate-pulse">
         <div className="flex items-center gap-3">

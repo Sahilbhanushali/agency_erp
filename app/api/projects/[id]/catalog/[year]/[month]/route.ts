@@ -4,8 +4,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import fs from 'fs';
 import path from 'path';
-import { requirePermission } from "@/lib/api-auth";
-
+import { requireCan } from "@/lib/api-auth";
 const prisma = new PrismaClient();
 
 interface Params {
@@ -18,7 +17,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<Params> }
 ) {
-  const auth = await requirePermission("View-project");
+  const auth = await requireCan("projects", "read");
   if (!auth.ok) return auth.response;
 
   try {

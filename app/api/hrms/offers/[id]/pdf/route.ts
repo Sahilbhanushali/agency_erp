@@ -28,6 +28,15 @@ export async function GET(
       return NextResponse.json({ error: "Offer not found" }, { status: 404 });
     }
 
+    // The letterhead is what says who the offer is from. Without one the letter used to
+    // be issued in a hardcoded company's name with an invented address; refuse instead.
+    if (!offer.letterhead) {
+      return NextResponse.json(
+        { error: "Choose a letterhead for this offer first — it supplies the company name and contact details printed on the letter." },
+        { status: 422 },
+      );
+    }
+
     const pdfBuffer = generateOfferLetterPdf({
       offerNumber: offer.offerNumber,
       candidateName: offer.candidate.name,

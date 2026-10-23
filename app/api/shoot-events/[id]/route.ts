@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/api-auth";
-
+import { requireCan } from "@/lib/api-auth";
 export async function PUT(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-projects");
+  const auth = await requireCan("projects", "update");
   if (!auth.ok) return auth.response;
 
   try {
@@ -30,7 +29,7 @@ export async function PUT(req: Request, context: { params: Promise<{ id: string 
 }
 
 export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-projects");
+  const auth = await requireCan("projects", "delete");
   if (!auth.ok) return auth.response;
 
   try {

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { CalendarView } from '@/components/calendar/calendar-view';
+import { useLiveRefresh } from '@/hooks/use-live-refresh';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
@@ -51,6 +52,12 @@ export default function CalendarPage() {
   const [data, setData] = useState<CalendarData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Live: re-read when anyone changes a post, its platforms or a project. The loader
+  // lives inside the effect, so a tick in its dependencies is what re-runs it. The
+  // skeleton only shows while there is no data, so a re-read does not flash.
+  const [liveTick, setLiveTick] = useState(0);
+  useLiveRefresh(() => setLiveTick((t) => t + 1), ['Post', 'PostPlatform', 'Project', 'Asset']);
+
   useEffect(() => {
     if (status === 'loading') return;
 
@@ -77,7 +84,7 @@ export default function CalendarPage() {
     }
 
     fetchCalendarData();
-  }, [session, status, router]);
+  }, [session, status, router, liveTick]);
 
   if (error) {
     return (

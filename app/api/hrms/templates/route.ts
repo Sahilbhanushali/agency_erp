@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCan, requireSession } from "@/lib/api-auth";
-import { seedHrmsInitialData } from "@/lib/hrms/seed-data";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +9,6 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   try {
-    const templateCount = await prisma.hrmsOfferTemplate.count();
-    if (templateCount === 0) {
-      await seedHrmsInitialData();
-    }
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");

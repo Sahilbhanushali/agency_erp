@@ -43,6 +43,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { statusLabel, statusStyle, typeIcon, typeLabel } from "@/lib/post-status";
 import { getMediaUrl } from "@/lib/utils";
 import { useCan } from "@/hooks/use-can";
+import { useLiveRefresh } from "@/hooks/use-live-refresh";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import { Input } from "@/components/ui/input";
@@ -227,6 +228,10 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
   const canSeePosting = currentUser.showPostingCalendar ?? true;
   const [dateMode, setDateMode] = useState<DateMode>(canSeePosting ? "posting" : "design");
 
+  // Live: shoot events added or moved by someone else appear without a refresh.
+  const [shootTick, setShootTick] = useState(0);
+  useLiveRefresh(() => setShootTick((t) => t + 1), ["ShootEvent"]);
+
   useEffect(() => {
     const fetchShootEvents = async () => {
       try {
@@ -237,7 +242,7 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
       }
     };
     fetchShootEvents();
-  }, []);
+  }, [shootTick]);
 
   const editShoot = (shoot: ShootEvent) => {
     setEditingEvent({ ...shoot, time: toTimeInput(shoot.time) });

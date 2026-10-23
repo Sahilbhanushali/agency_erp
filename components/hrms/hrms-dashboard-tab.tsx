@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,8 +61,8 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
   const [selectedDept, setSelectedDept] = useState("ALL");
   const [selectedStage, setSelectedStage] = useState("ALL");
 
-  const fetchStats = async () => {
-    setLoading(true);
+  const fetchStats = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (startDate) params.set("startDate", startDate);
@@ -79,6 +81,8 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchStats({ silent: true }), ["HrmsJobOpening", "HrmsCandidate", "HrmsApplication", "HrmsInterview", "HrmsOffer", "HrmsOnboarding"])
 
   const fetchJobs = async () => {
     try {
@@ -109,6 +113,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
     setSelectedDept("ALL");
     setSelectedStage("ALL");
   };
+
 
   return (
     <div className="space-y-6">
@@ -196,7 +201,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
               <Button
                 variant="outline"
                 size="xs"
-                onClick={fetchStats}
+                onClick={() => fetchStats()}
                 disabled={loading}
                 className="gap-1.5 text-xs"
               >

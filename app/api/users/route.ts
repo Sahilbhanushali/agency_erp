@@ -33,12 +33,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const roleParam = searchParams.get("role")
 
-    let whereClause = {}
+    /**
+     * Deactivated people are left out by default.
+     *
+     * This endpoint feeds every assignment dropdown in the app, and offering somebody
+     * who can no longer sign in is how work gets assigned to nobody. Only the account
+     * administration screen opts back in, and only if it may see full records — a
+     * directory consumer has no business listing deactivated accounts at all.
+     *
+     * Existing assignments are unaffected: they render from the post's or project's own
+     * relation, not from this list, so history keeps its attribution.
+     */
+    const includeInactive =
+      canSeeFullRecords && searchParams.get("includeInactive") === "1"
+
+    let whereClause: Record<string, unknown> = includeInactive ? {} : { isActive: true }
 
     if (roleParam) {
       // Support multiple roles: /api/users?role=Designer,Video%20Editor
       const roles = roleParam.split(",").map((r) => r.trim())
       whereClause = {
+        ...whereClause,
         role: {
           name: { in: roles },
         },
@@ -55,6 +70,8 @@ export async function GET(request: NextRequest) {
         role: { select: { name: true } },
         avatar: true,
         createdAt: true,
+        isActive: true,
+        deactivatedAt: true,
         assignedProjects: { select: { name: true, id: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -70,6 +87,10 @@ export async function GET(request: NextRequest) {
             avatar: user.avatar,
             hasPassword: !!user.password,
             createdAt: user.createdAt,
+            // Only in the full-records view; the directory view below deliberately
+            // says nothing about anyone's account state.
+            isActive: user.isActive,
+            deactivatedAt: user.deactivatedAt,
             assignedProjects: user.assignedProjects.map((project: any) => ({
               name: project.name,
               id: project.id.toString(),

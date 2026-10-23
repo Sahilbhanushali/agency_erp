@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCan, requirePermission } from "@/lib/api-auth";
-
+import { requireCan } from "@/lib/api-auth";
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await requireCan("festivals", "update");
   if (!auth.ok) return auth.response;
@@ -49,7 +48,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   }
   
   export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("Manage-festival");
+  const auth = await requireCan("festivals", "delete");
   if (!auth.ok) return auth.response;
 
   const params = await context.params;

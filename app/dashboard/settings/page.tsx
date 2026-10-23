@@ -1,4 +1,6 @@
 "use client"
+
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
 import toast from "react-hot-toast";
 
 import { useState, useEffect } from "react"
@@ -55,6 +57,8 @@ export default function SettingsPage() {
       setLoading(false)
     }
   }
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(fetchUtilities, ["Utility"])
 
   const createUtility = async () => {
     if (!newUtilityName.trim()) return
@@ -160,6 +164,7 @@ export default function SettingsPage() {
   }
 
   if (loading) {
+
     return (
       <div className="space-y-6 animate-pulse">
         <div className="space-y-2">

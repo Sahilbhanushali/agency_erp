@@ -1,8 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hasPermission, requirePermission } from '@/lib/api-auth';
-
+import { hasPermission, requireCan } from '@/lib/api-auth';
 // Define the PostStatus enum to match the Prisma schema
 enum PostStatus {
   DRAFT = "DRAFT",
@@ -101,7 +100,7 @@ interface ProjectGroup {
 }
 
 export async function GET(request: Request) {
-  const auth = await requirePermission('View-tasks');
+  const auth = await requireCan("tasks", "read");
   if (!auth.ok) return auth.response;
 
   const userId = auth.userId;

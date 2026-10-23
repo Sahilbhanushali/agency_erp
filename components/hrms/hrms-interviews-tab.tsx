@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -151,8 +153,8 @@ export function HrmsInterviewsTab({
     reason: "",
   });
 
-  const fetchInterviews = async () => {
-    setLoading(true);
+  const fetchInterviews = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedJob !== "ALL") params.set("jobOpeningId", selectedJob);
@@ -170,6 +172,8 @@ export function HrmsInterviewsTab({
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchInterviews({ silent: true }), ["HrmsInterview", "HrmsInterviewInterviewer"])
 
   const fetchReferenceData = async () => {
     try {
@@ -337,6 +341,7 @@ export function HrmsInterviewsTab({
     });
   };
 
+
   return (
     <div className="space-y-4">
       {/* Top Filter and Actions Bar */}
@@ -386,7 +391,7 @@ export function HrmsInterviewsTab({
           <Button
             variant="ghost"
             size="xs"
-            onClick={fetchInterviews}
+            onClick={() => fetchInterviews()}
             className="text-xs text-muted-foreground"
           >
             <RefreshCw className={`size-3 ${loading ? "animate-spin" : ""}`} />

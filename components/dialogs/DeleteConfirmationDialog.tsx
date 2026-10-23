@@ -56,20 +56,24 @@ export default function DeleteConfirmationDialog({
 }: DeleteConfirmationDialogProps) {
   const getEntityConfig = () => {
     switch (entityType) {
+      // People are deactivated, never deleted. A real delete cascaded away payroll,
+      // payslips, attendance and leave records — things an agency has to keep — so
+      // this copy describes what the endpoint actually does now.
       case "user":
         return {
-          title: title || `Delete User: "${itemName}"?`,
-          subtitle: "Please review what will happen when this user is deleted:",
+          title: title || `Deactivate "${itemName}"?`,
+          subtitle: "Review what happens when this account is deactivated:",
           willDelete: [
-            "User profile and login access will be permanently removed",
-            "Personal notifications and saved SMTP settings will be deleted",
+            "They can no longer sign in",
+            "Any session they already have stops working on their next action",
           ],
           willKeep: [
-            "All posts created by or assigned to this user will NOT be deleted (preserved)",
-            "All comments, audit trails, and task logs will be safely retained",
-            "Projects managed by this user will remain active",
+            "Nothing is deleted — every record stays exactly as it is",
+            "Posts, comments, approvals, task logs and audit history stay attributed to them",
+            "Payroll, payslips, attendance and leave records are kept in full",
+            "You can reactivate the account at any time",
           ],
-          dangerLevel: "medium" as const,
+          dangerLevel: "low" as const,
         };
 
       case "client":
@@ -308,8 +312,11 @@ export default function DeleteConfirmationDialog({
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
+                {entityType === "user" ? "Deactivating..." : "Deleting..."}
               </>
+            ) : entityType === "user" ? (
+              // A user is deactivated, not deleted — the button must not promise otherwise.
+              "Yes, Deactivate"
             ) : (
               "Yes, Delete"
             )}

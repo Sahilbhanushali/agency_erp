@@ -310,6 +310,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 }
 
+/**
+ * Deactivates a user. Nothing is deleted.
+ *
+ * A real delete cascaded away payroll, payslips, salary history, attendance and leave
+ * records, and blanked the author on everything else the person had touched — posts,
+ * approvals, invoices, audit logs. Those are records an agency has to keep, so the
+ * destructive version is gone: this removes access and leaves every row and every
+ * attribution intact.
+ *
+ * Access ends immediately, not at the next sign-in. `lib/auth.ts` refuses the login and
+ * `requireSession()` in lib/api-auth.ts rejects the existing JWT on the next request,
+ * because a session token outlives a deactivation otherwise.
+ */
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
   try {
@@ -321,47 +334,109 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(params.id) },
-      include: { role: true },
-    });
+    const id = parseInt(params.id, 10);
+    if (isNaN(id)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
 
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, name: true, email: true, isActive: true, role: { select: { name: true } } },
+    });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Locking yourself out would need another administrator to undo.
     if (user.id.toString() === session.user.id) {
-      return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
+      return NextResponse.json({ error: "You cannot deactivate your own account" }, { status: 400 });
+    }
+    if (!user.isActive) {
+      return NextResponse.json({ error: "This account is already deactivated" }, { status: 409 });
     }
 
-    // Clean up all local files belonging to this user
-    const userDocs = await prisma.userDocument.findMany({
-      where: { userId: parseInt(params.id) },
-      select: { fileUrl: true },
-    });
-    for (const doc of userDocs) {
-      if (doc.fileUrl) await deleteLocalFile(doc.fileUrl);
-    }
-    if (user.avatar) await deleteLocalFile(user.avatar);
-    if ((user as any).offerLetterUrl) await deleteLocalFile((user as any).offerLetterUrl);
-
-    await prisma.user.delete({
-      where: { id: parseInt(params.id) },
+    await prisma.user.update({
+      where: { id },
+      data: {
+        isActive: false,
+        deactivatedAt: new Date(),
+        deactivatedById: parseInt(session.user.id, 10) || null,
+      },
     });
 
     await logAuditAction({
       userId: session.user.id,
-      action: "DELETE",
+      action: "USER_DEACTIVATED",
       entityType: "User",
       entityId: params.id,
-      oldValues: JSON.stringify({ name: user.name, email: user.email, role: user.role?.name }),
+      oldValues: JSON.stringify({ isActive: true }),
+      newValues: JSON.stringify({
+        isActive: false,
+        name: user.name,
+        email: user.email,
+        role: user.role?.name,
+      }),
       ipAddress: request.headers.get("x-forwarded-for") || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 
-    return NextResponse.json({ message: "User deleted successfully" });
+    return NextResponse.json({
+      message: `${user.name} can no longer sign in. Their work and records are unchanged.`,
+      isActive: false,
+    });
   } catch (error) {
-    console.error("Error deleting user:", error);
+    console.error("Error deactivating user:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+/** Restores a deactivated user. Same permission — whoever can remove access can return it. */
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const params = await context.params;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await can(session, "users", "delete"))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const id = parseInt(params.id, 10);
+    if (isNaN(id)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, name: true, isActive: true },
+    });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    if (user.isActive) {
+      return NextResponse.json({ error: "This account is already active" }, { status: 409 });
+    }
+
+    await prisma.user.update({
+      where: { id },
+      data: { isActive: true, deactivatedAt: null, deactivatedById: null },
+    });
+
+    await logAuditAction({
+      userId: session.user.id,
+      action: "USER_REACTIVATED",
+      entityType: "User",
+      entityId: params.id,
+      oldValues: JSON.stringify({ isActive: false }),
+      newValues: JSON.stringify({ isActive: true, name: user.name }),
+      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      userAgent: request.headers.get("user-agent") || "unknown",
+    });
+
+    return NextResponse.json({ message: `${user.name} can sign in again.`, isActive: true });
+  } catch (error) {
+    console.error("Error reactivating user:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -38,6 +38,7 @@ import {
   Briefcase,
   Share2,
   TrendingUp,
+  MessagesSquare,
 } from "lucide-react"
 import { useBreadcrumbs } from "@/lib/route-labels"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -61,6 +62,7 @@ import {
 import { NotificationCenter } from "./notification-center"
 import DesktopNotifications from "@/components/notifications/desktop-notifications"
 import { BrandLogo } from "@/components/brand/brand-logo"
+import { ChatProvider, useChatUnread } from "@/components/chat/chat-provider"
 
 type NavigationItem = {
   name: string
@@ -86,6 +88,7 @@ const navigation: NavigationItem[] = [
   { name: "Dashboard", href: "/dashboard", module: "dashboard", icon: LayoutDashboard },
   { name: "My Tasks", href: "/dashboard/tasks", module: "tasks", icon: CheckCircle, permissions: ["View-tasks"] },
   { name: "My Day", href: "/dashboard/my-day", icon: Sun },
+  { name: "Chat", href: "/dashboard/chat", module: "chat", icon: MessagesSquare },
   { name: "Projects", href: "/dashboard/projects", module: "projects", icon: FolderOpen, permissions: ["Manage-projects", "View-project"] },
   { name: "Calendar", href: "/dashboard/calendar", module: "calendar", icon: Calendar, permissions: ["View-calender"] },
   { name: "Pending Approvals", href: "/dashboard/approvals", module: "approvals", icon: FileClock, permissions: ["Manage-approvals"] },
@@ -111,7 +114,7 @@ const navigation: NavigationItem[] = [
 
 const navigationGroups = [
   { label: "Overview", names: ["Dashboard"] },
-  { label: "Delivery", names: ["My Tasks", "My Day", "Projects", "Calendar", "Pending Approvals", "Assets", "Reports", "Social Accounts", "Social Insights"] },
+  { label: "Delivery", names: ["My Tasks", "My Day", "Chat", "Projects", "Calendar", "Pending Approvals", "Assets", "Reports", "Social Accounts", "Social Insights"] },
   { label: "Agency", names: ["Leads Pipeline", "Clients", "Contracts & SOW", "Expenses & Margins", "Companies", "Quotations", "Invoices", "User Management", "Recruitment & HRMS", "Attendance & Leaves", "Payroll", "Utilities", "Credentials"] },
   { label: "Preferences", names: ["Settings"] },
 ]
@@ -143,6 +146,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             fetch("/api/users/permissions", { headers: { "Content-Type": "application/json" } }),
             fetch("/api/me/permissions", { headers: { "Content-Type": "application/json" } }),
           ])
+          // A deactivated account keeps a valid JWT until it expires, so the server
+          // answers 401 with `deactivated`. Ending the session here is the difference
+          // between being locked out and sitting in a shell where nothing loads.
+          if (legacyRes.status === 401 || effectiveRes.status === 401) {
+            const reason = await effectiveRes
+              .clone()
+              .json()
+              .catch(() => ({}))
+            if (reason?.deactivated) {
+              await signOut({ callbackUrl: "/auth/signin?reason=deactivated" })
+              return
+            }
+          }
           if (!legacyRes.ok) throw new Error(`HTTP ${legacyRes.status}: ${legacyRes.statusText}`)
           const legacy = await legacyRes.json()
           setUserPermissions(legacy.permissions || [])
@@ -232,6 +248,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const userInitial = session.user.name?.charAt(0).toUpperCase() || "U"
 
   return (
+    // Mounted around the whole shell so a message arriving on any page notifies, and the
+    // sidebar badge stays current. Disabled — no stream, no requests — without chat:read.
+    <ChatProvider enabled={accessibleModules.includes("chat")} userId={Number(session.user.id)}>
     <div className="min-h-screen bg-background text-foreground antialiased">
       {/* Slim Top Bar */}
       <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-border/70 bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/70">
@@ -379,6 +398,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         >
                           <item.icon className={`size-4 shrink-0 transition-colors ${isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"}`} />
                           <span className="truncate">{item.name}</span>
+                          {item.module === "chat" && <ChatNavBadge />}
                         </Link>
                       </li>
                     )
@@ -503,5 +523,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
     </div>
+    </ChatProvider>
+  )
+}
+
+/** Unread chat messages, beside the Chat link. Reads the provider mounted above. */
+function ChatNavBadge() {
+  const unread = useChatUnread()
+  if (unread === 0) return null
+  return (
+    <span className="ml-auto rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 tabular-nums text-primary-foreground">
+      {unread > 99 ? "99+" : unread}
+      <span className="sr-only"> unread messages</span>
+    </span>
   )
 }

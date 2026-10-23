@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, requireCan, requireSession } from "@/lib/api-auth";
+import { requireCan, requireSession } from "@/lib/api-auth";
 import { resolvePlaceholders } from "@/lib/hrms/placeholder-engine";
 
 
@@ -10,12 +10,10 @@ export async function GET(request: NextRequest) {
   const auth = await requireCan("hrms", "read");
   if (!auth.ok) return auth.response;
 
-  const canAccess =
-    (await hasPermission(auth.session, "View-hrms")) ||
-    (await hasPermission(auth.session, "Manage-offers"));
-  if (!canAccess) {
-    return NextResponse.json({ error: "Forbidden: HR or Admin access required" }, { status: 403 });
-  }
+  // The requireCan() above already accepts this module's canonical permission and
+  // every legacy name that implies it. A second exact-match check on the legacy name
+  // alone could only ever reject roles the first call had just allowed — which is
+  // what it did to any role configured in the permission matrix.
 
   try {
     const { searchParams } = new URL(request.url);
@@ -52,11 +50,6 @@ export async function POST(request: NextRequest) {
   const auth = await requireCan("hrms", "create");
   if (!auth.ok) return auth.response;
 
-  const canCreate =
-    (await hasPermission(auth.session, "Manage-offers"));
-  if (!canCreate) {
-    return NextResponse.json({ error: "Forbidden: HR or Admin access required to create offers" }, { status: 403 });
-  }
 
   try {
     const body = await request.json();

@@ -16,9 +16,16 @@ export default function SignInPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
+  // Set when the dashboard ended the session because the account was deactivated.
+  // Without this the person is bounced to a blank sign-in form with no explanation
+  // and simply tries again.
+  const [error, setError] = useState(
+    searchParams.get("reason") === "deactivated"
+      ? "This account has been deactivated. Contact an administrator if you think that is wrong."
+      : "",
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

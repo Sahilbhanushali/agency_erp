@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -167,8 +169,8 @@ export function HrmsOffersTab({
   });
 
 
-  const fetchOffers = async () => {
-    setLoading(true);
+  const fetchOffers = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedStatus !== "ALL") params.set("status", selectedStatus);
@@ -184,6 +186,8 @@ export function HrmsOffersTab({
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchOffers({ silent: true }), ["HrmsOffer", "HrmsOfferRevision"])
 
   const fetchReferenceData = async () => {
     try {
@@ -322,6 +326,7 @@ export function HrmsOffersTab({
     }
   };
 
+
   return (
     <div className="space-y-4">
       {/* Top Filter and Actions Bar */}
@@ -343,7 +348,7 @@ export function HrmsOffersTab({
             </SelectContent>
           </Select>
 
-          <Button variant="ghost" size="xs" onClick={fetchOffers} className="text-xs text-muted-foreground">
+          <Button variant="ghost" size="xs" onClick={() => fetchOffers()} className="text-xs text-muted-foreground">
             <RefreshCw className={`size-3 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -435,17 +440,29 @@ export function HrmsOffersTab({
 
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* PDF Download Button */}
-                          <a
-                            href={`/api/hrms/offers/${offer.id}/pdf`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-semibold px-2 py-1 rounded-md border border-border/60 hover:bg-muted/40 transition-colors"
-                            title="Download Official Offer Letter PDF"
-                          >
-                            <Download className="size-3" />
-                            <span>PDF</span>
-                          </a>
+                          {/* PDF Download Button. The server refuses an offer with no
+                              letterhead — it would have no real company name or contact
+                              details to print — so say so here rather than open an error. */}
+                          {offer.letterhead ? (
+                            <a
+                              href={`/api/hrms/offers/${offer.id}/pdf`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-semibold px-2 py-1 rounded-md border border-border/60 hover:bg-muted/40 transition-colors"
+                              title="Download Official Offer Letter PDF"
+                            >
+                              <Download className="size-3" />
+                              <span>PDF</span>
+                            </a>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 text-xs text-muted-foreground px-2 py-1 rounded-md border border-dashed border-border/60 cursor-not-allowed"
+                              title="Choose a letterhead for this offer to generate its PDF"
+                            >
+                              <Download className="size-3" aria-hidden />
+                              <span>No letterhead</span>
+                            </span>
+                          )}
 
                           {/* Quick Actions depending on status */}
                           {offer.status === "READY_TO_SEND" && (

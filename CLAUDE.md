@@ -83,10 +83,23 @@ Import alias is `@/` → repo root.
   existing database, and **always** show the planned SQL for a destructive change (dropped
   column/table, narrowed type, new required column) and get approval before running it.
 - Additive, backward-compatible schema changes are preferred.
-- There is **no soft delete** in this codebase and none is wanted. Deletes are real deletes;
-  rows a parent owns should go with it via `onDelete: Cascade` in the schema.
+- Deletes are real deletes for everything **except `User`**: rows a parent owns go with it
+  via `onDelete: Cascade` in the schema. Do not add soft deletion anywhere else.
+- **People are deactivated, never deleted.** `User.isActive` is the switch; there is no
+  delete endpoint. Deleting a user cascaded away payroll, payslips, salary history,
+  attendance and leave — records an agency must retain — and blanked the author on every
+  post, approval, invoice and audit entry they touched. Deactivation keeps all of it and
+  removes access instead: `lib/auth.ts` refuses the sign-in, and `requireSession()` in
+  `lib/api-auth.ts` rejects the existing JWT, because a session outlives the flag
+  otherwise. Both layers are required; neither is sufficient alone.
 - Avoid N+1: fetch relations with `include`/`select` in one round trip. Never `findMany`
   an unbounded table for a list a user will page through.
+- **The database is MariaDB 11.8 with `innodb_snapshot_isolation=ON`.** Under the default
+  REPEATABLE READ, an interactive `$transaction` that updates a row another transaction
+  changed after its snapshot fails with error 1020 instead of waiting. Any counter or
+  read-modify-write on a contended row must pass
+  `{ isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted }` — see
+  `sendMessage()` in `lib/chat/service.ts`, where 22 of 25 concurrent sends failed without it.
 
 ## UI / UX
 

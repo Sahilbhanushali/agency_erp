@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCan, requireSession } from "@/lib/api-auth";
 import { HRMS_STAGES } from "@/lib/hrms/types";
-import { seedHrmsInitialData } from "@/lib/hrms/seed-data";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +10,6 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   try {
-    const candidateCount = await prisma.hrmsCandidate.count();
-    if (candidateCount === 0) {
-      await seedHrmsInitialData();
-    }
 
     const { searchParams } = new URL(request.url);
     const jobOpeningId = searchParams.get("jobOpeningId");

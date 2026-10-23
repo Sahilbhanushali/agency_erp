@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, requireCan, requireSession } from "@/lib/api-auth";
+import { requireCan, requireSession } from "@/lib/api-auth";
 import { convertCandidateToEmployee } from "@/lib/hrms/hrms-service";
 
 export const dynamic = "force-dynamic";
@@ -12,12 +12,10 @@ export async function POST(
   const auth = await requireCan("users", "create");
   if (!auth.ok) return auth.response;
 
-  const canConvert =
-    (await hasPermission(auth.session, "Manage-onboarding")) ||
-    (await hasPermission(auth.session, "Manage-User"));
-  if (!canConvert) {
-    return NextResponse.json({ error: "Forbidden: HR or Admin access required to convert candidates" }, { status: 403 });
-  }
+  // The requireCan() above already accepts this module's canonical permission and
+  // every legacy name that implies it. A second exact-match check on the legacy name
+  // alone could only ever reject roles the first call had just allowed — which is
+  // what it did to any role configured in the permission matrix.
 
   try {
     const { id } = await params;

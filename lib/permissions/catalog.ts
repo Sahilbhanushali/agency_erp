@@ -83,6 +83,35 @@ export const MODULES: PermissionModule[] = [
       { action: "delete", label: "Delete team's todos", legacy: [] },
       { action: "export", label: "Receive EOD report", legacy: [] },
     ] },
+  /**
+   * Internal chat. These decide what a person may do in general; which conversations
+   * they may do it in is decided by membership, checked on every request and event.
+   */
+  { key: "chat", label: "Chat", href: "/dashboard/chat", group: "Delivery",
+    actions: [
+      { action: "read", label: "Use chat (read & send)", legacy: [] },
+      { action: "create", label: "Start direct conversations", legacy: [] },
+      { action: "share", label: "Send attachments", legacy: [] },
+      { action: "update", label: "Edit own messages", legacy: [] },
+      { action: "delete", label: "Delete own messages", legacy: [] },
+    ] },
+  /**
+   * Group chats. Holding these lets you administer groups; being an admin OF a group is
+   * what decides which ones. Both are required for member and admin changes.
+   */
+  { key: "chat_groups", label: "Chat Groups", href: "/dashboard/chat", group: "Delivery",
+    actions: [
+      { action: "create", label: "Create groups", legacy: [] },
+      { action: "update", label: "Edit groups, members & admins", legacy: [] },
+      { action: "delete", label: "Delete groups", legacy: [] },
+    ] },
+  /**
+   * Personal todos. One switch: whether the feature is offered at all. Every item is
+   * scoped to its owner by the API, so there is no "see other people's" action to
+   * grant — nobody, ADMIN included, can read someone else's list.
+   */
+  { key: "personal_todos", label: "Personal Todos", href: "/dashboard/my-day", group: "Delivery",
+    actions: [{ action: "read", label: "Keep personal todos", legacy: [] }] },
   { key: "projects", label: "Projects", href: "/dashboard/projects", group: "Delivery",
     actions: crud("View-project", "Manage-projects") },
   { key: "posts", label: "Content & Posts", href: "/dashboard/projects/posts", group: "Delivery",

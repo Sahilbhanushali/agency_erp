@@ -67,7 +67,29 @@ export async function GET(request: NextRequest, context: { params: Promise<{ rol
       })),
     }))
 
-    return NextResponse.json({ role: { id: role.id, name: role.name }, modules })
+    /**
+     * The counts the editor shows.
+     *
+     * `heldTotal` is every row granted to this role; `available` is what the catalog
+     * defines. They differ for ADMIN because the sync grants it the legacy flat names
+     * too — aliases kept so pre-migration code keeps working. Those are not editable
+     * and no other role gets them, which is why ADMIN reads 149 while a fully granted
+     * custom role reads 108. Reporting the breakdown is the difference between that
+     * looking like a bug and looking like what it is.
+     */
+    const catalogNames = new Set(allPermissions().map((p) => p.name))
+    const legacyGranted = [...held].filter((name) => !catalogNames.has(name)).length
+
+    return NextResponse.json({
+      role: { id: role.id, name: role.name },
+      modules,
+      totals: {
+        available: catalogNames.size,
+        granted: [...held].filter((name) => catalogNames.has(name)).length,
+        legacyGranted,
+        heldTotal: held.size,
+      },
+    })
   } catch (error) {
     console.error("[role-permission] read failed:", error)
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })

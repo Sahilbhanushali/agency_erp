@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,8 +112,8 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
     targetDate: "",
   });
 
-  const fetchJobs = async () => {
-    setLoading(true);
+  const fetchJobs = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
@@ -129,6 +131,8 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
       setLoading(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchJobs({ silent: true }), ["HrmsJobOpening", "HrmsApplication"])
 
   const fetchUsers = async () => {
     try {
@@ -251,6 +255,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
   };
 
 
+
   return (
     <div className="space-y-4">
       {/* Search and Filters Bar */}
@@ -295,7 +300,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
             </SelectContent>
           </Select>
 
-          <Button variant="ghost" size="xs" onClick={fetchJobs} className="text-xs text-muted-foreground">
+          <Button variant="ghost" size="xs" onClick={() => fetchJobs()} className="text-xs text-muted-foreground">
             <RefreshCw className={`size-3 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>

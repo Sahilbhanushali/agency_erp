@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveRefresh } from "@/hooks/use-live-refresh"
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -51,9 +53,9 @@ export function ProofingApprovalDialog({
   const currentAsset = displayAssets[currentAssetIndex] || displayAssets[0];
   const previousAsset = displayAssets.length > 1 ? displayAssets[1] : null;
 
-  const fetchChain = async () => {
+  const fetchChain = async (opts?: { silent?: boolean }) => {
     if (!postId) return;
-    setLoadingChain(true);
+    if (!opts?.silent) setLoadingChain(true);
     try {
       const res = await fetch(`/api/posts/${postId}/approval-chain`);
       if (res.ok) {
@@ -66,6 +68,8 @@ export function ProofingApprovalDialog({
       setLoadingChain(false);
     }
   };
+  // Live: re-read when someone else changes what this shows.
+  useLiveRefresh(() => fetchChain({ silent: true }), ["ApprovalChain", "ApprovalStep", "Post"])
 
   useEffect(() => {
     if (open && postId) {
@@ -77,6 +81,7 @@ export function ProofingApprovalDialog({
     fetchChain();
     if (onUpdate) onUpdate();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
