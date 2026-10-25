@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { AttendanceStatus, AttendanceSource } from "@prisma/client";
+import { AttendanceStatus, AttendanceSource, Prisma } from "@prisma/client";
 
 export const DEFAULT_LEAVE_TYPES = [
   { code: "CL", name: "Casual Leave", yearlyQuota: 12, isPaid: true, carryForwardLimit: 0, description: "Personal and casual reasons" },
@@ -109,6 +109,78 @@ export class LeaveService {
     }
 
     return balances;
+  }
+
+  /**
+   * HR adds days to, or takes days from, an employee's leave balance for a year.
+   *
+   * Changes the entitlement (totalQuota), not usedDays: days granted or withdrawn by
+   * HR are not leave taken. To record leave actually taken, file and approve a leave
+   * request instead, which also marks attendance. Every change is a ledger ADJUSTMENT
+   * with the reason, so the balance can always be explained.
+   *
+   * Refuses to take away more than remains, so a balance never goes below zero.
+   */
+  static async adjustBalance({
+    userId,
+    leaveTypeId,
+    year,
+    days,
+    reason,
+    actorId,
+  }: {
+    userId: number;
+    leaveTypeId: string;
+    year: number;
+    days: number;
+    reason: string;
+    actorId: number;
+  }) {
+    const leaveType = await prisma.leaveType.findUnique({ where: { id: leaveTypeId } });
+    if (!leaveType) throw new LeaveRuleError("Leave type not found", 404);
+
+    // Creates this year's balance rows on first use, exactly as viewing them would.
+    await this.getUserBalances(userId, year);
+
+    return prisma.$transaction(
+      async (tx) => {
+        const balance = await tx.leaveBalance.findUnique({
+          where: { userId_leaveTypeId_year: { userId, leaveTypeId, year } },
+        });
+        if (!balance) throw new LeaveRuleError("This leave type has no balance for that year", 404);
+
+        const remaining = balance.totalQuota - balance.usedDays;
+        if (days < 0 && remaining + days < 0) {
+          throw new LeaveRuleError(
+            `Only ${remaining} ${leaveType.name} day${remaining === 1 ? "" : "s"} left, so ${-days} cannot be taken away.`,
+            409
+          );
+        }
+
+        const updated = await tx.leaveBalance.update({
+          where: { id: balance.id },
+          data: { totalQuota: { increment: days } },
+        });
+        const balanceAfter = updated.totalQuota - updated.usedDays;
+
+        await tx.leaveLedger.create({
+          data: {
+            userId,
+            leaveTypeId,
+            entryType: "ADJUSTMENT",
+            days,
+            balanceAfter,
+            referenceId: `adjusted-by:${actorId}`,
+            notes: reason,
+            effectiveDate: new Date(),
+          },
+        });
+
+        return { ...updated, leaveType, remainingDays: balanceAfter };
+      },
+      // Two HR people adjusting the same balance at once must both land.
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted }
+    );
   }
 
   /**
@@ -488,5 +560,13 @@ export class LeaveService {
 
       return updatedBalance;
     });
+  }
+}
+
+/** A leave rule the caller broke, with the HTTP status that says so. */
+export class LeaveRuleError extends Error {
+  constructor(message: string, readonly status = 422) {
+    super(message);
+    this.name = "LeaveRuleError";
   }
 }

@@ -3312,6 +3312,13 @@ model ConversationMember {
   /// Messages at or below this seq stay readable after leaving; nothing above it.
   leftAtSeq Int?
 
+  /// "Clear chat": messages at or below this seq are hidden from this member only.
+  /// Everyone else keeps their copy, so this is a view setting, not a delete.
+  clearedSeq Int       @default(0)
+  /// "Delete chat": out of this member's list until a message newer than this arrives,
+  /// when it comes back holding only the new messages (clearedSeq hides the rest).
+  hiddenAt   DateTime?
+
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation("ChatMemberships", fields: [userId], references: [id], onDelete: Cascade)
 

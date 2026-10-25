@@ -55,3 +55,4 @@ export type ChatEvent =
   | { type: "presence"; userId: number; online: boolean }
   | { type: "conversation"; conversationId: string }
   | { type: "removed"; conversationId: string }
+  | { type: "cleared"; conversationId: string; seq: number; hidden: boolean }

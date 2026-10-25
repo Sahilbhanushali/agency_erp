@@ -45,19 +45,18 @@ export async function GET(request: NextRequest) {
 
   const memberships = await prisma.conversationMember.findMany({
     where: { userId: me, ...(conversationId ? { conversationId } : {}) },
-    select: { conversationId: true, leftAt: true, leftAtSeq: true },
+    select: { conversationId: true, leftAt: true, leftAtSeq: true, clearedSeq: true, hiddenAt: true },
   })
   if (memberships.length === 0) {
     // Not a member of that conversation reads exactly like "nothing found".
     return NextResponse.json(empty)
   }
 
-  const active = memberships.filter((m) => !m.leftAt).map((m) => m.conversationId)
-  const left = memberships.filter((m) => m.leftAt)
-  const scope: Prisma.ChatMessageWhereInput[] = [
-    ...(active.length ? [{ conversationId: { in: active } }] : []),
-    ...left.map((m) => ({ conversationId: m.conversationId, seq: { lte: m.leftAtSeq ?? 0 } })),
-  ]
+  // Per conversation: nothing they cleared, nothing after they left.
+  const scope: Prisma.ChatMessageWhereInput[] = memberships.map((m) => ({
+    conversationId: m.conversationId,
+    seq: { gt: m.clearedSeq, ...(m.leftAt ? { lte: m.leftAtSeq ?? 0 } : {}) },
+  }))
   const messageWhere: Prisma.ChatMessageWhereInput = {
     AND: [
       { OR: scope },
@@ -97,7 +96,8 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  const ids = memberships.map((m) => m.conversationId)
+  // Chats you deleted are not offered by name; their newer messages still match below.
+  const ids = memberships.filter((m) => !m.hiddenAt).map((m) => m.conversationId)
   const titleSelect = {
     type: true,
     name: true,

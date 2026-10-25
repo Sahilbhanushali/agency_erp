@@ -28,6 +28,7 @@ export type DeleteEntityType =
   | "invoice"
   | "quotation"
   | "asset"
+  | "payroll_run"
   | (string & {});
 
 interface DeleteConfirmationDialogProps {
@@ -213,6 +214,22 @@ export default function DeleteConfirmationDialog({
             "Associated projects and post activity logs will remain intact",
           ],
           dangerLevel: "medium" as const,
+        };
+
+      case "payroll_run":
+        return {
+          title: title || `Delete the ${itemName} payroll run?`,
+          subtitle: "This run has not been paid, so it can be removed and created again:",
+          willDelete: [
+            "The run and every payslip calculated in it",
+            "Its payment records and run history",
+            "The \"Payroll payout\" expense created when it was approved, if any",
+          ],
+          willKeep: [
+            "Salary structures, adjustments, loans and attendance — a new run recalculates from them",
+            "An entry in the audit log recording who deleted it",
+          ],
+          dangerLevel: "high" as const,
         };
 
       default:

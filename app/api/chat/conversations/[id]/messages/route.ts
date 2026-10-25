@@ -49,18 +49,20 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   // Someone who has left reads the history up to the moment they left, and no further.
   const ceiling = access.maxSeq !== null ? { lte: access.maxSeq } : {}
+  // And a floor for someone who cleared the chat: what they cleared stays cleared.
+  const floor = access.clearedSeq
 
   if (around !== null && Number.isFinite(around)) {
     const HALF = PAGE / 2
     const [older, newer] = await Promise.all([
       prisma.chatMessage.findMany({
-        where: { conversationId: id, seq: { lte: around, ...ceiling } },
+        where: { conversationId: id, seq: { lte: around, gt: floor, ...ceiling } },
         select: MESSAGE_SELECT,
         orderBy: { seq: "desc" },
         take: HALF + 1,
       }),
       prisma.chatMessage.findMany({
-        where: { conversationId: id, seq: { gt: around, ...ceiling } },
+        where: { conversationId: id, seq: { gt: Math.max(around, floor), ...ceiling } },
         select: MESSAGE_SELECT,
         orderBy: { seq: "asc" },
         take: HALF + 1,
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   if (after !== null && Number.isFinite(after)) {
     const rows = await prisma.chatMessage.findMany({
-      where: { conversationId: id, seq: { gt: after, ...ceiling } },
+      where: { conversationId: id, seq: { gt: Math.max(after, floor), ...ceiling } },
       select: MESSAGE_SELECT,
       orderBy: { seq: "asc" },
       take: CATCH_UP_MAX + 1,
@@ -91,7 +93,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const rows = await prisma.chatMessage.findMany({
     where: {
       conversationId: id,
-      seq: { ...(before ? { lt: before } : {}), ...ceiling },
+      seq: { ...(before ? { lt: before } : {}), gt: floor, ...ceiling },
     },
     select: MESSAGE_SELECT,
     orderBy: { seq: "desc" },

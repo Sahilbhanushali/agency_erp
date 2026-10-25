@@ -23,6 +23,8 @@ export type ChatEvent =
   | { type: "presence"; userId: number; online: boolean }
   | { type: "conversation"; conversationId: string }
   | { type: "removed"; conversationId: string }
+  /** Sent to the clearing member's own tabs: hide everything at or below `seq`. */
+  | { type: "cleared"; conversationId: string; seq: number; hidden: boolean }
   /**
    * "Rows of these models changed — refetch what you show." Model names only: no ids
    * and no data, so it reveals nothing to someone who could not read the rows anyway,

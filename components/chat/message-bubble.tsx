@@ -185,7 +185,9 @@ export const MessageBubble = memo(function MessageBubble({
   return (
     <div
       id={`msg-${m.id}`}
-      className={`group/msg flex scroll-my-24 px-3 py-0.5 sm:px-4 ${mine ? "justify-end" : "justify-start"}`}
+      // Reactions hang off the bubble's bottom edge; reserve room for them so they never
+      // sit on top of the next message or get cut off by the scroll edge.
+      className={`group/msg flex scroll-my-24 px-3 py-0.5 sm:px-4 ${mine ? "justify-end" : "justify-start"} ${grouped.size > 0 ? "pb-5" : ""}`}
     >
       <div className={`flex max-w-[85%] items-end gap-1 sm:max-w-[70%] ${mine ? "flex-row-reverse" : "flex-row"}`}>
         <div
@@ -286,7 +288,8 @@ export const MessageBubble = memo(function MessageBubble({
           </div>
 
           {grouped.size > 0 && (
-            <div className={`absolute -bottom-3 flex gap-0.5 ${mine ? "right-2" : "left-2"}`}>
+            // Bottom-left on both sides: the time and ticks live bottom-right.
+            <div className="absolute -bottom-4 left-3 flex gap-0.5">
               {[...grouped.entries()].map(([emoji, g]) => (
                 <button
                   key={emoji}
@@ -295,12 +298,12 @@ export const MessageBubble = memo(function MessageBubble({
                   onClick={() => onReact(m, emoji)}
                   aria-pressed={g.mine}
                   aria-label={`${emoji} ${g.count}${g.mine ? ", including you" : ""}`}
-                  className={`rounded-full border px-1.5 text-[11px] leading-5 shadow-xs ${
+                  className={`inline-flex h-6 items-center gap-0.5 whitespace-nowrap rounded-full border px-1.5 text-xs leading-none shadow-xs ring-2 ring-background ${
                     g.mine ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-foreground"
                   }`}
                 >
                   {emoji}
-                  {g.count > 1 && <span className="ml-0.5 tabular-nums">{g.count}</span>}
+                  {g.count > 1 && <span className="text-[11px] tabular-nums">{g.count}</span>}
                 </button>
               ))}
             </div>

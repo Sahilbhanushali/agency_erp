@@ -123,3 +123,58 @@ export async function PATCH(
     return NextResponse.json({ error: error.message || "Failed to update run status" }, { status: 500 });
   }
 }
+
+/**
+ * Deletes a payroll run that has not been paid.
+ *
+ * Paid and locked runs are permanent: by then loans were recovered against them and
+ * employees hold the payslips. Anything earlier — a draft, a run calculated with the
+ * wrong inputs, one approved by mistake — can go, and a new run recalculates it.
+ * Payslips, their lines, payments and the run's own history cascade with it; the
+ * payout expense that approval created is removed too, since the payout never happened.
+ */
+const DELETABLE: PayrollRunStatus[] = ["DRAFT", "CALCULATED", "UNDER_REVIEW", "APPROVED"];
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireCan("payroll", "delete");
+  if (!auth.ok) return auth.response;
+  const { id } = await params;
+
+  try {
+    const run = await prisma.payrollRun.findUnique({
+      where: { id },
+      select: { id: true, month: true, year: true, status: true, totalHeadcount: true, totalNetPay: true },
+    });
+    if (!run) return NextResponse.json({ error: "Payroll run not found" }, { status: 404 });
+    if (!DELETABLE.includes(run.status)) {
+      return NextResponse.json(
+        { error: `A ${run.status.toLowerCase()} run cannot be deleted: it is the record of salaries actually paid.` },
+        { status: 409 }
+      );
+    }
+
+    const removed = await prisma.$transaction(async (tx) => {
+      const expenses = await tx.expense.deleteMany({ where: { payrollRunId: id } });
+      await tx.payrollRun.delete({ where: { id } });
+      return { expenses: expenses.count };
+    });
+
+    await logAuditAction({
+      userId: String(auth.userId),
+      action: "PAYROLL_RUN_DELETED",
+      entityType: "PayrollRun",
+      entityId: id,
+      oldValues: JSON.stringify({ ...run, linkedExpensesDeleted: removed.expenses }),
+      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      userAgent: request.headers.get("user-agent") || "unknown",
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("DELETE /api/payroll/runs/[id] error:", error);
+    return NextResponse.json({ error: "Could not delete the payroll run" }, { status: 500 });
+  }
+}

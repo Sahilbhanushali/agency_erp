@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import useSWR from "swr"
 import toast from "react-hot-toast"
-import { Camera, Crown, Loader2, LogOut, MoreHorizontal, Trash2, UserPlus, Users } from "lucide-react"
+import { Camera, Crown, Eraser, Loader2, LogOut, MoreHorizontal, Trash2, UserPlus, Users } from "lucide-react"
+import { ClearChatDialog, type ClearMode } from "./clear-chat-dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -93,6 +94,7 @@ export function DetailsSheet({
   const [adding, setAdding] = useState(false)
   const [confirm, setConfirm] = useState<Confirm>(null)
   const [busy, setBusy] = useState(false)
+  const [clearMode, setClearMode] = useState<ClearMode | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const c = data?.conversation
@@ -346,8 +348,17 @@ export function DetailsSheet({
               </div>
             )}
 
-            {(perms.canLeave || perms.canDelete) && <Separator />}
+            <Separator />
             <div className="space-y-2">
+              <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setClearMode("clear")}>
+                <Eraser className="h-4 w-4" /> Clear chat
+              </Button>
+              {/* A group you are still in is left first (below); then it can be deleted. */}
+              {(conversation.type === "DIRECT" || !perms.active) && (
+                <Button variant="outline" className="w-full justify-start gap-2 text-destructive hover:text-destructive" onClick={() => setClearMode("delete")}>
+                  <Trash2 className="h-4 w-4" /> Delete chat
+                </Button>
+              )}
               {perms.canLeave && (
                 <Button variant="outline" className="w-full justify-start gap-2 text-destructive hover:text-destructive" onClick={() => setConfirm({ kind: "leave" })}>
                   <LogOut className="h-4 w-4" /> Leave group
@@ -355,12 +366,25 @@ export function DetailsSheet({
               )}
               {perms.canDelete && (
                 <Button variant="outline" className="w-full justify-start gap-2 text-destructive hover:text-destructive" onClick={() => setConfirm({ kind: "delete" })}>
-                  <Trash2 className="h-4 w-4" /> Delete group
+                  <Trash2 className="h-4 w-4" /> Delete group for everyone
                 </Button>
               )}
             </div>
           </div>
         )}
+
+        <ClearChatDialog
+          conversation={conversation}
+          mode={clearMode}
+          onClose={() => setClearMode(null)}
+          onDone={({ hidden }) => {
+            void chat.refreshConversations()
+            if (hidden) {
+              onOpenChange(false)
+              onGone()
+            }
+          }}
+        />
 
         <NewConversationDialog
           open={adding}
