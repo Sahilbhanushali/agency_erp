@@ -30,6 +30,8 @@ export async function GET() {
       mutedUntil: true,
       leftAt: true,
       leftAtSeq: true,
+      clearedSeq: true,
+      hiddenAt: true,
       conversation: {
         select: {
           id: true,
@@ -57,6 +59,7 @@ export async function GET() {
   // The last message each person may see: the newest for a current member, the last
   // one before they left otherwise. Fetched in one query, not one per conversation.
   const lastPairs = memberships
+    .filter((m) => (m.leftAt ? (m.leftAtSeq ?? 0) : m.conversation.lastSeq) > m.clearedSeq)
     .map((m) => ({
       conversationId: m.conversation.id,
       seq: m.leftAt ? (m.leftAtSeq ?? 0) : m.conversation.lastSeq,
@@ -78,6 +81,7 @@ export async function GET() {
     FROM chat_messages m
     JOIN chat_members cm ON cm.conversationId = m.conversationId AND cm.userId = ${me}
     WHERE m.seq > cm.lastReadSeq
+      AND m.seq > cm.clearedSeq
       AND (cm.leftAt IS NULL OR m.seq <= cm.leftAtSeq)
       AND (m.senderId IS NULL OR m.senderId <> ${me})
       AND m.deletedAt IS NULL
@@ -86,7 +90,12 @@ export async function GET() {
   `)
   const unreadById = new Map(unreadRows.map((r) => [r.conversationId, Number(r.unread)]))
 
-  const conversations = memberships.map((m) => {
+  // A deleted chat stays out of the list until something newer than the delete arrives.
+  const visible = memberships.filter(
+    (m) => !m.hiddenAt || (m.conversation.lastMessageAt !== null && m.conversation.lastMessageAt > m.hiddenAt),
+  )
+
+  const conversations = visible.map((m) => {
     const c = m.conversation
     const other = c.type === "DIRECT" ? c.members[0]?.user : undefined
     return {
@@ -153,7 +162,14 @@ export async function POST(request: NextRequest) {
     // One DM per pair, enforced by a unique key rather than by checking first.
     const directKey = `${Math.min(me, target)}:${Math.max(me, target)}`
     const existing = await prisma.conversation.findUnique({ where: { directKey }, select: { id: true } })
-    if (existing) return NextResponse.json({ id: existing.id, created: false })
+    if (existing) {
+      // Reopening a DM you deleted brings it back to your list (still cleared).
+      await prisma.conversationMember.updateMany({
+        where: { conversationId: existing.id, userId: me, hiddenAt: { not: null } },
+        data: { hiddenAt: null },
+      })
+      return NextResponse.json({ id: existing.id, created: false })
+    }
 
     try {
       const created = await prisma.conversation.create({

@@ -16,6 +16,8 @@ export interface Access {
   role: "MEMBER" | "ADMIN"
   /** Highest seq this person may read. Null while they are a current member. */
   maxSeq: number | null
+  /** They cleared the chat up to here; only messages above it are theirs to see. */
+  clearedSeq: number
   lastReadSeq: number
   mutedUntil: Date | null
 }
@@ -23,13 +25,14 @@ export interface Access {
 export async function memberAccess(conversationId: string, userId: number): Promise<Access | null> {
   const m = await prisma.conversationMember.findUnique({
     where: { conversationId_userId: { conversationId, userId } },
-    select: { role: true, leftAt: true, leftAtSeq: true, lastReadSeq: true, mutedUntil: true },
+    select: { role: true, leftAt: true, leftAtSeq: true, lastReadSeq: true, mutedUntil: true, clearedSeq: true },
   })
   if (!m) return null
   return {
     active: m.leftAt === null,
     role: m.role,
     maxSeq: m.leftAt === null ? null : (m.leftAtSeq ?? 0),
+    clearedSeq: m.clearedSeq,
     lastReadSeq: m.lastReadSeq,
     mutedUntil: m.mutedUntil,
   }
@@ -316,6 +319,7 @@ export async function visibleMessage(messageId: string, userId: number) {
   const access = await memberAccess(msg.conversationId, userId)
   if (!access) return null
   if (access.maxSeq !== null && msg.seq > access.maxSeq) return null
+  if (msg.seq <= access.clearedSeq) return null
   return { msg, access }
 }
 

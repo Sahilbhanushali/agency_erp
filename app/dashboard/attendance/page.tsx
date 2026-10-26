@@ -54,6 +54,8 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useCan } from "@/hooks/use-can";
+import { LeaveManager } from "@/components/attendance/leave-manager";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -69,6 +71,11 @@ export default function AttendancePage() {
   const userRole = (session?.user as any)?.role || "";
   const isHRorAdmin = ["ADMIN", "MANAGER", "HR"].includes(userRole);
   const currentUserId = Number(session?.user?.id);
+  // Managing someone else's leave: adjusting balances needs leaves:update, recording
+  // leave on their behalf needs leaves:approve. The routes check the same.
+  const { can, ready: permsReady } = useCan();
+  const canAdjustLeave = permsReady && can("leaves", "update");
+  const canRecordLeave = permsReady && can("leaves", "approve");
 
   const [activeTab, setActiveTab] = useState("team");
   const [selectedDate, setSelectedDate] = useState(
@@ -374,7 +381,7 @@ export default function AttendancePage() {
             Track daily attendance, biometric sync, leave balances, and regularizations.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isHRorAdmin && (
             <>
               <Button
@@ -478,7 +485,7 @@ export default function AttendancePage() {
 
       {/* Tabs Layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-muted/60 p-1 border border-border/60 rounded-lg">
+        <TabsList className="bg-muted/60 p-1 border border-border/60 rounded-lg max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="team" className="text-xs">
             Team Attendance
           </TabsTrigger>
@@ -491,6 +498,11 @@ export default function AttendancePage() {
           <TabsTrigger value="balances" className="text-xs">
             Leave Balances
           </TabsTrigger>
+          {(canAdjustLeave || canRecordLeave) && (
+            <TabsTrigger value="manage" className="text-xs">
+              Manage Leaves
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Tab 1: Team Daily Attendance */}
@@ -877,6 +889,13 @@ export default function AttendancePage() {
             ))}
           </div>
         </TabsContent>
+
+        {/* Tab 5: HR manages an employee's leave */}
+        {(canAdjustLeave || canRecordLeave) && (
+          <TabsContent value="manage">
+            <LeaveManager canAdjust={canAdjustLeave} canRecord={canRecordLeave} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* ================= MODAL: MANUAL CORRECTION (HR) ================= */}

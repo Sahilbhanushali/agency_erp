@@ -402,12 +402,12 @@ export function ChatProvider({ enabled, userId, children }: { enabled: boolean; 
             })
           }
           if (enabled && event.type === "message") notify(event.message)
-          if (enabled && (event.type === "message" || event.type === "read" || event.type === "conversation" || event.type === "removed" || event.type === "message_updated")) {
+          if (enabled && (event.type === "message" || event.type === "read" || event.type === "conversation" || event.type === "removed" || event.type === "message_updated" || event.type === "cleared")) {
             void mutate()
           }
           dispatch(event)
         })
-      for (const name of ["message", "message_updated", "read", "delivered", "typing", "presence", "conversation", "removed"] as const) {
+      for (const name of ["message", "message_updated", "read", "delivered", "typing", "presence", "conversation", "removed", "cleared"] as const) {
         relay(name)
       }
 

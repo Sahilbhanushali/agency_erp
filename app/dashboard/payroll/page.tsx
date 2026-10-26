@@ -27,7 +27,9 @@ import {
   ChevronRight,
   ExternalLink,
   Search,
+  Trash2,
 } from "lucide-react";
+import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,6 +108,28 @@ export default function PayrollPage() {
 
   // Selected run for detailed view
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+
+  // Run awaiting delete confirmation
+  const [deletingRun, setDeletingRun] = useState<any | null>(null);
+  const [deletingRunBusy, setDeletingRunBusy] = useState(false);
+
+  const handleDeleteRun = async () => {
+    if (!deletingRun) return;
+    setDeletingRunBusy(true);
+    try {
+      const res = await fetch(`/api/payroll/runs/${deletingRun.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not delete the payroll run");
+      toast.success(`Deleted the ${MONTH_NAMES[deletingRun.month - 1]} ${deletingRun.year} run`);
+      if (selectedRunId === deletingRun.id) setSelectedRunId(null);
+      setDeletingRun(null);
+      mutateRuns();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setDeletingRunBusy(false);
+    }
+  };
 
   // New Payroll Run modal
   const [isCreateRunOpen, setIsCreateRunOpen] = useState(false);
@@ -569,6 +593,20 @@ export default function PayrollPage() {
                                 View Breakdown
                               </Button>
 
+                            {/* Paid and locked runs are the record of salaries paid; the server refuses those too. */}
+                            {can("payroll", "delete") && r.status !== "PAID" && r.status !== "LOCKED" && (
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={() => setDeletingRun(r)}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                aria-label={`Delete the ${MONTH_NAMES[r.month - 1]} ${r.year} payroll run`}
+                                title="Delete run"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            )}
+
                               {/* Export Toolbar */}
                               <a href={`/api/payroll/runs/${r.id}/export/bank-csv`} download>
                                 <Button variant="ghost" size="icon-xs" title="Download Bank Transfer CSV">
@@ -609,6 +647,7 @@ export default function PayrollPage() {
                                 Mark as Paid
                               </Button>
                             )}
+
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1041,6 +1080,15 @@ export default function PayrollPage() {
           agencyName={settings?.companyName || "Marketing Agency"}
         />
       )}
+
+      <DeleteConfirmationDialog
+        isOpen={deletingRun !== null}
+        onClose={() => !deletingRunBusy && setDeletingRun(null)}
+        onConfirm={handleDeleteRun}
+        itemName={deletingRun ? `${MONTH_NAMES[deletingRun.month - 1]} ${deletingRun.year}` : ""}
+        entityType="payroll_run"
+        isLoading={deletingRunBusy}
+      />
     </div>
   );
 }

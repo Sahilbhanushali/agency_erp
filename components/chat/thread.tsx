@@ -3,7 +3,15 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { format, isSameDay, isToday, isYesterday } from "date-fns"
-import { AlertCircle, ArrowDown, ArrowLeft, BellOff, ChevronDown, ChevronUp, Info, Loader2, Search, UserPlus, Users, X } from "lucide-react"
+import { AlertCircle, ArrowDown, ArrowLeft, BellOff, ChevronDown, ChevronUp, Eraser, Info, Loader2, LogOut, MoreVertical, Search, Trash2, UserPlus, Users, X } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ClearChatDialog, type ClearMode } from "./clear-chat-dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -86,6 +94,19 @@ export function Thread({
   const [highlight, setHighlight] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [infoFor, setInfoFor] = useState<ChatMessage | null>(null)
+  const [clearMode, setClearMode] = useState<ClearMode | null>(null)
+
+  /** Clear/Delete chat, from this tab or another of mine: drop what was cleared. */
+  const applyCleared = useCallback(
+    (seq: number, hidden: boolean) => {
+      setMessages((prev) => prev.filter((m) => m.pending || m.seq > seq))
+      setHasMore(false)
+      setHasNewer(false)
+      setReplyTo(null)
+      if (hidden) onBack()
+    },
+    [onBack],
+  )
   /**
    * True when the loaded window ends before the latest message — after jumping to an
    * old search hit. Live messages are then not appended (they would sit after a gap);
@@ -436,8 +457,9 @@ export function Thread({
           setTyping((t) => ({ ...t, [e.userId]: { name: e.name, until: Date.now() + 5000 } }))
         }
         if ((e.type === "conversation" || e.type === "removed") && e.conversationId === id) void loadDetails()
+        if (e.type === "cleared" && e.conversationId === id) applyCleared(e.seq, e.hidden)
       }),
-    [chat, id, meId, loadDetails],
+    [chat, id, meId, loadDetails, applyCleared],
   )
 
   // Typing indicators expire on their own if the person stops.
@@ -687,9 +709,41 @@ export function Thread({
         >
           <Search className="h-5 w-5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-10 w-10" onClick={onShowDetails} aria-label="Conversation details">
-          <Info className="h-5 w-5" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="More options">
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem onClick={onShowDetails}>
+              <Info className="mr-2 h-4 w-4" /> {conversation.type === "GROUP" ? "Group info" : "Contact info"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setSearchOpen(true)
+                requestAnimationFrame(() => searchInputRef.current?.focus())
+              }}
+            >
+              <Search className="mr-2 h-4 w-4" /> Search
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setClearMode("clear")} disabled={messages.length === 0}>
+              <Eraser className="mr-2 h-4 w-4" /> Clear chat
+            </DropdownMenuItem>
+            {conversation.type === "GROUP" && active ? (
+              // Deleting a group you are in would leave people messaging someone who
+              // can't see the chat; leaving comes first, from the info panel.
+              <DropdownMenuItem onClick={onShowDetails} className="text-destructive focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" /> Exit group…
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={() => setClearMode("delete")} className="text-destructive focus:text-destructive">
+                <Trash2 className="mr-2 h-4 w-4" /> Delete chat
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {searchOpen && (
@@ -868,6 +922,16 @@ export function Thread({
       <ForwardDialog message={forwarding} onClose={() => setForwarding(null)} />
 
       <MessageInfoDialog message={infoFor} onClose={() => setInfoFor(null)} />
+
+      <ClearChatDialog
+        conversation={conversation}
+        mode={clearMode}
+        onClose={() => setClearMode(null)}
+        onDone={({ clearedSeq, hidden }) => {
+          applyCleared(clearedSeq, hidden)
+          void chat.refreshConversations()
+        }}
+      />
 
       <NewConversationDialog
         open={adding}
