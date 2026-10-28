@@ -3,6 +3,8 @@ import { safeUploadName } from "@/lib/storage";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { projectCompanyName } from "@/lib/client-company";
+import { resolveClientCompanyId } from "@/lib/client-company-server";
 import fs from "fs/promises";
 import path from "path";
 import { can, requireCan } from "@/lib/api-auth";
@@ -77,12 +79,12 @@ export async function GET(request: NextRequest) {
                 { assignedUsers: { some: { id: parseInt(session.user.id) } } },
               ],
             },
-        select: { id: true, name: true, client: { select: { name: true, company: true } } },
+        select: { id: true, name: true, client: { select: { name: true, company: true } }, clientCompany: { select: { name: true, logo: true } } },
         orderBy: { name: "asc" },
         take: 500,
       });
       return NextResponse.json({
-        projects: options.map((p) => ({ id: p.id, name: p.name, client: p.client?.company || p.client?.name || null })),
+        projects: options.map((p) => ({ id: p.id, name: p.name, client: projectCompanyName(p) || p.client?.name || null })),
       });
     }
     const userId = searchParams.get("userId");
@@ -125,6 +127,7 @@ export async function GET(request: NextRequest) {
         client: {
           select: { name: true, id: true, company: true },
         },
+        clientCompany: { select: { id: true, name: true, logo: true } },
         manager: {
           select: { name: true },
         },
@@ -190,6 +193,10 @@ export async function POST(request: NextRequest) {
     if (!name || !name.trim() || !clientId || !startDate) {
       return NextResponse.json({ error: "Name, client, and start date are required" }, { status: 400 });
     }
+    const clientCompanyId = await resolveClientCompanyId(clientId, formData.get("clientCompanyId"));
+    if (clientCompanyId === false) {
+      return NextResponse.json({ error: "That company doesn't belong to the selected client" }, { status: 422 });
+    }
 
     // Validate postTypes
     const validPostTypes = ["REEL", "STORY", "CAROUSEL", "PHOTO", "BLOG"];
@@ -249,6 +256,7 @@ export async function POST(request: NextRequest) {
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
         clientId,
+        clientCompanyId,
         managerId: managerId ? parseInt(managerId) : null,
         isActive: true,
         image: imageUrl,
@@ -350,6 +358,8 @@ export async function PUT(request: NextRequest) {
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
         clientId,
+        // A company belongs to one client; moving the project drops it.
+        ...(currentProject?.clientId !== clientId ? { clientCompanyId: null } : {}),
         managerId: managerId ? parseInt(managerId) : null,
         isActive,
         postTypes: postTypes || {},

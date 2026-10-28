@@ -32,6 +32,7 @@ import MediaPopup from "@/components/mediaPopup";
 import useSWR, { mutate as globalMutate } from "swr";
 import { getMediaUrl } from "@/lib/utils";
 import PostTimingBadge from "./postTimingBadge";
+import { projectCompanyName, projectLogo } from "@/lib/client-company";
 
 // Placeholder image as a data URL to avoid network requests
 const FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e5e7eb'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='12' fill='%236b7280' text-anchor='middle' dominant-baseline='middle'%3EImage Not Found%3C/text%3E%3C/svg%3E";
@@ -1187,7 +1188,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
               <PostTimingBadge post={post} />
             </div>
             <p className="text-muted-foreground mt-0.5">
-              {(post.project.client?.company || "No Client")} • {post.project.name}
+              {(projectCompanyName(post.project) || "No Client")} • {post.project.name}
             </p>
           </div>
         </div>
@@ -1240,9 +1241,9 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-indigo-100 text-indigo-700 font-bold text-lg flex-shrink-0 border border-border shadow-sm">
-                  {post.project.client?.avatar ? (
+                  {projectLogo(post.project) ? (
                     <img 
-                      src={post.project.client.avatar} 
+                      src={projectLogo(post.project) ?? undefined} 
                       alt={post.project.client.name} 
                       className="w-full h-full object-cover"
                     />
@@ -1505,7 +1506,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                   <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[10px] text-muted-foreground/80 uppercase tracking-wider font-semibold">Client</p>
-                    <p className="font-medium text-foreground/90 truncate">{post.project.client?.company || "No Client"}</p>
+                    <p className="font-medium text-foreground/90 truncate">{projectCompanyName(post.project) || "No Client"}</p>
                   </div>
                 </div>
 

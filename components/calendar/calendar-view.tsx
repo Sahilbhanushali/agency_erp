@@ -121,6 +121,7 @@ const PLATFORM_STYLE: Record<string, string> = {
   IGTV: "bg-purple-100 text-purple-900 border-purple-200 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-900",
   GMB: "bg-emerald-100 text-emerald-900 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-900",
   PINTEREST: "bg-rose-100 text-rose-900 border-rose-200 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-900",
+  WEBSITE: "bg-teal-100 text-teal-900 border-teal-200 dark:bg-teal-950 dark:text-teal-200 dark:border-teal-900",
 };
 
 const platformLabel = (p: string) => p.charAt(0) + p.slice(1).toLowerCase();

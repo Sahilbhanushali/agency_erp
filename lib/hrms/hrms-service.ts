@@ -359,18 +359,10 @@ export async function convertCandidateToEmployee(options: {
 
   // 1. Initialize SalaryStructure from offer / candidate compensation
   try {
-    const monthlyGrossPaise = Math.round((salary || 50000) * 100);
-    const basicPaise = Math.round(monthlyGrossPaise * 0.50);
-    const hraPaise = Math.round(monthlyGrossPaise * 0.25);
-    const specialPaise = Math.round(monthlyGrossPaise * 0.25);
-
-    await PayrollService.upsertSalaryStructure({
+    // From the salary just written to their profile, split by the default template.
+    // No salary on the offer means no structure yet — not an invented ₹50,000.
+    await PayrollService.assignStructureFromProfile({
       userId: targetUser.id,
-      basicSalary: basicPaise,
-      hra: hraPaise,
-      specialAllowance: specialPaise,
-      pfDeduction: true,
-      professionalTax: true,
       effectiveFrom: joiningDate,
       revisionReason: "Initial structure created from candidate onboarding conversion",
     });

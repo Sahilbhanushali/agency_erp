@@ -31,7 +31,8 @@ interface ClientWithProjects {
   id: string
   name: string
   company: string | null
-  projects: { id: string; name: string }[]
+  companies?: { id: string; name: string }[]
+  projects: { id: string; name: string; clientCompanyId?: string | null }[]
 }
 
 const BLANK_LINE = { description: "", quantity: 1, unit: "", unitPrice: 0 }
@@ -52,6 +53,7 @@ function defaults(
     return {
       companyId: prefill?.companyId ?? "",
       clientId: prefill?.clientId ?? "",
+      clientCompanyId: "",
       projectId: "",
       title: "",
       currency: "INR",
@@ -68,6 +70,7 @@ function defaults(
   return {
     companyId: invoice.companyId,
     clientId: invoice.clientId,
+    clientCompanyId: invoice.clientCompanyId ?? "",
     projectId: invoice.projectId ?? "",
     title: invoice.title,
     currency: invoice.currency,
@@ -119,10 +122,12 @@ export default function InvoiceEditor({
   const companies = (companyData?.companies ?? []).filter(
     (company) => company.isActive || company.id === invoice?.companyId,
   )
-  const projects = useMemo(
-    () => (Array.isArray(clients) ? clients : []).find((c) => c.id === values.clientId)?.projects ?? [],
+  const selectedClient = useMemo(
+    () => (Array.isArray(clients) ? clients : []).find((c) => c.id === values.clientId),
     [clients, values.clientId],
   )
+  const projects = selectedClient?.projects ?? []
+  const clientCompanies = selectedClient?.companies ?? []
 
   const totals = computeTotals({
     lineItems: (values.lineItems ?? []).map((line) => ({
@@ -140,6 +145,7 @@ export default function InvoiceEditor({
     const payload = {
       ...form,
       projectId: form.projectId || undefined,
+      clientCompanyId: form.clientCompanyId || null,
       issueDate: form.issueDate || null,
       dueDate: form.dueDate || null,
       terms: form.terms || undefined,
@@ -211,6 +217,9 @@ export default function InvoiceEditor({
               onValueChange={(value) => {
                 setValue("clientId", value, { shouldValidate: true })
                 setValue("projectId", "")
+                // A client with one company has no choice to make.
+                const companies = (Array.isArray(clients) ? clients : []).find((c) => c.id === value)?.companies ?? []
+                setValue("clientCompanyId", companies.length === 1 ? companies[0].id : "")
               }}
             >
               <SelectTrigger id="clientId" className="mt-1" aria-invalid={!!errors.clientId}>
@@ -225,6 +234,34 @@ export default function InvoiceEditor({
               </SelectContent>
             </Select>
             {fieldError(errors.clientId?.message)}
+          </div>
+
+          <div>
+            <Label htmlFor="clientCompanyId">Client company</Label>
+            <Select
+              value={values.clientCompanyId || "none"}
+              onValueChange={(value) => setValue("clientCompanyId", value === "none" ? "" : value)}
+              disabled={!values.clientId || clientCompanies.length === 0}
+            >
+              <SelectTrigger id="clientCompanyId" className="mt-1">
+                <SelectValue
+                  placeholder={!values.clientId ? "Choose a client first" : "No companies on file"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">The client by name</SelectItem>
+                {clientCompanies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {values.clientId && clientCompanies.length === 0
+                ? "Add the client's companies on their client page to bill one."
+                : "Its name, address and GSTIN go on the document."}
+            </p>
           </div>
 
           <div className="sm:col-span-2">
@@ -243,7 +280,12 @@ export default function InvoiceEditor({
             <Label htmlFor="projectId">Project</Label>
             <Select
               value={values.projectId}
-              onValueChange={(value) => setValue("projectId", value === "none" ? "" : value)}
+              onValueChange={(value) => {
+                setValue("projectId", value === "none" ? "" : value)
+                // Bill the company the project is for, unless one is already chosen.
+                const projectCompany = projects.find((project) => project.id === value)?.clientCompanyId
+                if (projectCompany && !values.clientCompanyId) setValue("clientCompanyId", projectCompany)
+              }}
               disabled={!values.clientId}
             >
               <SelectTrigger id="projectId" className="mt-1">

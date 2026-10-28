@@ -51,6 +51,7 @@ import { ContractDialog } from "@/components/contracts/contract-dialog";
 import { ExpenseDialog } from "@/components/expenses/expense-dialog";
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import toast from "react-hot-toast";
+import { ClientCompanies } from "@/components/clients/client-companies";
 
 interface Client {
   id: string;
@@ -437,9 +438,12 @@ export default function ClientIdPage() {
 
       {/* Main Tabbed Interface */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="bg-muted p-1">
+        <TabsList className="bg-muted p-1 max-w-full overflow-x-auto justify-start">
           <TabsTrigger value="overview" className="text-xs">
             Client Overview
+          </TabsTrigger>
+          <TabsTrigger value="companies" className="text-xs">
+            Companies
           </TabsTrigger>
           <TabsTrigger value="projects" className="text-xs">
             Projects ({projects.length})
@@ -592,6 +596,10 @@ export default function ClientIdPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="companies">
+          <ClientCompanies clientId={client.id} canEdit={can("clients", "update")} clientAvatar={client.avatar} />
         </TabsContent>
 
         {/* Tab 2: Projects */}

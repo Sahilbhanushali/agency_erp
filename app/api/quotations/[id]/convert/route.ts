@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { resolveClientCompanyId } from "@/lib/client-company-server"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { invoiceDetailSelect, toNumber } from "@/lib/finance"
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         currency: true,
         companyId: true,
         clientId: true,
+        clientCompanyId: true,
         projectId: true,
         subtotal: true,
         discountPercent: true,
@@ -94,6 +96,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           data: {
             companyId: quotation.companyId,
             clientId: quotation.clientId,
+            clientCompanyId: quotation.clientCompanyId,
             projectId: quotation.projectId,
             quotationId: quotation.id,
             createdById: auth.userId,

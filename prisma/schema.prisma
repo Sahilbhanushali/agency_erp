@@ -42,6 +42,7 @@ enum Platform {
   IGTV
   GMB
   PINTEREST
+  WEBSITE
 }
 
 enum AuditAction {
@@ -298,6 +299,7 @@ model Client {
   updatedAt  DateTime @updatedAt
 
   // Relations
+  companies      ClientCompany[]
   projects       Project[]
   credentials    Credential[]
   socialAccounts SocialAccount[]
@@ -309,6 +311,37 @@ model Client {
   tasks          Task[]
 
   @@map("clients")
+}
+
+/// A business the client runs. One client (the person we deal with) can run several,
+/// and each project says which one it is for. `Client.company` is the legacy single
+/// name, kept as the fallback for projects that name no company.
+model ClientCompany {
+  id         String   @id @default(cuid())
+  clientId   String
+  name       String
+  website    String?
+  industry   String?
+  gstin      String?
+  panNumber  String?
+  address    String?  @db.Text
+  city       String?
+  state      String?
+  country    String?  @default("India")
+  postalCode String?
+  logo       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  client     Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projects   Project[]
+  // Restrict: an issued document must keep the company it was billed to.
+  quotations Quotation[]
+  invoices   Invoice[]
+
+  @@unique([clientId, name])
+  @@index([clientId])
+  @@map("client_companies")
 }
 
 model Project {
@@ -324,11 +357,13 @@ model Project {
   updatedAt   DateTime  @updatedAt
 
   // Foreign Keys
-  clientId  String?
-  managerId Int?
+  clientId        String?
+  clientCompanyId String?
+  managerId       Int?
 
   // Relations
   client        Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientCompany ClientCompany?    @relation(fields: [clientCompanyId], references: [id], onDelete: SetNull)
   manager       User?             @relation("ClientProjects", fields: [managerId], references: [id], onDelete: SetNull)
   assignedUsers User[]            @relation("AssignedProjects")
   posts         Post[]
@@ -1041,11 +1076,13 @@ model Company {
 }
 
 model Quotation {
-  id          String  @id @default(cuid())
-  companyId   String
-  clientId    String
-  projectId   String?
-  createdById Int?
+  id              String  @id @default(cuid())
+  companyId       String
+  clientId        String
+  /// Which of the client's companies is billed; null bills the client by name.
+  clientCompanyId String?
+  projectId       String?
+  createdById     Int?
 
   number String // unique within its company, e.g. QT-2026-0001
   title  String
@@ -1072,12 +1109,13 @@ model Quotation {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  company   Company         @relation(fields: [companyId], references: [id])
-  client    Client          @relation(fields: [clientId], references: [id])
-  project   Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  createdBy User?           @relation("CreatedQuotations", fields: [createdById], references: [id], onDelete: SetNull)
-  lineItems QuotationLine[]
-  invoice   Invoice?
+  company       Company         @relation(fields: [companyId], references: [id])
+  client        Client          @relation(fields: [clientId], references: [id])
+  clientCompany ClientCompany?  @relation(fields: [clientCompanyId], references: [id], onDelete: Restrict)
+  project       Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdBy     User?           @relation("CreatedQuotations", fields: [createdById], references: [id], onDelete: SetNull)
+  lineItems     QuotationLine[]
+  invoice       Invoice?
 
   @@unique([companyId, number])
   @@index([companyId])
@@ -1103,12 +1141,14 @@ model QuotationLine {
 }
 
 model Invoice {
-  id          String  @id @default(cuid())
-  companyId   String
-  clientId    String
-  projectId   String?
-  quotationId String? @unique
-  createdById Int?
+  id              String  @id @default(cuid())
+  companyId       String
+  clientId        String
+  /// Which of the client's companies is billed; null bills the client by name.
+  clientCompanyId String?
+  projectId       String?
+  quotationId     String? @unique
+  createdById     Int?
 
   number String // unique within its company, e.g. INV-2026-0001
   title  String
@@ -1133,11 +1173,12 @@ model Invoice {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  company          Company       @relation(fields: [companyId], references: [id])
-  client           Client        @relation(fields: [clientId], references: [id])
-  project          Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  quotation        Quotation?    @relation(fields: [quotationId], references: [id], onDelete: SetNull)
-  createdBy        User?         @relation("CreatedInvoices", fields: [createdById], references: [id], onDelete: SetNull)
+  company          Company        @relation(fields: [companyId], references: [id])
+  client           Client         @relation(fields: [clientId], references: [id])
+  clientCompany    ClientCompany? @relation(fields: [clientCompanyId], references: [id], onDelete: Restrict)
+  project          Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  quotation        Quotation?     @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  createdBy        User?          @relation("CreatedInvoices", fields: [createdById], references: [id], onDelete: SetNull)
   lineItems        InvoiceLine[]
   payments         Payment[]
   reBilledExpenses Expense[]

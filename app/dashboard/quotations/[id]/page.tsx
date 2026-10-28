@@ -47,7 +47,7 @@ export default async function QuotationPage({
             <QuotationStatusBadge status={quotation.status} />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {quotation.title} · {quotation.client.company || quotation.client.name}
+            {quotation.title} · {quotation.clientCompany?.name || quotation.client.company || quotation.client.name}
           </p>
         </div>
       </div>

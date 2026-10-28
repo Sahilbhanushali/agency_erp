@@ -30,6 +30,7 @@ interface Client {
   id: string;
   name: string;
   company: string | null;
+  companies?: { id: string; name: string }[];
 }
 
 interface AssignedUser {
@@ -44,6 +45,7 @@ interface Project {
   name: string;
   description: string | null;
   clientId: string;
+  clientCompanyId?: string | null;
   managerId: number | null;
   startDate: Date;
   endDate: Date | null;
@@ -266,6 +268,7 @@ export default function EditProjectPage() {
     id: client.id,
     name: client.name,
     company: client.company || "",
+    companies: client.companies ?? [],
   }));
 
   // Get current month and year

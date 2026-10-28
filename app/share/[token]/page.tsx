@@ -5,6 +5,7 @@ import { CustomerPasswordScreen } from "@/components/confirm/customer-password-s
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, Clock, ShieldX } from "lucide-react"
 import { prisma } from "@/lib/prisma"
+import { projectCompanyName, projectLogo } from "@/lib/client-company"
 import { PostStatus, ContentStatus } from "@prisma/client"
 import {
   verifyCustomerSessionToken,
@@ -56,6 +57,7 @@ export default async function CustomerSharePage({ params }: PageProps) {
                 avatar: true,
               },
             },
+            clientCompany: { select: { name: true, logo: true } },
           },
         },
       },
@@ -119,7 +121,7 @@ export default async function CustomerSharePage({ params }: PageProps) {
           <CustomerPasswordScreen
             token={token}
             projectName={exportLink.project?.name || "Content Review"}
-            clientName={exportLink.project?.client?.name || exportLink.project?.client?.company || undefined}
+            clientName={exportLink.project?.client?.name || projectCompanyName(exportLink.project) || undefined}
             month={exportLink.month}
             year={exportLink.year}
             isLocked={isLocked}
@@ -223,9 +225,9 @@ export default async function CustomerSharePage({ params }: PageProps) {
       project: {
         name: exportLink.project?.name || "Content Review",
         description: exportLink.project?.description || null,
-        clientName: exportLink.project?.client?.name || exportLink.project?.client?.company || "Valued Client",
-        clientCompany: exportLink.project?.client?.company || null,
-        clientAvatar: exportLink.project?.client?.avatar || null,
+        clientName: exportLink.project?.client?.name || projectCompanyName(exportLink.project) || "Valued Client",
+        clientCompany: projectCompanyName(exportLink.project) || null,
+        clientAvatar: projectLogo(exportLink.project) || null,
       },
       link: {
         status: exportLink.status,

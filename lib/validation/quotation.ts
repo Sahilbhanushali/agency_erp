@@ -33,6 +33,8 @@ export const lineItemSchema = z.object({
 export const quotationSchema = z.object({
   companyId: z.string().trim().min(1, "Choose the company issuing this quotation"),
   clientId: z.string().trim().min(1, "Choose a client"),
+  /** One of that client's companies; null bills the client by name. */
+  clientCompanyId: z.string().trim().max(64).nullable().optional().transform((v) => v || null),
   projectId: optionalId,
   title: z.string().trim().min(1, "Give this quotation a title").max(255),
   currency: z.string().trim().length(3, "Use a 3-letter currency code").default("INR"),
@@ -61,6 +63,7 @@ export type QuotationInput = z.infer<typeof quotationSchema>
 export const quotationFormSchema = z.object({
   companyId: z.string().min(1, "Choose the company issuing this quotation"),
   clientId: z.string().min(1, "Choose a client"),
+  clientCompanyId: z.string(),
   projectId: z.string(),
   title: z.string().trim().min(1, "Give this quotation a title").max(255),
   currency: z.string().trim().length(3, "Use a 3-letter code"),

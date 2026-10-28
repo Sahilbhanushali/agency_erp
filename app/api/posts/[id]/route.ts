@@ -581,7 +581,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const post = await prisma.post.findUnique({
         where: { id: postId },
         include: {
-          project: { include: { client: true } },
+          project: { include: { client: true, clientCompany: { select: { name: true, logo: true } } } },
           createdBy: true,
           assignedTo: true,
           assets: true,

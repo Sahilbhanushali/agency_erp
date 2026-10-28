@@ -13,6 +13,7 @@ import MediaPopup from "../mediaPopup";
 import { getMediaUrl } from "@/lib/utils";
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import toast from "react-hot-toast";
+import { projectLogo } from "@/lib/client-company";
 
 // Type definitions
 type Asset = {
@@ -269,7 +270,7 @@ export function AssetManager({ assets, hasManageAssetsPermission }: AssetManager
                   {/* Instagram-like header with client avatar and company */}
                   <div className="flex items-center px-3 pt-3 pb-2">
                     <img
-                      src={asset.post.project.client.avatar || '/placeholder-client-logo.png'}
+                      src={projectLogo(asset.post.project) || '/placeholder-client-logo.png'}
                       alt={`${asset.post.project.client.company} logo`}
                       className="w-8 h-8 rounded-full mr-2 object-cover"
                       onError={(e) => (e.currentTarget.src = '/placeholder-client-logo.png')}

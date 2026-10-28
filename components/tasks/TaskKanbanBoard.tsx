@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/select";
 import { getMediaUrl } from "@/lib/utils";
 import RejectDialog from "@/components/posts/rejectDialog";
+import { projectCompanyName, projectLogo } from "@/lib/client-company";
 
 export enum PostStatus {
   DRAFT = "DRAFT",
@@ -225,7 +226,7 @@ export default function TaskKanbanBoard({
         const q = search.toLowerCase();
         const matchesTitle = task.title?.toLowerCase().includes(q);
         const matchesClient = task.project?.client?.name?.toLowerCase().includes(q) ||
-          task.project?.client?.company?.toLowerCase().includes(q);
+          projectCompanyName(task.project)?.toLowerCase().includes(q);
         const matchesProject = task.project?.name?.toLowerCase().includes(q);
         const matchesAssignee = task.assignedTo?.name?.toLowerCase().includes(q) ||
           task.assignedUsers?.some((u) => u.name.toLowerCase().includes(q));
@@ -596,15 +597,15 @@ export default function TaskKanbanBoard({
                         {/* Client info & Dropdown action */}
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            {task.project?.client?.avatar ? (
+                            {projectLogo(task.project) ? (
                               <img
-                                src={task.project.client.avatar}
+                                src={projectLogo(task.project) ?? undefined}
                                 alt="Client avatar"
                                 className="size-4 rounded-full object-cover shrink-0"
                               />
                             ) : null}
                             <span className="text-[10px] font-semibold text-muted-foreground truncate">
-                              {task.project?.client?.company || task.project?.client?.name || "Client"}
+                              {projectCompanyName(task.project) || task.project?.client?.name || "Client"}
                             </span>
                           </div>
 

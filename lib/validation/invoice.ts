@@ -28,6 +28,8 @@ const optionalDate = z
 export const invoiceSchema = z.object({
   companyId: z.string().trim().min(1, "Choose the company issuing this invoice"),
   clientId: z.string().trim().min(1, "Choose a client"),
+  /** One of that client's companies; null bills the client by name. */
+  clientCompanyId: z.string().trim().max(64).nullable().optional().transform((v) => v || null),
   projectId: optionalId,
   title: z.string().trim().min(1, "Give this invoice a title").max(255),
   currency: z.string().trim().length(3, "Use a 3-letter currency code").default("INR"),
@@ -68,6 +70,7 @@ export const paymentSchema = z.object({
 export const invoiceFormSchema = z.object({
   companyId: z.string().min(1, "Choose the company issuing this invoice"),
   clientId: z.string().min(1, "Choose a client"),
+  clientCompanyId: z.string(),
   projectId: z.string(),
   title: z.string().trim().min(1, "Give this invoice a title").max(255),
   currency: z.string().trim().length(3, "Use a 3-letter code"),

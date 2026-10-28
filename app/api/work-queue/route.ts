@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { projectCompanyName, projectLogo } from '@/lib/client-company';
 import { hasPermission, requireCan } from '@/lib/api-auth';
 // Define the PostStatus enum to match the Prisma schema
 enum PostStatus {
@@ -147,6 +148,7 @@ export async function GET(request: Request) {
                 avatar: true,
               },
             },
+            clientCompany: { select: { name: true, logo: true } },
           },
         },
         createdBy: {
@@ -259,8 +261,8 @@ export async function GET(request: Request) {
           name: post.project?.name,
           client: {
             name: post.project?.client?.name ?? 'No Client',
-            company: post.project?.client?.company ?? 'No Company',
-            avatar: post.project?.client?.avatar ?? 'No Avatar',
+            company: projectCompanyName(post.project) ?? 'No Company',
+            avatar: projectLogo(post.project) ?? 'No Avatar',
           },
         },
         assets: post.assets || [],

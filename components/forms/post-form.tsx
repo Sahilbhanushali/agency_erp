@@ -17,6 +17,7 @@ import { ArrowLeft, Upload, X, AlertTriangle, CheckCircle, Calendar, Users, Sear
 import Link from "next/link";
 import toast from "react-hot-toast";
 import type { ValidationResult } from "@/lib/validation";
+import { projectCompanyName } from "@/lib/client-company";
 
 interface Project {
   id: string;
@@ -312,7 +313,8 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
             { value: "THREADS", label: "Threads", color: "bg-gray-100 text-gray-800" },
             { value: "GMB", label: "Google My Business", color: "bg-gray-100 text-gray-800" },
             { value: "YOUTUBE", label: "YouTube", color: "bg-red-100 text-red-800" },
-            { value: "PINTEREST", label: "Pinterest", color: "bg-red-100 text-red-800" }
+            { value: "PINTEREST", label: "Pinterest", color: "bg-red-100 text-red-800" },
+            { value: "WEBSITE", label: "Website", color: "bg-emerald-100 text-emerald-800" }
           ];
         setPlatforms(platformsData);
 
@@ -343,7 +345,8 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
           { value: "THREADS", label: "Threads", color: "bg-gray-100 text-gray-800" },
           { value: "GMB", label: "Google My Business", color: "bg-gray-100 text-gray-800" },
           { value: "YOUTUBE", label: "YouTube", color: "bg-red-100 text-red-800" },
-          { value: "PINTEREST", label: "Pinterest", color: "bg-red-100 text-red-800" }
+          { value: "PINTEREST", label: "Pinterest", color: "bg-red-100 text-red-800" },
+          { value: "WEBSITE", label: "Website", color: "bg-emerald-100 text-emerald-800" }
         ]);
         setFestivals([]);
       } finally {
@@ -398,6 +401,8 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
       Threads: "bg-gray-100 text-gray-800",
       Twitter: "bg-sky-100 text-sky-800",
       TikTok: "bg-gray-100 text-gray-800",
+      Website: "bg-emerald-100 text-emerald-800",
+      WEBSITE: "bg-emerald-100 text-emerald-800",
     };
     return colorMap[platform] || "bg-gray-100 text-gray-800";
   };
@@ -870,7 +875,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
             {selectedProject && (
               <p className="text-sm text-gray-600 mt-1">
                 <Users className="inline h-4 w-4 mr-1" />
-                {selectedProject.name} - {selectedProject.client?.company || "No Client"}
+                {selectedProject.name} - {projectCompanyName(selectedProject) || "No Client"}
               </p>
             )}
           </div>
@@ -947,7 +952,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                 options={projects.map((project) => ({
                   id: project.id,
                   label: project.name,
-                  subLabel: project.client?.company || project.client?.name || "Internal",
+                  subLabel: projectCompanyName(project) || project.client?.name || "Internal",
                 }))}
                 maxDisplay={100}
                 className={`transition-all duration-200 ${

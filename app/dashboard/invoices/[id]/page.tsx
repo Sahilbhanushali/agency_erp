@@ -46,7 +46,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           <InvoiceStatusBadge status={overdue ? "OVERDUE" : invoice.status} />
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          {invoice.title} · {invoice.client.company || invoice.client.name}
+          {invoice.title} · {invoice.clientCompany?.name || invoice.client.company || invoice.client.name}
           {invoice.quotation && (
             <>
               {" · from "}

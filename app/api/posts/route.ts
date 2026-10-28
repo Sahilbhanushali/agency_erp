@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate platform values
-    const validPlatforms: Platform[] = ['INSTAGRAM', 'FACEBOOK', 'TWITTER', 'LINKEDIN', 'YOUTUBE', 'IGTV', 'THREADS', 'GMB', 'PINTEREST'];
+    // The enum is the one list: a platform added to the schema is accepted here too.
+    const validPlatforms = Object.values(Platform);
     const invalidPlatforms = platforms.filter((p) => !validPlatforms.includes(p as Platform));
     if (invalidPlatforms.length > 0) {
       return NextResponse.json(
@@ -315,7 +316,7 @@ export async function POST(request: NextRequest) {
         },
       },
       include: {
-        project: { include: { client: true } },
+        project: { include: { client: true, clientCompany: { select: { name: true, logo: true } } } },
         createdBy: { select: { id: true, name: true, email: true, role: true } },
         assignedTo: { select: { id: true, name: true, email: true, role: true } },
         festival: { select: { id: true, name: true, description: true, date: true, primaryType: true } },
@@ -546,7 +547,7 @@ export async function GET(request: NextRequest) {
     const findOptions: any = {
       where: whereClause,
       include: {
-        project: { include: { client: true } },
+        project: { include: { client: true, clientCompany: { select: { name: true, logo: true } } } },
         createdBy: true,
         assignedTo: true,
         assets: true,

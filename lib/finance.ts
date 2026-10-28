@@ -105,6 +105,9 @@ export const quotationDetailSelect = {
   projectId: true,
   company: true,
   client: { select: { id: true, name: true, email: true, phone: true, company: true } },
+  clientCompany: {
+    select: { id: true, name: true, gstin: true, panNumber: true, address: true, city: true, state: true, postalCode: true, country: true },
+  },
   project: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
   invoice: { select: { id: true, number: true } },
@@ -212,6 +215,9 @@ export const invoiceDetailSelect = {
   quotationId: true,
   company: true,
   client: { select: { id: true, name: true, email: true, phone: true, company: true } },
+  clientCompany: {
+    select: { id: true, name: true, gstin: true, panNumber: true, address: true, city: true, state: true, postalCode: true, country: true },
+  },
   project: { select: { id: true, name: true } },
   quotation: { select: { id: true, number: true } },
   createdBy: { select: { id: true, name: true } },

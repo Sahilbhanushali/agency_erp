@@ -67,6 +67,19 @@ export interface QuotationLineItem {
   position: number
 }
 
+/** One of the client's companies, as billed on a document. Detail views carry the tax fields. */
+export interface BilledCompany {
+  id: string
+  name: string
+  gstin?: string | null
+  panNumber?: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  postalCode?: string | null
+  country?: string | null
+}
+
 /** What a list row renders. */
 export interface QuotationRow {
   id: string
@@ -80,6 +93,8 @@ export interface QuotationRow {
   shareToken: string | null
   company: { id: string; name: string }
   client: { id: string; name: string; company: string | null }
+  /** The client company billed, when one was chosen. */
+  clientCompany?: BilledCompany | null
   project: { id: string; name: string } | null
   invoice: { id: string; number: string } | null
 }
@@ -88,6 +103,7 @@ export interface QuotationRow {
 export interface QuotationDetail extends QuotationRow {
   companyId: string
   clientId: string
+  clientCompanyId: string | null
   projectId: string | null
   subtotal: Money
   discountPercent: Money
@@ -130,6 +146,8 @@ export interface InvoiceRow {
   shareToken: string | null
   company: { id: string; name: string }
   client: { id: string; name: string; company: string | null }
+  /** The client company billed, when one was chosen. */
+  clientCompany?: BilledCompany | null
   project: { id: string; name: string } | null
   quotation: { id: string; number: string } | null
   /** Summed server-side from the invoice's payments. */
@@ -140,6 +158,7 @@ export interface InvoiceRow {
 export interface InvoiceDetail extends Omit<InvoiceRow, "paid" | "balance"> {
   companyId: string
   clientId: string
+  clientCompanyId: string | null
   projectId: string | null
   quotationId: string | null
   subtotal: Money

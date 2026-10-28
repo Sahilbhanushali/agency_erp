@@ -38,7 +38,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         status: scheduledAt && post.status === "APPROVED" ? "SCHEDULED" : post.status,
       },
       include: {
-        project: { include: { client: true } },
+        project: { include: { client: true, clientCompany: { select: { name: true, logo: true } } } },
         createdBy: true,
       },
     })

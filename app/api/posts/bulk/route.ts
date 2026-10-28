@@ -3,12 +3,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Platform } from "@prisma/client";
 import * as XLSX from 'xlsx';
 import { requireCan } from "@/lib/api-auth";
 
 type PostType = 'PHOTO' | 'REEL' | 'STORY' | 'CAROUSEL' | 'CUSTOM' | 'UNKNOWN';
 type PostStatus = 'DRAFT' | 'POSTED';
-type Platform = 'INSTAGRAM' | 'FACEBOOK' | 'TWITTER' | 'LINKEDIN' | 'THREADS' | 'YOUTUBE' | 'IGTV' | 'GMB';
 
 function levenshteinDistance(a: string, b: string): number {
   const matrix: number[][] = [];
@@ -337,7 +337,7 @@ const designers = await prisma.user.findMany({
       const validPlatforms: Platform[] = [];
       if (platformsStr) {
         const platformList = platformsStr.split(',').map((p: string) => p.trim().toUpperCase());
-        const platformEnum = ['INSTAGRAM', 'FACEBOOK', 'TWITTER', 'LINKEDIN', 'THREADS', 'YOUTUBE', 'IGTV', 'GMB'] as const;
+        const platformEnum = Object.values(Platform);
         platformList.forEach((p: string) => {
           if (platformEnum.includes(p as Platform)) {
             validPlatforms.push(p as Platform);

@@ -21,6 +21,17 @@ export interface FinanceDocument {
   createdAt: Date | string
   company: Company | Record<string, unknown>
   client: { name: string; email?: string | null; phone?: string | null; company?: string | null }
+  /** The client company billed; its name, address and tax IDs replace the client's. */
+  clientCompany?: {
+    name: string
+    gstin?: string | null
+    panNumber?: string | null
+    address?: string | null
+    city?: string | null
+    state?: string | null
+    postalCode?: string | null
+    country?: string | null
+  } | null
   project?: { name: string } | null
   /** Decimals arrive straight from Prisma or as JSON strings — coerced below. */
   lineItems: {
@@ -69,6 +80,8 @@ export default function DocumentView({
   })
   const half = toNumber(document.taxPercent) / 2
   const money = (amount: number) => formatMoney(amount, currency)
+  const billed = document.clientCompany ?? null
+  const billedName = billed?.name || document.client.company || document.client.name
 
   return (
     <article className="mx-auto w-full max-w-[820px] bg-white p-6 text-[13px] leading-relaxed text-neutral-900 shadow-sm sm:p-10 print:max-w-none print:p-0 print:shadow-none">
@@ -144,10 +157,24 @@ export default function DocumentView({
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
             Billed to
           </p>
-          <p className="mt-2 font-medium">{document.client.company || document.client.name}</p>
-          {document.client.company && <p className="text-neutral-600">{document.client.name}</p>}
+          <p className="mt-2 font-medium">{billedName}</p>
+          {billedName !== document.client.name && <p className="text-neutral-600">{document.client.name}</p>}
+          {billed &&
+            [billed.address, [billed.city, billed.state].filter(Boolean).join(", "), [billed.postalCode, billed.country].filter(Boolean).join(" ")]
+              .filter((line) => line && line.trim())
+              .map((line) => (
+                <p key={line} className="text-neutral-600">
+                  {line}
+                </p>
+              ))}
           {document.client.email && <p className="text-neutral-600">{document.client.email}</p>}
           {document.client.phone && <p className="text-neutral-600">{document.client.phone}</p>}
+          {(billed?.gstin || billed?.panNumber) && (
+            <div className="mt-2 space-y-0.5 text-xs text-neutral-500">
+              {billed.gstin && <p>GSTIN: {billed.gstin}</p>}
+              {billed.panNumber && <p>PAN: {billed.panNumber}</p>}
+            </div>
+          )}
         </div>
         <div className="max-w-xs text-right">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">For</p>

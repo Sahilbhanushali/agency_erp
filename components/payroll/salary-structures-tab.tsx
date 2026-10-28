@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import useSWR from "swr";
+import { splitGross } from "@/lib/payroll/salary-basis";
 import { toast } from "react-hot-toast";
 import {
   Briefcase,
@@ -89,13 +90,25 @@ interface StructureTemplate {
   };
 }
 
-export function SalaryStructuresTab({
-  users = [],
-  onRefresh,
-}: {
-  users?: any[];
-  onRefresh?: () => void;
-}) {
+/** One row of GET /api/payroll/structures/assign: salary as the HR profile has it. */
+interface StaffSalary {
+  id: string;
+  name: string | null;
+  email: string;
+  avatar: string | null;
+  designation: string | null;
+  department: string | null;
+  currentSalary: number | null;
+  salaryFrequency: string | null;
+  /** Rupees per month derived from the profile, or null with `salaryProblem` saying why. */
+  monthlyGross: number | null;
+  salaryProblem: string | null;
+  bankName: string | null;
+  bankLast4: string | null;
+  structure: { monthlyGross: number; template: { id: string; name: string } | null } | null;
+}
+
+export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
   const [activeSubTab, setActiveSubTab] = useState<"roster" | "templates">("roster");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -105,6 +118,14 @@ export function SalaryStructuresTab({
     isLoading: isLoadingTemplates,
     mutate: mutateTemplates,
   } = useSWR<StructureTemplate[]>("/api/payroll/structures", fetcher);
+
+  // Salaries come from each employee's HR profile; /api/users doesn't carry them.
+  const {
+    data: users = [],
+    error: staffError,
+    isLoading: isLoadingStaff,
+    mutate: mutateStaff,
+  } = useSWR<StaffSalary[]>("/api/payroll/structures/assign", fetcher);
 
   // Template Create/Edit Modal
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
@@ -125,17 +146,13 @@ export function SalaryStructuresTab({
 
   // Assign Structure to User Modal
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any | null>(null);
   /**
    * Employees receiving the structure. A list, because a band or grade normally applies
-   * to several people and assigning it one at a time was the only option before.
-   * `selectedUser` is kept as "the one whose current salary seeded the amounts".
+   * to several people. Each keeps their own salary from the HR profile.
    */
   const [assignUserIds, setAssignUserIds] = useState<number[]>([]);
   const [assignSearch, setAssignSearch] = useState("");
   const [assignTemplateId, setAssignTemplateId] = useState<string>("");
-  const [annualCtcRupees, setAnnualCtcRupees] = useState<number>(600000);
-  const [monthlyGrossRupees, setMonthlyGrossRupees] = useState<number>(50000);
   const [effectiveFrom, setEffectiveFrom] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
@@ -252,27 +269,14 @@ export function SalaryStructuresTab({
     }
   };
 
-  const handleOpenAssignModal = (user: any) => {
-    setSelectedUser(user);
-    const defaultTmpl = templates.find((t) => t.isDefault) || templates[0];
-    setAssignTemplateId(defaultTmpl?.id || "");
-
-    const currentSalary = Number(user.currentSalary) || 50000;
-    setMonthlyGrossRupees(currentSalary);
-    setAnnualCtcRupees(currentSalary * 12);
+  const handleOpenAssignModal = (user: StaffSalary) => {
+    // The template they're on, else the default.
+    const tmpl = templates.find((t) => t.id === user.structure?.template?.id) || templates.find((t) => t.isDefault) || templates[0];
+    setAssignTemplateId(tmpl?.id || "");
+    setAssignUserIds(user.monthlyGross !== null ? [Number(user.id)] : []);
     setEffectiveFrom(new Date().toISOString().split("T")[0]);
     setRevisionReason("Structure alignment & revision");
     setIsAssignModalOpen(true);
-  };
-
-  const handleAnnualChange = (val: number) => {
-    setAnnualCtcRupees(val);
-    setMonthlyGrossRupees(Math.round(val / 12));
-  };
-
-  const handleMonthlyChange = (val: number) => {
-    setMonthlyGrossRupees(val);
-    setAnnualCtcRupees(val * 12);
   };
 
   const handleExecuteAssign = async (e: React.FormEvent) => {
@@ -291,8 +295,6 @@ export function SalaryStructuresTab({
           // The same structure can go to several people at once.
           userIds: assignUserIds,
           templateId: assignTemplateId,
-          monthlyGross: monthlyGrossRupees,
-          annualCtc: annualCtcRupees,
           effectiveFrom,
           revisionReason,
         }),
@@ -315,6 +317,7 @@ export function SalaryStructuresTab({
       setAssignUserIds([]);
       setAssignSearch("");
       mutateTemplates();
+      mutateStaff();
       if (onRefresh) onRefresh();
     } catch (err: any) {
       toast.error(err.message || "Assignment failed");
@@ -325,22 +328,19 @@ export function SalaryStructuresTab({
 
   const currentSelectedTemplate = templates.find((t) => t.id === assignTemplateId);
 
-  // Live computed breakdown for the assignment preview
-  const previewBasic = currentSelectedTemplate
-    ? Math.round(monthlyGrossRupees * (currentSelectedTemplate.basicPercentage / 100))
-    : Math.round(monthlyGrossRupees * 0.5);
-  const previewHra = currentSelectedTemplate
-    ? Math.round(monthlyGrossRupees * (currentSelectedTemplate.hraPercentage / 100))
-    : Math.round(monthlyGrossRupees * 0.25);
-  const previewSpecial = currentSelectedTemplate
-    ? Math.round(monthlyGrossRupees * (currentSelectedTemplate.specialPercentage / 100))
-    : Math.round(monthlyGrossRupees * 0.15);
-  const previewOther = Math.max(0, monthlyGrossRupees - (previewBasic + previewHra + previewSpecial));
-
-  const previewPf = currentSelectedTemplate?.pfApplicable ? Math.round(Math.min(previewBasic, 15000) * 0.12) : 0;
-  const previewEsi = currentSelectedTemplate?.esiApplicable && monthlyGrossRupees <= 21000 ? Math.round(monthlyGrossRupees * 0.0075) : 0;
-  const previewPt = currentSelectedTemplate?.professionalTax ? 200 : 0;
-  const previewNet = monthlyGrossRupees - (previewPf + previewEsi + previewPt);
+  // Each selected employee's split, from their own salary.
+  const previewRows = users
+    .filter((u) => assignUserIds.includes(Number(u.id)) && u.monthlyGross !== null)
+    .map((u) => {
+      const gross = u.monthlyGross as number;
+      const split = splitGross(Math.round(gross * 100), currentSelectedTemplate);
+      const basic = split.basicSalary / 100;
+      // Estimate only; the run applies the statutory rules exactly.
+      const pf = currentSelectedTemplate?.pfApplicable ? Math.round(Math.min(basic, 15000) * 0.12) : 0;
+      const esi = currentSelectedTemplate?.esiApplicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+      const pt = currentSelectedTemplate?.professionalTax ? 200 : 0;
+      return { u, gross, split, net: gross - pf - esi - pt };
+    });
 
   const filteredUsers = users.filter((u: any) => {
     if (!searchTerm) return true;
@@ -432,15 +432,28 @@ export function SalaryStructuresTab({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.length === 0 ? (
+                  {isLoadingStaff ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10 text-xs text-muted-foreground">
+                        Loading salaries…
+                      </TableCell>
+                    </TableRow>
+                  ) : staffError ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10 text-xs">
+                        <span className="text-destructive">Could not load salaries. </span>
+                        <Button variant="link" size="xs" onClick={() => mutateStaff()}>Try again</Button>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredUsers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-10 text-xs text-muted-foreground">
                         {searchTerm ? "No employees match your search criteria." : "No employee profiles found."}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsers.map((u: any) => {
-                      const monthlyGross = Number(u.currentSalary) || 0;
+                    filteredUsers.map((u) => {
+                      const monthlyGross = u.monthlyGross ?? 0;
                       const annualCtc = monthlyGross * 12;
 
                       return (
@@ -448,7 +461,7 @@ export function SalaryStructuresTab({
                           <TableCell>
                             <div className="flex items-center gap-2.5">
                               <Avatar className="size-7">
-                                <AvatarImage src={u.avatar} />
+                                <AvatarImage src={u.avatar ?? undefined} />
                                 <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
                                   {u.name?.charAt(0)}
                                 </AvatarFallback>
@@ -464,15 +477,24 @@ export function SalaryStructuresTab({
                             <span className="text-muted-foreground text-[10px] block">{u.department || "General"}</span>
                           </TableCell>
                           <TableCell className="text-right text-xs font-mono font-bold text-foreground">
-                            {monthlyGross > 0 ? formatInr(monthlyGross) : <span className="text-muted-foreground font-normal">Not Set</span>}
+                            {monthlyGross > 0 ? (
+                              formatInr(monthlyGross)
+                            ) : (
+                              <span className="text-amber-700 dark:text-amber-400 font-normal font-sans" title={u.salaryProblem ?? undefined}>
+                                Set on HR profile
+                              </span>
+                            )}
+                            {u.structure?.template && (
+                              <span className="block text-[10px] font-sans font-normal text-muted-foreground">{u.structure.template.name}</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-right text-xs font-mono font-bold text-emerald-600">
                             {annualCtc > 0 ? formatInr(annualCtc) : <span className="text-muted-foreground font-normal">Not Set</span>}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground font-mono">
-                            {u.bankAccountNumber ? (
+                            {u.bankLast4 ? (
                               <span className="text-[11px] text-foreground">
-                                ••••{u.bankAccountNumber.slice(-4)} ({u.bankName || "Bank"})
+                                ••••{u.bankLast4} ({u.bankName || "Bank"})
                               </span>
                             ) : (
                               <Badge variant="destructive" className="text-[9px] py-0">Missing A/C</Badge>
@@ -483,6 +505,8 @@ export function SalaryStructuresTab({
                               variant="outline"
                               size="xs"
                               onClick={() => handleOpenAssignModal(u)}
+                              disabled={u.monthlyGross === null}
+                              title={u.salaryProblem ?? undefined}
                               className="gap-1.5 text-xs text-primary font-medium hover:bg-primary/5"
                             >
                               <UserCheck className="size-3.5" />
@@ -594,12 +618,9 @@ export function SalaryStructuresTab({
                         variant="ghost"
                         size="xs"
                         onClick={() => {
-                          const firstUser = users[0];
-                          if (firstUser) {
-                            setSelectedUser(firstUser);
-                            setAssignTemplateId(t.id);
-                            setIsAssignModalOpen(true);
-                          }
+                          setAssignUserIds([]);
+                          setAssignTemplateId(t.id);
+                          setIsAssignModalOpen(true);
                         }}
                         className="text-xs text-primary font-medium p-0 h-auto hover:underline"
                       >
@@ -823,14 +844,14 @@ export function SalaryStructuresTab({
       {/* ================= MODAL: ASSIGN STRUCTURE TO EMPLOYEE ================= */}
       <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
         <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[92vh] overflow-y-auto">
-          <form onSubmit={handleExecuteAssign}>
+          <form onSubmit={handleExecuteAssign} className="min-w-0">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base">
                 <UserCheck className="size-4 text-primary" />
                 <span>Assign & Revise Employee Salary Structure</span>
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Select an employee and structure template to automatically compute CTC components and store the effective-dated revision.
+                Pick employees and a template. Each person&apos;s components are worked out from the salary on their HR profile.
               </DialogDescription>
             </DialogHeader>
 
@@ -873,31 +894,20 @@ export function SalaryStructuresTab({
                               .toLowerCase()
                               .includes(assignSearch.trim().toLowerCase()),
                       )
-                      .map((u: any) => {
+                      .map((u) => {
                         const checked = assignUserIds.includes(Number(u.id));
+                        const noSalary = u.monthlyGross === null;
                         return (
                           <label
                             key={u.id}
-                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted/60"
+                            className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs ${noSalary ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:bg-muted/60"}`}
                           >
                             <Checkbox
                               checked={checked}
+                              disabled={noSalary}
                               onCheckedChange={(value) => {
                                 const id = Number(u.id);
-                                if (value) {
-                                  setAssignUserIds((prev) => [...prev, id]);
-                                  // The first person picked seeds the amounts from their
-                                  // current salary; after that the figures are the
-                                  // structure's, shared by everyone selected.
-                                  if (assignUserIds.length === 0) {
-                                    setSelectedUser(u);
-                                    const currentSalary = Number(u.currentSalary) || 50000;
-                                    setMonthlyGrossRupees(currentSalary);
-                                    setAnnualCtcRupees(currentSalary * 12);
-                                  }
-                                } else {
-                                  setAssignUserIds((prev) => prev.filter((x) => x !== id));
-                                }
+                                setAssignUserIds((prev) => (value ? [...prev, id] : prev.filter((x) => x !== id)));
                               }}
                               aria-label={`Assign to ${u.name ?? u.email}`}
                             />
@@ -907,25 +917,26 @@ export function SalaryStructuresTab({
                                 ({u.designation || u.department || u.email})
                               </span>
                             </span>
+                            <span className={`shrink-0 font-mono ${noSalary ? "text-amber-700 dark:text-amber-400 font-sans" : "text-foreground"}`}>
+                              {noSalary ? (u.salaryProblem ?? "No salary") : `${formatInr(u.monthlyGross as number)}/mo`}
+                            </span>
                           </label>
                         );
                       })
                   )}
                 </div>
 
-                {assignUserIds.length > 1 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    All {assignUserIds.length} employees get the same components and the same
-                    effective date. Each still gets their own versioned revision.
-                  </p>
-                )}
+                <p className="text-[11px] text-muted-foreground">
+                  Each employee&apos;s components are split from the salary on their HR profile.
+                  To change a salary, edit it there; greyed-out employees have none set yet.
+                </p>
               </div>
 
               {/* Structure Template Selector */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Salary Structure Template *</Label>
                 <Select value={assignTemplateId} onValueChange={setAssignTemplateId}>
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-8 text-xs w-full min-w-0 [&>span]:truncate">
                     <SelectValue placeholder="Select salary structure template" />
                   </SelectTrigger>
                   <SelectContent>
@@ -938,39 +949,8 @@ export function SalaryStructuresTab({
                 </Select>
               </div>
 
-              {/* Compensation Input: CTC vs Monthly Gross */}
-              <div className="grid grid-cols-2 gap-3.5 p-3.5 rounded-xl border border-border bg-muted/20">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Annual Cost-to-Company (CTC ₹)</Label>
-                  <Input
-                    type="number"
-                    min="1000"
-                    step="1000"
-                    value={annualCtcRupees}
-                    onChange={(e) => handleAnnualChange(Number(e.target.value))}
-                    className="h-8 text-xs font-mono font-bold"
-                    required
-                  />
-                  <span className="text-[10px] text-muted-foreground">Annualized compensation</span>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Monthly Gross (₹)</Label>
-                  <Input
-                    type="number"
-                    min="100"
-                    step="100"
-                    value={monthlyGrossRupees}
-                    onChange={(e) => handleMonthlyChange(Number(e.target.value))}
-                    className="h-8 text-xs font-mono font-bold text-emerald-600"
-                    required
-                  />
-                  <span className="text-[10px] text-muted-foreground">Base gross per pay cycle</span>
-                </div>
-              </div>
-
               {/* Effective Date & Reason */}
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Effective From Date</Label>
                   <Input
@@ -993,56 +973,48 @@ export function SalaryStructuresTab({
                 </div>
               </div>
 
-              {/* Live Computed Component Split Preview */}
-              <div className="p-3.5 rounded-xl border border-border bg-card space-y-2.5">
-                <div className="flex items-center justify-between pb-1 border-b border-border/60">
+              {/* Each selected employee's split, from their own salary */}
+              <div className="rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border/60 px-3.5 py-2">
                   <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
-                    Live Component Breakdown Preview
+                    Breakdown preview
                   </span>
-                  <span className="text-[10px] font-mono font-semibold text-primary">
-                    Gross: {formatInr(monthlyGrossRupees)}/mo
-                  </span>
+                  <span className="text-[10px] text-muted-foreground">Net is an estimate</span>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  <div className="p-2 rounded-lg bg-muted/40">
-                    <span className="text-[10px] text-muted-foreground block">Basic Salary</span>
-                    <span className="font-mono font-bold text-foreground">{formatInr(previewBasic)}</span>
+                {previewRows.length === 0 ? (
+                  <p className="px-3.5 py-5 text-center text-xs text-muted-foreground">
+                    Select employees above to see how {currentSelectedTemplate?.name ?? "the template"} splits their salary.
+                  </p>
+                ) : (
+                  <div className="max-h-56 overflow-auto">
+                    <table className="w-full text-[11px]">
+                      <thead className="sticky top-0 bg-card text-muted-foreground">
+                        <tr className="text-left">
+                          <th className="px-3 py-1.5 font-medium">Employee</th>
+                          <th className="px-2 py-1.5 font-medium text-right">Gross</th>
+                          <th className="px-2 py-1.5 font-medium text-right">Basic</th>
+                          <th className="px-2 py-1.5 font-medium text-right">HRA</th>
+                          <th className="px-2 py-1.5 font-medium text-right hidden sm:table-cell">Special</th>
+                          <th className="px-2 py-1.5 font-medium text-right hidden sm:table-cell">Other</th>
+                          <th className="px-3 py-1.5 font-medium text-right">Est. net</th>
+                        </tr>
+                      </thead>
+                      <tbody className="font-mono">
+                        {previewRows.map(({ u, gross, split, net }) => (
+                          <tr key={u.id} className="border-t border-border/40">
+                            <td className="px-3 py-1.5 font-sans truncate max-w-[9rem]" title={u.name ?? u.email}>{u.name ?? u.email}</td>
+                            <td className="px-2 py-1.5 text-right font-semibold">{formatInr(gross)}</td>
+                            <td className="px-2 py-1.5 text-right">{formatInr(split.basicSalary, true)}</td>
+                            <td className="px-2 py-1.5 text-right">{formatInr(split.hra, true)}</td>
+                            <td className="px-2 py-1.5 text-right hidden sm:table-cell">{formatInr(split.specialAllowance, true)}</td>
+                            <td className="px-2 py-1.5 text-right hidden sm:table-cell">{formatInr(split.otherAllowances, true)}</td>
+                            <td className="px-3 py-1.5 text-right font-semibold text-emerald-700 dark:text-emerald-400">{formatInr(net)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="p-2 rounded-lg bg-muted/40">
-                    <span className="text-[10px] text-muted-foreground block">HRA</span>
-                    <span className="font-mono font-bold text-foreground">{formatInr(previewHra)}</span>
-                  </div>
-                  <div className="p-2 rounded-lg bg-muted/40">
-                    <span className="text-[10px] text-muted-foreground block">Special Allowance</span>
-                    <span className="font-mono font-bold text-foreground">{formatInr(previewSpecial)}</span>
-                  </div>
-                  <div className="p-2 rounded-lg bg-muted/40">
-                    <span className="text-[10px] text-muted-foreground block">Other Allowance</span>
-                    <span className="font-mono font-bold text-foreground">{formatInr(previewOther)}</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/40 text-[11px]">
-                  <div>
-                    <span className="text-muted-foreground block">PF (Employee)</span>
-                    <span className="font-mono font-medium text-red-500">
-                      {previewPf > 0 ? `- ${formatInr(previewPf)}` : "Nil"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block">ESI / PT</span>
-                    <span className="font-mono font-medium text-red-500">
-                      - {formatInr(previewEsi + previewPt)}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-muted-foreground block">Est. Net Take-Home</span>
-                    <span className="font-mono font-bold text-emerald-600 text-xs">
-                      {formatInr(previewNet)}
-                    </span>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -1050,7 +1022,7 @@ export function SalaryStructuresTab({
               <Button type="button" variant="outline" size="sm" onClick={() => setIsAssignModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" size="sm" disabled={isAssigning} className="font-semibold">
+              <Button type="submit" size="sm" disabled={isAssigning || assignUserIds.length === 0} className="font-semibold">
                 {isAssigning ? "Assigning..." : "Assign & Save Structure"}
               </Button>
             </DialogFooter>

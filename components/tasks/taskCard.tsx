@@ -38,6 +38,7 @@ import { useRouter } from "next/navigation";
 import { getMediaUrl, getGoogleDriveEmbedUrl } from "@/lib/utils";
 import AssetUpload from "./assetUpload";
 import MediaPopup from "../mediaPopup";
+import { projectCompanyName, projectLogo } from "@/lib/client-company";
 
 enum PostStatus {
   DRAFT = "DRAFT",
@@ -354,13 +355,13 @@ export default function TaskCard({
         {/* Instagram-like header with client.company and client avatar */}
         <div className="flex items-center px-3 pt-3 pb-2">
           <img
-            src={task.project?.client?.avatar || "/placeholder-client-logo.png"}
-            alt={`${task.project?.client?.company || task.project?.client?.name} logo`}
+            src={projectLogo(task.project) || "/placeholder-client-logo.png"}
+            alt={`${projectCompanyName(task.project) || task.project?.client?.name} logo`}
             className="w-8 h-8 rounded-full mr-2 object-cover"
             onError={(e) => (e.currentTarget.src = "/placeholder-client-logo.png")}
           />
           <span className="font-semibold text-sm text-foreground truncate">
-            {task.project?.client?.company || task.project?.client?.name || "Unknown Client"}
+            {projectCompanyName(task.project) || task.project?.client?.name || "Unknown Client"}
           </span>
         </div>
 

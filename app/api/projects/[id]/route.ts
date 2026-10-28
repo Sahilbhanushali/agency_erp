@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { resolveClientCompanyId } from "@/lib/client-company-server"
 import { logAudit } from "@/lib/audit"
 import fs from "fs/promises"
 import path from "path"
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       where: { id },
       include: {
         client: true,
+        clientCompany: { select: { id: true, name: true, logo: true } },
         manager: true,
         posts: {
           include: {
@@ -162,6 +164,17 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    // Not sent: keep the company, unless the project moved to another client.
+    let clientCompanyId: string | null | undefined =
+      clientId === oldProject.clientId ? undefined : null
+    if (formData.has("clientCompanyId")) {
+      const resolved = await resolveClientCompanyId(clientId, formData.get("clientCompanyId"))
+      if (resolved === false) {
+        return NextResponse.json({ error: "That company doesn't belong to the selected client" }, { status: 422 })
+      }
+      clientCompanyId = resolved
+    }
+
     // Validate postTypes
     if (postTypes) {
       const postTypeUtility = await prisma.utility.findFirst({
@@ -241,6 +254,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
         name,
         description,
         clientId,
+        clientCompanyId,
         managerId: managerId || null,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,

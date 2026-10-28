@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { resolveClientCompanyId } from "@/lib/client-company-server"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { computeTotals, paymentSummary, toNumber } from "@/lib/finance"
@@ -25,6 +26,7 @@ const listSelect = {
   shareToken: true,
   company: { select: { id: true, name: true } },
   client: { select: { id: true, name: true, company: true } },
+  clientCompany: { select: { id: true, name: true } },
   project: { select: { id: true, name: true } },
   quotation: { select: { id: true, number: true } },
   payments: { select: { amount: true } },
@@ -133,6 +135,13 @@ export async function POST(request: NextRequest) {
         { status: 422 },
       )
     }
+    const clientCompanyId = await resolveClientCompanyId(input.clientId, input.clientCompanyId)
+    if (clientCompanyId === false) {
+      return NextResponse.json(
+        { error: "Invalid input", details: { clientCompanyId: ["That company doesn't belong to the selected client"] } },
+        { status: 422 },
+      )
+    }
     if (input.issueDate && input.dueDate && input.dueDate < input.issueDate) {
       return NextResponse.json(
         { error: "Invalid input", details: { dueDate: ["Due date cannot be before the issue date"] } },
@@ -147,6 +156,7 @@ export async function POST(request: NextRequest) {
         data: {
           companyId: input.companyId,
           clientId: input.clientId,
+          clientCompanyId,
           projectId: input.projectId ?? null,
           createdById: auth.userId,
           number: await nextDocumentNumber("invoice", input.companyId),
