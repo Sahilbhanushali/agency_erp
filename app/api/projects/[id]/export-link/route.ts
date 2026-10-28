@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { projectCompanyName } from "@/lib/client-company"
 import {
   generateSecureToken,
   generateSecurePassword,
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      include: { client: true },
+      include: { client: true, clientCompany: { select: { name: true, logo: true } } },
     })
 
     if (!project) {
@@ -65,8 +66,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         link: null,
         clientEmail: project.client?.email || null,
         clientPhone: project.client?.phone || null,
-        clientName: project.client?.name || project.client?.company || null,
-        companyName: project.client?.company || null,
+        clientName: project.client?.name || projectCompanyName(project) || null,
+        companyName: projectCompanyName(project) || null,
       })
     }
 
@@ -94,13 +95,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         isPasswordExpired,
         clientEmail: project.client?.email || null,
         clientPhone: project.client?.phone || null,
-        clientName: project.client?.name || project.client?.company || null,
-        companyName: project.client?.company || null,
+        clientName: project.client?.name || projectCompanyName(project) || null,
+        companyName: projectCompanyName(project) || null,
       },
       clientEmail: project.client?.email || null,
       clientPhone: project.client?.phone || null,
-      clientName: project.client?.name || project.client?.company || null,
-      companyName: project.client?.company || null,
+      clientName: project.client?.name || projectCompanyName(project) || null,
+      companyName: projectCompanyName(project) || null,
     })
   } catch (error: any) {
     console.error("[Export Link GET] Error:", error)
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      include: { client: true },
+      include: { client: true, clientCompany: { select: { name: true, logo: true } } },
     })
 
     if (!project) {
@@ -237,13 +238,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       const emailResult = await sendConfirmationLinkEmail({
         clientEmail: project.client.email,
-        clientName: project.client.name || project.client.company || "Valued Client",
+        clientName: project.client.name || projectCompanyName(project) || "Valued Client",
         projectName: project.name,
         confirmationUrl,
         password: passwordToSend,
         linkExpiresAt: targetLink.expiresAt,
         passwordExpiresAt: targetLink.passwordExpiresAt || targetLink.expiresAt,
-        companyName: project.client.company || null,
+        companyName: projectCompanyName(project) || null,
         month: targetLink.month,
         year: targetLink.year,
         userId: session.user.id ? parseInt(session.user.id, 10) : null,
@@ -285,7 +286,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           isPasswordExpired: false,
           clientEmail: project.client.email,
           clientPhone: project.client?.phone || null,
-          clientName: project.client.name || project.client.company || null,
+          clientName: project.client.name || projectCompanyName(project) || null,
         },
       })
     }
@@ -340,13 +341,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (sendEmail && project.client?.email) {
         emailResult = await sendConfirmationLinkEmail({
           clientEmail: project.client.email,
-          clientName: project.client.name || project.client.company || "Valued Client",
+          clientName: project.client.name || projectCompanyName(project) || "Valued Client",
           projectName: project.name,
           confirmationUrl,
           password: newPassword,
           linkExpiresAt: updated.expiresAt,
           passwordExpiresAt: updated.passwordExpiresAt,
-          companyName: project.client.company || null,
+          companyName: projectCompanyName(project) || null,
           month: updated.month,
           year: updated.year,
           userId: session.user.id ? parseInt(session.user.id, 10) : null,
@@ -378,8 +379,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           isPasswordExpired: false,
           clientEmail: project.client?.email || null,
           clientPhone: project.client?.phone || null,
-          clientName: project.client?.name || project.client?.company || null,
-          companyName: project.client?.company || null,
+          clientName: project.client?.name || projectCompanyName(project) || null,
+          companyName: projectCompanyName(project) || null,
         },
         passwordRegenerated: true,
         emailResult,
@@ -441,13 +442,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         if (sendEmail && plaintextPassword && project.client?.email) {
           emailResult = await sendConfirmationLinkEmail({
             clientEmail: project.client.email,
-            clientName: project.client.name || project.client.company || "Valued Client",
+            clientName: project.client.name || projectCompanyName(project) || "Valued Client",
             projectName: project.name,
             confirmationUrl,
             password: plaintextPassword,
             linkExpiresAt: updatedLink.expiresAt,
             passwordExpiresAt: updatedLink.passwordExpiresAt,
-            companyName: project.client.company || null,
+            companyName: projectCompanyName(project) || null,
             month: updatedLink.month,
             year: updatedLink.year,
             userId: session.user.id ? parseInt(session.user.id, 10) : null,
@@ -474,8 +475,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             isPasswordExpired,
             clientEmail: project.client?.email || null,
             clientPhone: project.client?.phone || null,
-            clientName: project.client?.name || project.client?.company || null,
-            companyName: project.client?.company || null,
+            clientName: project.client?.name || projectCompanyName(project) || null,
+            companyName: projectCompanyName(project) || null,
           },
           reused: true,
           emailResult,
@@ -542,13 +543,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (sendEmail && project.client?.email) {
       emailResult = await sendConfirmationLinkEmail({
         clientEmail: project.client.email,
-        clientName: project.client.name || project.client.company || "Valued Client",
+        clientName: project.client.name || projectCompanyName(project) || "Valued Client",
         projectName: project.name,
         confirmationUrl,
         password,
         linkExpiresAt: newLink.expiresAt,
         passwordExpiresAt: newLink.passwordExpiresAt,
-        companyName: project.client.company || null,
+        companyName: projectCompanyName(project) || null,
         month: newLink.month,
         year: newLink.year,
         userId: session.user.id ? parseInt(session.user.id, 10) : null,
@@ -588,8 +589,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           isPasswordExpired: false,
           clientEmail: project.client?.email || null,
           clientPhone: project.client?.phone || null,
-          clientName: project.client?.name || project.client?.company || null,
-          companyName: project.client?.company || null,
+          clientName: project.client?.name || projectCompanyName(project) || null,
+          companyName: projectCompanyName(project) || null,
         },
         reused: false,
         emailResult,

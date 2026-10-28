@@ -18,6 +18,7 @@ export async function GET() {
             project: {
               include: {
                 client: true,
+                clientCompany: { select: { name: true, logo: true } },
               },
             },
           },

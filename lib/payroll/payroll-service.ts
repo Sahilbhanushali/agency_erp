@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { monthlyGrossFromProfile, profileSalaryFor, profileSalaryProblem, splitGross } from "@/lib/payroll/salary-basis";
 import { PayrollRunStatus, ExpenseCategory, ExpenseStatus, PaymentMethod } from "@prisma/client";
 import {
   PayrollSettingsData,
@@ -211,6 +212,76 @@ export class PayrollService {
   /**
    * Sets or updates salary structure for an employee while preserving full version history.
    */
+  /**
+   * Gives an employee a structure built from the salary on their HR profile: the template
+   * named, else the one they are already on, else the default template. The salary is
+   * never asked for again here — the profile is where it is set.
+   *
+   * `onlyIfChanged` (used when the profile is saved) skips writing a new version when
+   * the gross and template are what the active structure already has.
+   */
+  static async assignStructureFromProfile({
+    userId,
+    templateId,
+    effectiveFrom = new Date(),
+    revisionReason,
+    actorUserId,
+    onlyIfChanged = false,
+  }: {
+    userId: number;
+    templateId?: string | null;
+    effectiveFrom?: Date;
+    revisionReason?: string;
+    actorUserId?: number;
+    onlyIfChanged?: boolean;
+  }) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, currentSalary: true, salaryFrequency: true },
+    });
+    if (!user) throw new Error("Employee not found");
+
+    const grossRupees = monthlyGrossFromProfile(user.currentSalary, user.salaryFrequency);
+    if (grossRupees === null) {
+      throw new Error(`${user.name ?? "Employee"}: ${profileSalaryProblem(user.currentSalary, user.salaryFrequency)}`);
+    }
+    const grossPaise = Math.round(grossRupees * 100);
+
+    const active = await this.getActiveSalaryStructure(userId);
+    const wantedId = templateId || active?.templateId || null;
+    const template =
+      (wantedId ? await prisma.salaryStructureTemplate.findFirst({ where: { id: wantedId, isActive: true } }) : null) ??
+      (templateId
+        ? null
+        : await prisma.salaryStructureTemplate.findFirst({
+            where: { isActive: true },
+            orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+          }));
+    if (templateId && !template) throw new Error("Selected salary structure template not found");
+
+    if (onlyIfChanged && active && active.monthlyGross === grossPaise && (active.templateId ?? null) === (template?.id ?? null)) {
+      return active;
+    }
+
+    return this.upsertSalaryStructure({
+      userId,
+      templateId: template?.id,
+      ...splitGross(grossPaise, template),
+      // A template carries the statutory switches; without one, keep what they had.
+      pfDeduction: template ? template.pfApplicable : (active?.pfDeduction ?? true),
+      esiDeduction: template ? template.esiApplicable : (active?.esiDeduction ?? false),
+      professionalTax: template ? template.professionalTax : (active?.professionalTax ?? true),
+      // Not part of the salary: carried over from the structure they had.
+      fixedBonus: active?.fixedBonus ?? 0,
+      variablePay: active?.variablePay ?? 0,
+      tdsMonthly: active?.tdsMonthly ?? 0,
+      effectiveFrom,
+      revisionReason: revisionReason || (template ? `Assigned structure: ${template.name}` : "Salary structure from HR profile"),
+      actorUserId,
+      syncProfile: false,
+    });
+  }
+
   static async upsertSalaryStructure({
     userId,
     basicSalary,
@@ -227,6 +298,7 @@ export class PayrollService {
     revisionReason,
     actorUserId,
     templateId,
+    syncProfile = true,
   }: {
     userId: number;
     basicSalary: number;
@@ -243,6 +315,8 @@ export class PayrollService {
     revisionReason?: string;
     actorUserId?: number;
     templateId?: string;
+    /** False when the amounts came from the profile: writing them back would only add rounding. */
+    syncProfile?: boolean;
   }) {
     const monthlyGross = basicSalary + hra + specialAllowance + otherAllowances;
     const ctcMonthly = monthlyGross + fixedBonus;
@@ -297,13 +371,16 @@ export class PayrollService {
       });
     }
 
-    // Update currentSalary on User model for quick reference
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        currentSalary: monthlyGross / 100, // stored as major units on User
-      },
-    });
+    // Keep the HR profile's salary in step, in the unit the profile uses. It used to be
+    // written as a monthly figure always, so a YEARLY profile of 6,00,000 became 50,000
+    // "yearly" after the first structure was saved.
+    const profile = syncProfile
+      ? await prisma.user.findUnique({ where: { id: userId }, select: { salaryFrequency: true } })
+      : null;
+    const profileSalary = profile ? profileSalaryFor(monthlyGross, profile.salaryFrequency) : null;
+    if (profileSalary !== null) {
+      await prisma.user.update({ where: { id: userId }, data: { currentSalary: profileSalary } });
+    }
 
     if (actorUserId) {
       await prisma.payrollAuditLog.create({

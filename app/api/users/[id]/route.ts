@@ -198,7 +198,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     // Check existing files to clean up if replaced
     const existingUser = await prisma.user.findUnique({
       where: { id: targetUserId },
-      select: { avatar: true, offerLetterUrl: true },
+      select: { avatar: true, offerLetterUrl: true, currentSalary: true, salaryFrequency: true },
     });
 
     if (present("avatar") && existingUser?.avatar && existingUser.avatar !== body.avatar) {
@@ -214,24 +214,26 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       include: { role: true, documents: true },
     });
 
-    // Synchronize with SalaryStructure so compensation is never desynchronized
-    if (currentSalary !== undefined && currentSalary !== null && currentSalary !== "") {
+    /**
+     * The profile is where salary is set; the structure follows it. Re-split with the
+     * template the employee is on (or the default) — this used to write a fixed 50/25/25
+     * split on every save, throwing away their template, and read a yearly salary as
+     * monthly. Only when the salary or its frequency actually changed.
+     */
+    let salaryNotice: string | null = null;
+    const salaryChanged =
+      (present("currentSalary") && String(data.currentSalary ?? "") !== String(existingUser?.currentSalary ?? "")) ||
+      (present("salaryFrequency") && data.salaryFrequency !== (existingUser?.salaryFrequency ?? "MONTHLY"));
+    if (salaryChanged && user.currentSalary != null) {
       try {
-        const monthlyGrossPaise = Math.round(Number(currentSalary) * 100);
-        const basicPaise = Math.round(monthlyGrossPaise * 0.50);
-        const hraPaise = Math.round(monthlyGrossPaise * 0.25);
-        const specialPaise = Math.round(monthlyGrossPaise * 0.25);
-
-        await PayrollService.upsertSalaryStructure({
+        await PayrollService.assignStructureFromProfile({
           userId: targetUserId,
-          basicSalary: basicPaise,
-          hra: hraPaise,
-          specialAllowance: specialPaise,
           actorUserId: parseInt(session.user.id, 10),
-          revisionReason: "User profile compensation update",
+          revisionReason: "Salary changed on HR profile",
+          onlyIfChanged: true,
         });
       } catch (err: any) {
-        console.warn("SalaryStructure sync notice:", err.message);
+        salaryNotice = `Profile saved, but the salary structure was not updated: ${err.message}`;
       }
     }
 
@@ -248,6 +250,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     return NextResponse.json({
       message: "User updated successfully",
       user,
+      salaryNotice,
     });
   } catch (error: any) {
     console.error("Error updating user:", error);

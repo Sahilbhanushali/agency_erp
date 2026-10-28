@@ -22,6 +22,7 @@ import { getMediaUrl } from "@/lib/utils";
 import MediaPopup from "@/components/mediaPopup";
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import { ProjectTimingBadge } from "@/components/posts/postTimingBadge";
+import { projectCompanyName } from "@/lib/client-company";
 
 interface PostTypeCount {
   [key: string]: number;
@@ -262,18 +263,18 @@ export default function ProjectsPage() {
   };
 
   const companyNames = Array.from(
-    new Set(projects.map((project) => project.client?.company).filter((company): company is string => !!company))
+    new Set(projects.map((project) => projectCompanyName(project)).filter((company): company is string => !!company))
   );
 
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
       (project.name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-      (project.client?.company?.toLowerCase() || "").includes(searchQuery.toLowerCase());
+      (projectCompanyName(project)?.toLowerCase() || "").includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === "All" ||
       (statusFilter === "Active" && project.isActive) ||
       (statusFilter === "Inactive" && !project.isActive);
-    const matchesClient = clientFilter === "All" || project.client?.company === clientFilter;
+    const matchesClient = clientFilter === "All" || projectCompanyName(project) === clientFilter;
     return matchesSearch && matchesStatus && matchesClient;
   });
 
@@ -602,8 +603,8 @@ export default function ProjectsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell title={project.client?.company || "Unknown Company"}>
-                      {truncateWords(project.client?.company, 3)}
+                    <TableCell title={projectCompanyName(project) || "Unknown Company"}>
+                      {truncateWords(projectCompanyName(project), 3)}
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="outline" title="Target Posts">

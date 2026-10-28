@@ -31,6 +31,7 @@ import {
   Activity,
   ArrowLeft,
   Layers,
+  Briefcase,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ interface Client {
   id: string;
   name: string;
   company: string;
+  companies?: { id: string; name: string }[];
 }
 
 interface Manager {
@@ -86,6 +88,7 @@ interface Project {
   name: string;
   description: string | null;
   clientId: string;
+  clientCompanyId?: string | null;
   managerId: number | null;
   startDate: Date;
   endDate: Date | null;
@@ -312,6 +315,7 @@ export default function ProjectForm({
     name: project?.name || "",
     description: project?.description || "",
     clientId: project?.clientId || "",
+    clientCompanyId: project?.clientCompanyId || "",
     managerId: getInitialManagerId(),
     designerHeadId: getInitialDesignerHeadId(),
     assignedTeamIds: getInitialAssignedTeamIds(),
@@ -639,6 +643,7 @@ export default function ProjectForm({
         bodyFormData.append("name", formData.name);
         bodyFormData.append("description", formData.description);
         bodyFormData.append("clientId", formData.clientId);
+        bodyFormData.append("clientCompanyId", formData.clientCompanyId);
         bodyFormData.append("managerId", formData.managerId || "");
         bodyFormData.append("designerHeadId", formData.designerHeadId);
         bodyFormData.append("assignedTeamIds", JSON.stringify(formData.assignedTeamIds));
@@ -701,6 +706,11 @@ export default function ProjectForm({
   const clientOptions = clients.map((client) => ({
     id: client.id,
     label: client.name,
+  }));
+
+  const companyOptions = (clients.find((c) => c.id === formData.clientId)?.companies ?? []).map((c) => ({
+    id: c.id,
+    label: c.name,
   }));
 
   const managerOptions = managers.map((manager) => ({
@@ -853,15 +863,41 @@ export default function ProjectForm({
               <span>Client & Team Assignment</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Client <span className="text-destructive">*</span></Label>
                 <CustomSelect
                   value={formData.clientId}
-                  onValueChange={(value) => setFormData({ ...formData, clientId: value })}
+                  onValueChange={(value) => {
+                    // A client with one company has no choice to make.
+                    const companies = clients.find((c) => c.id === value)?.companies ?? [];
+                    setFormData({
+                      ...formData,
+                      clientId: value,
+                      clientCompanyId: companies.length === 1 ? companies[0].id : "",
+                    });
+                  }}
                   placeholder="Select client"
                   icon={Building2}
                   options={clientOptions}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Company</Label>
+                <CustomSelect
+                  value={formData.clientCompanyId}
+                  onValueChange={(value) => setFormData({ ...formData, clientCompanyId: value })}
+                  placeholder={
+                    !formData.clientId
+                      ? "Select a client first"
+                      : companyOptions.length
+                        ? "Select company"
+                        : "No companies — add one on the client page"
+                  }
+                  icon={Briefcase}
+                  options={companyOptions}
+                  disabled={!formData.clientId || companyOptions.length === 0}
                 />
               </div>
 

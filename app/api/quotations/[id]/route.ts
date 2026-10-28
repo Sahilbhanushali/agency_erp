@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { resolveClientCompanyId } from "@/lib/client-company-server"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import {
@@ -54,6 +55,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         status: true,
         companyId: true,
         clientId: true,
+        clientCompanyId: true,
         discountPercent: true,
         taxPercent: true,
         taxType: true,
@@ -103,6 +105,20 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       })
       if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 })
     }
+    // Sent: check it is this client's. Not sent: kept, unless the client changed.
+    let clientCompanyId: string | null | undefined =
+      input.clientId && input.clientId !== existing.clientId ? null : undefined
+    if (input.clientCompanyId !== undefined) {
+      const resolved = await resolveClientCompanyId(clientId, input.clientCompanyId)
+      if (resolved === false) {
+        return NextResponse.json(
+          { error: "Invalid input", details: { clientCompanyId: ["That company doesn't belong to the selected client"] } },
+          { status: 422 },
+        )
+      }
+      clientCompanyId = resolved
+    }
+
     if (input.projectId) {
       const project = await prisma.project.findUnique({
         where: { id: input.projectId },
@@ -146,6 +162,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         where: { id },
         data: {
           ...(input.clientId ? { clientId: input.clientId } : {}),
+          ...(clientCompanyId !== undefined ? { clientCompanyId } : {}),
           ...(input.projectId !== undefined ? { projectId: input.projectId ?? null } : {}),
           ...(input.title ? { title: input.title } : {}),
           ...(input.currency ? { currency: input.currency } : {}),

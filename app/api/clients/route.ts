@@ -70,6 +70,26 @@ export async function POST(request: NextRequest) {
         panNumber: panNumber?.trim() || null,
         notes: notes?.trim() || null,
         avatar: avatarUrl,
+        // The company typed on the form becomes the client's first company.
+        ...(company?.trim()
+          ? {
+              companies: {
+                create: {
+                  name: company.trim(),
+                  website: website?.trim() || null,
+                  industry: industry?.trim() || null,
+                  gstin: gstin?.trim() || null,
+                  panNumber: panNumber?.trim() || null,
+                  address: address?.trim() || null,
+                  city: city?.trim() || null,
+                  state: state?.trim() || null,
+                  country: country?.trim() || "India",
+                  postalCode: postalCode?.trim() || null,
+                  logo: avatarUrl,
+                },
+              },
+            }
+          : {}),
       },
     });
 
@@ -102,6 +122,7 @@ export async function GET() {
         projects: {
           where: { isActive: true },
         },
+        companies: { select: { id: true, name: true }, orderBy: { name: "asc" } },
       },
       orderBy: { createdAt: "desc" },
     });

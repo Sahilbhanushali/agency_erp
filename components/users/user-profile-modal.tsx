@@ -152,6 +152,7 @@ export default function UserProfileModal({
       if (!res.ok) throw new Error(data.error || "Failed to update employee details");
 
       toast.success("Employee details saved successfully");
+      if (data.salaryNotice) toast.error(data.salaryNotice, { duration: 8000 });
       mutate();
       if (onUserUpdated) onUserUpdated();
     } catch (err: any) {

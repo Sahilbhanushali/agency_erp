@@ -28,6 +28,7 @@ import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDia
 import useSWR, { mutate as globalMutate } from 'swr';
 import { useSession } from 'next-auth/react';
 import { getMediaUrl } from '@/lib/utils';
+import { projectCompanyName, projectLogo } from "@/lib/client-company";
 
 interface Asset {
   id: string;
@@ -249,7 +250,7 @@ const ApprovalTab: React.FC = () => {
   const uniqueClients = useMemo(() => {
     const clientSet = new Set<string>();
     approvals.forEach((approval: ApprovalFlow) => {
-      const clientName = approval.post.project?.client?.company || approval.post.project?.client?.name;
+      const clientName = projectCompanyName(approval.post.project) || approval.post.project?.client?.name;
       if (clientName) {
         clientSet.add(clientName);
       }
@@ -299,7 +300,7 @@ const ApprovalTab: React.FC = () => {
     if (filterClient !== 'ALL') {
       filtered = filtered.filter(
         (approval: ApprovalFlow) =>
-          approval.post.project?.client?.company === filterClient ||
+          projectCompanyName(approval.post.project) === filterClient ||
           approval.post.project?.client?.name === filterClient
       );
     }
@@ -311,7 +312,7 @@ const ApprovalTab: React.FC = () => {
           (approval.submittedBy?.name?.toLowerCase() || '').includes(query) ||
           (approval.post.project?.name?.toLowerCase() || '').includes(query) ||
           (approval.post.project?.client?.name?.toLowerCase() || '').includes(query) ||
-          (approval.post.project?.client?.company?.toLowerCase() || '').includes(query)
+          (projectCompanyName(approval.post.project)?.toLowerCase() || '').includes(query)
       );
     }
     // Sort by status order: DRAFT, SUBMITTED, RESUBMITTED, REJECTED, APPROVED
@@ -671,15 +672,15 @@ const ApprovalTab: React.FC = () => {
                 <div className="flex items-center justify-between px-3 pt-3 pb-2">
                   <div className="flex items-center min-w-0">
                     <img
-                      src={approval.post.project.client?.avatar || "/placeholder-client-logo.png"}
-                      alt={`${approval.post.project.client?.company || 'Client'} logo`}
+                      src={projectLogo(approval.post.project) || "/placeholder-client-logo.png"}
+                      alt={`${projectCompanyName(approval.post.project) || 'Client'} logo`}
                       className="w-8 h-8 rounded-full mr-3 object-cover border border-border"
                       onError={(e) =>
                         (e.currentTarget.src = "/placeholder-client-logo.png")
                       }
                     />
                     <span className="font-semibold text-sm text-foreground truncate">
-                      {approval.post.project.client?.company || approval.post.project.client?.name || 'Unknown Client'}
+                      {projectCompanyName(approval.post.project) || approval.post.project.client?.name || 'Unknown Client'}
                     </span>
                   </div>
                   <span className="ml-3 shrink-0 rounded-full px-3 py-1 text-xs font-medium border bg-primary/10 text-primary border-primary/20">

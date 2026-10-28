@@ -27,6 +27,7 @@ interface Client {
   email: string;
   phone: string | null;
   company: string | null;
+  companies?: { id: string; name: string }[];
 }
 
 const fetcher = async (url: string) => {
@@ -168,6 +169,7 @@ export default function NewProjectPage() {
     id: client.id,
     name: client.name,
     company: client.company || "",
+    companies: client.companies ?? [],
   }));
 
   // Show loading state

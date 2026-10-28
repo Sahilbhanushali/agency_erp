@@ -39,6 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import TaskPanel from "@/components/tasks/task-panel";
+import { projectCompanyName, projectLogo } from "@/lib/client-company";
 
 type Post = {
   id: string;
@@ -524,23 +525,24 @@ export default function ProjectDetailsPage() {
                 <Avatar
                   className="size-10 border border-border/80 cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all shrink-0"
                   onClick={() => {
-                    if (project.client.avatar) {
+                    const logo = projectLogo(project);
+                    if (logo) {
                       setSelectedLogo({
-                        url: getMediaUrl(project.client.avatar),
-                        filename: project.client.avatar.split("/").pop() || `${project.client.name}.jpg`,
+                        url: getMediaUrl(logo),
+                        filename: logo.split("/").pop() || `${project.client.name}.jpg`,
                         type: "image",
                       });
                     }
                   }}
                 >
-                  {project.client.avatar && <AvatarImage src={getMediaUrl(project.client.avatar)} />}
+                  {projectLogo(project) && <AvatarImage src={getMediaUrl(projectLogo(project)!)} />}
                   <AvatarFallback className="text-xs bg-muted font-medium">
                     {project.client.name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-0.5 text-xs truncate">
                   <p className="font-semibold text-foreground truncate">{project.client.name}</p>
-                  <p className="text-muted-foreground truncate">{project.client.company || "No company name"}</p>
+                  <p className="text-muted-foreground truncate">{projectCompanyName(project) || "No company name"}</p>
                   {project.client.email && (
                     <p className="text-muted-foreground flex items-center gap-1.5 truncate">
                       <Mail className="size-3 shrink-0" />

@@ -675,7 +675,7 @@ export default function PayrollPage() {
           </TabsContent>
 
           <TabsContent value="salaries" className="space-y-4">
-            <SalaryStructuresTab users={safeUsers} onRefresh={mutateRuns} />
+            <SalaryStructuresTab onRefresh={mutateRuns} />
           </TabsContent>
 
           {/* TAB 3: MONTHLY ADJUSTMENTS */}

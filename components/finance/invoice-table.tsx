@@ -228,7 +228,7 @@ export default function InvoiceTable({ companyId }: { companyId?: string }) {
                         </p>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {invoice.client.company || invoice.client.name}
+                        {invoice.clientCompany?.name || invoice.client.company || invoice.client.name}
                         {invoice.quotation && (
                           <p className="font-mono text-xs text-muted-foreground">
                             from {invoice.quotation.number}

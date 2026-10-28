@@ -201,7 +201,7 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
                     </p>
                   </TableCell>
                   <TableCell className="text-xs">
-                    <span className="font-medium text-foreground">{quotation.client.company || quotation.client.name}</span>
+                    <span className="font-medium text-foreground">{quotation.clientCompany?.name || quotation.client.company || quotation.client.name}</span>
                     {quotation.project && (
                       <p className="text-[11px] text-muted-foreground">{quotation.project.name}</p>
                     )}
@@ -294,7 +294,7 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleting?.number}?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleting?.title} for {deleting?.client.company || deleting?.client.name} will be
+              {deleting?.title} for {deleting?.clientCompany?.name || deleting?.client.company || deleting?.client.name} will be
               removed along with its line items. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

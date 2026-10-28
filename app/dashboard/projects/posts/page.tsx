@@ -34,6 +34,7 @@ import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDia
 import { ProjectTimingBadge } from "@/components/posts/postTimingBadge";
 import { ExportLinkDialog } from "@/components/projects/export-link-dialog";
 import { Share2 } from "lucide-react";
+import { projectCompanyName } from "@/lib/client-company";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "SCHEDULED" | "POSTED";
 
@@ -1185,7 +1186,7 @@ export default function PostsPage() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                  {currentProject ? `${currentProject.client?.company || currentProject.name} Posts` : "All Posts"}
+                  {currentProject ? `${projectCompanyName(currentProject) || currentProject.name} Posts` : "All Posts"}
                 </h1>
                 <ProjectTimingBadge posts={filteredPosts as any} />
               </div>

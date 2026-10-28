@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { projectCompanyName, projectLogo } from "@/lib/client-company"
 import { PostStatus, ContentStatus } from "@prisma/client"
 import {
   verifyPassword,
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 avatar: true,
               },
             },
+            clientCompany: { select: { name: true, logo: true } },
           },
         },
       },
@@ -101,7 +103,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           lockRemainingMinutes,
           project: {
             name: exportLink.project.name,
-            clientName: exportLink.project.client?.name || exportLink.project.client?.company || "Valued Client",
+            clientName: exportLink.project.client?.name || projectCompanyName(exportLink.project) || "Valued Client",
           },
         })
       }
@@ -207,9 +209,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const sanitizedProject = {
       name: exportLink.project.name,
       description: exportLink.project.description,
-      clientName: exportLink.project.client?.name || exportLink.project.client?.company || "Valued Client",
-      clientCompany: exportLink.project.client?.company,
-      clientAvatar: exportLink.project.client?.avatar,
+      clientName: exportLink.project.client?.name || projectCompanyName(exportLink.project) || "Valued Client",
+      clientCompany: projectCompanyName(exportLink.project),
+      clientAvatar: projectLogo(exportLink.project),
     }
 
     const sanitizedLink = {
@@ -323,6 +325,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         project: {
           include: {
             client: true,
+            clientCompany: { select: { name: true, logo: true } },
           },
         },
       },
@@ -477,7 +480,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const clientName =
       (name && String(name).trim()) ||
       exportLink.project.client?.name ||
-      exportLink.project.client?.company ||
+      projectCompanyName(exportLink.project) ||
       "Client Representative"
 
     // ==========================================

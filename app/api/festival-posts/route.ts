@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Platform } from "@prisma/client";
 import { PostAssigned } from '@/components/emails/PostAssigned';
 import { createEmailService } from '@/lib/emailService';
 import { renderPostAssignedEmail } from '@/lib/renderEmail';
@@ -10,7 +11,6 @@ import path from "path";
 import { requireCan } from "@/lib/api-auth";
 
 type PostStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED';
-type Platform = 'INSTAGRAM' | 'FACEBOOK' | 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'IGTV' | 'THREADS' | 'GMB' | 'PINTEREST';
 type PostType = 'PHOTO' | 'REEL' | 'STORY' | 'CAROUSEL' | 'CUSTOM';
 type ContentStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
 
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(platforms) || platforms.length === 0) {
       return NextResponse.json({ error: 'At least one platform is required' }, { status: 400 });
     }
-    const validPlatforms: Platform[] = ['INSTAGRAM', 'FACEBOOK', 'TWITTER', 'LINKEDIN', 'YOUTUBE', 'IGTV', 'THREADS', 'GMB', 'PINTEREST'];
+    const validPlatforms = Object.values(Platform);
     const invalidPlatforms = platforms.filter((p: string) => !validPlatforms.includes(p as Platform));
     if (invalidPlatforms.length > 0) {
       return NextResponse.json(
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
         },
       },
       include: {
-        project: { include: { client: true } },
+        project: { include: { client: true, clientCompany: { select: { name: true, logo: true } } } },
         createdBy: { select: { id: true, name: true, email: true, role: true } },
         assignedTo: { select: { id: true, name: true, email: true, role: true } },
         festival: { select: { id: true, name: true, description: true, date: true, primaryType: true } },

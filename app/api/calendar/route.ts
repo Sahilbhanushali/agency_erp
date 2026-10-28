@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { projectCompanyName, projectLogo } from "@/lib/client-company";
 import { NextResponse } from "next/server";
 import { contentScope, requireCan } from "@/lib/api-auth";
 
@@ -64,6 +65,7 @@ export async function GET() {
           client: {
             select: { id: true, name: true, email: true, company: true, avatar: true },
           },
+          clientCompany: { select: { name: true, logo: true } },
         },
       },
       createdBy: { select: { id: true, name: true, email: true } },
@@ -91,7 +93,7 @@ export async function GET() {
       ? {
           ...post.project,
           client: post.project.client
-            ? { ...post.project.client, name: post.project.client.name ?? "" }
+            ? { ...post.project.client, name: post.project.client.name ?? "", company: projectCompanyName(post.project), avatar: projectLogo(post.project) }
             : null,
         }
       : null,
@@ -116,6 +118,7 @@ export async function GET() {
       name: true,
       isActive: true,
       client: { select: { id: true, name: true, email: true, company: true } },
+      clientCompany: { select: { name: true, logo: true } },
     },
     orderBy: { name: "asc" },
   });
@@ -123,7 +126,7 @@ export async function GET() {
   const projects = projectsRaw.map((project) => ({
     ...project,
     client: project.client
-      ? { ...project.client, name: project.client.name ?? "" }
+      ? { ...project.client, name: project.client.name ?? "", company: projectCompanyName(project) }
       : null,
   }));
 

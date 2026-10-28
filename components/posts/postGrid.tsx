@@ -21,6 +21,7 @@ import { getMediaUrl, getGoogleDriveEmbedUrl } from "@/lib/utils";
 import MediaWithFallback from "@/components/MediaWithFallback";
 import RejectDialog from "./rejectDialog";
 import PostTimingBadge from "./postTimingBadge";
+import { projectLogo } from "@/lib/client-company";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "SCHEDULED" | "POSTED" | "NEEDS_MINOR_CHANGE" | "RESUBMITTED" | "C_APPROVED";
 
@@ -36,6 +37,7 @@ interface Post {
     name: string;
     image?: string | null;
     client: { name: string; company: string; avatar?: string | null };
+    clientCompany?: { name: string; logo?: string | null } | null;
   };
   createdBy: { name: string };
   assignedTo?: { name: string };
@@ -216,7 +218,7 @@ export default function PostGrid({
                     <img
                       src={
                         (post.project.image ? getMediaUrl(post.project.image) : null) || 
-                        (post.project.client.avatar ? getMediaUrl(post.project.client.avatar) : null) || 
+                        (projectLogo(post.project) ? getMediaUrl(projectLogo(post.project)!) : null) || 
                         "/placeholder-client-logo.png"
                       }
                       alt={`${post.project.name} logo`}
