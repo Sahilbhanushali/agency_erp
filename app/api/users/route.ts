@@ -6,7 +6,7 @@ import { logAuditAction } from "@/lib/audit"
 import { can, hasPermission, requireCan, requireSession } from "@/lib/api-auth"
 import { sendOnboardingInviteEmail } from "@/lib/email"
 import bcrypt from "bcryptjs"
-import crypto from "crypto"
+import { issuePasswordToken } from "@/lib/password-token"
 
 export const dynamic = "force-dynamic"
 
@@ -165,20 +165,8 @@ export async function POST(request: NextRequest) {
     // If onboarding invite is requested or no password was provided:
     if (shouldSendInvite) {
       try {
-        const setupToken = crypto.randomBytes(32).toString("hex")
-        const expiresAt = new Date(Date.now() + 48 * 3600 * 1000) // 48 hours validity
-
-        // Clean any pre-existing tokens for this email
-        await prisma.passwordReset.deleteMany({ where: { email } })
-
-        // Store setup token
-        await prisma.passwordReset.create({
-          data: {
-            email,
-            token: setupToken,
-            expiresAt,
-          },
-        })
+        // Revokes any earlier token for this email; only the hash is stored.
+        const setupToken = await issuePasswordToken(email, 48 * 3600 * 1000) // 48 hours validity
 
         // Dispatch onboarding email
         await sendOnboardingInviteEmail({

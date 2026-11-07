@@ -28,5 +28,7 @@ declare module "next-auth/jwt" {
   interface JWT extends DefaultJWT {
     role: string | null
     roleId?: string | null
+    /** Epoch ms of sign-in; compared against User.passwordChangedAt in lib/auth.ts. */
+    authTime?: number
   }
 }

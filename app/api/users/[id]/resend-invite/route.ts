@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { logAuditAction } from "@/lib/audit";
 import { can, hasPermission } from "@/lib/api-auth";
 import { sendOnboardingInviteEmail } from "@/lib/email";
-import crypto from "crypto";
+import { issuePasswordToken } from "@/lib/password-token";
 
 export const dynamic = "force-dynamic";
 
@@ -41,20 +41,8 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const setupToken = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 48 * 3600 * 1000); // 48 hours validity
-
-    // Invalidate prior pending tokens
-    await prisma.passwordReset.deleteMany({ where: { email: user.email } });
-
-    // Store new setup token
-    await prisma.passwordReset.create({
-      data: {
-        email: user.email,
-        token: setupToken,
-        expiresAt,
-      },
-    });
+    // Revokes prior pending tokens; only the hash is stored.
+    const setupToken = await issuePasswordToken(user.email, 48 * 3600 * 1000); // 48 hours validity
 
     // Send onboarding invite email
     await sendOnboardingInviteEmail({

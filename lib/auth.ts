@@ -59,6 +59,23 @@ export const authOptions: NextAuthOptions = {
         token.roleId = (user as any).roleId
         token.role = (user as any).role
         token.picture = (user as any).image ?? null
+        // When this session signed in. Unlike `iat`, which NextAuth rewrites on every
+        // refresh, this survives for the life of the session.
+        token.authTime = Date.now()
+      } else {
+        // A password change ends every session that signed in before it. Checked here
+        // because this callback runs on every session read — getServerSession in route
+        // handlers and server components, and useSession on the client — so no caller
+        // can skip it. Throwing makes NextAuth return no session and clear the cookie.
+        // Tokens issued before authTime existed count as signed in at 0: they predate
+        // any password change recorded since.
+        const row = await prisma.user.findUnique({
+          where: { id: Number(token.sub) },
+          select: { passwordChangedAt: true },
+        })
+        if (!row || (row.passwordChangedAt && row.passwordChangedAt.getTime() > (token.authTime ?? 0))) {
+          throw new Error("Session revoked: password changed since sign-in")
+        }
       }
       if (trigger === "update" && session) {
         if (session.name) token.name = session.name
