@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
 
       if (response.ok) {
         setIsSuccess(true)
-        setMessage("Password reset instructions have been sent to your email.")
+        setMessage(data.message || "If an account with that email exists, we've sent password reset instructions.")
       } else {
         setMessage(data.error || "An error occurred")
       }

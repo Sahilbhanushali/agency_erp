@@ -1,59 +1,49 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
+import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
-
 import { logAuditAction } from "@/lib/audit"
+import { findValidPasswordToken, setPasswordAndRevoke } from "@/lib/password-token"
+
+const schema = z.object({
+  token: z.string().min(1).max(128),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters long")
+    .max(256, "Password is too long"),
+})
+
+const INVALID_TOKEN = "This reset link is invalid or has expired. Request a new one."
 
 export async function POST(request: NextRequest) {
+  const parsed = schema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? "Token and password are required"
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
+  const { token, password } = parsed.data
+
   try {
-    const { token, password } = await request.json()
-
-    if (!token || !password) {
-      return NextResponse.json({ error: "Token and password are required" }, { status: 400 })
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters long" }, { status: 400 })
-    }
-
-    // Find valid reset token
-    const resetRecord = await prisma.passwordReset.findFirst({
-      where: {
-        token,
-        expiresAt: {
-          gt: new Date(),
-        },
-      },
-    })
-
+    const resetRecord = await findValidPasswordToken(token)
     if (!resetRecord) {
-      return NextResponse.json({ error: "Invalid or expired reset token" }, { status: 400 })
+      return NextResponse.json({ error: INVALID_TOKEN }, { status: 400 })
     }
 
-    // Find user
     const user = await prisma.user.findUnique({
       where: { email: resetRecord.email },
+      select: { id: true, isActive: true },
     })
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    // A deactivated account stays locked out; resetting its password must not reopen it.
+    if (!user || !user.isActive) {
+      return NextResponse.json({ error: INVALID_TOKEN }, { status: 400 })
     }
 
-    // Hash new password using bcrypt
-    const bcrypt = (await import("bcryptjs")).default
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Update user password
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    })
+    // Sets the password, signs out every existing session, and burns every outstanding
+    // link for this email so neither this token nor an older one can be replayed.
+    await setPasswordAndRevoke(user.id, resetRecord.email, hashedPassword)
 
-    // Delete used reset token
-    await prisma.passwordReset.delete({
-      where: { id: resetRecord.id },
-    })
-
-    // Log audit action
     await logAuditAction({
       userId: String(user.id),
       action: "UPDATE",

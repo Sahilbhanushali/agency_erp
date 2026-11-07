@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { logAuditAction } from "@/lib/audit";
 import { sendWelcomeEmail } from "@/lib/email";
+import { findValidPasswordToken, setPasswordAndRevoke } from "@/lib/password-token";
 
 export const dynamic = "force-dynamic";
 
@@ -19,14 +20,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Find valid reset/setup token
-    const resetRecord = await prisma.passwordReset.findFirst({
-      where: {
-        token,
-        expiresAt: {
-          gt: new Date(),
-        },
-      },
-    });
+    if (typeof token !== "string" || token.length > 128) {
+      return NextResponse.json({ error: "Invalid or expired setup token. Please request a new invitation link from your administrator." }, { status: 400 });
+    }
+    const resetRecord = await findValidPasswordToken(token);
 
     if (!resetRecord) {
       return NextResponse.json(
@@ -50,16 +47,8 @@ export async function POST(request: NextRequest) {
     // Hash password with bcrypt
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Update user password and activate
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    });
-
-    // Delete used setup token
-    await prisma.passwordReset.delete({
-      where: { id: resetRecord.id },
-    });
+    // Set the password and burn every outstanding token for this email in one step.
+    await setPasswordAndRevoke(user.id, resetRecord.email, hashedPassword);
 
     // Audit log
     await logAuditAction({

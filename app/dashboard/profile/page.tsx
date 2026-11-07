@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import { useSession } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { toast } from "react-hot-toast"
 import { Button } from "@/components/ui/button"
@@ -174,8 +174,22 @@ export default function DashboardProfilePage() {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success("Password changed successfully!")
+        // The change ended every session, this one included. Sign straight back in with
+        // the new password so only the other devices are signed out.
+        const relogin = session?.user?.email
+          ? await signIn("credentials", {
+              email: session.user.email,
+              password: passwordData.newPassword,
+              redirect: false,
+            })
+          : null
         setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+        if (relogin?.ok) {
+          toast.success("Password changed. Other devices have been signed out.")
+        } else {
+          toast.success("Password changed. Please sign in again.")
+          window.location.href = "/auth/signin"
+        }
       } else {
         toast.error(data.error || "Failed to change password")
       }

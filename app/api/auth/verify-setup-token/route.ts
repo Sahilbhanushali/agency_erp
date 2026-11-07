@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { findValidPasswordToken } from "@/lib/password-token";
 
 export const dynamic = "force-dynamic";
 
@@ -12,14 +13,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false, error: "Token is required" }, { status: 400 });
     }
 
-    const resetRecord = await prisma.passwordReset.findFirst({
-      where: {
-        token,
-        expiresAt: {
-          gt: new Date(),
-        },
-      },
-    });
+    const resetRecord = token.length <= 128 ? await findValidPasswordToken(token) : null;
 
     if (!resetRecord) {
       return NextResponse.json(
