@@ -685,7 +685,10 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
+              {/* relative: makes this scroller the containing block for absolutely
+                  positioned descendants (the cells' sr-only labels), which otherwise
+                  escaped its clipping and stretched the whole page sideways on phones. */}
               <div className="min-w-[760px]">
                 <div className="grid grid-cols-7 border-b border-border bg-muted/40">
                   {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
