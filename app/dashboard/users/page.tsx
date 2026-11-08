@@ -547,7 +547,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">User Management</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">User Management</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage agency team members, role permissions, HR documentation, and SMTP integrations.
           </p>
@@ -590,7 +590,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-              <Input
+              <Input aria-label="Search users by name or email"
                 placeholder="Search users by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -599,7 +599,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
             </div>
             <div className="flex items-center gap-2">
               <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-[140px] h-9 text-xs bg-background">
+                <SelectTrigger aria-label="Role" className="w-[140px] h-9 text-xs bg-background">
                   <SelectValue placeholder="Role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -650,7 +650,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                         onValueChange={(value) => setFormData({ ...formData, role: value })}
                         disabled={roles.length === 0}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Role">
                           <SelectValue placeholder={roles.length === 0 ? "No roles available" : "Select a role"} />
                         </SelectTrigger>
                         <SelectContent>
@@ -676,7 +676,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                           <Label htmlFor="sendInvite" className="text-xs font-semibold cursor-pointer">
                             Send Onboarding Invitation Email (Recommended)
                           </Label>
-                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          <p className="text-xs text-muted-foreground leading-relaxed">
                             The user will receive an email with a secure 48-hour link to create their password and activate their account.
                           </p>
                         </div>
@@ -738,12 +738,12 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                           </Avatar>
                           <div className="flex flex-col min-w-0">
                             <span className="font-semibold text-xs text-foreground truncate">{user.name}</span>
-                            <span className="text-[11px] text-muted-foreground truncate">{user.email}</span>
+                            <span className="text-xs text-muted-foreground truncate">{user.email}</span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)} className="text-[10px] uppercase font-mono tracking-wider">
+                        <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs uppercase font-mono tracking-wider">
                           {user.role ?? "NONE"}
                         </Badge>
                       </TableCell>
@@ -751,7 +751,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                         {user.isActive === false ? (
                           <Badge
                             variant="outline"
-                            className="text-[10px] gap-1 text-destructive border-destructive/30 bg-destructive/5 font-mono"
+                            className="text-xs gap-1 text-destructive border-destructive/30 bg-destructive/5 font-mono"
                             title={
                               user.deactivatedAt
                                 ? `Deactivated ${new Date(user.deactivatedAt).toLocaleDateString("en-GB")}`
@@ -762,12 +762,12 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                             Deactivated
                           </Badge>
                         ) : user.hasPassword === false ? (
-                          <Badge variant="outline" className="text-[10px] gap-1 text-amber-600 border-amber-500/30 bg-amber-500/5 font-mono">
+                          <Badge variant="outline" className="text-xs gap-1 text-amber-600 border-amber-500/30 bg-amber-500/5 font-mono">
                             <Clock className="size-2.5" />
                             Invite Pending
                           </Badge>
                         ) : (
-                          <Badge variant="success" className="text-[10px] gap-1 font-mono">
+                          <Badge variant="success" className="text-xs gap-1 font-mono">
                             <CheckCircle className="size-2.5" />
                             Active
                           </Badge>
@@ -829,7 +829,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           {user.hasPassword === false && (
-                            <Button
+                            <Button aria-label="Resend onboarding email invite"
                               variant="ghost"
                               size="icon-xs"
                               disabled={resendingInviteId === user.id}
@@ -840,7 +840,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                               <Send className="size-3.5" />
                             </Button>
                           )}
-                          <Button
+                          <Button aria-label="Edit user"
                             variant="ghost"
                             size="icon-xs"
                             onClick={() => {
@@ -924,7 +924,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                     onValueChange={(value) => setFormData({ ...formData, role: value })}
                     disabled={roles.length === 0}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Role">
                       <SelectValue placeholder={roles.length === 0 ? "No roles available" : "Select a role"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -1010,7 +1010,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
                   </Button>
                 </div>
                 <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger aria-label="Sort by..." className="w-48">
                     <SelectValue placeholder="Sort by..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1023,8 +1023,8 @@ const testSmtpConnection = async (config: SmtpConfig) => {
 
               <div className="space-y-4">
                 {sortedSmtpConfigs.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg">
-                    <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <div className="text-center py-12 bg-muted/50 rounded-lg">
+                    <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-medium mb-2">
                       No SMTP configurations found
                     </h3>

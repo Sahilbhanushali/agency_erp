@@ -254,45 +254,45 @@ export function CalculationRulesTab() {
             <CardContent className="p-4 pt-2 space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  <span className="text-xs uppercase font-bold text-muted-foreground block">
                     Pay Period Divisor
                   </span>
                   <span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
                     {settings.payPeriodType}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">Days per month calculation base</span>
+                  <span className="text-xs text-muted-foreground">Days per month calculation base</span>
                 </div>
 
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  <span className="text-xs uppercase font-bold text-muted-foreground block">
                     Rounding Rule
                   </span>
                   <span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
                     {settings.roundingRule || "ROUND_HALF_UP"}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">Disbursement paise rounding policy</span>
+                  <span className="text-xs text-muted-foreground">Disbursement paise rounding policy</span>
                 </div>
 
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  <span className="text-xs uppercase font-bold text-muted-foreground block">
                     Overtime Multiplier
                   </span>
                   <span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
                     {settings.overtimeHourlyRateMultiplier}x Hourly Rate
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Based on {settings.standardWorkHours}h standard workday
                   </span>
                 </div>
 
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  <span className="text-xs uppercase font-bold text-muted-foreground block">
                     Late Mark Policy
                   </span>
                   <span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
                     {settings.lateMarksForHalfDayPenalty} Marks = 0.5 Day LOP
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {settings.lateMarkGraceMinutes} min grace punch threshold
                   </span>
                 </div>
@@ -313,49 +313,49 @@ export function CalculationRulesTab() {
             <CardContent className="p-4 pt-2 space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  <span className="text-xs uppercase font-bold text-muted-foreground block">
                     Provident Fund (EPF)
                   </span>
                   <span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
                     {statutory?.pfEmployeeRate ?? settings.pfEmployeeRate}% (Employee)
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Ceiling: {formatInr(statutory?.pfWageCeiling ?? settings.pfWageCeiling ?? 1500000)}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  <span className="text-xs uppercase font-bold text-muted-foreground block">
                     EPF Employer Share
                   </span>
                   <span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
                     {statutory?.pfEmployerEpfRate ?? 3.67}% EPF + {statutory?.pfEmployerEpsRate ?? 8.33}% EPS
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Total Employer: 12.0% + Admin charges
                   </span>
                 </div>
 
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  <span className="text-xs uppercase font-bold text-muted-foreground block">
                     ESI Insurance
                   </span>
                   <span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
                     {statutory?.esiEmployeeRate ?? settings.esiEmployeeRate}% (EE) / {statutory?.esiEmployerRate ?? settings.esiEmployerRate}% (ER)
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Wage Ceiling: {formatInr(statutory?.esiWageCeiling ?? settings.esiWageCeiling ?? 2100000)}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  <span className="text-xs uppercase font-bold text-muted-foreground block">
                     Professional Tax (PT)
                   </span>
                   <span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
                     Active State Slabs
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Standard ₹200/mo above monthly slab threshold
                   </span>
                 </div>
@@ -381,7 +381,7 @@ export function CalculationRulesTab() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Test Monthly Gross (₹)</Label>
-                  <Input
+                  <Input aria-label="Test Monthly Gross (₹)"
                     type="number"
                     min="1000"
                     step="500"
@@ -398,7 +398,7 @@ export function CalculationRulesTab() {
 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Test Basic Salary (₹)</Label>
-                  <Input
+                  <Input aria-label="Test Basic Salary (₹)"
                     type="number"
                     min="500"
                     step="500"
@@ -461,21 +461,21 @@ export function CalculationRulesTab() {
 
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div className="p-2 rounded bg-card border border-border">
-                      <span className="text-[10px] text-muted-foreground block">Employee PF</span>
+                      <span className="text-xs text-muted-foreground block">Employee PF</span>
                       <span className="font-mono font-bold text-red-600">
                         {simResult.pfEmployeePaise > 0 ? `- ${formatInr(simResult.pfEmployeePaise)}` : "₹0"}
                       </span>
                     </div>
 
                     <div className="p-2 rounded bg-card border border-border">
-                      <span className="text-[10px] text-muted-foreground block">Employee ESI</span>
+                      <span className="text-xs text-muted-foreground block">Employee ESI</span>
                       <span className="font-mono font-bold text-red-600">
                         {simResult.esiEmployeePaise > 0 ? `- ${formatInr(simResult.esiEmployeePaise)}` : "₹0"}
                       </span>
                     </div>
 
                     <div className="p-2 rounded bg-card border border-border">
-                      <span className="text-[10px] text-muted-foreground block">Professional Tax</span>
+                      <span className="text-xs text-muted-foreground block">Professional Tax</span>
                       <span className="font-mono font-bold text-red-600">
                         {simResult.ptPaise > 0 ? `- ${formatInr(simResult.ptPaise)}` : "₹0"}
                       </span>
@@ -484,10 +484,10 @@ export function CalculationRulesTab() {
 
                   <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">
                         Net Monthly Take-Home Pay
                       </span>
-                      <span className="text-[10px] text-muted-foreground">Total Deductions: {formatInr(simResult.totalDeductionsPaise)}</span>
+                      <span className="text-xs text-muted-foreground">Total Deductions: {formatInr(simResult.totalDeductionsPaise)}</span>
                     </div>
                     <span className="text-lg lg:text-xl font-bold font-mono text-emerald-600">
                       {formatInr(simResult.netPayPaise)}
@@ -498,7 +498,7 @@ export function CalculationRulesTab() {
                 <div className="border border-dashed border-border rounded-xl p-6 text-center text-xs text-muted-foreground h-full flex flex-col items-center justify-center bg-muted/10">
                   <Calculator className="size-6 text-muted-foreground/40 mb-1.5" />
                   <p className="font-medium text-foreground">Run a Test Calculation</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Click "Calculate Rule Impact" to see how the configured rates apply.
                   </p>
                 </div>
@@ -536,7 +536,7 @@ export function CalculationRulesTab() {
                       value={formData.payPeriodType}
                       onValueChange={(val) => setFormData({ ...formData, payPeriodType: val })}
                     >
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger aria-label="Pay Period Divisor" className="h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -554,7 +554,7 @@ export function CalculationRulesTab() {
                       value={formData.roundingRule}
                       onValueChange={(val) => setFormData({ ...formData, roundingRule: val })}
                     >
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger aria-label="Rounding Policy" className="h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -570,7 +570,7 @@ export function CalculationRulesTab() {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Standard Work Hours</Label>
-                    <Input
+                    <Input aria-label="Standard Work Hours"
                       type="number"
                       step="0.5"
                       min="4"
@@ -583,7 +583,7 @@ export function CalculationRulesTab() {
 
                   <div className="space-y-1">
                     <Label className="text-xs">Overtime Multiplier</Label>
-                    <Input
+                    <Input aria-label="Overtime Multiplier"
                       type="number"
                       step="0.1"
                       min="1.0"
@@ -596,7 +596,7 @@ export function CalculationRulesTab() {
 
                   <div className="space-y-1">
                     <Label className="text-xs">Late Mark Grace (Min)</Label>
-                    <Input
+                    <Input aria-label="Late Mark Grace (Min)"
                       type="number"
                       min="0"
                       max="60"
@@ -617,7 +617,7 @@ export function CalculationRulesTab() {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">PF Employee Rate (%)</Label>
-                    <Input
+                    <Input aria-label="PF Employee Rate (%)"
                       type="number"
                       step="0.1"
                       value={formData.pfEmployeeRate}
@@ -628,7 +628,7 @@ export function CalculationRulesTab() {
 
                   <div className="space-y-1">
                     <Label className="text-xs">Employer EPF Rate (%)</Label>
-                    <Input
+                    <Input aria-label="Employer EPF Rate (%)"
                       type="number"
                       step="0.01"
                       value={formData.pfEmployerEpfRate}
@@ -639,7 +639,7 @@ export function CalculationRulesTab() {
 
                   <div className="space-y-1">
                     <Label className="text-xs">PF Wage Ceiling (₹)</Label>
-                    <Input
+                    <Input aria-label="PF Wage Ceiling (₹)"
                       type="number"
                       step="1000"
                       value={formData.pfWageCeilingRupees}
@@ -652,7 +652,7 @@ export function CalculationRulesTab() {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">ESI Employee Rate (%)</Label>
-                    <Input
+                    <Input aria-label="ESI Employee Rate (%)"
                       type="number"
                       step="0.01"
                       value={formData.esiEmployeeRate}
@@ -663,7 +663,7 @@ export function CalculationRulesTab() {
 
                   <div className="space-y-1">
                     <Label className="text-xs">ESI Employer Rate (%)</Label>
-                    <Input
+                    <Input aria-label="ESI Employer Rate (%)"
                       type="number"
                       step="0.01"
                       value={formData.esiEmployerRate}
@@ -674,7 +674,7 @@ export function CalculationRulesTab() {
 
                   <div className="space-y-1">
                     <Label className="text-xs">ESI Wage Ceiling (₹)</Label>
-                    <Input
+                    <Input aria-label="ESI Wage Ceiling (₹)"
                       type="number"
                       step="1000"
                       value={formData.esiWageCeilingRupees}

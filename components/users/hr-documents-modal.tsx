@@ -1,5 +1,6 @@
 "use client";
 
+import { jsonFetcher } from "@/lib/fetcher";
 import React, { useState, useRef, useCallback, useMemo } from "react";
 import useSWR from "swr";
 import { useCan } from "@/hooks/use-can";
@@ -124,7 +125,8 @@ function formatDate(dateStr?: string | null): string {
   }
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 export default function HrDocumentsModal({
   userId,
@@ -499,7 +501,7 @@ export default function HrDocumentsModal({
                   {activeUser?.name || "Employee"}
                 </h2>
                 {roleName && (
-                  <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider py-0 px-1.5">
+                  <Badge variant="outline" className="text-xs uppercase font-mono tracking-wider py-0 px-1.5">
                     {roleName}
                   </Badge>
                 )}
@@ -537,7 +539,7 @@ export default function HrDocumentsModal({
                 </>
               )}
             </Button>
-            <Button
+            <Button aria-label="Close (Esc)"
               variant="ghost"
               size="icon"
               onClick={onClose}
@@ -601,7 +603,7 @@ export default function HrDocumentsModal({
                   <p className="text-xs font-medium text-foreground">
                     <span className="text-primary hover:underline">Click to browse</span> or drag and drop files here
                   </p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Supports PDF, PNG, JPG, WEBP, DOC, DOCX up to 25MB each (multi-file supported)
                   </p>
                 </div>
@@ -618,7 +620,7 @@ export default function HrDocumentsModal({
               {/* Selected Files Chips */}
               {selectedFiles.length > 0 && (
                 <div className="space-y-1.5">
-                  <span className="text-[11px] font-medium text-muted-foreground">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Ready to Upload ({selectedFiles.length} file{selectedFiles.length > 1 ? "s" : ""}):
                   </span>
                   <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto p-1">
@@ -629,10 +631,10 @@ export default function HrDocumentsModal({
                       >
                         <FileText className="size-3.5 text-primary shrink-0" />
                         <span className="truncate max-w-[160px] font-medium">{file.name}</span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           ({formatFileSize(file.size)})
                         </span>
-                        <button
+                        <button aria-label={`Remove ${file.name}`}
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -709,7 +711,7 @@ export default function HrDocumentsModal({
               {/* Progress Bar */}
               {uploadProgress !== null && (
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-muted-foreground">
+                  <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Uploading...</span>
                     <span>{uploadProgress}%</span>
                   </div>
@@ -752,14 +754,14 @@ export default function HrDocumentsModal({
             <div className="flex items-center gap-2 flex-1 max-w-lg">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                <Input
+                <Input aria-label="Search by title, file name, or notes"
                   placeholder="Search by title, file name, or notes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 h-8 text-xs bg-muted/40"
                 />
                 {searchQuery && (
-                  <button
+                  <button aria-label="Clear search"
                     onClick={() => setSearchQuery("")}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
@@ -768,7 +770,7 @@ export default function HrDocumentsModal({
                 )}
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32 h-8 text-xs bg-muted/40">
+                <SelectTrigger aria-label="Status" className="w-32 h-8 text-xs bg-muted/40">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -782,7 +784,7 @@ export default function HrDocumentsModal({
             </div>
 
             {/* Document counts overview pill */}
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground self-end sm:self-auto">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground self-end sm:self-auto">
               <span className="font-semibold text-foreground">{documents.length}</span> Total
               <span>•</span>
               <span className="text-emerald-600 font-medium">
@@ -815,7 +817,7 @@ export default function HrDocumentsModal({
                   <Icon className="size-3.5" />
                   <span>{cat.label}</span>
                   <span
-                    className={`ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    className={`ml-0.5 text-xs px-1.5 py-0.2 rounded-full font-mono ${
                       isActive
                         ? "bg-primary text-primary-foreground font-bold"
                         : "bg-muted text-muted-foreground"
@@ -941,39 +943,39 @@ export default function HrDocumentsModal({
                           >
                             {doc.title}
                           </h4>
-                          <Badge variant="neutral" className="text-[10px] font-mono px-1.5 py-0 uppercase">
+                          <Badge variant="neutral" className="text-xs font-mono px-1.5 py-0 uppercase">
                             {doc.category.replace(/_/g, " ")}
                           </Badge>
                           {/* Status Badge */}
                           {doc.status === "VERIFIED" && (
-                            <Badge variant="success" className="text-[10px] gap-1 py-0">
+                            <Badge variant="success" className="text-xs gap-1 py-0">
                               <CheckCircle2 className="size-2.5" /> Verified
                             </Badge>
                           )}
                           {doc.status === "PENDING" && (
-                            <Badge variant="warning" className="text-[10px] gap-1 py-0">
+                            <Badge variant="warning" className="text-xs gap-1 py-0">
                               <Clock className="size-2.5" /> Pending Review
                             </Badge>
                           )}
                           {doc.status === "REJECTED" && (
-                            <Badge variant="destructive" className="text-[10px] gap-1 py-0">
+                            <Badge variant="destructive" className="text-xs gap-1 py-0">
                               <XCircle className="size-2.5" /> Rejected
                             </Badge>
                           )}
                           {isExpired && (
-                            <Badge variant="destructive" className="text-[10px] gap-1 py-0 font-mono">
+                            <Badge variant="destructive" className="text-xs gap-1 py-0 font-mono">
                               <AlertTriangle className="size-2.5" /> Expired
                             </Badge>
                           )}
                           {isExpiringSoon && (
-                            <Badge variant="warning" className="text-[10px] gap-1 py-0">
+                            <Badge variant="warning" className="text-xs gap-1 py-0">
                               <Clock className="size-2.5" /> Expiring Soon
                             </Badge>
                           )}
                         </div>
 
                         {/* File Name & Size & Uploader Info */}
-                        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono text-foreground/80 truncate max-w-[200px]">
                             {doc.fileName}
                           </span>
@@ -995,17 +997,17 @@ export default function HrDocumentsModal({
                         {(doc.expiryDate || doc.notes || doc.rejectionReason) && (
                           <div className="pt-0.5 space-y-1">
                             {doc.expiryDate && (
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="text-xs text-muted-foreground">
                                 <span className="font-semibold">Expiry Date:</span> {formatDate(doc.expiryDate)}
                               </p>
                             )}
                             {doc.notes && (
-                              <p className="text-[11px] text-muted-foreground italic line-clamp-1">
+                              <p className="text-xs text-muted-foreground italic line-clamp-1">
                                 &ldquo;{doc.notes}&rdquo;
                               </p>
                             )}
                             {doc.status === "REJECTED" && doc.rejectionReason && (
-                              <div className="p-1.5 rounded-md bg-destructive/10 border border-destructive/20 text-[11px] text-destructive flex items-start gap-1.5">
+                              <div className="p-1.5 rounded-md bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-start gap-1.5">
                                 <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
                                 <span>
                                   <strong>Rejection Reason:</strong> {doc.rejectionReason}
@@ -1013,7 +1015,7 @@ export default function HrDocumentsModal({
                               </div>
                             )}
                             {doc.status === "VERIFIED" && doc.verifiedBy && (
-                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                                 Verified by {doc.verifiedBy.name} on {formatDate(doc.verifiedAt)}
                               </p>
                             )}
@@ -1044,7 +1046,7 @@ export default function HrDocumentsModal({
                         rel="noreferrer"
                         className="inline-flex items-center justify-center"
                       >
-                        <Button
+                        <Button aria-label="Download file"
                           variant="ghost"
                           size="icon-xs"
                           title="Download file"
@@ -1055,7 +1057,7 @@ export default function HrDocumentsModal({
                       </a>
 
                       {/* Replace File Button */}
-                      <Button
+                      <Button aria-label="Replace with updated file"
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => {
@@ -1100,7 +1102,7 @@ export default function HrDocumentsModal({
                       )}
 
                       {/* Delete Button */}
-                      <Button
+                      <Button aria-label="Delete permanently"
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => setDeletingDocId(doc.id)}
@@ -1144,7 +1146,7 @@ export default function HrDocumentsModal({
                   <h3 className="text-xs font-bold text-foreground truncate">
                     {previewDoc.title}
                   </h3>
-                  <p className="text-[11px] text-muted-foreground truncate font-mono">
+                  <p className="text-xs text-muted-foreground truncate font-mono">
                     {previewDoc.fileName} • {formatFileSize(previewDoc.fileSize)}
                   </p>
                 </div>
@@ -1169,7 +1171,7 @@ export default function HrDocumentsModal({
                     <ExternalLink className="size-3.5" /> Open Tab
                   </Button>
                 </a>
-                <Button
+                <Button aria-label="Close document preview"
                   variant="ghost"
                   size="icon"
                   onClick={() => setPreviewDoc(null)}
@@ -1196,7 +1198,7 @@ export default function HrDocumentsModal({
                 // PDF Viewer
                 <iframe
                   src={`${previewDoc.fileUrl}#toolbar=1`}
-                  className="w-full h-full rounded-lg border border-border bg-white"
+                  className="w-full h-full rounded-lg border border-border bg-card"
                   title={previewDoc.title}
                 />
               ) : (
@@ -1330,7 +1332,7 @@ export default function HrDocumentsModal({
                 <p className="text-xs font-medium text-foreground">
                   {replaceFile ? replaceFile.name : "Click to select replacement file"}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {replaceFile ? formatFileSize(replaceFile.size) : "PDF, PNG, JPG, WEBP, DOC up to 25MB"}
                 </p>
               </div>

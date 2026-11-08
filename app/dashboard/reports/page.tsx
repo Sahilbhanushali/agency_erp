@@ -42,14 +42,14 @@ export default function ReportsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Reports & Analytics</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Reports & Analytics</h1>
           <p className="mt-1 text-sm text-muted-foreground">Comprehensive insights into content workflow, approval rates, and team productivity.</p>
         </div>
 
         <div className="flex items-center gap-2">
           <Calendar className="size-4 text-muted-foreground" />
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="h-9 w-[180px] bg-card text-xs">
+            <SelectTrigger aria-label="Select timeframe" className="h-9 w-[180px] bg-card text-xs">
               <SelectValue placeholder="Select timeframe" />
             </SelectTrigger>
             <SelectContent>
@@ -81,7 +81,7 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total Posts</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Posts</span>
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Calendar className="size-4" />
             </div>
@@ -92,7 +92,7 @@ export default function ReportsPage() {
             ) : (
               <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.totalPosts ?? 0}</div>
             )}
-            <p className="text-[11px] text-muted-foreground font-medium">
+            <p className="text-xs text-muted-foreground font-medium">
               {selectedMonth === "all" ? "All time total" : "Selected month count"}
             </p>
           </div>
@@ -100,7 +100,7 @@ export default function ReportsPage() {
 
         <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Approval Rate</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Approval Rate</span>
             <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <CheckCircle className="size-4" />
             </div>
@@ -111,7 +111,7 @@ export default function ReportsPage() {
             ) : (
               <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.approvalRate ?? "0"}%</div>
             )}
-            <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+            <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
               {selectedMonth === "all" ? "All time rate" : "Selected month rate"}
             </p>
           </div>
@@ -119,7 +119,7 @@ export default function ReportsPage() {
 
         <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Change Rate</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Change Rate</span>
             <div className="flex size-8 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
               <XCircle className="size-4" />
             </div>
@@ -130,7 +130,7 @@ export default function ReportsPage() {
             ) : (
               <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.rejectionRate ?? "0"}%</div>
             )}
-            <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+            <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
               {selectedMonth === "all" ? "All time rate" : "Selected month rate"}
             </p>
           </div>
@@ -138,7 +138,7 @@ export default function ReportsPage() {
 
         <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Active Users</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Users</span>
             <div className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
               <Users className="size-4" />
             </div>
@@ -149,7 +149,7 @@ export default function ReportsPage() {
             ) : (
               <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{data?.totalUsers ?? 0}</div>
             )}
-            <p className="text-[11px] text-muted-foreground font-medium">Across {data?.totalClients ?? 0} clients</p>
+            <p className="text-xs text-muted-foreground font-medium">Across {data?.totalClients ?? 0} clients</p>
           </div>
         </div>
       </div>

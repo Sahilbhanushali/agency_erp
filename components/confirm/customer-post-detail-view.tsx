@@ -1,5 +1,6 @@
 "use client"
 
+import { CLIENT_REVIEW_LABELS, clientReviewState, isClientDone } from "@/lib/posts/client-review"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -69,6 +70,7 @@ export interface PostDetailData {
   type: string
   status: string
   contentStatus?: string | null
+  requiresClientApproval?: boolean
   scheduledAt?: string | null
   notes?: string | null
   approvedAt?: string | null
@@ -180,8 +182,10 @@ export function CustomerPostDetailView({
     (currentAsset.type?.toLowerCase().includes("video") ||
       currentAsset.filename?.match(/\.(mp4|mov|webm)$/i))
 
-  const isApproved = post.status === "C_APPROVED" || post.contentStatus === "C_APPROVED"
-  const isRejected = post.status === "REJECTED"
+  const reviewState = clientReviewState(post)
+  const canApprove = reviewState === "AWAITING_CLIENT"
+  const isApproved = isClientDone(reviewState)
+  const isRejected = reviewState === "CHANGES_REQUESTED"
 
   const clientDisplayName = project.clientCompany || project.clientName || "Valued Client"
   const monthYearLabel = project.month && project.year ? `${MONTH_NAMES[project.month]} ${project.year}` : null
@@ -245,11 +249,11 @@ export function CustomerPostDetailView({
 
       toast.success("✓ Post Approved Successfully")
 
+      // The status the server set, not an optimistic guess.
       setPost((prev) => ({
         ...prev,
-        status: "C_APPROVED",
-        contentStatus: "C_APPROVED",
-        approvedAt: json.post?.approvedAt || new Date().toISOString(),
+        status: json.post?.status ?? prev.status,
+        approvedAt: new Date().toISOString(),
       }))
 
       setIsConfirmApproveOpen(false)
@@ -303,8 +307,8 @@ export function CustomerPostDetailView({
 
       setPost((prev) => ({
         ...prev,
-        status: "REJECTED",
-        rejectedAt: json.post?.rejectedAt || new Date().toISOString(),
+        status: json.post?.status ?? prev.status,
+        rejectedAt: json.post?.rejectedAt ?? prev.rejectedAt,
         comments: json.comment ? [...(prev.comments || []), json.comment] : prev.comments,
       }))
 
@@ -392,7 +396,7 @@ export function CustomerPostDetailView({
               <div className="text-xs sm:text-sm font-bold text-slate-900">
                 {clientDisplayName}
               </div>
-              <div className="text-[11px] text-slate-500 font-medium">
+              <div className="text-xs text-slate-500 font-medium">
                 {monthYearLabel ? `${monthYearLabel} ` : ""}Content Review
               </div>
             </div>
@@ -410,7 +414,7 @@ export function CustomerPostDetailView({
             <div className="flex items-center gap-2 flex-wrap">
               <Badge
                 variant="outline"
-                className="bg-slate-100 text-slate-800 border-slate-200 text-[11px] uppercase font-bold tracking-wide px-2.5 py-0.5"
+                className="bg-slate-100 text-slate-800 border-slate-200 text-xs uppercase font-bold tracking-wide px-2.5 py-0.5"
               >
                 <span className="mr-1">{getTypeIcon(post.type)}</span>
                 {post.type}
@@ -434,8 +438,8 @@ export function CustomerPostDetailView({
           <div className="self-start sm:self-center shrink-0">
             {isApproved ? (
               <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs sm:text-sm font-semibold px-4 py-1.5 rounded-full shadow-2xs">
-                <Check className="w-4 h-4 mr-1.5 text-emerald-600" />
-                Approved by You
+                <Check className="w-4 h-4 mr-1.5 text-emerald-600" aria-hidden="true" />
+                {CLIENT_REVIEW_LABELS[reviewState]}
               </Badge>
             ) : isRejected ? (
               <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs sm:text-sm font-semibold px-4 py-1.5 rounded-full shadow-2xs">
@@ -444,8 +448,8 @@ export function CustomerPostDetailView({
               </Badge>
             ) : (
               <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs sm:text-sm font-semibold px-4 py-1.5 rounded-full shadow-2xs">
-                <Clock className="w-4 h-4 mr-1.5 text-blue-600" />
-                Awaiting Your Approval
+                <Clock className="w-4 h-4 mr-1.5 text-blue-600" aria-hidden="true" />
+                {CLIENT_REVIEW_LABELS[reviewState]}
               </Badge>
             )}
           </div>
@@ -524,7 +528,7 @@ export function CustomerPostDetailView({
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white text-[11px] px-3.5 py-1 rounded-full font-medium">
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white text-xs px-3.5 py-1 rounded-full font-medium">
                     Slide {currentSlideIndex + 1} of {assetsToUse.length}
                   </div>
                 </>
@@ -535,7 +539,7 @@ export function CustomerPostDetailView({
             {assetsToUse.length > 1 && !isVideo && (
               <div className="flex items-center gap-2 max-w-full overflow-x-auto pb-1 px-1">
                 {assetsToUse.map((asset, idx) => (
-                  <button
+                  <button aria-label={`Show image ${idx + 1} of ${assetsToUse.length}`}
                     key={asset.id}
                     onClick={() => setCurrentSlideIndex(idx)}
                     className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${
@@ -765,10 +769,10 @@ export function CustomerPostDetailView({
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1 justify-between">
-                            <span className={`font-semibold text-[11px] ${isSelf ? "text-blue-100" : "text-slate-700"}`}>
+                            <span className={`font-semibold text-xs ${isSelf ? "text-blue-100" : "text-slate-700"}`}>
                               {isSelf ? "You" : comment.authorName || "Creative Team"}
                             </span>
-                            <span className={`text-[10px] ${isSelf ? "text-blue-200" : "text-slate-400"}`}>
+                            <span className={`text-xs ${isSelf ? "text-blue-200" : "text-slate-400"}`}>
                               {new Date(comment.createdAt).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
@@ -820,7 +824,7 @@ export function CustomerPostDetailView({
 
               {/* Add Feedback Comment Input */}
               <div className="flex gap-2 pt-2 border-t border-slate-100">
-                <textarea
+                <textarea aria-label="Add a feedback note for the team"
                   placeholder="Add a feedback note for the team..."
                   value={newCommentText}
                   onChange={(e) => {
@@ -878,7 +882,7 @@ export function CustomerPostDetailView({
                 <Button
                   size="sm"
                   onClick={() => setIsConfirmApproveOpen(true)}
-                  disabled={isActionLoading || isApproved}
+                  disabled={isActionLoading || !canApprove}
                   className={`flex-1 h-10 text-xs font-semibold rounded-xl shadow-xs ${
                     isApproved
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-default"
@@ -889,6 +893,8 @@ export function CustomerPostDetailView({
                     <>
                       <Check className="w-4 h-4 mr-1.5 text-emerald-600" /> Approved by You
                     </>
+                  ) : !canApprove ? (
+                    CLIENT_REVIEW_LABELS[reviewState]
                   ) : isActionLoading ? (
                     "Approving..."
                   ) : (
@@ -928,7 +934,7 @@ export function CustomerPostDetailView({
           <Button
             size="sm"
             onClick={() => setIsConfirmApproveOpen(true)}
-            disabled={isActionLoading || isApproved}
+            disabled={isActionLoading || !canApprove}
             className={`flex-1 h-11 text-xs font-semibold rounded-xl ${
               isApproved
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-default"
@@ -939,6 +945,8 @@ export function CustomerPostDetailView({
               <>
                 <Check className="w-4 h-4 mr-1 text-emerald-600" /> Approved
               </>
+            ) : !canApprove ? (
+              CLIENT_REVIEW_LABELS[reviewState]
             ) : isActionLoading ? (
               "Approving..."
             ) : (

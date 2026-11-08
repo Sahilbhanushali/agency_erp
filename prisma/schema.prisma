@@ -18,6 +18,8 @@ enum PostType {
   CUSTOM
   BLOG
   UNKNOWN
+  /// Internal presentation deliverable (.ppt/.pptx). Never auto-published to a platform.
+  PPT
 }
 
 enum PostStatus {
@@ -30,6 +32,8 @@ enum PostStatus {
   POSTED
   RESUBMITTED
   NEEDS_MINOR_CHANGE
+  /// Withdrawn. Terminal until reopened; never scheduled or published.
+  CANCELLED
 }
 
 enum Platform {
@@ -117,17 +121,17 @@ enum ContentStatus {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String
-  roleId    Int? // New foreign key to Role
-  avatar    String?
-  password  String?
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
+  name              String
+  roleId            Int? // New foreign key to Role
+  avatar            String?
+  password          String?
   /// Set whenever the password changes (reset, invite setup, profile change). Any session
   /// that signed in before this moment is rejected by the jwt callback in lib/auth.ts.
   passwordChangedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   /// Deactivation replaces deletion for people.
   ///
@@ -142,18 +146,19 @@ model User {
   deactivatedUsers User[]    @relation("UserDeactivations")
 
   // Relations
-  role             Role?          @relation(fields: [roleId], references: [id])
-  clientProjects   Project[]      @relation("ClientProjects")
-  assignedProjects Project[]      @relation("AssignedProjects")
-  smtpDetails      SmtpDetails?   @relation("UserToSmtpDetails")
-  createdPosts     Post[]         @relation("CreatedPosts")
-  assignedPosts    Post[]         @relation("AssignedPosts")
-  comments         Comment[]
-  notifications    Notification[]
-  auditLogs        AuditLog[]
-  sentInvites      Invite[]
-  uploadedAssets   Asset[]
-  taskLogs         TaskLog[] // Added relation to TaskLog
+  role              Role?              @relation(fields: [roleId], references: [id])
+  clientProjects    Project[]          @relation("ClientProjects")
+  assignedProjects  Project[]          @relation("AssignedProjects")
+  smtpDetails       SmtpDetails?       @relation("UserToSmtpDetails")
+  createdPosts      Post[]             @relation("CreatedPosts")
+  assignedPosts     Post[]             @relation("AssignedPosts")
+  comments          Comment[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  sentInvites       Invite[]
+  uploadedAssets    Asset[]
+  taskLogs          TaskLog[] // Added relation to TaskLog
+  postStatusChanges PostStatusChange[] @relation("PostStatusChanges")
 
   // New activity tracking relations
   activities          UserActivity[]       @relation("UserActivities")
@@ -440,6 +445,14 @@ model Post {
   contentApprovedById Int?
   contentRejectedById Int?
 
+  /// When ON, internal approval leaves the post at APPROVED ("pending client approval")
+  /// until the client approves it through a share link; only then can it be scheduled.
+  requiresClientApproval Boolean @default(false)
+  /// Bumped on every material edit. Approvals are recorded against a version, so an
+  /// approval of version N does not carry over to version N+1. Also the optimistic-lock
+  /// token every workflow transition checks.
+  version                Int     @default(1)
+
   // Relations
   project    Project @relation(fields: [projectId], references: [id])
   createdBy  User?   @relation("CreatedPosts", fields: [createdById], references: [id], onDelete: SetNull)
@@ -466,8 +479,43 @@ model Post {
   instagramPublishJob    InstagramPublishJob?
   instagramMediaInsights InstagramMediaInsight[]
   tasks                  Task[]
+  statusChanges          PostStatusChange[]
 
+  @@index([status])
+  @@index([projectId, status])
   @@map("posts")
+}
+
+/// Append-only timeline of every post workflow transition. Rows are never updated or
+/// deleted by the app (they go only with their post), so this is the audit trail for
+/// approvals, rejections, client decisions, scheduling and publishing.
+model PostStatusChange {
+  id         String     @id @default(cuid())
+  postId     String
+  /// SUBMIT, APPROVE, REJECT, REQUEST_CHANGES, CLIENT_APPROVE, CLIENT_REQUEST_CHANGES,
+  /// SCHEDULE, UNSCHEDULE, PUBLISH, CANCEL, REOPEN, EDIT_INVALIDATE, CLIENT_TOGGLE
+  action     String
+  fromStatus PostStatus
+  toStatus   PostStatus
+  /// Post version the action applied to.
+  version    Int
+  reason     String?    @db.Text
+  /// Internal actor. Null for client (share-link) and system actions.
+  actorId    Int?
+  /// Display name for client/system actors, or a snapshot of the internal user's name.
+  actorName  String?
+  actorEmail String?
+  /// "USER" | "CLIENT" | "SYSTEM"
+  actorType  String     @default("USER")
+  metadata   Json?
+  createdAt  DateTime   @default(now())
+
+  post  Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  actor User? @relation("PostStatusChanges", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([postId, createdAt])
+  @@index([actorId])
+  @@map("post_status_changes")
 }
 
 // Junction table for Post-Platform relationship

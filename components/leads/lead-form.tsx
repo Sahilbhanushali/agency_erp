@@ -1,5 +1,6 @@
 "use client";
 
+import { jsonFetcher } from "@/lib/fetcher";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
@@ -32,7 +33,8 @@ import {
 import Link from "next/link";
 import toast from "react-hot-toast";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 export interface LeadFormData {
   id?: string;
@@ -168,7 +170,7 @@ export function LeadForm({ initialData, isEditing = false }: LeadFormProps) {
     <Card className="shadow-2xs border-border/70 max-w-4xl mx-auto">
       <CardHeader className="border-b border-border/60 pb-4">
         <div className="flex items-center gap-3">
-          <Button
+          <Button aria-label="Copy form link"
             asChild
             variant="ghost"
             size="icon-xs"

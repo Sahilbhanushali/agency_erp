@@ -28,7 +28,7 @@ export default function VideoPopup({ videoPopup, setVideoPopup, posts }: VideoPo
               <MediaRenderer asset={asset} controls={true} />
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">Video not found</div>
+            <div className="text-center py-8 text-muted-foreground">Video not found</div>
           )}
         </div>
         <DialogFooter>

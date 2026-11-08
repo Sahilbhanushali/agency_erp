@@ -1,169 +1,101 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { ApprovalStageType, ApprovalStepStatus } from "@prisma/client";
-import { requireCan } from "@/lib/api-auth";
+import { prisma } from "@/lib/prisma";
+import { requireSession } from "@/lib/api-auth";
+import { assertPostAccess, workflowErrorResponse } from "@/lib/posts/workflow";
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+const chainInclude = {
+  steps: {
+    include: { decisionBy: { select: { id: true, name: true } } },
+    orderBy: { order: "asc" as const },
+  },
+};
+
+/**
+ * The staged review for one post: Team lead → Account manager → (Client, only when the
+ * post requires client approval). Internal stages are decided here; the client stage is
+ * decided by the client through their share link.
+ *
+ * GET used to be unauthenticated and always created a chain with a client stage.
+ */
+export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const auth = await requireSession();
+  if (!auth.ok) return auth.response;
+  const { id: postId } = await context.params;
+
   try {
-    const params = await context.params;
-    const postId = params.id;
+    await assertPostAccess(auth.session, auth.userId, postId, "read");
 
-    // Check if post exists
     const post = await prisma.post.findUnique({
       where: { id: postId },
       select: {
         id: true,
         title: true,
         status: true,
-        designerHeadApproval: true,
+        version: true,
+        requiresClientApproval: true,
         contentStatus: true,
-        project: {
-          select: {
-            id: true,
-            name: true,
-            client: { select: { id: true, name: true, company: true } },
-          },
-        },
+        project: { select: { id: true, name: true, client: { select: { id: true, name: true, company: true } } } },
       },
     });
+    if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
-    if (!post) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
-    }
-
-    // Find existing chain
     let chain = await prisma.approvalChain.findFirst({
       where: { postId },
-      include: {
-        steps: {
-          include: {
-            decisionBy: {
-              select: { id: true, name: true, email: true, role: true },
-            },
-          },
-          orderBy: { order: "asc" },
-        },
-      },
+      include: chainInclude,
       orderBy: { createdAt: "desc" },
     });
 
-    // If no chain exists, create default 3-stage chain
+    // Created lazily on first view, but only for someone allowed to see the post.
     if (!chain) {
+      const stages: ApprovalStageType[] = [ApprovalStageType.INTERNAL_LEAD, ApprovalStageType.ACCOUNT_MANAGER];
+      if (post.requiresClientApproval) stages.push(ApprovalStageType.CLIENT);
       chain = await prisma.approvalChain.create({
         data: {
           postId,
-          currentStageIndex: 0,
-          isCompleted: false,
-          finalStatus: "IN_REVIEW",
-          steps: {
-            create: [
-              {
-                stage: ApprovalStageType.INTERNAL_LEAD,
-                order: 0,
-                status: ApprovalStepStatus.PENDING,
-              },
-              {
-                stage: ApprovalStageType.ACCOUNT_MANAGER,
-                order: 1,
-                status: ApprovalStepStatus.PENDING,
-              },
-              {
-                stage: ApprovalStageType.CLIENT,
-                order: 2,
-                status: ApprovalStepStatus.PENDING,
-              },
-            ],
-          },
+          steps: { create: stages.map((stage, order) => ({ stage, order, status: ApprovalStepStatus.PENDING })) },
         },
-        include: {
-          steps: {
-            include: {
-              decisionBy: {
-                select: { id: true, name: true, email: true, role: true },
-              },
-            },
-            orderBy: { order: "asc" },
-          },
-        },
+        include: chainInclude,
       });
     }
 
     return NextResponse.json({ chain, post });
-  } catch (error: any) {
-    console.error("Error loading approval chain:", error);
-    return NextResponse.json(
-      { error: "Failed to load approval chain", details: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    return workflowErrorResponse(error);
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const params = await context.params;
-    const postId = params.id;
-    const auth = await requireCan("posts", "approve");
-    if (!auth.ok) return auth.response;
-    const session = auth.session;
+/** Reset the chain for a new round of review (e.g. after the post was edited and resubmitted). */
+export async function POST(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const auth = await requireSession();
+  if (!auth.ok) return auth.response;
+  const { id: postId } = await context.params;
 
-    // Reset or re-create chain for resubmission
-    const existing = await prisma.approvalChain.findFirst({
-      where: { postId },
-      orderBy: { createdAt: "desc" },
+  try {
+    await assertPostAccess(auth.session, auth.userId, postId, "approve");
+
+    const [existing, post] = await Promise.all([
+      prisma.approvalChain.findFirst({ where: { postId }, orderBy: { createdAt: "desc" }, select: { id: true } }),
+      prisma.post.findUnique({ where: { id: postId }, select: { requiresClientApproval: true } }),
+    ]);
+    if (!existing || !post) return NextResponse.json({ error: "Chain not found" }, { status: 404 });
+
+    // A fresh chain rather than wiping the old one, so earlier decisions stay on record.
+    const stages: ApprovalStageType[] = [ApprovalStageType.INTERNAL_LEAD, ApprovalStageType.ACCOUNT_MANAGER];
+    if (post.requiresClientApproval) stages.push(ApprovalStageType.CLIENT);
+    const chain = await prisma.$transaction(async (tx) => {
+      await tx.approvalChain.update({ where: { id: existing.id }, data: { finalStatus: "SUPERSEDED", isCompleted: true } });
+      return tx.approvalChain.create({
+        data: {
+          postId,
+          steps: { create: stages.map((stage, order) => ({ stage, order, status: ApprovalStepStatus.PENDING })) },
+        },
+        include: chainInclude,
+      });
     });
 
-    if (existing) {
-      // Reset existing steps to PENDING
-      await prisma.approvalStep.updateMany({
-        where: { chainId: existing.id },
-        data: {
-          status: ApprovalStepStatus.PENDING,
-          decisionAt: null,
-          decisionById: null,
-          decisionByName: null,
-          feedback: null,
-        },
-      });
-
-      const updated = await prisma.approvalChain.update({
-        where: { id: existing.id },
-        data: {
-          currentStageIndex: 0,
-          isCompleted: false,
-          finalStatus: "IN_REVIEW",
-        },
-        include: {
-          steps: {
-            include: {
-              decisionBy: {
-                select: { id: true, name: true, email: true, role: true },
-              },
-            },
-            orderBy: { order: "asc" },
-          },
-        },
-      });
-
-      return NextResponse.json({
-        message: "Approval chain reset for resubmission",
-        chain: updated,
-      });
-    }
-
-    return NextResponse.json({ error: "Chain not found" }, { status: 404 });
-  } catch (error: any) {
-    console.error("Error resetting approval chain:", error);
-    return NextResponse.json(
-      { error: "Failed to reset chain", details: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Approval chain reset for resubmission", chain });
+  } catch (error) {
+    return workflowErrorResponse(error);
   }
 }

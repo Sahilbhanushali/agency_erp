@@ -99,7 +99,7 @@ export default function RegisterPage() {
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                <SelectTrigger>
+                <SelectTrigger id="role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

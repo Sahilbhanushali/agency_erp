@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,17 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ArrowLeft, Upload, X, AlertTriangle, CheckCircle, Calendar, Users, Search, ChevronDown, Check, Copy } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -85,6 +96,9 @@ interface PostFormProps {
     };
     writeUp?: string;
     keyword?: string;
+    requiresClientApproval?: boolean;
+    /** The post version this form was opened at (optimistic lock). */
+    version?: number;
     notes?: string;
   };
   initialProjectId?: string;
@@ -115,7 +129,14 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
     referenceUrl: post?.customData?.referenceUrl || "",
     writeUp: post?.writeUp || "",
     keyword: post?.keyword || "",
+    /** Its own approval stage after internal approval; see lib/posts/workflow-rules.ts. */
+    requiresClientApproval: Boolean(post?.requiresClientApproval),
   });
+  /** Set when the server says this edit would undo an approval and needs a yes. */
+  const [reapproval, setReapproval] = useState<{ message: string; changes: string[] } | null>(null);
+  const confirmReapprovalRef = useRef(false);
+  const [initialScheduledAt] = useState(post?.scheduledAt);
+  const formRef = useRef<HTMLFormElement>(null);
   const [assets, setAssets] = useState<File[]>([]);
   const [removedInitialAssets, setRemovedInitialAssets] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -232,7 +253,8 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
     if (!formData.title || !formData.title.trim()) errors.push("Post title is required.");
     if (!formData.projectId) errors.push("Project selection is required.");
     if (!formData.type) errors.push("Content type is required.");
-    if (formData.platforms.length === 0) errors.push("At least one platform must be selected.");
+    // Presentations are internal deliverables, not published to a platform.
+    if (formData.platforms.length === 0 && formData.type !== "PPT") errors.push("At least one platform must be selected.");
 
     // Role-based content type validation
     if (formData.assignedToIds && formData.assignedToIds.length > 0 && formData.type) {
@@ -294,6 +316,11 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
             { value: "CAROUSEL", label: "Carousel", icon: "🎠", description: "Multiple images/videos" },
             { value: "BLOG", label: "Linkedin/Article", icon: "📝", description: "Linkedin or article content" },
           ];
+        // PPT is a first-class type in the schema, so it is offered even when the
+        // configured POST_TYPE list predates it.
+        if (!basePostTypes.some((t) => t.value === "PPT")) {
+          basePostTypes.push({ value: "PPT", label: "PPT (Presentation)", icon: "📊", description: "Presentation deck (.ppt / .pptx), internal deliverable" });
+        }
         setPostTypes(basePostTypes);
 
         // Process platforms
@@ -310,8 +337,8 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
             { value: "INSTAGRAM", label: "Instagram", color: "bg-pink-100 text-pink-800" },
             { value: "FACEBOOK", label: "Facebook", color: "bg-blue-100 text-blue-800" },
             { value: "LINKEDIN", label: "LinkedIn", color: "bg-blue-100 text-blue-900" },
-            { value: "THREADS", label: "Threads", color: "bg-gray-100 text-gray-800" },
-            { value: "GMB", label: "Google My Business", color: "bg-gray-100 text-gray-800" },
+            { value: "THREADS", label: "Threads", color: "bg-muted text-foreground" },
+            { value: "GMB", label: "Google My Business", color: "bg-muted text-foreground" },
             { value: "YOUTUBE", label: "YouTube", color: "bg-red-100 text-red-800" },
             { value: "PINTEREST", label: "Pinterest", color: "bg-red-100 text-red-800" },
             { value: "WEBSITE", label: "Website", color: "bg-emerald-100 text-emerald-800" }
@@ -337,13 +364,14 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
           { value: "STORY", label: "Story", icon: "📱", description: "24-hour story content" },
           { value: "CAROUSEL", label: "Carousel", icon: "🎠", description: "Multiple images/videos" },
           { value: "BLOG", label: "Linkedin/Article", icon: "📝", description: "Linkedin or article content" },
+          { value: "PPT", label: "PPT (Presentation)", icon: "📊", description: "Presentation deck (.ppt / .pptx), internal deliverable" },
         ]);
         setPlatforms([
           { value: "INSTAGRAM", label: "Instagram", color: "bg-pink-100 text-pink-800" },
           { value: "FACEBOOK", label: "Facebook", color: "bg-blue-100 text-blue-800" },
           { value: "LINKEDIN", label: "LinkedIn", color: "bg-blue-100 text-blue-900" },
-          { value: "THREADS", label: "Threads", color: "bg-gray-100 text-gray-800" },
-          { value: "GMB", label: "Google My Business", color: "bg-gray-100 text-gray-800" },
+          { value: "THREADS", label: "Threads", color: "bg-muted text-foreground" },
+          { value: "GMB", label: "Google My Business", color: "bg-muted text-foreground" },
           { value: "YOUTUBE", label: "YouTube", color: "bg-red-100 text-red-800" },
           { value: "PINTEREST", label: "Pinterest", color: "bg-red-100 text-red-800" },
           { value: "WEBSITE", label: "Website", color: "bg-emerald-100 text-emerald-800" }
@@ -398,13 +426,13 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
       Instagram: "bg-pink-100 text-pink-800",
       Facebook: "bg-blue-100 text-blue-800",
       LinkedIn: "bg-blue-100 text-blue-900",
-      Threads: "bg-gray-100 text-gray-800",
+      Threads: "bg-muted text-foreground",
       Twitter: "bg-sky-100 text-sky-800",
-      TikTok: "bg-gray-100 text-gray-800",
+      TikTok: "bg-muted text-foreground",
       Website: "bg-emerald-100 text-emerald-800",
       WEBSITE: "bg-emerald-100 text-emerald-800",
     };
-    return colorMap[platform] || "bg-gray-100 text-gray-800";
+    return colorMap[platform] || "bg-muted text-foreground";
   };
 
   const handleTypeChange = (newType: string) => {
@@ -531,7 +559,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
       submitErrors.push("Content type is required.");
       newFieldErrors.type = "Content type is required.";
     }
-    if (formData.platforms.length === 0) {
+    if (formData.platforms.length === 0 && formData.type !== "PPT") {
       submitErrors.push("At least one platform must be selected.");
       newFieldErrors.platforms = "At least one platform must be selected.";
     }
@@ -575,6 +603,9 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
     try {
       const submitData = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
+        // The date input only holds a day, so re-sending an untouched value would move a
+        // scheduled post to midnight. Send the date only when the person changed it.
+        if (key === "scheduledAt" && post && value === initialScheduledAt) return;
         if (key === "platforms" || key === "assignedToIds") {
           submitData.append(key, JSON.stringify(value));
         } else if (key === "assignedToId" && value === "unassigned") {
@@ -613,6 +644,11 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
       if (removedInitialAssets.length > 0) {
         submitData.append("removedAssets", JSON.stringify(removedInitialAssets));
       }
+      // The version this form was opened at: a newer save by someone else is a 409,
+      // not a silent overwrite.
+      if (post?.version) submitData.append("expectedVersion", String(post.version));
+      if (confirmReapprovalRef.current) submitData.append("confirmReapproval", "true");
+      confirmReapprovalRef.current = false;
 
       const url = post ? `/api/posts/${post.id}` : "/api/posts";
       const method = post ? "PUT" : "POST";
@@ -708,6 +744,12 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
           } else if (typeof errorData.details === "object") {
             detailMsgs.push(JSON.stringify(errorData.details));
           }
+        }
+
+        if (response.status === 409 && errorData.code === "REAPPROVAL_REQUIRED") {
+          // Not an error: ask before an edit sends an approved post back for approval.
+          setReapproval({ message: errorData.error, changes: errorData.changes ?? [] });
+          return;
         }
 
         let mainErrorText = errorData.error || errorData.message;
@@ -873,7 +915,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
           <div>
             <CardTitle>{post ? "Edit Post" : "New Post"}</CardTitle>
             {selectedProject && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 <Users className="inline h-4 w-4 mr-1" />
                 {selectedProject.name} - {projectCompanyName(selectedProject) || "No Client"}
               </p>
@@ -910,7 +952,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="title" className={fieldErrors.title ? "text-red-600 font-semibold" : ""}>
@@ -992,8 +1034,8 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                   >
                     <div className="text-center">
                       <div className="text-2xl mb-1">{type.icon}</div>
-                      <div className="text-xs font-medium text-gray-700">{type.label}</div>
-                      <div className="text-xs text-gray-500 mt-1">{type.description}</div>
+                      <div className="text-xs font-medium text-foreground">{type.label}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{type.description}</div>
                     </div>
                   </div>
                 ))}
@@ -1021,7 +1063,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                   }`}
                   disabled={loading || filteredDesigners.length === 0}
                 >
-                  <span className={formData.assignedToIds?.length ? "text-gray-900" : "text-gray-500"}>
+                  <span className={formData.assignedToIds?.length ? "text-foreground" : "text-muted-foreground"}>
                     {formData.assignedToIds?.length
                       ? `${formData.assignedToIds.length} member(s) selected`
                       : filteredDesigners.length === 0
@@ -1032,11 +1074,11 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                 </button>
 
                 {isDesignerDropdownOpen && (
-                  <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-hidden">
+                  <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-md shadow-lg max-h-80 overflow-hidden">
                     <div className="p-2 border-b">
                       <div className="relative">
-                        <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <Input
+                        <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                        <Input aria-label="Search team member"
                           placeholder="Search team member..."
                           value={designerSearch}
                           onChange={(e) => setDesignerSearch(e.target.value)}
@@ -1047,14 +1089,14 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                     </div>
                     <div className="max-h-60 overflow-auto">
                       {filteredDesignersList.length === 0 ? (
-                        <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                        <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                           No designers match your search
                         </div>
                       ) : (
                         filteredDesignersList.map((designer) => (
                           <div
                             key={designer.id}
-                            className="px-3 py-2 hover:bg-gray-50 cursor-pointer flex items-center"
+                            className="px-3 py-2 hover:bg-muted/50 cursor-pointer flex items-center"
                             onClick={() => {
                               handleDesignerChange(designer.id);
                               if (fieldErrors.assignedToIds || fieldErrors.assignedToId) {
@@ -1065,11 +1107,11 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                             {(formData.assignedToIds || []).includes(designer.id.toString()) && <Check className="h-4 w-4 text-blue-600 mr-2" />}
                             <div className="flex flex-col">
                               <span
-                                className={`text-sm ${(formData.assignedToIds || []).includes(designer.id.toString()) ? "text-blue-600 font-medium" : "text-gray-900"}`}
+                                className={`text-sm ${(formData.assignedToIds || []).includes(designer.id.toString()) ? "text-blue-600 font-medium" : "text-foreground"}`}
                               >
                                 {designer.name}
                               </span>
-                              <span className="text-xs text-gray-500">{designer.role || "Designer"}</span>
+                              <span className="text-xs text-muted-foreground">{designer.role || "Designer"}</span>
                             </div>
                           </div>
                         ))
@@ -1084,14 +1126,37 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                   {fieldErrors.assignedToIds || fieldErrors.assignedToId}
                 </p>
               )}
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Select one or more team members to assign this post to. Leave unassigned if not yet assigned.
               </p>
             </div>
 
+            {/* Client approval is a separate stage from internal approval, so it is a
+                clearly labelled switch rather than a status. */}
+            <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="requiresClientApproval" className="text-sm font-medium">
+                  Client approval required
+                </Label>
+                <p id="requiresClientApproval-hint" className="text-xs text-muted-foreground">
+                  {formData.requiresClientApproval
+                    ? "After internal approval, the client approves through their share link before this can be scheduled."
+                    : "Internal approval is enough — the post becomes ready to schedule as soon as it is approved."}
+                </p>
+              </div>
+              <Switch
+                id="requiresClientApproval"
+                checked={formData.requiresClientApproval}
+                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, requiresClientApproval: checked }))}
+                aria-describedby="requiresClientApproval-hint"
+              />
+            </div>
+
             <div>
               <div className="flex justify-between items-center">
-                <Label className={fieldErrors.platforms ? "text-red-600 font-semibold" : ""}>Platforms *</Label>
+                <Label className={fieldErrors.platforms ? "text-red-600 font-semibold" : ""}>
+                  Platforms {formData.type === "PPT" ? "(optional for presentations)" : "*"}
+                </Label>
               </div>
               <div
                 className={`p-2 rounded-lg mt-1 transition-all ${
@@ -1243,7 +1308,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
               </p>
             )}
             {formData.caption && (
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>
                   Characters: {getCharacterCount(formData.caption).current}/{getCharacterCount(formData.caption).max}
                 </span>
@@ -1331,7 +1396,7 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                   {fieldErrors.referenceUrl}
                 </p>
               ) : (
-                <p className="text-xs text-gray-500">Optional reference link or inspiration</p>
+                <p className="text-xs text-muted-foreground">Optional reference link or inspiration</p>
               )}
             </div>
           </div>
@@ -1382,15 +1447,15 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
               <input
                 type="file"
                 multiple
-                accept="image/*,video/*"
+                accept="image/*,video/*,application/pdf,.ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 onChange={handleFileChange}
                 className="hidden"
                 id="asset-upload"
               />
               <label htmlFor="asset-upload" className="cursor-pointer">
-                <Upload className={`mx-auto h-12 w-12 mb-2 ${isDragOver ? "text-blue-500" : "text-gray-400"}`} />
-                <p className="text-sm text-gray-600">Click to upload or drag & drop files here</p>
-                <p className="text-xs text-gray-500 mt-1">Images and videos up to 100MB each</p>
+                <Upload className={`mx-auto h-12 w-12 mb-2 ${isDragOver ? "text-blue-500" : "text-muted-foreground"}`} />
+                <p className="text-sm text-muted-foreground">Click to upload or drag & drop files here</p>
+                <p className="text-xs text-muted-foreground mt-1">Images, videos, PDFs and presentations (.ppt, .pptx)</p>
               </label>
             </div>
             {fieldErrors.assets && (
@@ -1406,29 +1471,29 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                   .filter((asset) => !removedInitialAssets.includes(asset.id))
                   .map((asset) => (
                     <div key={`initial-${asset.id}`} className="relative group">
-                      <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                      <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                         {asset.type.startsWith("image/") ? (
                           <img src={asset.url} alt={asset.filename} className="w-full h-full object-cover" />
                         ) : (
                           <div className="text-center p-4">
                             <div className="text-2xl mb-2">🎥</div>
-                            <div className="text-xs text-gray-600 truncate">{asset.filename}</div>
+                            <div className="text-xs text-muted-foreground truncate">{asset.filename}</div>
                           </div>
                         )}
                       </div>
-                      <button
+                      <button aria-label={`Remove ${asset.filename}`}
                         type="button"
                         onClick={() => removeInitialAsset(asset.id)}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
                       >
                         <X className="h-3 w-3" />
                       </button>
-                      <p className="text-xs text-gray-500 mt-1 truncate">{asset.filename}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">{asset.filename}</p>
                     </div>
                   ))}
                 {assets.map((asset, index) => (
                   <div key={index} className="relative group">
-                    <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                    <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                       {asset.type.startsWith("image/") ? (
                         <img
                           src={URL.createObjectURL(asset)}
@@ -1438,18 +1503,18 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
                       ) : (
                         <div className="text-center p-4">
                           <div className="text-2xl mb-2">🎥</div>
-                          <div className="text-xs text-gray-600 truncate">{asset.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{asset.name}</div>
                         </div>
                       )}
                     </div>
-                    <button
+                    <button aria-label={`Remove ${asset.name}`}
                       type="button"
                       onClick={() => removeAsset(index)}
                       className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
                     >
                       <X className="h-3 w-3" />
                     </button>
-                    <p className="text-xs text-gray-500 mt-1 truncate">{asset.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">{asset.name}</p>
                   </div>
                 ))}
               </div>
@@ -1481,6 +1546,31 @@ export function PostForm({ projects, designers, post, initialProjectId, initialA
             </Button>
           </div>
         </form>
+
+        <AlertDialog open={!!reapproval} onOpenChange={(open) => !open && setReapproval(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Send this post back for approval?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {reapproval?.message}
+                {reapproval?.changes.length ? ` Changed: ${reapproval.changes.join(", ")}.` : ""} The earlier
+                approval stays in the post history but no longer applies to this version.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep editing</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  confirmReapprovalRef.current = true;
+                  setReapproval(null);
+                  formRef.current?.requestSubmit();
+                }}
+              >
+                Save and resubmit
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

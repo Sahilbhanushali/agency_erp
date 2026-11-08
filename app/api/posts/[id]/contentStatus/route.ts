@@ -8,7 +8,8 @@ import nodemailer from "nodemailer";
 import fs from "fs/promises";
 import path from "path";
 import CryptoJS from "crypto-js"; // Import crypto-js
-import { requireCan } from "@/lib/api-auth";
+import { requireSession } from "@/lib/api-auth";
+import { assertPostAccess, workflowErrorResponse } from "@/lib/posts/workflow";
 import { APP_BASE_URL } from "@/lib/utils"
 import { formatFrom, htmlToText } from "@/lib/smtp"
 
@@ -95,14 +96,11 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-    const auth = await requireCan("posts", "update");
+    // Permission depends on the requested change (decision vs. submission); checked
+    // below once the body is parsed.
+    const auth = await requireSession();
     if (!auth.ok) return auth.response;
     const session = auth.session;
-    // Was a hardcoded deny-list of role names. The same policy now lives in the
-    // permission catalog as posts:status, so an administrator can change who may
-    // move a post through its workflow without editing this file.
-    const statusAuth = await requireCan("posts", "status");
-    if (!statusAuth.ok) return statusAuth.response;
 
   const { id: postId } = await params;
 
@@ -155,6 +153,22 @@ export async function PATCH(
 
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // Deciding on copy is an approval; submitting or revising it is editing. Before,
+    // posts:update + posts:status was enough to approve, which is how anybody could.
+    // Scope matters too: the caller must be able to see this post.
+    const isDecision = (["APPROVED", "REJECTED", "NEEDS_REVISION", "NEEDS_MINOR_CHANGE"] as string[]).includes(
+      parsedBody.contentStatus,
+    );
+    try {
+      await assertPostAccess(session, Number(session.user.id), postId, isDecision ? "approve" : "update");
+    } catch (error) {
+      return workflowErrorResponse(error);
+    }
+    // Published and cancelled posts are frozen.
+    if (post.status === "POSTED" || post.status === "CANCELLED") {
+      return NextResponse.json({ error: "Published and cancelled posts cannot change." }, { status: 409 });
     }
 
     if (post.contentStatus === parsedBody.contentStatus) {

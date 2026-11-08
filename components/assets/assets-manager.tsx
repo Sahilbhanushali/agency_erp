@@ -194,7 +194,7 @@ export function AssetManager({ assets, hasManageAssetsPermission }: AssetManager
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Asset Manager</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground mb-2">Asset Manager</h1>
           <p className="text-muted-foreground">Browse and manage your approved image assets</p>
         </div>
 
@@ -207,7 +207,7 @@ export function AssetManager({ assets, hasManageAssetsPermission }: AssetManager
                   Search Assets
                 </Label>
                 <div className="relative">
-                  <Input
+                  <Input aria-label="Search Assets"
                     type="text"
                     placeholder="Search by filename, project, or company..."
                     value={searchTerm}
@@ -225,7 +225,7 @@ export function AssetManager({ assets, hasManageAssetsPermission }: AssetManager
                   value={selectedCompany || "all"}
                   onValueChange={(value) => setSelectedCompany(value === "all" ? null : value)}
                 >
-                  <SelectTrigger className="bg-muted/50 border-border">
+                  <SelectTrigger aria-label="Filter by Company" className="bg-muted/50 border-border">
                     <SelectValue placeholder="All Companies" />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">

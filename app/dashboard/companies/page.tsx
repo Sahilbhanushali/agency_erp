@@ -1,5 +1,6 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
@@ -26,7 +27,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import CompanyForm from "@/components/companies/company-form"
 import type { Company } from "@/types/finance"
 
-const fetcher = (url: string) => fetch(url).then((response) => response.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 export default function CompaniesPage() {
   const router = useRouter()
@@ -80,7 +82,7 @@ export default function CompaniesPage() {
         title="Billing Companies"
         description="Your agency billing entities — the issuer on every quotation and tax invoice."
         badge={
-          <Badge variant="outline" className="font-mono text-[10px]">
+          <Badge variant="outline" className="font-mono text-xs">
             {totalCompanies} Registered
           </Badge>
         }
@@ -96,15 +98,15 @@ export default function CompaniesPage() {
       {/* Metric chips */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Entities</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Entities</p>
           <p className="mt-1 text-xl font-bold tracking-tight text-foreground tabular-nums">{totalCompanies}</p>
         </div>
         <div className="rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Active Issuers</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Active Issuers</p>
           <p className="mt-1 text-xl font-bold tracking-tight text-primary tabular-nums">{activeCompanies}</p>
         </div>
         <div className="col-span-2 rounded-xl border border-border/70 bg-card p-3 shadow-2xs sm:col-span-1">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Filtered View</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Filtered View</p>
           <p className="mt-1 text-xl font-bold tracking-tight text-foreground tabular-nums">{companies.length}</p>
         </div>
       </div>
@@ -176,7 +178,7 @@ export default function CompaniesPage() {
                         {company.name}
                       </Link>
                       {company.legalName && (
-                        <p className="text-[11px] text-muted-foreground">{company.legalName}</p>
+                        <p className="text-xs text-muted-foreground">{company.legalName}</p>
                       )}
                     </TableCell>
                     <TableCell className="hidden font-mono text-xs md:table-cell text-muted-foreground">
@@ -198,7 +200,7 @@ export default function CompaniesPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={company.isActive ? "success" : "neutral"} dot className="text-[10px]">
+                      <Badge variant={company.isActive ? "success" : "neutral"} dot className="text-xs">
                         {company.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>

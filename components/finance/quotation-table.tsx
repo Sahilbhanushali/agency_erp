@@ -1,5 +1,6 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
@@ -31,7 +32,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatMoney, toNumber } from "@/lib/finance"
 import type { QuotationRow, QuotationStatus } from "@/types/finance"
 
-const fetcher = (url: string) => fetch(url).then((response) => response.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 const STATUS_LABELS: Record<QuotationStatus, string> = {
   DRAFT: "Draft",
@@ -61,7 +63,7 @@ const getStatusBadgeVariant = (status: QuotationStatus) => {
 
 export function QuotationStatusBadge({ status }: { status: QuotationStatus }) {
   return (
-    <Badge variant={getStatusBadgeVariant(status)} dot className="text-[10px]">
+    <Badge variant={getStatusBadgeVariant(status)} dot className="text-xs">
       {STATUS_LABELS[status]}
     </Badge>
   )
@@ -196,14 +198,14 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
                     >
                       {quotation.number}
                     </Link>
-                    <p className="max-w-[22ch] truncate text-[11px] text-muted-foreground">
+                    <p className="max-w-[22ch] truncate text-xs text-muted-foreground">
                       {quotation.title}
                     </p>
                   </TableCell>
                   <TableCell className="text-xs">
                     <span className="font-medium text-foreground">{quotation.clientCompany?.name || quotation.client.company || quotation.client.name}</span>
                     {quotation.project && (
-                      <p className="text-[11px] text-muted-foreground">{quotation.project.name}</p>
+                      <p className="text-xs text-muted-foreground">{quotation.project.name}</p>
                     )}
                   </TableCell>
                   {!companyId && (
@@ -221,7 +223,7 @@ export default function QuotationTable({ companyId }: { companyId?: string }) {
                     <div className="space-y-0.5">
                       <QuotationStatusBadge status={quotation.status} />
                       {quotation.invoice && (
-                        <p className="font-mono text-[10px] text-muted-foreground">
+                        <p className="font-mono text-xs text-muted-foreground">
                           {quotation.invoice.number}
                         </p>
                       )}

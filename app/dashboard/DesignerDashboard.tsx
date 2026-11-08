@@ -297,10 +297,10 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
   ];
 
   const statusConfig = {
-    DRAFT: { color: "bg-slate-100 text-slate-700 border-slate-200", label: "Draft" },
+    DRAFT: { color: "bg-muted text-foreground border-border", label: "Draft" },
     SUBMITTED: { color: "bg-blue-100 text-blue-700 border-blue-200", label: "Submitted" },
     APPROVED: { color: "bg-green-100 text-green-700 border-green-200", label: "Approved" },
-    REJECTED: { color: "bg-red-100 text-red-700 border-red-200", label: "Changes" },
+    REJECTED: { color: "bg-red-100 text-red-700 border-red-200", label: "Rejected" },
     SCHEDULED: { color: "bg-purple-100 text-purple-700 border-purple-200", label: "Scheduled" },
     POSTED: { color: "bg-emerald-100 text-emerald-700 border-emerald-200", label: "Published" },
   } as const;
@@ -308,10 +308,10 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
       {/* Header Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
             <Badge variant="outline" className="text-xs">
               {userRole}
             </Badge>
@@ -336,24 +336,24 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
       {/* Primary KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {primaryStats.map((stat) => (
-          <Card key={stat.title} className="relative overflow-hidden border-0 shadow-sm bg-white hover:shadow-md transition-all duration-200">
+          <Card key={stat.title} className="relative overflow-hidden border-0 shadow-sm bg-card hover:shadow-md transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">{stat.title}</CardTitle>
-              <div className={`p-2 rounded-lg bg-gray-50`}>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+              <div className={`p-2 rounded-lg bg-muted/50`}>
                 <stat.icon className={`h-4 w-4 ${stat.color}`} />
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1">
-                <div className="text-3xl font-bold text-gray-900">{stat.value}</div>
-                <p className="text-sm text-gray-500">{stat.description}</p>
+                <div className="text-3xl font-bold text-foreground">{stat.value}</div>
+                <p className="text-sm text-muted-foreground">{stat.description}</p>
               </div>
               
               {stat.trend && (
                 <div className="flex items-center gap-2">
                   {stat.trendValue !== undefined && (
                     <div className={`flex items-center gap-1 text-sm ${
-                      stat.trendValue > 0 ? 'text-green-600' : stat.trendValue < 0 ? 'text-red-600' : 'text-gray-600'
+                      stat.trendValue > 0 ? 'text-green-600' : stat.trendValue < 0 ? 'text-red-600' : 'text-muted-foreground'
                     }`}>
                       {stat.trendValue > 0 ? (
                         <ArrowUpRight className="h-3 w-3" />
@@ -366,7 +366,7 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
                     </div>
                   )}
                   {stat.previousValue && (
-                    <span className="text-xs text-gray-400">vs {stat.previousValue}</span>
+                    <span className="text-xs text-muted-foreground">vs {stat.previousValue}</span>
                   )}
                 </div>
               )}
@@ -380,22 +380,22 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
         {/* Secondary Stats */}
         <div className="lg:col-span-9 grid grid-cols-1 md:grid-cols-3 gap-4">
           {secondaryStats.map((stat) => (
-            <Card key={stat.title} className="border-0 shadow-sm bg-white">
+            <Card key={stat.title} className="border-0 shadow-sm bg-card">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                    <p className="text-xs text-gray-500">{stat.description}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                    <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                    <p className="text-xs text-muted-foreground">{stat.description}</p>
                   </div>
-                  <div className={`p-3 rounded-xl bg-gray-50`}>
+                  <div className={`p-3 rounded-xl bg-muted/50`}>
                     <stat.icon className={`h-5 w-5 ${stat.color}`} />
                   </div>
                 </div>
                 {stat.progress !== undefined && (
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">Completion</span>
+                      <span className="text-muted-foreground">Completion</span>
                       <span className="font-medium">{stat.progress}%</span>
                     </div>
                     <Progress value={stat.progress} className="h-2" />
@@ -407,7 +407,7 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
         </div>
 
         {/* Quick Actions - Tailored for designers/video editors */}
-        <Card className="lg:col-span-3 border-0 shadow-sm bg-white">
+        <Card className="lg:col-span-3 border-0 shadow-sm bg-card">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
           </CardHeader>
@@ -429,7 +429,7 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
       </div>
 
       {/* Recent Activity */}
-      <Card className="border-0 shadow-sm bg-white">
+      <Card className="border-0 shadow-sm bg-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -454,7 +454,7 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
                 }
                 return (
                   <div key={post.id}>
-                    <div className="flex items-center justify-between py-4 hover:bg-gray-50 -mx-6 px-6 rounded-lg transition-colors">
+                    <div className="flex items-center justify-between py-4 hover:bg-muted/50 -mx-6 px-6 rounded-lg transition-colors">
                       <div className="flex items-center gap-4 flex-1">
                         <div className={`p-2 rounded-lg ${
                           post.status === 'APPROVED' ? 'bg-green-50' :
@@ -473,22 +473,22 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <Link href={`/dashboard/posts/${post.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors line-clamp-1">
+                          <Link href={`/dashboard/posts/${post.id}`} className="font-medium text-foreground hover:text-blue-600 transition-colors line-clamp-1">
                             {post.title}
                           </Link>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-sm text-gray-500">{post.project.client?.name || "No Client"}</span>
+                            <span className="text-sm text-muted-foreground">{post.project.client?.name || "No Client"}</span>
                             <span className="text-gray-300">•</span>
-                            <span className="text-sm text-gray-500">{post.createdBy?.name || 'Deleted User'}</span>
+                            <span className="text-sm text-muted-foreground">{post.createdBy?.name || 'Deleted User'}</span>
                             <span className="text-gray-300">•</span>
-                            <span className="text-xs text-gray-400">{formatDate(post.updatedAt)}</span>
+                            <span className="text-xs text-muted-foreground">{formatDate(post.updatedAt)}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-2">
                             <Badge variant="outline" className="text-xs">
                               {post.type}
                             </Badge>
                             {post.platforms?.length > 0 && (
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-muted-foreground">
                                 {post.platforms.slice(0, 2).join(", ")}
                                 {post.platforms.length > 2 && ` +${post.platforms.length - 2}`}
                               </span>
@@ -501,7 +501,7 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
                         <PostTimingBadge post={post as any} />
                         <Badge 
                           variant="outline"
-                          className={statusConfig[post.status as keyof typeof statusConfig]?.color || "bg-gray-100 text-gray-700"}
+                          className={statusConfig[post.status as keyof typeof statusConfig]?.color || "bg-muted text-foreground"}
                         >
                           {statusConfig[post.status as keyof typeof statusConfig]?.label || post.status}
                         </Badge>
@@ -520,7 +520,7 @@ export default function DesignerDashboard({ searchParams }: { searchParams: { [k
             ) : (
               <div className="text-center py-12">
                 <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 mb-2">No assigned content yet</p>
+                <p className="text-muted-foreground mb-2">No assigned content yet</p>
                 <Link href="/dashboard/posts?assigned=me">
                   <Button className="gap-2">
                     <Target className="h-4 w-4" />

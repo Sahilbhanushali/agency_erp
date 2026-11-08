@@ -508,18 +508,18 @@ export function ExportLinkDialog({
               <Link2 className="w-5 h-5" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-bold text-slate-900 leading-tight">
+              <DialogTitle className="text-lg font-bold text-foreground leading-tight">
                 Customer Confirmation Link
               </DialogTitle>
               <div className="mt-1">
-                <span className="font-semibold text-sm text-slate-800">{projectName}</span>
+                <span className="font-semibold text-sm text-foreground">{projectName}</span>
                 {effectiveMonth && effectiveYear && (
                   <span className="block text-xs font-semibold text-blue-600">
                     {MONTH_NAMES[effectiveMonth]} {effectiveYear}
                   </span>
                 )}
                 {clientName && (
-                  <span className="block text-[11px] text-slate-500">
+                  <span className="block text-xs text-muted-foreground">
                     Client: {clientName}
                   </span>
                 )}
@@ -529,7 +529,7 @@ export function ExportLinkDialog({
         </DialogHeader>
 
         {loading ? (
-          <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-500">
+          <div className="py-12 flex flex-col items-center justify-center gap-2 text-muted-foreground">
             <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
             <span className="text-xs">Checking existing link...</span>
           </div>
@@ -546,23 +546,23 @@ export function ExportLinkDialog({
 
               {activeEmailRecipient ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-slate-600 leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Confirmation URL, login password, and expiration dates will be emailed to:
                   </p>
-                  <div className="p-2.5 bg-white border border-blue-200 rounded text-xs font-mono font-bold text-blue-950 select-all flex items-center justify-between">
+                  <div className="p-2.5 bg-card border border-blue-200 rounded text-xs font-mono font-bold text-blue-950 select-all flex items-center justify-between">
                     <span>{clientName ? `${clientName} • ` : ""}{activeEmailRecipient}</span>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
                       Configured
                     </Badge>
                   </div>
 
                   {linkData?.password ? (
-                    <div className="p-2 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-900 flex items-center gap-2">
+                    <div className="p-2 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-900 flex items-center gap-2">
                       <KeyRound className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>Active password <strong className="font-mono">{linkData.password}</strong> will be sent.</span>
                     </div>
                   ) : (
-                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 space-y-1">
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 space-y-1">
                       <div className="font-semibold flex items-center gap-1.5 text-amber-950">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                         Fresh Password Will Be Generated
@@ -578,7 +578,7 @@ export function ExportLinkDialog({
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
                   <div>
                     <div className="font-semibold">Client email address is not configured.</div>
-                    <p className="text-[11px] text-red-600 mt-0.5">
+                    <p className="text-xs text-red-600 mt-0.5">
                       Please configure the client email in Client settings, or copy and share credentials manually.
                     </p>
                   </div>
@@ -628,27 +628,27 @@ export function ExportLinkDialog({
                 <Sparkles className="w-4 h-4 text-blue-600" />
                 Explicit Expiration Controls
               </div>
-              <p className="text-slate-600 leading-relaxed text-[11px]">
+              <p className="text-muted-foreground leading-relaxed text-xs">
                 Configure independent expiration periods for the Confirmation URL and the Customer Access Password.
               </p>
             </div>
 
             {monthNum && yearNum && (
-              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-700 flex items-center gap-2">
+              <div className="p-2.5 bg-muted/50 border border-border rounded-md text-xs text-foreground flex items-center gap-2">
                 <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                 <span>
-                  Filtering for <span className="font-semibold text-slate-900">{MONTH_NAMES[monthNum]} {yearNum}</span> content.
+                  Filtering for <span className="font-semibold text-foreground">{MONTH_NAMES[monthNum]} {yearNum}</span> content.
                 </span>
               </div>
             )}
 
             {/* 1. Link Expiration Selector */}
-            <div className="space-y-2 p-3 border border-slate-200 rounded-lg bg-white">
+            <div className="space-y-2 p-3 border border-border rounded-lg bg-card">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" /> Link Expiration
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" /> Link Expiration
                 </label>
-                <span className="text-[11px] text-slate-500">URL access validity</span>
+                <span className="text-xs text-muted-foreground">URL access validity</span>
               </div>
 
               <div className="grid grid-cols-4 gap-1.5">
@@ -675,26 +675,26 @@ export function ExportLinkDialog({
 
               {linkExpiryPreset === "custom" && (
                 <div className="pt-2">
-                  <label className="text-[11px] text-slate-600 block mb-1">
+                  <label className="text-xs text-muted-foreground block mb-1">
                     Select custom date and time:
                   </label>
-                  <Input
+                  <Input aria-label="Select custom date and time"
                     type="datetime-local"
                     value={linkCustomExpiry}
                     onChange={(e) => setLinkCustomExpiry(e.target.value)}
-                    className="h-8 text-xs bg-slate-50"
+                    className="h-8 text-xs bg-muted/50"
                   />
                 </div>
               )}
             </div>
 
             {/* 2. Password Expiration Selector */}
-            <div className="space-y-2 p-3 border border-slate-200 rounded-lg bg-white">
+            <div className="space-y-2 p-3 border border-border rounded-lg bg-card">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-slate-500" /> Password Expiration
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-muted-foreground" /> Password Expiration
                 </label>
-                <span className="text-[11px] text-slate-500">Independent security control</span>
+                <span className="text-xs text-muted-foreground">Independent security control</span>
               </div>
 
               <div className="grid grid-cols-5 gap-1.5">
@@ -709,7 +709,7 @@ export function ExportLinkDialog({
                     key={opt.id}
                     type="button"
                     onClick={() => setPasswordExpiryPreset(opt.id)}
-                    className={`text-[11px] py-1.5 px-1.5 rounded font-medium border text-center transition-colors ${
+                    className={`text-xs py-1.5 px-1.5 rounded font-medium border text-center transition-colors ${
                       passwordExpiryPreset === opt.id
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                         : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
@@ -722,14 +722,14 @@ export function ExportLinkDialog({
 
               {passwordExpiryPreset === "custom" && (
                 <div className="pt-2">
-                  <label className="text-[11px] text-slate-600 block mb-1">
+                  <label className="text-xs text-muted-foreground block mb-1">
                     Select custom password expiration:
                   </label>
-                  <Input
+                  <Input aria-label="Select custom password expiration"
                     type="datetime-local"
                     value={passwordCustomExpiry}
                     onChange={(e) => setPasswordCustomExpiry(e.target.value)}
-                    className="h-8 text-xs bg-slate-50"
+                    className="h-8 text-xs bg-muted/50"
                   />
                 </div>
               )}
@@ -774,13 +774,13 @@ export function ExportLinkDialog({
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
                 Regenerate Customer Access Password
               </div>
-              <p className="text-[11px] text-amber-800 leading-relaxed">
+              <p className="text-xs text-amber-800 leading-relaxed">
                 The current password will be immediately invalidated. Anyone currently logged in will be required to authenticate with the new password.
               </p>
             </div>
 
-            <div className="space-y-2 p-3 border border-slate-200 rounded-lg bg-white">
-              <label className="text-xs font-semibold text-slate-800 block">
+            <div className="space-y-2 p-3 border border-border rounded-lg bg-card">
+              <label className="text-xs font-semibold text-foreground block">
                 Choose New Password Expiration:
               </label>
 
@@ -796,7 +796,7 @@ export function ExportLinkDialog({
                     key={opt.id}
                     type="button"
                     onClick={() => setPasswordExpiryPreset(opt.id)}
-                    className={`text-[11px] py-1.5 px-1.5 rounded font-medium border text-center transition-colors ${
+                    className={`text-xs py-1.5 px-1.5 rounded font-medium border text-center transition-colors ${
                       passwordExpiryPreset === opt.id
                         ? "bg-amber-600 text-white border-amber-600 shadow-xs"
                         : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
@@ -809,11 +809,11 @@ export function ExportLinkDialog({
 
               {passwordExpiryPreset === "custom" && (
                 <div className="pt-2">
-                  <Input
+                  <Input aria-label="Custom password expiry"
                     type="datetime-local"
                     value={passwordCustomExpiry}
                     onChange={(e) => setPasswordCustomExpiry(e.target.value)}
-                    className="h-8 text-xs bg-slate-50"
+                    className="h-8 text-xs bg-muted/50"
                   />
                 </div>
               )}
@@ -873,17 +873,17 @@ export function ExportLinkDialog({
                 </Badge>
               )}
 
-              <Badge variant="outline" className="text-xs bg-white text-slate-700 border-slate-300 font-medium">
-                <Lock className="w-3 h-3 mr-1 text-slate-500" /> Password Protected
+              <Badge variant="outline" className="text-xs bg-card text-foreground border-border font-medium">
+                <Lock className="w-3 h-3 mr-1 text-muted-foreground" /> Password Protected
               </Badge>
             </div>
 
             {/* Content Period Block */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+            <div className="p-3 bg-muted/50 border border-border rounded-lg space-y-1">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Content Period
               </div>
-              <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-blue-600" />
                 {linkData.month && linkData.year
                   ? `${MONTH_NAMES[linkData.month]} ${linkData.year}`
@@ -892,21 +892,21 @@ export function ExportLinkDialog({
             </div>
 
             {/* Expirations */}
-            <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+            <div className="grid grid-cols-2 gap-3 p-3 bg-muted/50 border border-border rounded-lg">
               <div className="space-y-1">
-                <div className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" /> Link Expires
+                <div className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" /> Link Expires
                 </div>
-                <div className={`font-semibold text-xs ${isLinkExpired ? "text-amber-700 line-through" : "text-slate-900"}`}>
+                <div className={`font-semibold text-xs ${isLinkExpired ? "text-amber-700 line-through" : "text-foreground"}`}>
                   {formatDateTime(linkData.expiresAt)}
                 </div>
               </div>
 
               <div className="space-y-1">
-                <div className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
-                  <KeyRound className="w-3.5 h-3.5 text-slate-400" /> Password Expires
+                <div className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5 text-muted-foreground" /> Password Expires
                 </div>
-                <div className={`font-semibold text-xs ${isPasswordExpired ? "text-red-700 font-bold" : "text-slate-900"}`}>
+                <div className={`font-semibold text-xs ${isPasswordExpired ? "text-red-700 font-bold" : "text-foreground"}`}>
                   {formatDateTime(linkData.passwordExpiresAt || linkData.expiresAt)}
                 </div>
               </div>
@@ -914,14 +914,14 @@ export function ExportLinkDialog({
 
             {/* Confirmation URL Field */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 block">
+              <label className="text-xs font-semibold text-foreground block">
                 Confirmation URL
               </label>
               <div className="flex items-center gap-2">
-                <Input
+                <Input aria-label="Confirmation URL"
                   readOnly
                   value={linkData.confirmationUrl}
-                  className="text-xs bg-slate-50 font-mono select-all text-slate-800 h-9"
+                  className="text-xs bg-muted/50 font-mono select-all text-foreground h-9"
                 />
                 <Button
                   size="sm"
@@ -930,7 +930,7 @@ export function ExportLinkDialog({
                   className="shrink-0 h-9 px-3"
                   title="Open Link"
                 >
-                  <ExternalLink className="w-4 h-4 text-slate-600" />
+                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
                 </Button>
               </div>
             </div>
@@ -943,12 +943,12 @@ export function ExportLinkDialog({
                     <KeyRound className="w-3.5 h-3.5 text-amber-600" />
                     Customer Password
                   </div>
-                  <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold">
+                  <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold">
                     Active
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-2 pt-0.5">
-                  <span className="font-mono text-sm font-extrabold text-amber-950 tracking-wider bg-white px-2.5 py-1 rounded border border-amber-300 select-all">
+                  <span className="font-mono text-sm font-extrabold text-amber-950 tracking-wider bg-card px-2.5 py-1 rounded border border-amber-300 select-all">
                     {linkData.password}
                   </span>
                   <Button
@@ -963,11 +963,11 @@ export function ExportLinkDialog({
                 </div>
               </div>
             ) : (
-              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs text-slate-600">
+              <div className="p-2.5 bg-muted/50 border border-border rounded-lg flex items-center justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5 font-medium">
-                  <Lock className="w-3.5 h-3.5 text-slate-400" /> Password: <span className="font-mono text-slate-400 tracking-widest">••••••••••</span>
+                  <Lock className="w-3.5 h-3.5 text-muted-foreground" /> Password: <span className="font-mono text-muted-foreground tracking-widest">••••••••••</span>
                 </span>
-                <span className="text-[11px] text-slate-400">Encrypted in DB</span>
+                <span className="text-xs text-muted-foreground">Encrypted in DB</span>
               </div>
             )}
 
@@ -977,9 +977,9 @@ export function ExportLinkDialog({
                 variant="outline"
                 size="sm"
                 onClick={handleCopyLink}
-                className="text-xs h-9 text-slate-700 hover:bg-slate-100"
+                className="text-xs h-9 text-foreground hover:bg-slate-100"
               >
-                {copiedLink ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1 text-slate-500" />}
+                {copiedLink ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1 text-muted-foreground" />}
                 {copiedLink ? "Copied" : "Copy Link"}
               </Button>
               <Button
@@ -995,9 +995,9 @@ export function ExportLinkDialog({
                 variant="outline"
                 size="sm"
                 onClick={handleCopyCredentialsClick}
-                className="text-xs h-9 text-slate-700 hover:bg-slate-100 font-medium"
+                className="text-xs h-9 text-foreground hover:bg-slate-100 font-medium"
               >
-                {copiedCredentials ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" /> : <FileText className="w-3.5 h-3.5 mr-1 text-slate-500" />}
+                {copiedCredentials ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" /> : <FileText className="w-3.5 h-3.5 mr-1 text-muted-foreground" />}
                 Copy Credentials
               </Button>
               <Button
@@ -1011,7 +1011,7 @@ export function ExportLinkDialog({
                   setShowEmailConfirm(true)
                 }}
                 disabled={emailLoading}
-                className="text-xs h-9 text-slate-700 hover:bg-slate-100"
+                className="text-xs h-9 text-foreground hover:bg-slate-100"
               >
                 <Mail className="w-3.5 h-3.5 mr-1 text-blue-600" />
                 {linkData?.lastEmailSentAt ? "Resend Email" : "Send Email"}
@@ -1019,7 +1019,7 @@ export function ExportLinkDialog({
             </div>
 
             {/* Row 2 Actions: [ Regenerate Password ] [ Revoke Link ] */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between pt-2 border-t border-border">
               <Button
                 variant="outline"
                 size="sm"
@@ -1045,7 +1045,7 @@ export function ExportLinkDialog({
           </div>
         ) : null}
 
-        <DialogFooter className="border-t border-slate-100 pt-3 flex items-center justify-between sm:justify-between w-full">
+        <DialogFooter className="border-t border-border pt-3 flex items-center justify-between sm:justify-between w-full">
           <div>
             {linkData && !isCreatingNew && (
               <Button
@@ -1053,7 +1053,7 @@ export function ExportLinkDialog({
                 size="sm"
                 onClick={() => setIsCreatingNew(true)}
                 disabled={actionLoading}
-                className="text-xs text-slate-700 h-8"
+                className="text-xs text-foreground h-8"
                 title="Configure and generate a completely new link"
               >
                 <RefreshCw className="w-3.5 h-3.5 mr-1" />

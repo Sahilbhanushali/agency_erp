@@ -254,7 +254,7 @@ export default function CredentialsPage() {
     <div className="space-y-6 animate-in fade-in-50 duration-200">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Password Credentials</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Password Credentials</h1>
           <p className="mt-1 text-sm text-muted-foreground">Every login the agency holds \u2014 websites, apps, mailboxes, hosting, banking and client platforms.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -283,7 +283,7 @@ export default function CredentialsPage() {
         <div className="rounded-xl border border-border/70 bg-card p-3 shadow-2xs">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
+            <Input aria-label="Search label, platform, username, client"
               placeholder="Search label, platform, username, client…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

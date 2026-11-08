@@ -513,7 +513,7 @@ export default function DashboardProfilePage() {
                             <p className="text-xs font-medium text-foreground">
                               Drag & drop image here or click to browse
                             </p>
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                               Supports PNG, JPG, or WebP (max 3MB)
                             </p>
                             <Button
@@ -554,7 +554,7 @@ export default function DashboardProfilePage() {
                             placeholder="https://example.com/avatar.jpg"
                             className="bg-background text-sm"
                           />
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             Enter a direct public image link (HTTP or HTTPS).
                           </p>
                         </div>
@@ -728,7 +728,7 @@ export default function DashboardProfilePage() {
                         : "border-border hover:border-muted-foreground/40 bg-card hover:bg-muted/20"
                     }`}
                   >
-                    <div className="w-full h-24 rounded-lg bg-[#f8fafc] border border-slate-200 p-2.5 flex flex-col justify-between shadow-inner">
+                    <div className="w-full h-24 rounded-lg bg-[#f8fafc] border border-border p-2.5 flex flex-col justify-between shadow-inner">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <div className="size-2 rounded-full bg-red-400" />
@@ -750,11 +750,11 @@ export default function DashboardProfilePage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-foreground">Light Mode</p>
-                          <p className="text-[11px] text-muted-foreground">Crisp & daytime</p>
+                          <p className="text-xs text-muted-foreground">Crisp & daytime</p>
                         </div>
                       </div>
                       {mounted && theme === "light" && (
-                        <Badge variant="default" className="text-[10px] h-5 px-1.5 font-normal">Active</Badge>
+                        <Badge variant="default" className="text-xs h-5 px-1.5 font-normal">Active</Badge>
                       )}
                     </div>
                   </button>
@@ -794,11 +794,11 @@ export default function DashboardProfilePage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-foreground">Dark Mode</p>
-                          <p className="text-[11px] text-muted-foreground">Low-glare contrast</p>
+                          <p className="text-xs text-muted-foreground">Low-glare contrast</p>
                         </div>
                       </div>
                       {mounted && theme === "dark" && (
-                        <Badge variant="default" className="text-[10px] h-5 px-1.5 font-normal">Active</Badge>
+                        <Badge variant="default" className="text-xs h-5 px-1.5 font-normal">Active</Badge>
                       )}
                     </div>
                   </button>
@@ -817,7 +817,7 @@ export default function DashboardProfilePage() {
                     }`}
                   >
                     <div className="w-full h-24 rounded-lg overflow-hidden border border-border flex shadow-inner">
-                      <div className="w-1/2 bg-[#f8fafc] p-2 flex flex-col justify-between border-r border-slate-200">
+                      <div className="w-1/2 bg-[#f8fafc] p-2 flex flex-col justify-between border-r border-border">
                         <div className="size-1.5 rounded-full bg-slate-300" />
                         <div className="h-1.5 w-3/4 rounded bg-slate-300" />
                       </div>
@@ -834,11 +834,11 @@ export default function DashboardProfilePage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-foreground">System Default</p>
-                          <p className="text-[11px] text-muted-foreground">Auto OS match</p>
+                          <p className="text-xs text-muted-foreground">Auto OS match</p>
                         </div>
                       </div>
                       {mounted && theme === "system" && (
-                        <Badge variant="default" className="text-[10px] h-5 px-1.5 font-normal">Active</Badge>
+                        <Badge variant="default" className="text-xs h-5 px-1.5 font-normal">Active</Badge>
                       )}
                     </div>
                   </button>

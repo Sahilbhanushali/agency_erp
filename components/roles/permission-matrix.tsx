@@ -351,7 +351,7 @@ export default function PermissionMatrix({
                       type="button"
                       onClick={() => toggleColumn(c, !modules.every((m) =>
                         !m.actions.some((a) => a.action === c) || selected[m.key]?.has(c)))}
-                      className="mt-0.5 text-[10px] font-normal text-muted-foreground underline hover:text-foreground"
+                      className="mt-0.5 text-xs font-normal text-muted-foreground underline hover:text-foreground"
                     >
                       all
                     </button>
@@ -367,7 +367,7 @@ export default function PermissionMatrix({
                   <th
                     scope="colgroup"
                     colSpan={activeColumns.length + 1}
-                    className="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+                    className="px-3 py-1.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                   >
                     {group}
                   </th>
@@ -384,15 +384,15 @@ export default function PermissionMatrix({
                           <button
                             type="button"
                             onClick={() => toggleRow(mod, !allOn)}
-                            className="ml-2 text-[10px] text-muted-foreground underline hover:text-foreground"
+                            className="ml-2 text-xs text-muted-foreground underline hover:text-foreground"
                           >
                             {allOn ? "none" : "all"}
                           </button>
                         )}
                         {noRead && (
-                          <Badge variant="outline" className="ml-2 text-[10px]">No access</Badge>
+                          <Badge variant="outline" className="ml-2 text-xs">No access</Badge>
                         )}
-                        <span className="ml-2 text-[10px] tabular-nums text-muted-foreground">
+                        <span className="ml-2 text-xs tabular-nums text-muted-foreground">
                           {set.size}/{mod.actions.length}
                         </span>
                       </th>

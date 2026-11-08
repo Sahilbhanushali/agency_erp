@@ -267,7 +267,7 @@ export function ClientForm({ client }: ClientFormProps) {
                     ) : (
                       <div className="flex flex-col items-center justify-center p-2 text-center text-muted-foreground">
                         <Upload className="size-5 mb-1" />
-                        <span className="text-[10px] font-medium leading-none">Upload</span>
+                        <span className="text-xs font-medium leading-none">Upload</span>
                       </div>
                     )}
                   </div>
@@ -306,7 +306,7 @@ export function ClientForm({ client }: ClientFormProps) {
                         </Button>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground leading-normal">
+                    <p className="text-xs text-muted-foreground leading-normal">
                       PNG, JPG, SVG, or WebP. Recommended square aspect ratio (e.g. 400×400px).
                     </p>
                   </div>
@@ -596,7 +596,7 @@ export function ClientForm({ client }: ClientFormProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
-              <Textarea
+              <Textarea aria-label="Internal client notes"
                 id="client-notes"
                 placeholder="Write internal guidelines, client tone preferences, key stakeholders, brand guidelines link, or billing frequency..."
                 value={formData.notes}
@@ -612,7 +612,7 @@ export function ClientForm({ client }: ClientFormProps) {
         <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-6">
           <Card className="shadow-xs border-border/80 overflow-hidden">
             <div className="bg-gradient-to-r from-muted/60 via-muted/30 to-muted/60 p-4 border-b border-border/60 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="size-3.5 text-primary" />
                 Live Card Preview
               </span>
@@ -624,7 +624,7 @@ export function ClientForm({ client }: ClientFormProps) {
                     ? "warning"
                     : "neutral"
                 }
-                className="text-[10px]"
+                className="text-xs"
               >
                 {formData.status}
               </Badge>
@@ -647,7 +647,7 @@ export function ClientForm({ client }: ClientFormProps) {
                     {formData.company || "Brand / Organization"}
                   </p>
                   <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-medium bg-muted px-2 py-0.5 rounded text-muted-foreground">
+                    <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded text-muted-foreground">
                       {formData.industry}
                     </span>
                   </div>
@@ -696,7 +696,7 @@ export function ClientForm({ client }: ClientFormProps) {
               {/* Commercial Identifiers Preview */}
               {(formData.gstin || formData.panNumber) && (
                 <div className="rounded-lg border border-border/60 bg-card p-3 space-y-1.5 text-xs">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Tax Records
                   </span>
                   <div className="flex items-center justify-between">
@@ -724,7 +724,7 @@ export function ClientForm({ client }: ClientFormProps) {
                 Agency Capabilities Unlocked
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-[11px] text-muted-foreground">
+            <CardContent className="space-y-2 text-xs text-muted-foreground">
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0 mt-0.5" />
                 <span>Instantly create projects, content schedules, and assign design retainers.</span>

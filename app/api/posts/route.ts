@@ -1,3 +1,4 @@
+import { POST_CONTENT_TYPES, isPresentationFile, isSocialPublishable } from "@/lib/posts/content-types";
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -44,6 +45,12 @@ export async function POST(request: NextRequest) {
     if (!type) {
       return NextResponse.json({ error: 'Content type is required' }, { status: 400 });
     }
+    // Validated against the shared list, so an unknown type is a 400 rather than a
+    // Prisma enum error surfacing as a 500.
+    if (!POST_CONTENT_TYPES.some((t) => t.value === type)) {
+      return NextResponse.json({ error: 'Choose a valid content type' }, { status: 400 });
+    }
+    const requiresClientApproval = formData.get('requiresClientApproval')?.toString() === 'true';
     if (!projectId) {
       return NextResponse.json({ error: 'Valid project ID is required' }, { status: 400 });
     }
@@ -55,7 +62,8 @@ export async function POST(request: NextRequest) {
       if (!Array.isArray(platforms) || platforms.some((p) => typeof p !== 'string')) {
         return NextResponse.json({ error: 'Platforms must be an array of strings' }, { status: 400 });
       }
-      if (platforms.length === 0) {
+      // A presentation is an internal deliverable; it is not published to a platform.
+      if (platforms.length === 0 && isSocialPublishable(type)) {
         return NextResponse.json({ error: 'At least one platform is required' }, { status: 400 });
       }
     } catch (error) {
@@ -223,9 +231,9 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: `File ${file.name} is too large. Maximum size is 100MB.` }, { status: 400 });
         }
 
-        if (!allowedTypes.some((type) => file.type.startsWith(type))) {
+        if (!allowedTypes.some((type) => file.type.startsWith(type)) && !isPresentationFile(file)) {
           return NextResponse.json(
-            { error: `File ${file.name} has invalid type. Only images, videos, and PDFs are allowed.` },
+            { error: `File ${file.name} has invalid type. Only images, videos, PDFs and presentations (.ppt, .pptx) are allowed.` },
             { status: 400 }
           );
         }
@@ -262,6 +270,7 @@ export async function POST(request: NextRequest) {
         type,
         status,
         contentStatus,
+        requiresClientApproval,
         projectId,
         createdById: parseInt(session.user.id, 10),
         assignedToId: validatedAssignedToId,

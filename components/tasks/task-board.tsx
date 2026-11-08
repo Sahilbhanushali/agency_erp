@@ -1,5 +1,6 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useMemo, useState } from "react"
 import useSWR from "swr"
 import toast from "react-hot-toast"
@@ -56,7 +57,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import TaskForm from "@/components/tasks/task-form"
 import TaskDetail from "@/components/tasks/task-detail"
-import { Assignees, DueDate, LinkedTo, PriorityBadge } from "@/components/tasks/task-chrome"
+import { Assignees, DueDate, LinkedTo, PriorityBadge, ProjectChip } from "@/components/tasks/task-chrome"
 import {
   TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
@@ -66,7 +67,8 @@ import {
   type TaskStatus,
 } from "@/types/task"
 
-const fetcher = (url: string) => fetch(url).then((response) => response.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 /** Whose tasks the board is showing. */
 type TaskScope = "mine" | "assignedByMe" | "all"
@@ -109,6 +111,13 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
    * on everyone's tasks buries what the person is actually responsible for.
    */
   const [scope, setScope] = useState<TaskScope>("mine")
+  // One set of filters for every view, held here so switching Kanban ⇄ Cards ⇄ Table
+  // keeps them. All of them are applied by the API, not in the browser.
+  const [projectId, setProjectId] = useState<string>("ALL")
+  const [statusFilter, setStatusFilter] = useState<string>("ALL")
+  const [assigneeId, setAssigneeId] = useState<string>("ALL")
+  const [due, setDue] = useState<string>("ALL")
+  const [page, setPage] = useState(1)
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<TaskStatus | null>(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -124,11 +133,38 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
   const [blockerReason, setBlockerReason] = useState("")
   const [blockerCategory, setBlockerCategory] = useState("TECHNICAL_ISSUE")
 
-  const query = new URLSearchParams({ limit: "200" })
+  // Kanban shows whole columns, so it loads one large page; the list views page.
+  const pageSize = viewMode === "kanban" ? 200 : 50
+  const effectivePage = viewMode === "kanban" ? 1 : page
+  const query = new URLSearchParams({ limit: String(pageSize), page: String(effectivePage) })
   if (priority !== "ALL") query.set("priority", priority)
   if (scope === "mine") query.set("mine", "1")
   if (scope === "assignedByMe") query.set("createdByMe", "1")
   if (search.trim()) query.set("search", search.trim())
+  if (projectId !== "ALL") query.set("projectId", projectId)
+  if (statusFilter !== "ALL") query.set("status", statusFilter)
+  // "Assigned to me" already fixes the assignee; a specific person narrows "Everyone".
+  if (assigneeId !== "ALL" && scope !== "mine") query.set("assigneeId", assigneeId)
+  if (due !== "ALL") query.set("due", due)
+
+  const { data: projectOptions } = useSWR<{ projects?: { id: string; name: string; client: string | null }[] }>(
+    "/api/projects?view=options",
+    fetcher,
+    { revalidateOnFocus: false },
+  )
+  const { data: people } = useSWR<{ id: string; name: string | null; email: string }[] | { error: string }>(
+    "/api/users",
+    fetcher,
+    { revalidateOnFocus: false },
+  )
+  const peopleList = Array.isArray(people) ? people : []
+  /** Any filter change returns the list views to their first page. */
+  const withReset =
+    <T,>(setter: (value: T) => void) =>
+    (value: T) => {
+      setter(value)
+      setPage(1)
+    }
 
   const { data, error, isLoading, mutate } = useSWR<{ tasks: Task[]; total: number; error?: string }>(
     `/api/tasks?${query}`,
@@ -417,7 +453,25 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
     )
   }
 
-  const isFiltered = search.trim() !== "" || priority !== "ALL" || scope !== "mine"
+  const filtersActive =
+    search.trim() !== "" ||
+    priority !== "ALL" ||
+    projectId !== "ALL" ||
+    statusFilter !== "ALL" ||
+    assigneeId !== "ALL" ||
+    due !== "ALL"
+  const isFiltered = filtersActive || scope !== "mine"
+  const clearFilters = () => {
+    setSearch("")
+    setPriority("ALL")
+    setProjectId("ALL")
+    setStatusFilter("ALL")
+    setAssigneeId("ALL")
+    setDue("ALL")
+    setPage(1)
+  }
+  const total = data?.total ?? 0
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   return (
     <div className="space-y-4">
@@ -428,12 +482,12 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
             aria-label="Search tasks"
             placeholder="Search tasks"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => withReset(setSearch)(event.target.value)}
             className="pl-9"
           />
         </div>
 
-        <Select value={scope} onValueChange={(value) => setScope(value as TaskScope)}>
+        <Select value={scope} onValueChange={(value) => withReset(setScope)(value as TaskScope)}>
           <SelectTrigger className="w-[170px]" aria-label="Whose tasks">
             <SelectValue />
           </SelectTrigger>
@@ -444,7 +498,36 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
           </SelectContent>
         </Select>
 
-        <Select value={priority} onValueChange={setPriority}>
+        <Select value={projectId} onValueChange={withReset(setProjectId)}>
+          <SelectTrigger className="w-[190px]" aria-label="Filter by project">
+            <SelectValue placeholder="All projects" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All projects</SelectItem>
+            {(projectOptions?.projects ?? []).map((project) => (
+              <SelectItem key={project.id} value={project.id}>
+                {project.name}
+                {project.client ? <span className="text-muted-foreground"> · {project.client}</span> : null}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={statusFilter} onValueChange={withReset(setStatusFilter)}>
+          <SelectTrigger className="w-[150px]" aria-label="Filter by status">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Any status</SelectItem>
+            {TASK_STATUS_ORDER.map((value) => (
+              <SelectItem key={value} value={value}>
+                {TASK_STATUS_LABELS[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={priority} onValueChange={withReset(setPriority)}>
           <SelectTrigger className="w-[150px]" aria-label="Filter by priority">
             <SelectValue />
           </SelectTrigger>
@@ -457,6 +540,41 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
             ))}
           </SelectContent>
         </Select>
+
+        {scope !== "mine" && peopleList.length > 0 && (
+          <Select value={assigneeId} onValueChange={withReset(setAssigneeId)}>
+            <SelectTrigger className="w-[170px]" aria-label="Filter by assignee">
+              <SelectValue placeholder="Anyone" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Anyone</SelectItem>
+              {peopleList.map((person) => (
+                <SelectItem key={person.id} value={String(person.id)}>
+                  {person.name ?? person.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        <Select value={due} onValueChange={withReset(setDue)}>
+          <SelectTrigger className="w-[150px]" aria-label="Filter by due date">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Any due date</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="today">Due today</SelectItem>
+            <SelectItem value="week">Due in 7 days</SelectItem>
+            <SelectItem value="none">No due date</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {filtersActive && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        )}
 
         {busy && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />}
 
@@ -506,7 +624,7 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
               Saying "No tasks yet" there, with a Create button, was simply wrong.
             */}
             <h2 className="mt-4 text-base font-medium">
-              {search.trim() !== "" || priority !== "ALL"
+              {filtersActive
                 ? "No tasks match those filters"
                 : scope === "mine"
                   ? "Nothing assigned to you"
@@ -515,8 +633,14 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
                     : "No tasks yet"}
             </h2>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-              {search.trim() !== "" || priority !== "ALL" ? (
-                "Try a different priority or clear the search."
+              {filtersActive ? (
+                <>
+                  Try a different project, status or date, or{" "}
+                  <button type="button" onClick={clearFilters} className="font-medium text-primary underline-offset-2 hover:underline">
+                    clear the filters
+                  </button>
+                  .
+                </>
               ) : scope === "mine" ? (
                 <>
                   Work assigned to you shows up here. Switch to{" "}
@@ -528,7 +652,7 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
                 "Tasks can stand alone, or hang off a post, project or client."
               )}
             </p>
-            {scope !== "all" && search.trim() === "" && priority === "ALL" && (
+            {scope !== "all" && !filtersActive && (
               <Button variant="outline" className="mt-5" onClick={() => setScope("all")}>
                 Show everyone's tasks
               </Button>
@@ -604,8 +728,14 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
                         {task.dueDate && <DueDate task={task} />}
                       </div>
 
-                      {(task.post || task.project || task.client) && (
-                        <p className="mt-2 truncate">
+                      {(task.project || task.post?.project) && (
+                        <div className="mt-2 min-w-0">
+                          <ProjectChip task={task} />
+                        </div>
+                      )}
+                      {/* The post (or client) it hangs off, when that is more than the project. */}
+                      {(task.post || (task.client && !task.project)) && (
+                        <p className="mt-1 truncate">
                           <LinkedTo task={task} />
                         </p>
                       )}
@@ -656,6 +786,7 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
                 )}
 
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <ProjectChip task={task} />
                   <DueDate task={task} />
                   <LinkedTo task={task} />
                 </div>
@@ -674,6 +805,7 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Task</TableHead>
+                    <TableHead className="hidden sm:table-cell">Project</TableHead>
                     <TableHead className="hidden md:table-cell">Linked to</TableHead>
                     <TableHead className="hidden lg:table-cell">Assignees</TableHead>
                     <TableHead>Priority</TableHead>
@@ -698,6 +830,13 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
                         <span className="mt-0.5 block md:hidden">
                           <LinkedTo task={task} />
                         </span>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {task.project || task.post?.project ? (
+                          <ProjectChip task={task} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <LinkedTo task={task} />
@@ -724,6 +863,36 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {tasks.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground" aria-live="polite">
+          <span>
+            {viewMode === "kanban"
+              ? total > pageSize
+                ? `Showing the first ${pageSize} of ${total} tasks — narrow the filters to see the rest.`
+                : `${total} task${total === 1 ? "" : "s"}`
+              : `${(effectivePage - 1) * pageSize + 1}–${Math.min(effectivePage * pageSize, total)} of ${total} tasks`}
+          </span>
+          {viewMode !== "kanban" && pageCount > 1 && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                Previous
+              </Button>
+              <span>
+                Page {page} of {pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= pageCount}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
       )}
 
       <TaskDetail
@@ -758,7 +927,7 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">Blocker Category *</Label>
               <Select value={blockerCategory} onValueChange={setBlockerCategory}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger aria-label="Blocker Category" className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -773,7 +942,7 @@ export default function TaskBoard({ perms }: { perms: TaskPerms }) {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">Blocker Reason / Details *</Label>
-              <Textarea
+              <Textarea aria-label="Blocker Reason / Details"
                 placeholder="What is stopping this task? Mention who or what is needed to unblock it..."
                 value={blockerReason}
                 onChange={(e) => setBlockerReason(e.target.value)}

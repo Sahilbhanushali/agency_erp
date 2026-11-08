@@ -1,3 +1,4 @@
+import { contentStatusLabel, statusLabel } from "@/lib/post-status";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,10 +60,7 @@ export default function RejectDialog({
 
   if (!statusRejectDialog || !post) return null;
 
-  const getStatusDisplay = (status: string) => {
-    if (status === "REJECTED") return "Changes";
-    return status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, " ");
-  };
+  const getStatusDisplay = (status: string) => statusLabel(status);
 
   const isDesign = statusRejectDialog.statusType === "design";
   const targetStatus = statusRejectDialog.targetStatus || "REJECTED";
@@ -218,11 +216,11 @@ export default function RejectDialog({
             <label className="text-sm font-semibold text-foreground block mb-2">
               {feedbackLabel} {(targetStatus === "NEEDS_MINOR_CHANGE" || (!audioBlob && !isRecording)) && <span className="text-red-500">*</span>}
             </label>
-            <Textarea
+            <Textarea aria-label="Feedback"
               value={actionComment}
               onChange={(e) => setActionComment(e.target.value)}
               placeholder={feedbackPlaceholder}
-              className="h-24 resize-none border-gray-300 focus:ring-2 focus:ring-blue-500 rounded-lg"
+              className="h-24 resize-none border-border focus:ring-2 focus:ring-blue-500 rounded-lg"
             />
           </div>
 

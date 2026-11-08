@@ -141,12 +141,13 @@ export default function WorkQueueView() {
 
   const handleSelectProject = (projectId: string) => {
     setSelectedProjectId(projectId);
-    router.push(`tasks?projectId=${projectId}`); // Update URL with projectId
+    // Keep view=pipeline: without it the page switches back to the Tasks tab.
+    router.push(`/dashboard/tasks?view=pipeline&projectId=${encodeURIComponent(projectId)}`);
   };
 
   const handleBack = () => {
     setSelectedProjectId(null);
-    router.push("/dashboard/tasks"); // Clear projectId from URL
+    router.push("/dashboard/tasks?view=pipeline"); // Clear projectId, stay on this tab
   };
 
   const calculateProjectStats = (tasks: Task[]) => {
@@ -335,9 +336,10 @@ export default function WorkQueueView() {
     <div className="space-y-6 animate-in fade-in-50 duration-200">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">
+          {/* The Tasks page owns the h1; this view is a section of it. */}
+          <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">
             My Design Tasks
-          </h1>
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Track assignments, deadlines, and progress across {projectGroups.length} project{projectGroups.length !== 1 ? 's' : ''}
           </p>
@@ -743,11 +745,11 @@ function MonthPicker({
       </PopoverTrigger>
       <PopoverContent className="w-64 p-3" align="start">
         <div className="flex items-center justify-between mb-4">
-          <Button variant="outline" size="icon" className="h-7 w-7 bg-transparent p-0" onClick={() => setViewYear(viewYear - 1)}>
+          <Button aria-label="Previous year" variant="outline" size="icon" className="h-7 w-7 bg-transparent p-0" onClick={() => setViewYear(viewYear - 1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="font-semibold text-sm">{viewYear}</div>
-          <Button variant="outline" size="icon" className="h-7 w-7 bg-transparent p-0" onClick={() => setViewYear(viewYear + 1)}>
+          <Button aria-label="Next year" variant="outline" size="icon" className="h-7 w-7 bg-transparent p-0" onClick={() => setViewYear(viewYear + 1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

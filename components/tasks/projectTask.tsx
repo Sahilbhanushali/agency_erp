@@ -180,7 +180,7 @@ export default function ProjectTasksView({ project, onBack, mutate }: ProjectTas
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{project.projectName}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">{project.projectName}</h1>
             <div className="flex items-center space-x-2 text-muted-foreground">
               <Building className="h-4 w-4" />
               <p>{project.companyName}</p>
@@ -217,11 +217,11 @@ export default function ProjectTasksView({ project, onBack, mutate }: ProjectTas
             <Calendar className="h-4 w-4 text-blue-500" />
             <span className="text-xs font-bold uppercase tracking-wider">Timeline</span>
           </div>
-          <span className="text-[10px] text-slate-400 font-medium mt-0.5">Filter by Month</span>
+          <span className="text-xs text-muted-foreground font-medium mt-0.5">Filter by Month</span>
         </div>
 
         {/* Navigation Arrow Left */}
-        <Button
+        <Button aria-label="Previous month"
           variant="ghost"
           size="icon"
           onClick={() => {
@@ -265,14 +265,14 @@ export default function ProjectTasksView({ project, onBack, mutate }: ProjectTas
 
                 <div className="flex flex-col justify-between h-full gap-0.5">
                   <div className="flex justify-between items-center gap-1.5">
-                    <span className={`text-[9px] uppercase font-bold tracking-wider ${
+                    <span className={`text-xs uppercase font-bold tracking-wider ${
                       isSelected ? "text-blue-100/90" : "text-slate-400 dark:text-slate-500"
                     }`}>
                       {format(month, "yyyy")}
                     </span>
                     
                     {/* Task count pill badge */}
-                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shrink-0 border ${
+                    <span className={`text-xs font-extrabold px-1.5 py-0.5 rounded-full shrink-0 border ${
                       isSelected
                         ? "bg-white/20 text-white border-white/20"
                         : taskCount > 0
@@ -294,7 +294,7 @@ export default function ProjectTasksView({ project, onBack, mutate }: ProjectTas
         </div>
 
         {/* Navigation Arrow Right */}
-        <Button
+        <Button aria-label="Next month"
           variant="ghost"
           size="icon"
           onClick={() => {

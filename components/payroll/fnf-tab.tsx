@@ -18,6 +18,16 @@ import {
   UserX,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +76,7 @@ function formatInr(paise: number): string {
 
 export default function FnFTab({ users = [], currentUserId }: { users?: any[]; currentUserId?: number }) {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [confirmApprove, setConfirmApprove] = useState<{ settlementId: string; employeeUserId: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const url = statusFilter === "ALL"
@@ -187,15 +198,17 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
     }
   }
 
-  async function handleApprove(settlementId: string, employeeUserId: number) {
+  /** Asks first (in the app's own dialog, not window.confirm): approval is irreversible. */
+  function handleApprove(settlementId: string, employeeUserId: number) {
     if (currentUserId && employeeUserId === currentUserId) {
       toast.error("Separation of duties violation: You cannot approve your own Full & Final Settlement");
       return;
     }
+    setConfirmApprove({ settlementId, employeeUserId });
+  }
 
-    if (!confirm("Are you sure you want to approve this settlement? This will finalize all payout figures, close outstanding employee loans, and mark the employee as SEPARATED.")) {
-      return;
-    }
+  async function approveSettlement(settlementId: string) {
+    setConfirmApprove(null);
 
     setIsApproving(true);
     try {
@@ -218,8 +231,32 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
     }
   }
 
+  const pendingApproval = confirmApprove
+    ? settlements.find((x: any) => x.id === confirmApprove.settlementId)
+    : null;
+
   return (
     <div className="space-y-6">
+      <AlertDialog open={!!confirmApprove} onOpenChange={(open) => !open && setConfirmApprove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Approve the settlement{pendingApproval?.user?.name ? ` for ${pendingApproval.user.name}` : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This finalizes every payout figure, closes the employee&apos;s outstanding loans and marks them as
+              separated. It cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmApprove && approveSettlement(confirmApprove.settlementId)}>
+              Approve settlement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
@@ -267,7 +304,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
+            <Input aria-label="Search employee"
               placeholder="Search employee..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -275,7 +312,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-32 h-9 text-xs">
+            <SelectTrigger aria-label="Status" className="w-32 h-9 text-xs">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -329,7 +366,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                   <TableRow key={s.id}>
                     <TableCell className="text-xs">
                       <div className="font-medium text-foreground">{s.user?.name}</div>
-                      <div className="text-[11px] text-muted-foreground">{s.user?.designation || s.user?.department}</div>
+                      <div className="text-xs text-muted-foreground">{s.user?.designation || s.user?.department}</div>
                     </TableCell>
                     <TableCell className="text-xs">
                       {new Date(s.lastWorkingDate).toLocaleDateString("en-IN", {
@@ -341,7 +378,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                     <TableCell className="text-xs">
                       {s.servedNoticeDays} / {s.noticePeriodDays} days
                       {s.shortfallDays > 0 && (
-                        <div className="text-[10px] text-red-500 font-medium">({s.shortfallDays}d shortfall)</div>
+                        <div className="text-xs text-red-500 font-medium">({s.shortfallDays}d shortfall)</div>
                       )}
                     </TableCell>
                     <TableCell className="text-xs">{formatInr(s.pendingSalaryAmount)}</TableCell>
@@ -358,11 +395,11 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                     </TableCell>
                     <TableCell className="text-xs">
                       {s.status === "APPROVED" ? (
-                        <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200 text-[10px]">
+                        <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200 text-xs">
                           APPROVED
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-amber-700 bg-amber-50 border-amber-200 text-[10px]">
+                        <Badge variant="outline" className="text-amber-700 bg-amber-50 border-amber-200 text-xs">
                           DRAFT
                         </Badge>
                       )}
@@ -418,7 +455,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
               {/* LEFT COLUMN: Exit Parameters & Inputs */}
               <div className="lg:col-span-6 space-y-4">
                 <div className="p-3.5 rounded-xl border border-border bg-card space-y-3.5 shadow-2xs">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                     1. Separation Coordinates
                   </span>
 
@@ -465,7 +502,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                 </div>
 
                 <div className="p-3.5 rounded-xl border border-border bg-card space-y-3.5 shadow-2xs">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                     2. Notice & Deductions
                   </span>
 
@@ -538,13 +575,13 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                           <span className="font-bold text-xs uppercase tracking-wider text-foreground">
                             Settlement Breakdown
                           </span>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             Employee Tenure: {previewData.tenureYears} Years, {previewData.tenureMonths} Months
                           </p>
                         </div>
                         <Badge
                           variant={previewData.gratuityAmount > 0 ? "success" : "outline"}
-                          className="text-[10px] py-0.5"
+                          className="text-xs py-0.5"
                         >
                           {previewData.gratuityAmount > 0 ? "Gratuity Eligible (>= 5y)" : "No Gratuity (< 5y)"}
                         </Badge>
@@ -556,7 +593,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                         <div className="flex justify-between py-2">
                           <div>
                             <span className="font-medium text-foreground">Final Month Salary</span>
-                            <span className="text-[10px] text-muted-foreground block">Prorated to Last Working Day</span>
+                            <span className="text-xs text-muted-foreground block">Prorated to Last Working Day</span>
                           </div>
                           <span className="font-mono font-bold text-foreground">
                             {formatInr(previewData.pendingSalaryAmount)}
@@ -566,7 +603,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                         <div className="flex justify-between py-2">
                           <div>
                             <span className="font-medium text-foreground">Earned Leave Encashment</span>
-                            <span className="text-[10px] text-muted-foreground block">{previewData.leaveEncashmentDays} Days (Formula: Basic/30)</span>
+                            <span className="text-xs text-muted-foreground block">{previewData.leaveEncashmentDays} Days (Formula: Basic/30)</span>
                           </div>
                           <span className="font-mono font-bold text-foreground">
                             {formatInr(previewData.leaveEncashmentAmount)}
@@ -576,7 +613,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                         <div className="flex justify-between py-2">
                           <div>
                             <span className="font-medium text-foreground">Statutory Gratuity</span>
-                            <span className="text-[10px] text-muted-foreground block">Payment of Gratuity Act 1972</span>
+                            <span className="text-xs text-muted-foreground block">Payment of Gratuity Act 1972</span>
                           </div>
                           <span className={`font-mono font-bold ${previewData.gratuityAmount > 0 ? "text-emerald-600" : "text-muted-foreground"}`}>
                             {formatInr(previewData.gratuityAmount)}
@@ -587,7 +624,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                         <div className="flex justify-between py-2">
                           <div>
                             <span className="font-medium text-red-600">Notice Shortfall Recovery</span>
-                            <span className="text-[10px] text-muted-foreground block">
+                            <span className="text-xs text-muted-foreground block">
                               {previewData.shortfallDays > 0 ? `${previewData.shortfallDays} Days Shortfall` : "Notice Fully Served"}
                             </span>
                           </div>
@@ -599,7 +636,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                         <div className="flex justify-between py-2">
                           <div>
                             <span className="font-medium text-red-600">Outstanding Loan Recovery</span>
-                            <span className="text-[10px] text-muted-foreground block">Active Advance Balance</span>
+                            <span className="text-xs text-muted-foreground block">Active Advance Balance</span>
                           </div>
                           <span className={`font-mono font-bold ${previewData.outstandingLoanBalance > 0 ? "text-red-600" : "text-muted-foreground"}`}>
                             {previewData.outstandingLoanBalance > 0 ? `- ${formatInr(previewData.outstandingLoanBalance)}` : "₹0"}
@@ -609,7 +646,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                         <div className="flex justify-between py-2">
                           <div>
                             <span className="font-medium text-red-600">Asset & Other Deductions</span>
-                            <span className="text-[10px] text-muted-foreground block">Equipment / Clearance</span>
+                            <span className="text-xs text-muted-foreground block">Equipment / Clearance</span>
                           </div>
                           <span className={`font-mono font-bold ${previewData.otherDeductions > 0 ? "text-red-600" : "text-muted-foreground"}`}>
                             {previewData.otherDeductions > 0 ? `- ${formatInr(previewData.otherDeductions)}` : "₹0"}
@@ -622,10 +659,10 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                     <div className="pt-2">
                       <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between">
                         <div>
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">
                             Net Settlement Payout
                           </span>
-                          <span className="text-[10px] text-muted-foreground">Disbursable on exit approval</span>
+                          <span className="text-xs text-muted-foreground">Disbursable on exit approval</span>
                         </div>
                         <span className="text-xl lg:text-2xl font-bold font-mono text-emerald-600 tracking-tight">
                           {formatInr(previewData.netSettlementAmount)}
@@ -634,7 +671,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
 
                       {/* Calculation Notes */}
                       {previewData.calculationNotes?.length > 0 && (
-                        <div className="mt-2.5 p-2 rounded-lg bg-card border border-border text-[10px] text-muted-foreground space-y-0.5">
+                        <div className="mt-2.5 p-2 rounded-lg bg-card border border-border text-xs text-muted-foreground space-y-0.5">
                           {previewData.calculationNotes.map((note: string, idx: number) => (
                             <div key={idx} className="truncate">• {note}</div>
                           ))}
@@ -646,7 +683,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                   <div className="border border-dashed border-border rounded-xl p-8 text-center text-xs text-muted-foreground flex flex-col items-center justify-center h-full min-h-[300px] bg-muted/10">
                     <Calculator className="size-8 text-muted-foreground/40 mb-2" />
                     <p className="font-semibold text-foreground">No Preview Computed</p>
-                    <p className="text-[11px] text-muted-foreground mt-1 max-w-xs">
+                    <p className="text-xs text-muted-foreground mt-1 max-w-xs">
                       Select an employee, resignation date, and last working date, then click "Compute Statutory Settlement" to view the live calculation sheet.
                     </p>
                   </div>
@@ -699,21 +736,21 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
             {/* Employee Metadata Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl border border-border bg-muted/20">
               <div>
-                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Employee</span>
+                <span className="text-xs uppercase font-semibold text-muted-foreground block">Employee</span>
                 <span className="font-bold text-foreground text-xs">{selectedSettlement?.user?.name}</span>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Designation</span>
+                <span className="text-xs uppercase font-semibold text-muted-foreground block">Designation</span>
                 <span className="text-foreground text-xs">{selectedSettlement?.user?.designation || "Staff"}</span>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Relieved On</span>
+                <span className="text-xs uppercase font-semibold text-muted-foreground block">Relieved On</span>
                 <span className="text-foreground text-xs font-mono">
                   {selectedSettlement?.lastWorkingDate ? new Date(selectedSettlement.lastWorkingDate).toLocaleDateString("en-IN") : "-"}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Notice Served</span>
+                <span className="text-xs uppercase font-semibold text-muted-foreground block">Notice Served</span>
                 <span className="text-foreground text-xs font-mono">
                   {selectedSettlement?.servedNoticeDays} / {selectedSettlement?.noticePeriodDays} Days
                 </span>
@@ -723,7 +760,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
             {/* Top 3 Metric Cards */}
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-xl border border-border bg-card">
-                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Gross Earnings</span>
+                <span className="text-xs uppercase font-semibold text-muted-foreground block">Gross Earnings</span>
                 <span className="text-base font-bold font-mono text-foreground mt-1 block">
                   {formatInr(
                     (selectedSettlement?.pendingSalaryAmount || 0) +
@@ -733,7 +770,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                 </span>
               </div>
               <div className="p-3 rounded-xl border border-border bg-card">
-                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Total Deductions</span>
+                <span className="text-xs uppercase font-semibold text-muted-foreground block">Total Deductions</span>
                 <span className="text-base font-bold font-mono text-red-600 mt-1 block">
                   - {formatInr(
                     (selectedSettlement?.noticeRecoveryAmount || 0) +
@@ -742,7 +779,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
                 </span>
               </div>
               <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10">
-                <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300 block">Net Payout</span>
+                <span className="text-xs uppercase font-bold text-emerald-800 dark:text-emerald-300 block">Net Payout</span>
                 <span className="text-base font-bold font-mono text-emerald-600 mt-1 block">
                   {formatInr(selectedSettlement?.netSettlementAmount)}
                 </span>
@@ -790,7 +827,7 @@ export default function FnFTab({ users = [], currentUserId }: { users?: any[]; c
             </div>
 
             {selectedSettlement?.notes && (
-              <div className="p-3 bg-muted/40 rounded-xl border border-border text-[11px] whitespace-pre-wrap font-mono">
+              <div className="p-3 bg-muted/40 rounded-xl border border-border text-xs whitespace-pre-wrap font-mono">
                 <strong>Exit Remarks:</strong> {selectedSettlement.notes}
               </div>
             )}

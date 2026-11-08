@@ -129,7 +129,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
 
               {/* Job Selector */}
               <Select value={selectedJob} onValueChange={setSelectedJob}>
-                <SelectTrigger className="h-8 text-xs w-[180px]">
+                <SelectTrigger aria-label="All Job Openings" className="h-8 text-xs w-[180px]">
                   <SelectValue placeholder="All Job Openings" />
                 </SelectTrigger>
                 <SelectContent>
@@ -144,7 +144,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
 
               {/* Department Selector */}
               <Select value={selectedDept} onValueChange={setSelectedDept}>
-                <SelectTrigger className="h-8 text-xs w-[150px]">
+                <SelectTrigger aria-label="All Departments" className="h-8 text-xs w-[150px]">
                   <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
                 <SelectContent>
@@ -159,7 +159,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
 
               {/* Stage Filter */}
               <Select value={selectedStage} onValueChange={setSelectedStage}>
-                <SelectTrigger className="h-8 text-xs w-[160px]">
+                <SelectTrigger aria-label="All Stages" className="h-8 text-xs w-[160px]">
                   <SelectValue placeholder="All Stages" />
                 </SelectTrigger>
                 <SelectContent>
@@ -174,7 +174,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
 
               {/* Date Pickers */}
               <div className="flex items-center gap-1">
-                <Input
+                <Input aria-label="From date"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
@@ -182,7 +182,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
                   title="Filter From Date"
                 />
                 <span className="text-xs text-muted-foreground">to</span>
-                <Input
+                <Input aria-label="To date"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
@@ -296,7 +296,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
               <span className="text-2xl font-bold tracking-tight text-foreground">
                 {stats?.pendingOffersCount ?? 0}
               </span>
-              <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/30">
+              <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-500/30">
                 {stats?.offerAcceptanceRate ?? 0}% accepted
               </Badge>
             </div>
@@ -337,10 +337,10 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
                   className={`p-2.5 rounded-lg border transition-all cursor-pointer hover:shadow-xs ${config.bg} ${config.border}`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`text-[11px] font-semibold truncate ${config.color}`}>
+                    <span className={`text-xs font-semibold truncate ${config.color}`}>
                       {stage}
                     </span>
-                    <Badge variant={config.badgeVariant} className="text-[10px] px-1.5 py-0 h-4 font-bold">
+                    <Badge variant={config.badgeVariant} className="text-xs px-1.5 py-0 h-4 font-bold">
                       {count}
                     </Badge>
                   </div>
@@ -391,13 +391,13 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
                       <h4 className="text-xs font-semibold text-foreground">
                         {interview.candidate?.name}
                       </h4>
-                      <p className="text-[11px] text-muted-foreground">{interview.title}</p>
+                      <p className="text-xs text-muted-foreground">{interview.title}</p>
                     </div>
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       {interview.type}
                     </Badge>
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="size-3 text-amber-500" />
                       {formatDatePretty(interview.scheduledDate)} at {interview.startTime}
@@ -407,7 +407,7 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
                         href={interview.meetingLink}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-primary hover:underline flex items-center gap-0.5 text-[10px]"
+                        className="text-primary hover:underline flex items-center gap-0.5 text-xs"
                       >
                         Join <ExternalLink className="size-2.5" />
                       </a>
@@ -494,12 +494,12 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
                                 {candidate.name}
                               </span>
                               {candidate.experienceYears && (
-                                <span className="text-[10px] text-muted-foreground">
+                                <span className="text-xs text-muted-foreground">
                                   ({Number(candidate.experienceYears)} yrs exp)
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               {latestApp?.jobOpening?.title || candidate.currentTitle || "Applicant"}
                             </div>
                           </div>
@@ -507,11 +507,11 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
 
                         <div className="flex items-center gap-2">
                           {stageConfig ? (
-                            <Badge variant={stageConfig.badgeVariant} className="text-[10px]">
+                            <Badge variant={stageConfig.badgeVariant} className="text-xs">
                               {latestApp.stage}
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="text-xs">
                               Applied
                             </Badge>
                           )}
@@ -546,11 +546,11 @@ export function HrmsDashboardTab({ onNavigateTab, onSelectCandidate }: HrmsDashb
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-foreground">{act.title}</span>
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {formatDatePretty(act.createdAt)}
                           </span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{act.notes}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{act.notes}</p>
                       </div>
                     </div>
                   ))

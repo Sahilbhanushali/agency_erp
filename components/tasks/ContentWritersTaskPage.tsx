@@ -353,8 +353,8 @@ export default function ContentWriterTasksPage() {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600 font-medium">Project not found</p>
+          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground font-medium">Project not found</p>
           <Button variant="ghost" onClick={() => setSelectedProjectId(null)}>
             Back to Dashboard
           </Button>
@@ -370,7 +370,7 @@ export default function ContentWriterTasksPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Content Writer Dashboard</h1>
+          <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">Content Writer Dashboard</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             Manage your content tasks across {projectGroups.length} project{projectGroups.length !== 1 ? 's' : ''}
           </p>
@@ -451,8 +451,8 @@ export default function ContentWriterTasksPage() {
       <Card>
         <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-            <Input
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input aria-label="Search by project or client"
               placeholder="Search by project or client..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -460,7 +460,7 @@ export default function ContentWriterTasksPage() {
             />
           </div>
           <Select value={filterBy} onValueChange={(value) => setFilterBy(value as FilterBy)}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger aria-label="Filter by" className="w-[180px]">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Filter by" />
             </SelectTrigger>
@@ -470,13 +470,13 @@ export default function ContentWriterTasksPage() {
               <SelectItem value="thisWeek">Due This Week</SelectItem>
               <SelectItem value="draft">Drafts</SelectItem>
               <SelectItem value="pending">Under Review</SelectItem>
-              <SelectItem value="approved">I Approve</SelectItem>
-              <SelectItem value="c_approved">C Approve</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="c_approved">Client approved</SelectItem>
               <SelectItem value="pendingCreation">Pending Creation</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger aria-label="Sort by" className="w-[150px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -502,7 +502,7 @@ export default function ContentWriterTasksPage() {
         {filteredAndSortedProjects.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground font-medium">
                 {searchQuery || filterBy !== 'all' ? 'No matching projects found' : 'No projects assigned'}
               </p>
@@ -582,7 +582,7 @@ function ProjectCard({ project, onSelect }: { project: ProjectGroup; onSelect: (
             </div>
             <div className="text-center">
               <p className="font-medium">{project.stats.approved}</p>
-              <p className="text-muted-foreground text-xs">I Approve</p>
+              <p className="text-muted-foreground text-xs">Approved</p>
             </div>
           </div>
           <div className="space-y-2">
@@ -625,7 +625,7 @@ function ProjectTable({ projects, onSelectProject }: { projects: ProjectGroup[];
               <th className="p-3 text-center font-semibold text-muted-foreground">Total Posts</th>
               <th className="p-3 text-center font-semibold text-muted-foreground">Drafts</th>
               <th className="p-3 text-center font-semibold text-muted-foreground">Review</th>
-              <th className="p-3 text-center font-semibold text-muted-foreground">I Approve</th>
+              <th className="p-3 text-center font-semibold text-muted-foreground">Approved</th>
               <th className="p-3 text-center font-semibold text-muted-foreground">Overdue</th>
               <th className="p-3 text-center font-semibold text-muted-foreground">Pending Creation</th>
               <th className="p-3 text-center font-semibold text-muted-foreground">Actions</th>

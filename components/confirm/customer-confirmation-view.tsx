@@ -1,5 +1,6 @@
 "use client"
 
+import { CLIENT_REVIEW_LABELS, clientReviewState, isClientDone } from "@/lib/posts/client-review"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -65,6 +66,8 @@ export interface Post {
   type: string
   status: string
   contentStatus?: string | null
+  /** Approval is only possible while the post is internally approved AND this is on. */
+  requiresClientApproval?: boolean
   scheduledAt?: string | null
   notes?: string | null
   approvedAt?: string | null
@@ -158,13 +161,11 @@ export function CustomerConfirmationView({
 
   // Accurate counts based on live Post records
   const totalCount = posts.length
-  const approvedCount = posts.filter(
-    (p) => p.status === "C_APPROVED" || p.contentStatus === "C_APPROVED"
-  ).length
-  const changesRequestedCount = posts.filter((p) => p.status === "REJECTED").length
-  const awaitingApprovalCount = posts.filter(
-    (p) => p.status !== "C_APPROVED" && p.contentStatus !== "C_APPROVED" && p.status !== "REJECTED"
-  ).length
+  // Counted from the same rule the server enforces (lib/posts/client-review.ts).
+  const states = posts.map((p) => clientReviewState(p))
+  const approvedCount = states.filter(isClientDone).length
+  const changesRequestedCount = states.filter((s) => s === "CHANGES_REQUESTED").length
+  const awaitingApprovalCount = states.filter((s) => s === "AWAITING_CLIENT").length
 
   const progressPercentage = totalCount > 0 ? Math.round((approvedCount / totalCount) * 100) : 0
 
@@ -189,18 +190,12 @@ export function CustomerConfirmationView({
 
       toast.success("✓ Post Approved Successfully")
 
-      const nowIso = json.post?.approvedAt || new Date().toISOString()
+      // The status the server actually set — never an optimistic guess.
+      const nowIso = new Date().toISOString()
       setData((prev) => ({
         ...prev,
         posts: prev.posts.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                status: "C_APPROVED",
-                contentStatus: "C_APPROVED",
-                approvedAt: nowIso,
-              }
-            : p
+          p.id === postId ? { ...p, status: json.post?.status ?? p.status, approvedAt: nowIso } : p
         ),
       }))
 
@@ -253,7 +248,6 @@ export function CustomerConfirmationView({
 
       toast.success("Changes requested. Our team has received your feedback.")
 
-      const nowIso = json.post?.rejectedAt || new Date().toISOString()
       setData((prev) => ({
         ...prev,
         posts: prev.posts.map((p) => {
@@ -261,8 +255,10 @@ export function CustomerConfirmationView({
             const currentComments = p.comments || []
             return {
               ...p,
-              status: "REJECTED",
-              rejectedAt: nowIso,
+              // Only a post that was awaiting the client changes status; on any other
+              // post the request is recorded as feedback for the team.
+              status: json.post?.status ?? p.status,
+              rejectedAt: json.post?.rejectedAt ?? p.rejectedAt,
               comments: json.comment ? [...currentComments, json.comment] : currentComments,
             }
           }
@@ -314,16 +310,14 @@ export function CustomerConfirmationView({
           confirmedByName: json.confirmedByName || approverName.trim(),
           feedback: batchFeedback.trim() || prev.link.feedback,
         },
-        posts: prev.posts.map((p) => ({
-          ...p,
-          status: "C_APPROVED",
-          contentStatus: "C_APPROVED",
-          approvedAt: nowIso,
-        })),
+        // Only the posts that were waiting for the client were approved by the server.
+        posts: prev.posts.map((p) =>
+          clientReviewState(p) === "AWAITING_CLIENT" ? { ...p, status: "C_APPROVED", approvedAt: nowIso } : p
+        ),
       }))
 
       setIsBatchApproveOpen(false)
-      toast.success("All posts approved successfully! Thank you.")
+      toast.success(json.message || "Thank you — your approval has been recorded.")
     } catch (err: any) {
       toast.error(err.message || "Something went wrong")
     } finally {
@@ -536,22 +530,22 @@ export function CustomerConfirmationView({
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
             <span className="text-xs font-medium text-slate-500 block">Total Content</span>
             <div className="text-2xl font-bold text-slate-900 mt-1">{totalCount}</div>
-            <span className="text-[11px] text-slate-400 mt-0.5 block">Posts in this schedule</span>
+            <span className="text-xs text-slate-400 mt-0.5 block">Posts in this schedule</span>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
             <span className="text-xs font-medium text-emerald-700 block">Approved</span>
             <div className="text-2xl font-bold text-emerald-600 mt-1">{approvedCount}</div>
-            <span className="text-[11px] text-emerald-600/80 mt-0.5 block">Ready for publishing</span>
+            <span className="text-xs text-emerald-600/80 mt-0.5 block">Ready for publishing</span>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
             <span className="text-xs font-medium text-amber-700 block">Changes Requested</span>
             <div className="text-2xl font-bold text-amber-600 mt-1">{changesRequestedCount}</div>
-            <span className="text-[11px] text-amber-600/80 mt-0.5 block">Revisions in progress</span>
+            <span className="text-xs text-amber-600/80 mt-0.5 block">Revisions in progress</span>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
             <span className="text-xs font-medium text-blue-700 block">Awaiting Action</span>
             <div className="text-2xl font-bold text-blue-600 mt-1">{awaitingApprovalCount}</div>
-            <span className="text-[11px] text-blue-600/80 mt-0.5 block">Requires your review</span>
+            <span className="text-xs text-blue-600/80 mt-0.5 block">Requires your review</span>
           </div>
         </div>
 
@@ -790,7 +784,7 @@ export function CustomerConfirmationView({
               <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Your Name <span className="text-red-500">*</span>
               </label>
-              <Input
+              <Input aria-label="Your Name"
                 value={approverName}
                 onChange={(e) => setApproverName(e.target.value)}
                 placeholder="e.g. Rohan Sawant"
@@ -802,7 +796,7 @@ export function CustomerConfirmationView({
               <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Your Email (optional)
               </label>
-              <Input
+              <Input aria-label="Your Email (optional)"
                 type="email"
                 value={approverEmail}
                 onChange={(e) => setApproverEmail(e.target.value)}
@@ -815,7 +809,7 @@ export function CustomerConfirmationView({
               <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Comments or Notes (optional)
               </label>
-              <Textarea
+              <Textarea aria-label="Comments or Notes (optional)"
                 value={batchFeedback}
                 onChange={(e) => setBatchFeedback(e.target.value)}
                 placeholder="Any special notes for the publishing team..."
@@ -869,7 +863,7 @@ export function CustomerConfirmationView({
               <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Your Name <span className="text-red-500">*</span>
               </label>
-              <Input
+              <Input aria-label="Your Name"
                 value={approverName}
                 onChange={(e) => setApproverName(e.target.value)}
                 placeholder="e.g. Rohan Sawant"
@@ -881,7 +875,7 @@ export function CustomerConfirmationView({
               <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Requested Changes / Instructions <span className="text-red-500">*</span>
               </label>
-              <Textarea
+              <Textarea aria-label="Requested Changes / Instructions"
                 value={batchFeedback}
                 onChange={(e) => setBatchFeedback(e.target.value)}
                 placeholder="Please describe what revisions are needed..."
@@ -953,8 +947,10 @@ function PostCard({
     (activeAsset.type?.toLowerCase().includes("video") ||
       activeAsset.filename?.match(/\.(mp4|mov|webm)$/i))
 
-  const isApproved = post.status === "C_APPROVED" || post.contentStatus === "C_APPROVED"
-  const isRejected = post.status === "REJECTED"
+  const reviewState = clientReviewState(post)
+  const canApprove = reviewState === "AWAITING_CLIENT"
+  const isApproved = isClientDone(reviewState)
+  const isRejected = reviewState === "CHANGES_REQUESTED"
 
   const formattedDate = post.scheduledAt
     ? new Date(post.scheduledAt).toLocaleDateString("en-GB", {
@@ -1023,7 +1019,7 @@ function PostCard({
             >
               <ChevronRight className="w-4 h-4" />
             </button>
-            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2.5 py-0.5 rounded-full text-[10px] text-white font-medium">
+            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2.5 py-0.5 rounded-full text-xs text-white font-medium">
               {currentAssetIndex + 1} / {assetsToUse.length}
             </div>
           </>
@@ -1033,7 +1029,7 @@ function PostCard({
         <div className="absolute top-3 left-3">
           <Badge
             variant="outline"
-            className="bg-white/90 backdrop-blur-md text-slate-800 border-white/60 font-semibold text-[10px] px-2.5 py-0.5 uppercase tracking-wide shadow-xs"
+            className="bg-white/90 backdrop-blur-md text-slate-800 border-white/60 font-semibold text-xs px-2.5 py-0.5 uppercase tracking-wide shadow-xs"
           >
             <span className="mr-1">{getTypeIcon(post.type)}</span>
             {post.type}
@@ -1043,16 +1039,16 @@ function PostCard({
         {/* Customer Status Badge */}
         <div className="absolute top-3 right-3">
           {isApproved ? (
-            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[11px] font-medium shadow-xs px-2.5 py-0.5">
-              <Check className="w-3 h-3 mr-1" /> ✓ Approved
+            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-xs font-medium shadow-xs px-2.5 py-0.5">
+              <Check className="w-3 h-3 mr-1" aria-hidden="true" /> {CLIENT_REVIEW_LABELS[reviewState]}
             </Badge>
           ) : isRejected ? (
-            <Badge className="bg-amber-600 hover:bg-amber-600 text-white text-[11px] font-medium shadow-xs px-2.5 py-0.5">
+            <Badge className="bg-amber-600 hover:bg-amber-600 text-white text-xs font-medium shadow-xs px-2.5 py-0.5">
               <AlertCircle className="w-3 h-3 mr-1" /> Changes Requested
             </Badge>
           ) : (
-            <Badge className="bg-blue-600 hover:bg-blue-600 text-white text-[11px] font-medium shadow-xs px-2.5 py-0.5">
-              <Clock className="w-3 h-3 mr-1" /> Awaiting Approval
+            <Badge className="bg-blue-600 hover:bg-blue-600 text-white text-xs font-medium shadow-xs px-2.5 py-0.5">
+              <Clock className="w-3 h-3 mr-1" aria-hidden="true" /> {CLIENT_REVIEW_LABELS[reviewState]}
             </Badge>
           )}
         </div>
@@ -1072,7 +1068,7 @@ function PostCard({
                 {post.platforms.map((p) => (
                   <span
                     key={p}
-                    className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded capitalize"
+                    className="text-xs font-semibold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded capitalize"
                   >
                     {p.toLowerCase()}
                   </span>
@@ -1130,7 +1126,8 @@ function PostCard({
             <Button
               size="sm"
               onClick={onApprove}
-              disabled={isActionLoading || isApproved}
+              disabled={isActionLoading || !canApprove}
+              title={canApprove ? undefined : CLIENT_REVIEW_LABELS[reviewState]}
               className={`h-8 text-xs font-semibold rounded-xl ${
                 isApproved
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-default"
@@ -1141,6 +1138,8 @@ function PostCard({
                 <>
                   <Check className="w-3 h-3 mr-1 text-emerald-600" /> Approved
                 </>
+              ) : !canApprove ? (
+                CLIENT_REVIEW_LABELS[reviewState]
               ) : isActionLoading ? (
                 "Approving..."
               ) : (

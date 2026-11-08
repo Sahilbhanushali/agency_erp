@@ -208,11 +208,11 @@ function SetupPasswordContent() {
     <Card className="w-full border-border/80 shadow-none">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between gap-2">
-          <Badge variant="outline" className="font-medium text-[11px] gap-1 px-2.5 py-0.5">
+          <Badge variant="outline" className="font-medium text-xs gap-1 px-2.5 py-0.5">
             <Sparkles className="size-3 text-primary" />
             Welcome Onboard
           </Badge>
-          <Badge variant="secondary" className="font-mono text-[10px]">
+          <Badge variant="secondary" className="font-mono text-xs">
             {invitedUser?.role || "Team Member"}
           </Badge>
         </div>
@@ -281,7 +281,7 @@ function SetupPasswordContent() {
           </div>
 
           {/* Password Validation Checklist */}
-          <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5 text-[11px] space-y-1">
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5 text-xs space-y-1">
             <div className={`flex items-center gap-1.5 ${hasMinLength ? "text-emerald-600 font-medium" : "text-muted-foreground"}`}>
               <Check className={`size-3 ${hasMinLength ? "opacity-100" : "opacity-30"}`} />
               <span>At least 8 characters</span>
@@ -315,7 +315,7 @@ function SetupPasswordContent() {
             )}
           </Button>
 
-          <p className="text-[11px] text-muted-foreground text-center pt-1">
+          <p className="text-xs text-muted-foreground text-center pt-1">
             Already have an active password?{" "}
             <Link href="/auth/signin" className="font-semibold text-primary hover:underline">
               Sign In

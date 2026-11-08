@@ -1,5 +1,6 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useMemo } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
@@ -24,7 +25,8 @@ import { computeTotals, formatMoney, toNumber } from "@/lib/finance"
 import { quotationFormSchema, type QuotationFormValues } from "@/lib/validation/quotation"
 import type { Company, QuotationDetail } from "@/types/finance"
 
-const fetcher = (url: string) => fetch(url).then((response) => response.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 /** `/api/clients` already returns each client with its active projects — one request. */
 interface ClientWithProjects {

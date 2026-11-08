@@ -1,5 +1,6 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useState, useEffect, useMemo } from "react"
 import useSWR from "swr"
 import toast from "react-hot-toast"
@@ -79,7 +80,8 @@ import {
   type TodoStatus,
 } from "@/lib/validation/todo"
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 const STATUS_CONFIG: Record<TodoStatus, { label: string; class: string }> = {
   PENDING: { label: "Not Started", class: "bg-muted text-muted-foreground border-transparent" },
@@ -287,14 +289,14 @@ export default function TeamTodosTable({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+            <Input aria-label="Search by todo, notes, or team member name"
               placeholder="Search by todo, notes, or team member name..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9 h-9 text-sm"
             />
             {searchInput && (
-              <button
+              <button aria-label="Clear search"
                 type="button"
                 onClick={() => setSearchInput("")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -309,7 +311,7 @@ export default function TeamTodosTable({
               <Calendar className="h-3.5 w-3.5" />
               <span>Range:</span>
             </div>
-            <Input
+            <Input aria-label="Range start date"
               type="date"
               value={startDate}
               onChange={(e) => {
@@ -320,7 +322,7 @@ export default function TeamTodosTable({
               title="Start Date"
             />
             <span className="text-xs text-muted-foreground">to</span>
-            <Input
+            <Input aria-label="Range end date"
               type="date"
               value={endDate}
               onChange={(e) => {
@@ -373,7 +375,7 @@ export default function TeamTodosTable({
               setPage(1)
             }}
           >
-            <SelectTrigger className="h-8 w-[160px] text-xs">
+            <SelectTrigger aria-label="All Members" className="h-8 w-[160px] text-xs">
               <SelectValue placeholder="All Members" />
             </SelectTrigger>
             <SelectContent>
@@ -394,7 +396,7 @@ export default function TeamTodosTable({
               setPage(1)
             }}
           >
-            <SelectTrigger className="h-8 w-[130px] text-xs">
+            <SelectTrigger aria-label="All Statuses" className="h-8 w-[130px] text-xs">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -415,7 +417,7 @@ export default function TeamTodosTable({
               setPage(1)
             }}
           >
-            <SelectTrigger className="h-8 w-[130px] text-xs">
+            <SelectTrigger aria-label="All Priorities" className="h-8 w-[130px] text-xs">
               <SelectValue placeholder="All Priorities" />
             </SelectTrigger>
             <SelectContent>
@@ -436,7 +438,7 @@ export default function TeamTodosTable({
               setPage(1)
             }}
           >
-            <SelectTrigger className="h-8 w-[150px] text-xs">
+            <SelectTrigger aria-label="Blocker State" className="h-8 w-[150px] text-xs">
               <SelectValue placeholder="Blocker State" />
             </SelectTrigger>
             <SelectContent>
@@ -456,7 +458,7 @@ export default function TeamTodosTable({
                 setPage(1)
               }}
             >
-              <SelectTrigger className="h-8 w-[120px] text-xs">
+              <SelectTrigger aria-label="Sort by" className="h-8 w-[120px] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -468,7 +470,7 @@ export default function TeamTodosTable({
               </SelectContent>
             </Select>
 
-            <Button
+            <Button aria-label={`Sort order: ${sortOrder === "asc" ? "Ascending" : "Descending"}`}
               variant="outline"
               size="icon"
               className="h-8 w-8"
@@ -579,7 +581,7 @@ export default function TeamTodosTable({
                       <div className="flex items-center gap-2">
                         <Avatar className="h-7 w-7 text-xs">
                           {todo.user.avatar && <AvatarImage src={todo.user.avatar} alt={todo.user.name || ""} />}
-                          <AvatarFallback className="bg-primary/10 text-primary font-medium text-[10px]">
+                          <AvatarFallback className="bg-primary/10 text-primary font-medium text-xs">
                             {todo.user.name
                               ? todo.user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
                               : "U"}
@@ -589,7 +591,7 @@ export default function TeamTodosTable({
                           <p className="text-xs font-medium text-foreground truncate">
                             {todo.user.name || "Unnamed"}
                           </p>
-                          <p className="text-[11px] text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {todo.user.email}
                           </p>
                         </div>
@@ -603,7 +605,7 @@ export default function TeamTodosTable({
                           {todo.title}
                         </p>
                         {todo.notes && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-1">
+                          <p className="text-xs text-muted-foreground line-clamp-1">
                             {todo.notes}
                           </p>
                         )}
@@ -625,7 +627,7 @@ export default function TeamTodosTable({
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Badge
                         variant="outline"
-                        className={`text-[11px] font-medium ${PRIORITY_CONFIG[todo.priority]?.class}`}
+                        className={`text-xs font-medium ${PRIORITY_CONFIG[todo.priority]?.class}`}
                       >
                         <Flag className="mr-1 h-2.5 w-2.5" />
                         {PRIORITY_CONFIG[todo.priority]?.label}
@@ -636,7 +638,7 @@ export default function TeamTodosTable({
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Badge
                         variant="outline"
-                        className={`text-[11px] font-medium ${STATUS_CONFIG[todo.status]?.class}`}
+                        className={`text-xs font-medium ${STATUS_CONFIG[todo.status]?.class}`}
                       >
                         {STATUS_CONFIG[todo.status]?.label}
                       </Badge>
@@ -646,26 +648,26 @@ export default function TeamTodosTable({
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {activeBlockers.length > 0 ? (
                         <div className="space-y-0.5">
-                          <Badge variant="destructive" className="text-[10px] gap-1 font-medium">
+                          <Badge variant="destructive" className="text-xs gap-1 font-medium">
                             <AlertTriangle className="h-2.5 w-2.5" />
                             {activeBlockers.length} Open Blocker{activeBlockers.length === 1 ? "" : "s"}
                           </Badge>
-                          <p className="text-[11px] text-destructive truncate max-w-[170px]" title={activeBlockers[0].title}>
+                          <p className="text-xs text-destructive truncate max-w-[170px]" title={activeBlockers[0].title}>
                             {activeBlockers[0].title}
                           </p>
                         </div>
                       ) : todo.blocker ? (
                         <div className="space-y-0.5">
-                          <Badge variant="destructive" className="text-[10px] gap-1 font-medium">
+                          <Badge variant="destructive" className="text-xs gap-1 font-medium">
                             <AlertTriangle className="h-2.5 w-2.5" />
                             Blocked
                           </Badge>
-                          <p className="text-[11px] text-destructive truncate max-w-[170px]" title={todo.blocker}>
+                          <p className="text-xs text-destructive truncate max-w-[170px]" title={todo.blocker}>
                             {todo.blocker}
                           </p>
                         </div>
                       ) : (todo.blockers || []).length > 0 ? (
-                        <Badge variant="outline" className="text-[10px] border-emerald-600/30 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40">
+                        <Badge variant="outline" className="text-xs border-emerald-600/30 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40">
                           <Check className="mr-1 h-2.5 w-2.5" />
                           All Resolved
                         </Badge>
@@ -686,7 +688,7 @@ export default function TeamTodosTable({
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isBusy}>
+                          <Button aria-label="More actions for this to-do" variant="ghost" size="icon" className="h-7 w-7" disabled={isBusy}>
                             {isBusy ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
@@ -798,7 +800,7 @@ export default function TeamTodosTable({
                 setPage(1)
               }}
             >
-              <SelectTrigger className="h-7 w-[68px] text-xs">
+              <SelectTrigger aria-label="Rows per page" className="h-7 w-[68px] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -819,7 +821,7 @@ export default function TeamTodosTable({
             <span className="mr-2">
               Page {page} of {totalPages}
             </span>
-            <Button
+            <Button aria-label="Previous page"
               variant="outline"
               size="icon"
               className="h-7 w-7"
@@ -828,7 +830,7 @@ export default function TeamTodosTable({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button
+            <Button aria-label="Next page"
               variant="outline"
               size="icon"
               className="h-7 w-7"

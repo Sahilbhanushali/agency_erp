@@ -95,7 +95,7 @@ export function ProofingApprovalDialog({
                   {postTitle}
                 </DialogTitle>
                 {projectName && (
-                  <Badge variant="outline" className="text-[10px] font-normal">
+                  <Badge variant="outline" className="text-xs font-normal">
                     {projectName}
                   </Badge>
                 )}
@@ -107,10 +107,10 @@ export function ProofingApprovalDialog({
 
             {displayAssets.length > 1 && (
               <div className="flex items-center gap-2 bg-muted/40 p-1 rounded-lg border border-border/50 text-xs">
-                <span className="text-[11px] text-muted-foreground px-1">
+                <span className="text-xs text-muted-foreground px-1">
                   Asset {currentAssetIndex + 1} of {displayAssets.length}
                 </span>
-                <Button
+                <Button aria-label="Previous asset"
                   size="icon-sm"
                   variant="ghost"
                   className="size-6"
@@ -119,7 +119,7 @@ export function ProofingApprovalDialog({
                 >
                   <ChevronLeft className="size-3.5" />
                 </Button>
-                <Button
+                <Button aria-label="Next asset"
                   size="icon-sm"
                   variant="ghost"
                   className="size-6"

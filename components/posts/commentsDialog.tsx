@@ -152,7 +152,7 @@ export default function CommentsDialog({
                     <div key={comment.id} className="border-b pb-3 group">
                       {editingCommentId === comment.id ? (
                         <div className="space-y-2 my-1">
-                          <Textarea
+                          <Textarea aria-label="Edit comment"
                             value={editingCommentText}
                             onChange={(e) => setEditingCommentText(e.target.value)}
                             className="text-xs min-h-[60px]"
@@ -184,12 +184,12 @@ export default function CommentsDialog({
                       ) : (
                         <>
                           <div className="flex items-center justify-between">
-                            <p className="text-xs text-gray-500 font-medium">
+                            <p className="text-xs text-muted-foreground font-medium">
                               {authorName} - {format(new Date(comment.createdAt), "MMM dd, yyyy HH:mm")}
                             </p>
                             {canModify && (
                               <div className="flex items-center space-x-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                                <button
+                                <button aria-label="Edit comment"
                                   type="button"
                                   onClick={() => handleStartEdit(comment)}
                                   className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
@@ -197,10 +197,10 @@ export default function CommentsDialog({
                                 >
                                   <Edit2 className="h-3.5 w-3.5" />
                                 </button>
-                                <button
+                                <button aria-label="Delete comment"
                                   type="button"
                                   onClick={() => setDeletingCommentId(comment.id)}
-                                  className="p-1 text-gray-400 hover:text-red-600"
+                                  className="p-1 text-muted-foreground hover:text-red-600"
                                   title="Delete comment"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -215,12 +215,12 @@ export default function CommentsDialog({
                   );
                 })
               ) : (
-                <p className="text-sm text-gray-500">No comments yet</p>
+                <p className="text-sm text-muted-foreground">No comments yet</p>
               )}
             </div>
             <div>
               <label className="text-sm font-medium">Add a comment</label>
-              <Textarea
+              <Textarea aria-label="Add a comment"
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Write your comment..."

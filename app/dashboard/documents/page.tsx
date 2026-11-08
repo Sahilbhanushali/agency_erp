@@ -183,7 +183,7 @@ export default function DocumentVerificationPage() {
                         <span className="truncate text-sm font-semibold text-foreground" title={doc.title}>
                           {doc.title}
                         </span>
-                        <Badge variant="outline" className="text-[11px]">
+                        <Badge variant="outline" className="text-xs">
                           {CATEGORY_LABELS[doc.category] ?? "Other"}
                         </Badge>
                       </p>

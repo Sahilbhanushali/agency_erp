@@ -322,21 +322,21 @@ export default function ImageModal({
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
       {/* Controls */}
       <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex gap-1.5 sm:gap-2 z-10 flex-wrap max-w-[95vw] sm:max-w-3xl justify-end">
-        <button
+        <button aria-label="Zoom Out"
           onClick={handleZoomOut}
           className="px-3 py-2 bg-white text-black hover:bg-white/80 rounded-md transition-colors"
           title="Zoom Out"
         >
           <ZoomOut className="h-4 w-4" />
         </button>
-        <button
+        <button aria-label="Zoom In"
           onClick={handleZoomIn}
           className="px-3 py-2 bg-white text-black hover:bg-white/80 rounded-md transition-colors"
           title="Zoom In"
         >
           <ZoomIn className="h-4 w-4" />
         </button>
-        <button
+        <button aria-label="Draw"
           onClick={() => {
             setIsTextMode(false);
             setIsErasing(false);
@@ -348,7 +348,7 @@ export default function ImageModal({
         >
           <PenTool className="h-4 w-4" />
         </button>
-        <button
+        <button aria-label="Eraser"
           onClick={() => {
             setIsErasing(true);
             setIsTextMode(false);
@@ -360,7 +360,7 @@ export default function ImageModal({
         >
           <Eraser className="h-4 w-4" />
         </button>
-        <button
+        <button aria-label="Add Text"
           onClick={() => {
             setIsTextMode(true);
             setIsErasing(false);
@@ -373,7 +373,7 @@ export default function ImageModal({
         >
           <Type className="h-4 w-4" />
         </button>
-        <input
+        <input aria-label="Brush colour"
           type="color"
           value={brushColor}
           onChange={(e) => setBrushColor(e.target.value)}
@@ -385,7 +385,7 @@ export default function ImageModal({
           <label className="text-black text-sm font-medium">
             {isErasing ? 'Eraser:' : 'Brush:'}
           </label>
-          <input
+          <input aria-label="Brush size"
             type="range"
             min="1"
             max="30"
@@ -402,7 +402,7 @@ export default function ImageModal({
         {/* Text input controls */}
         {isTextMode && (
           <>
-            <input
+            <input aria-label="Enter text"
               type="text"
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
@@ -410,7 +410,7 @@ export default function ImageModal({
               className="px-3 py-2 rounded-md border-2 border-white bg-white text-black text-sm"
               style={{ minWidth: '200px' }}
             />
-            <input
+            <input aria-label="Text colour"
               type="color"
               value={textColor}
               onChange={(e) => setTextColor(e.target.value)}
@@ -419,7 +419,7 @@ export default function ImageModal({
             />
             <div className="flex items-center gap-2 bg-white rounded-md px-3 py-2">
               <label className="text-black text-sm font-medium">Size:</label>
-              <input
+              <input aria-label="Size"
                 type="range"
                 min="12"
                 max="72"
@@ -451,7 +451,7 @@ export default function ImageModal({
             )}
           </button>
         )}
-        <button
+        <button aria-label="Download"
           onClick={handleDownload}
           className="px-3 py-2 bg-green-500 text-white hover:bg-green-600 rounded-md transition-colors"
           title="Download"
@@ -465,7 +465,7 @@ export default function ImageModal({
         >
           Reset
         </button>
-        <button
+        <button aria-label="Close"
           onClick={onClose}
           className="px-3 py-2 bg-red-500 text-white hover:bg-red-600 rounded-md transition-colors"
           title="Close"

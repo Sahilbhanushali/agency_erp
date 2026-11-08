@@ -1,5 +1,7 @@
 "use client";
 
+import { LoadError } from "@/components/load-error";
+import { jsonFetcher } from "@/lib/fetcher";
 import React, { useState, useMemo } from "react";
 import useSWR from "swr";
 import Link from "next/link";
@@ -48,7 +50,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getMediaUrl } from "@/lib/utils";
 import { ExpenseDialog } from "@/components/expenses/expense-dialog";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 const CATEGORY_NAMES: Record<string, string> = {
   SOFTWARE_TOOL: "Software & SaaS",
@@ -70,7 +73,7 @@ export default function ExpensesPage() {
   const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
 
   // Fetch expenses list
-  const { data: expensesData, isLoading: expensesLoading, mutate: mutateExpenses } = useSWR(
+  const { data: expensesData, error: expensesError, isLoading: expensesLoading, mutate: mutateExpenses } = useSWR(
     `/api/expenses?status=${statusFilter}&category=${categoryFilter}`,
     fetcher
   );
@@ -142,27 +145,27 @@ export default function ExpensesPage() {
   const getMarginBadge = (margin: number, status: string) => {
     if (status === "DEFICIT" || margin < 0) {
       return (
-        <Badge variant="destructive" className="text-[10px]">
+        <Badge variant="destructive" className="text-xs">
           {margin}% Deficit
         </Badge>
       );
     }
     if (status === "LOW_MARGIN" || margin < 20) {
       return (
-        <Badge variant="neutral" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400">
+        <Badge variant="neutral" className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400">
           {margin}% Low
         </Badge>
       );
     }
     if (status === "MODERATE" || margin < 40) {
       return (
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           {margin}% Moderate
         </Badge>
       );
     }
     return (
-      <Badge variant="success" className="text-[10px]">
+      <Badge variant="success" className="text-xs">
         {margin}% Healthy
       </Badge>
     );
@@ -195,7 +198,7 @@ export default function ExpensesPage() {
             <div className="text-xl font-bold tracking-tight text-foreground">
               {formatCurrency(agencyMetrics.totalRevenue)}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Commercial billings</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Commercial billings</p>
           </CardContent>
         </Card>
 
@@ -209,7 +212,7 @@ export default function ExpensesPage() {
             <div className="text-xl font-bold tracking-tight text-foreground">
               {formatCurrency(metrics.totalExpenses)}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               ₹{Number(metrics.billableExpenses).toLocaleString("en-IN")} billable
             </p>
           </CardContent>
@@ -233,7 +236,7 @@ export default function ExpensesPage() {
             >
               {formatCurrency(agencyMetrics.netProfit)}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Revenue minus approved expenses
             </p>
           </CardContent>
@@ -250,7 +253,7 @@ export default function ExpensesPage() {
               <span>{agencyMetrics.marginPercent}%</span>
               {getMarginBadge(agencyMetrics.marginPercent, agencyMetrics.marginPercent >= 35 ? "HEALTHY" : "MODERATE")}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Agency margin efficiency
             </p>
           </CardContent>
@@ -281,7 +284,7 @@ export default function ExpensesPage() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                  <Input
+                  <Input aria-label="Search expenses, clients, projects"
                     placeholder="Search expenses, clients, projects..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -291,7 +294,7 @@ export default function ExpensesPage() {
 
                 <div className="flex flex-wrap items-center gap-2">
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="text-xs h-8 w-36">
+                    <SelectTrigger aria-label="Category" className="text-xs h-8 w-36">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -307,7 +310,7 @@ export default function ExpensesPage() {
                   </Select>
 
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="text-xs h-8 w-32">
+                    <SelectTrigger aria-label="Status" className="text-xs h-8 w-32">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -322,7 +325,9 @@ export default function ExpensesPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              {expensesLoading ? (
+              {expensesError && !expensesData ? (
+                <LoadError what="expenses" error={expensesError} onRetry={() => mutateExpenses()} />
+              ) : expensesLoading ? (
                 <div className="space-y-2">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton key={i} className="h-12 w-full" />
@@ -365,14 +370,14 @@ export default function ExpensesPage() {
                               {exp.title}
                             </span>
                             {exp.isBillable && (
-                              <Badge variant="outline" className="text-[9px] font-normal mt-0.5">
+                              <Badge variant="outline" className="text-xs font-normal mt-0.5">
                                 Billable to client
                               </Badge>
                             )}
                           </TableCell>
 
                           <TableCell className="text-xs">
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="text-xs">
                               {CATEGORY_NAMES[exp.category] || exp.category}
                             </Badge>
                           </TableCell>
@@ -386,7 +391,7 @@ export default function ExpensesPage() {
                               <span className="text-muted-foreground">Agency Overhead</span>
                             )}
                             {exp.project && (
-                              <div className="text-[11px] text-muted-foreground">
+                              <div className="text-xs text-muted-foreground">
                                 {exp.project.name}
                               </div>
                             )}
@@ -398,22 +403,22 @@ export default function ExpensesPage() {
 
                           <TableCell className="text-xs text-center">
                             {exp.status === "APPROVED" && (
-                              <Badge variant="success" className="text-[10px]">
+                              <Badge variant="success" className="text-xs">
                                 Approved
                               </Badge>
                             )}
                             {exp.status === "PENDING" && (
-                              <Badge variant="neutral" className="text-[10px]">
+                              <Badge variant="neutral" className="text-xs">
                                 Pending
                               </Badge>
                             )}
                             {exp.status === "REIMBURSED" && (
-                              <Badge variant="outline" className="text-[10px] text-emerald-600">
+                              <Badge variant="outline" className="text-xs text-emerald-600">
                                 Reimbursed
                               </Badge>
                             )}
                             {exp.status === "REJECTED" && (
-                              <Badge variant="destructive" className="text-[10px]">
+                              <Badge variant="destructive" className="text-xs">
                                 Rejected
                               </Badge>
                             )}
@@ -425,18 +430,18 @@ export default function ExpensesPage() {
                                 href={getMediaUrl(exp.receiptUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                               >
                                 <FileText className="size-3" /> Receipt
                               </a>
                             ) : (
-                              <span className="text-muted-foreground text-[11px]">—</span>
+                              <span className="text-muted-foreground text-xs">—</span>
                             )}
                           </TableCell>
 
                           <TableCell className="text-xs text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <Button
+                              <Button aria-label="Edit Expense"
                                 size="icon"
                                 variant="ghost"
                                 className="size-7"
@@ -448,7 +453,7 @@ export default function ExpensesPage() {
                               >
                                 <Edit className="size-3.5" />
                               </Button>
-                              <Button
+                              <Button aria-label="Delete expense"
                                 size="icon"
                                 variant="ghost"
                                 className="size-7 text-destructive hover:text-destructive"
@@ -635,7 +640,7 @@ export default function ExpensesPage() {
                   <CardContent className="p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-foreground">{label}</span>
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-xs">
                         {percent}%
                       </Badge>
                     </div>

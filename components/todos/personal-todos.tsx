@@ -329,7 +329,7 @@ export default function PersonalTodos() {
                       {todo.title}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-                      <Badge variant="outline" className={`rounded px-1.5 py-px text-[10px] ${PRIORITY_STYLE[todo.priority]}`}>
+                      <Badge variant="outline" className={`rounded px-1.5 py-px text-xs ${PRIORITY_STYLE[todo.priority]}`}>
                         {label(todo.priority)}
                       </Badge>
                       {todo.dueAt && (
@@ -469,7 +469,7 @@ function PersonalTodoDialog({
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Follow up with the print vendor" autoFocus {...field} />
+                    <Input aria-label="e.g. Follow up with the print vendor" placeholder="e.g. Follow up with the print vendor" autoFocus {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -519,7 +519,7 @@ function PersonalTodoDialog({
                 <FormItem>
                   <FormLabel>Notes (optional)</FormLabel>
                   <FormControl>
-                    <Textarea rows={4} placeholder="Anything worth remembering" {...field} />
+                    <Textarea aria-label="Anything worth remembering" rows={4} placeholder="Anything worth remembering" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

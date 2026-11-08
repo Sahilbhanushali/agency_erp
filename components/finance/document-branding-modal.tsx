@@ -136,7 +136,7 @@ export function DocumentBrandingModal({
                 </Button>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Displays as the official header across the top of quotation and invoice pages.
             </p>
 
@@ -172,7 +172,7 @@ export function DocumentBrandingModal({
                   <>
                     <Upload className="size-5 text-muted-foreground mb-1" />
                     <p className="text-xs font-medium text-foreground">Click to upload Letterhead</p>
-                    <p className="text-[10px] text-muted-foreground">PNG, JPG or WEBP (1200x200px recommended)</p>
+                    <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (1200x200px recommended)</p>
                   </>
                 )}
               </div>
@@ -208,7 +208,7 @@ export function DocumentBrandingModal({
                 </Button>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Printed in the footer above &quot;Authorised Signatory&quot;.
             </p>
 
@@ -244,7 +244,7 @@ export function DocumentBrandingModal({
                   <>
                     <PenTool className="size-4 text-muted-foreground mb-1" />
                     <p className="text-xs font-medium text-foreground">Click to upload Signature</p>
-                    <p className="text-[10px] text-muted-foreground">Transparent PNG recommended</p>
+                    <p className="text-xs text-muted-foreground">Transparent PNG recommended</p>
                   </>
                 )}
               </div>

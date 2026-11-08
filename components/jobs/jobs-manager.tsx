@@ -279,12 +279,12 @@ function JobCard({
             <CardTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
               {job.label}
               {job.isEnabled ? (
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">
                   <Clock className="mr-1 size-3" aria-hidden="true" />
                   {job.cronLabel} · {job.timezone}
                 </Badge>
               ) : (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-xs">
                   Paused
                 </Badge>
               )}
@@ -426,7 +426,7 @@ function JobCard({
                   placeholder="0 19 * * 1-5"
                   aria-describedby={`${job.key}-cron-help`}
                 />
-                <p id={`${job.key}-cron-help`} className="text-[11px] text-muted-foreground">
+                <p id={`${job.key}-cron-help`} className="text-xs text-muted-foreground">
                   Five fields: minute, hour, day of month, month, day of week.
                   <code className="mx-1 rounded bg-muted px-1">0 19 * * 1-5</code>
                   means 19:00 Monday to Friday.
@@ -451,7 +451,7 @@ function JobCard({
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Automatic means {job.autoRecipients}.
                     </p>
                   </div>
@@ -482,7 +482,7 @@ function JobCard({
                                 directory?.find((u) => u.id === id)
                               return (
                                 <li key={id}>
-                                  <Badge variant="outline" className="gap-1 text-[10px]">
+                                  <Badge variant="outline" className="gap-1 text-xs">
                                     {user?.name ?? user?.email ?? `User ${id}`}
                                     <button
                                       type="button"
@@ -535,7 +535,7 @@ function JobCard({
                           <ul className="flex flex-wrap gap-1.5 pt-1">
                             {emails.map((email) => (
                               <li key={email}>
-                                <Badge variant="outline" className="gap-1 text-[10px]">
+                                <Badge variant="outline" className="gap-1 text-xs">
                                   {email}
                                   <button
                                     type="button"
@@ -563,7 +563,7 @@ function JobCard({
               )}
 
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {job.updatedBy
                     ? `Last changed by ${job.updatedBy.name ?? "a user"} on ${when(job.updatedAt)}`
                     : "Never changed"}
@@ -602,7 +602,7 @@ function JobCard({
                   <h3 className="text-xs font-medium">Recent runs</h3>
                   <ul className="space-y-1">
                     {job.runs.map((run) => (
-                      <li key={run.id} className="flex items-start gap-2 text-[11px]">
+                      <li key={run.id} className="flex items-start gap-2 text-xs">
                         {run.ok ? (
                           <CheckCircle2
                             className="mt-0.5 size-3 shrink-0 text-emerald-600"

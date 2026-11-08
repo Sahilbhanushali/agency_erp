@@ -19,7 +19,7 @@ export default async function InvoicesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Invoices</h1>
           <p className="text-sm text-muted-foreground">
             Tax invoices your companies issue, with GST, payments and a client link.
           </p>

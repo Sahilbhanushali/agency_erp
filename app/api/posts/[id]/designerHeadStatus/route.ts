@@ -8,7 +8,17 @@ import nodemailer from "nodemailer";
 import fs from "fs/promises";
 import path from "path";
 import CryptoJS from "crypto-js";
-import { requireCan } from "@/lib/api-auth";
+import { requireSession } from "@/lib/api-auth";
+import { transitionPost, workflowErrorResponse } from "@/lib/posts/workflow";
+import type { WorkflowAction } from "@/lib/posts/workflow-rules";
+
+const STATUS_TO_ACTION: Partial<Record<PostStatus, WorkflowAction>> = {
+  SUBMITTED: "SUBMIT",
+  RESUBMITTED: "SUBMIT",
+  APPROVED: "APPROVE",
+  REJECTED: "REJECT",
+  NEEDS_MINOR_CHANGE: "REQUEST_CHANGES",
+};
 import { APP_BASE_URL } from "@/lib/utils"
 import { formatFrom, htmlToText } from "@/lib/smtp"
 
@@ -52,6 +62,7 @@ async function loadEmailTemplate() {
 
 const designerHeadApprovalSchema = z.object({
   designerHeadApproval: z.nativeEnum(PostStatus),
+  expectedVersion: z.coerce.number().int().positive().optional(),
   feedback: z.string().optional(),
   approvedAt: z.string().datetime().optional(),
   rejectedAt: z.string().datetime().optional(),
@@ -106,14 +117,11 @@ export async function PATCH(
       );
     }
 
-    const auth = await requireCan("posts", "approve");
+    // The workflow engine authorizes each transition (posts:approve for a decision,
+    // posts:update to submit) together with the caller's scope over the post.
+    const auth = await requireSession();
     if (!auth.ok) return auth.response;
     const session = auth.session;
-    // Was a hardcoded deny-list of role names. The same policy now lives in the
-    // permission catalog as posts:status, so an administrator can change who may
-    // move a post through its workflow without editing this file.
-    const statusAuth = await requireCan("posts", "status");
-    if (!statusAuth.ok) return statusAuth.response;
 
     if (!id) {
       console.warn("[Team Lead Approval API] Invalid post ID provided");
@@ -250,20 +258,39 @@ const post = await prisma.post.findUnique({
 
     const newWorkflowStage = determineWorkflowStage(designerHeadApproval, post.contentStatus);
 
-    const updateData: any = {
-      designerHeadApproval,
-      status: designerHeadApproval,
-    };
+    // Status, the designerHeadApproval mirror and the decision timestamps change only
+    // through the workflow engine. It refuses illegal moves (e.g. straight to SCHEDULED
+    // or POSTED, or C_APPROVED, which only the client can give) and duplicates.
+    const action = STATUS_TO_ACTION[designerHeadApproval];
+    if (!action) {
+      return NextResponse.json(
+        {
+          error:
+            designerHeadApproval === PostStatus.C_APPROVED
+              ? "Client approval is recorded by the client through their share link."
+              : `A post cannot be moved to ${designerHeadApproval} from the approval screen.`,
+        },
+        { status: 409 },
+      );
+    }
+    try {
+      await transitionPost({
+        postId: id,
+        action,
+        actor: { type: "USER", session, userId },
+        reason: feedback ?? null,
+        expectedVersion: parsedBody.data.expectedVersion,
+      });
+    } catch (error) {
+      return workflowErrorResponse(error);
+    }
 
-    if (designerHeadApproval === PostStatus.APPROVED || (designerHeadApproval as any) === "C_APPROVED") {
-      updateData.designApprovedAt = approvedAt ? new Date(approvedAt) : currentTime;
-      updateData.designApprovedById = userId;
+    // The existing rule that approving the post also approves its copy.
+    const updateData: any = {};
+    if (designerHeadApproval === PostStatus.APPROVED) {
       updateData.contentStatus = ContentStatus.APPROVED;
       updateData.contentApprovedAt = currentTime;
       updateData.contentApprovedById = userId;
-    } else if (designerHeadApproval === PostStatus.REJECTED || designerHeadApproval === PostStatus.NEEDS_MINOR_CHANGE) {
-      updateData.designRejectedAt = rejectedAt ? new Date(rejectedAt) : currentTime;
-      updateData.designRejectedById = userId;
     }
       let usersToNotify: { id: number; email: string | null; name: string | null }[] = [];
 

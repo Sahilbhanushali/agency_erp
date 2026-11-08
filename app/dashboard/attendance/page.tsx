@@ -350,21 +350,21 @@ export default function AttendancePage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PRESENT":
-        return <Badge variant="success" className="text-[10px] py-0">Present</Badge>;
+        return <Badge variant="success" className="text-xs py-0">Present</Badge>;
       case "LATE":
-        return <Badge variant="warning" className="text-[10px] py-0">Late Mark</Badge>;
+        return <Badge variant="warning" className="text-xs py-0">Late Mark</Badge>;
       case "HALF_DAY":
-        return <Badge variant="warning" className="text-[10px] py-0">Half Day</Badge>;
+        return <Badge variant="warning" className="text-xs py-0">Half Day</Badge>;
       case "ABSENT":
-        return <Badge variant="destructive" className="text-[10px] py-0">Absent</Badge>;
+        return <Badge variant="destructive" className="text-xs py-0">Absent</Badge>;
       case "ON_LEAVE":
-        return <Badge variant="info" className="text-[10px] py-0">On Leave</Badge>;
+        return <Badge variant="info" className="text-xs py-0">On Leave</Badge>;
       case "HOLIDAY":
-        return <Badge variant="purple" className="text-[10px] py-0">Holiday</Badge>;
+        return <Badge variant="purple" className="text-xs py-0">Holiday</Badge>;
       case "WEEKLY_OFF":
-        return <Badge variant="neutral" className="text-[10px] py-0">Weekly Off</Badge>;
+        return <Badge variant="neutral" className="text-xs py-0">Weekly Off</Badge>;
       default:
-        return <Badge variant="neutral" className="text-[10px] py-0">{status}</Badge>;
+        return <Badge variant="neutral" className="text-xs py-0">{status}</Badge>;
     }
   };
 
@@ -373,7 +373,7 @@ export default function AttendancePage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <CalendarClock className="size-6 text-primary" />
             Attendance & Leave Management
           </h1>
@@ -429,7 +429,7 @@ export default function AttendancePage() {
         <Card className="shadow-2xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Present Today
               </p>
               <h3 className="text-2xl font-bold text-foreground mt-1">{presentCount}</h3>
@@ -443,7 +443,7 @@ export default function AttendancePage() {
         <Card className="shadow-2xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 On Leave
               </p>
               <h3 className="text-2xl font-bold text-foreground mt-1">{leaveCount}</h3>
@@ -457,7 +457,7 @@ export default function AttendancePage() {
         <Card className="shadow-2xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Late Marks
               </p>
               <h3 className="text-2xl font-bold text-foreground mt-1">{lateCount}</h3>
@@ -471,7 +471,7 @@ export default function AttendancePage() {
         <Card className="shadow-2xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Pending Regularizations
               </p>
               <h3 className="text-2xl font-bold text-foreground mt-1">{pendingRegCount}</h3>
@@ -511,14 +511,14 @@ export default function AttendancePage() {
             <div className="flex items-center gap-2 flex-1 max-w-md">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
-                <Input
+                <Input aria-label="Search employees"
                   placeholder="Search employees..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 h-8 text-xs bg-background"
                 />
               </div>
-              <Input
+              <Input aria-label="Attendance date"
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
@@ -528,7 +528,7 @@ export default function AttendancePage() {
 
             <div className="flex items-center gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32 h-8 text-xs bg-background">
+                <SelectTrigger aria-label="Status" className="w-32 h-8 text-xs bg-background">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -595,7 +595,7 @@ export default function AttendancePage() {
                           <div className="flex items-center gap-2.5">
                             <Avatar className="size-7 border border-border">
                               <AvatarImage src={record.user?.avatar || "/placeholder.svg"} />
-                              <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
+                              <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
                                 {record.user?.name?.charAt(0) || "U"}
                               </AvatarFallback>
                             </Avatar>
@@ -603,7 +603,7 @@ export default function AttendancePage() {
                               <p className="text-xs font-semibold text-foreground truncate">
                                 {record.user?.name}
                               </p>
-                              <p className="text-[10px] text-muted-foreground truncate">
+                              <p className="text-xs text-muted-foreground truncate">
                                 {record.user?.designation || record.user?.email}
                               </p>
                             </div>
@@ -618,24 +618,24 @@ export default function AttendancePage() {
                         <TableCell>
                           <div className="flex items-center gap-1">
                             {record.lateMinutes > 0 && (
-                              <span className="text-[10px] text-amber-600 bg-amber-500/10 px-1.5 py-0.2 rounded font-mono">
+                              <span className="text-xs text-amber-600 bg-amber-500/10 px-1.5 py-0.2 rounded font-mono">
                                 +{record.lateMinutes}m late
                               </span>
                             )}
                             {record.overtimeHours > 0 && (
-                              <span className="text-[10px] text-emerald-600 bg-emerald-500/10 px-1.5 py-0.2 rounded font-mono font-bold">
+                              <span className="text-xs text-emerald-600 bg-emerald-500/10 px-1.5 py-0.2 rounded font-mono font-bold">
                                 +{record.overtimeHours}h OT
                               </span>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="neutral" className="text-[9px] uppercase font-mono py-0">
+                          <Badge variant="neutral" className="text-xs uppercase font-mono py-0">
                             {record.source}
                           </Badge>
                           {record.isCorrected && (
                             <span
-                              className="ml-1 text-[10px] text-primary underline cursor-help"
+                              className="ml-1 text-xs text-primary underline cursor-help"
                               title={`Corrected by ${record.correctedBy?.name || "HR"}: ${record.correctionReason}`}
                             >
                               [Edited]
@@ -730,7 +730,7 @@ export default function AttendancePage() {
                               ? "destructive"
                               : "warning"
                           }
-                          className="text-[10px] py-0"
+                          className="text-xs py-0"
                         >
                           {reg.status}
                         </Badge>
@@ -798,7 +798,7 @@ export default function AttendancePage() {
                         {leave.user?.name}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="neutral" className="text-[10px] py-0">
+                        <Badge variant="neutral" className="text-xs py-0">
                           {leave.leaveType?.name}
                         </Badge>
                       </TableCell>
@@ -821,7 +821,7 @@ export default function AttendancePage() {
                               ? "destructive"
                               : "warning"
                           }
-                          className="text-[10px] py-0"
+                          className="text-xs py-0"
                         >
                           {leave.status}
                         </Badge>
@@ -866,7 +866,7 @@ export default function AttendancePage() {
                 <CardHeader className="p-4 pb-2">
                   <CardTitle className="text-xs font-bold text-foreground flex items-center justify-between">
                     <span>{b.leaveType?.name}</span>
-                    <Badge variant={b.leaveType?.isPaid ? "success" : "neutral"} className="text-[9px] py-0">
+                    <Badge variant={b.leaveType?.isPaid ? "success" : "neutral"} className="text-xs py-0">
                       {b.leaveType?.isPaid ? "Paid" : "Unpaid"}
                     </Badge>
                   </CardTitle>
@@ -880,7 +880,7 @@ export default function AttendancePage() {
                       Quota: {b.totalQuota} days
                     </span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-muted-foreground pt-1 border-t border-border">
+                  <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border">
                     <span>Used: {b.usedDays} days</span>
                     <span>Year: {b.year}</span>
                   </div>
@@ -914,7 +914,7 @@ export default function AttendancePage() {
               <div>
                 <Label className="text-xs font-medium">Status</Label>
                 <Select value={corStatus} onValueChange={setCorStatus}>
-                  <SelectTrigger className="mt-1 h-8 text-xs">
+                  <SelectTrigger aria-label="Status" className="mt-1 h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -931,7 +931,7 @@ export default function AttendancePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs font-medium">Check-In Time</Label>
-                  <Input
+                  <Input aria-label="Check-In Time"
                     type="time"
                     value={corCheckIn}
                     onChange={(e) => setCorCheckIn(e.target.value)}
@@ -940,7 +940,7 @@ export default function AttendancePage() {
                 </div>
                 <div>
                   <Label className="text-xs font-medium">Check-Out Time</Label>
-                  <Input
+                  <Input aria-label="Check-Out Time"
                     type="time"
                     value={corCheckOut}
                     onChange={(e) => setCorCheckOut(e.target.value)}
@@ -950,7 +950,7 @@ export default function AttendancePage() {
               </div>
               <div>
                 <Label className="text-xs font-medium">Reason for Correction *</Label>
-                <Textarea
+                <Textarea aria-label="Reason for Correction"
                   value={corReason}
                   onChange={(e) => setCorReason(e.target.value)}
                   placeholder="e.g. Biometric reader issue, Approved half-day permission"
@@ -991,7 +991,7 @@ export default function AttendancePage() {
             <form onSubmit={handleRegularizationSubmit} className="space-y-3 py-2">
               <div>
                 <Label className="text-xs font-medium">Date</Label>
-                <Input
+                <Input aria-label="Date"
                   type="date"
                   value={regDate}
                   onChange={(e) => setRegDate(e.target.value)}
@@ -1002,7 +1002,7 @@ export default function AttendancePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs font-medium">Actual Check-In</Label>
-                  <Input
+                  <Input aria-label="Actual Check-In"
                     type="time"
                     value={regCheckIn}
                     onChange={(e) => setRegCheckIn(e.target.value)}
@@ -1012,7 +1012,7 @@ export default function AttendancePage() {
                 </div>
                 <div>
                   <Label className="text-xs font-medium">Actual Check-Out</Label>
-                  <Input
+                  <Input aria-label="Actual Check-Out"
                     type="time"
                     value={regCheckOut}
                     onChange={(e) => setRegCheckOut(e.target.value)}
@@ -1023,7 +1023,7 @@ export default function AttendancePage() {
               </div>
               <div>
                 <Label className="text-xs font-medium">Reason *</Label>
-                <Textarea
+                <Textarea aria-label="Reason"
                   value={regReason}
                   onChange={(e) => setRegReason(e.target.value)}
                   placeholder="e.g. Forgot to punch RFID card, Client on-site meeting"
@@ -1065,7 +1065,7 @@ export default function AttendancePage() {
               <div>
                 <Label className="text-xs font-medium">Leave Type *</Label>
                 <Select value={leaveTypeId} onValueChange={setLeaveTypeId}>
-                  <SelectTrigger className="mt-1 h-8 text-xs">
+                  <SelectTrigger aria-label="Leave Type" className="mt-1 h-8 text-xs">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1080,7 +1080,7 @@ export default function AttendancePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs font-medium">Start Date</Label>
-                  <Input
+                  <Input aria-label="Start Date"
                     type="date"
                     value={leaveStart}
                     onChange={(e) => setLeaveStart(e.target.value)}
@@ -1090,7 +1090,7 @@ export default function AttendancePage() {
                 </div>
                 <div>
                   <Label className="text-xs font-medium">End Date</Label>
-                  <Input
+                  <Input aria-label="End Date"
                     type="date"
                     value={leaveEnd}
                     onChange={(e) => setLeaveEnd(e.target.value)}
@@ -1113,7 +1113,7 @@ export default function AttendancePage() {
               </div>
               <div>
                 <Label className="text-xs font-medium">Reason for Leave *</Label>
-                <Textarea
+                <Textarea aria-label="Reason for Leave"
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
                   placeholder="State the reason for your leave..."
@@ -1154,10 +1154,10 @@ export default function AttendancePage() {
             <form onSubmit={handleCsvUploadSubmit} className="space-y-3 py-2">
               <div className="p-3 bg-muted/30 border border-border rounded-lg text-xs space-y-1">
                 <p className="font-semibold text-foreground">Expected CSV Column Format:</p>
-                <p className="font-mono text-[11px] text-muted-foreground">
+                <p className="font-mono text-xs text-muted-foreground">
                   Email,Date,CheckIn,CheckOut
                 </p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Example: <code className="bg-muted px-1 py-0.5 rounded">john@agency.com,2026-10-12,09:30,18:30</code>
                 </p>
               </div>

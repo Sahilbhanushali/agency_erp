@@ -1,5 +1,7 @@
 "use client";
 
+import { contentStatusLabel, statusLabel } from "@/lib/post-status";
+import { PostTypeIcon, typeLabel } from "@/components/posts/post-type-icon";
 import { useState, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -111,15 +113,6 @@ const getContentBadgeVariant = (status: string) => {
   }
 };
 
-const typeIcons: Record<string, string> = {
-  PHOTO: "📷",
-  REEL: "🎬",
-  STORY: "📱",
-  CAROUSEL: "🎠",
-  VIDEO: "🎥",
-  CUSTOM: "✨",
-};
-
 const getStatusDisplay = (post: Post) => {
   let display = post.status.charAt(0) + post.status.slice(1).toLowerCase();
   let dateStr = "";
@@ -207,7 +200,7 @@ export default function PostTable({
             <span>{isCompact ? "Normal view" : "Compact density"}</span>
           </Button>
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px]">Rows:</span>
+            <span className="text-xs">Rows:</span>
             <Select
               value={String(pageSize)}
               onValueChange={(val) => {
@@ -215,7 +208,7 @@ export default function PostTable({
                 setCurrentPage(1);
               }}
             >
-              <SelectTrigger className="h-7 w-16 text-xs tabular-nums">
+              <SelectTrigger aria-label="Rows per page" className="h-7 w-16 text-xs tabular-nums">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -289,26 +282,24 @@ export default function PostTable({
                   </TableCell>
                   <TableCell className={isCompact ? "py-1.5" : "py-3"}>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span>{typeIcons[post.type] || "📄"}</span>
-                      <span className="font-medium">{post.type.charAt(0) + post.type.slice(1).toLowerCase()}</span>
+                      <PostTypeIcon type={post.type} className="size-3.5" />
+                      <span className="font-medium">{typeLabel(post.type)}</span>
                     </div>
                   </TableCell>
                   <TableCell className={isCompact ? "py-1.5" : "py-3"}>
-                    <Badge variant={getDesignBadgeVariant(post.status)} dot className="text-[10px]">
+                    <Badge variant={getDesignBadgeVariant(post.status)} dot className="text-xs">
                       {getStatusDisplay(post)}
                     </Badge>
                   </TableCell>
                   <TableCell className={isCompact ? "py-1.5" : "py-3"}>
-                    <Badge variant={getContentBadgeVariant(post.contentStatus)} className="text-[10px]">
-                      {post.contentStatus === "REJECTED"
-                        ? "Changes"
-                        : post.contentStatus.charAt(0) + post.contentStatus.slice(1).toLowerCase().replace(/_/g, " ")}
+                    <Badge variant={getContentBadgeVariant(post.contentStatus)} className="text-xs">
+                      {contentStatusLabel(post.contentStatus)}
                     </Badge>
                   </TableCell>
                   <TableCell className={isCompact ? "py-1.5" : "py-3"}>
                     <div className="space-y-0.5">
                       <p className="font-medium text-xs text-foreground line-clamp-1">{post.project?.name}</p>
-                      <p className="text-[11px] text-muted-foreground line-clamp-1">{post.project?.client?.name}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{post.project?.client?.name}</p>
                     </div>
                   </TableCell>
                   <TableCell className={`text-xs text-muted-foreground tabular-nums ${isCompact ? "py-1.5" : "py-3"}`}>
@@ -320,7 +311,7 @@ export default function PostTable({
                   <TableCell className={`text-right ${isCompact ? "py-1.5" : "py-3"}`}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-foreground">
+                        <Button aria-label="More actions for this post" variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-foreground">
                           <MoreHorizontal className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -417,7 +408,7 @@ export default function PostTable({
           </p>
 
           <div className="flex items-center gap-1.5">
-            <Button
+            <Button aria-label="First page"
               variant="outline"
               size="icon-xs"
               onClick={() => setCurrentPage(1)}
@@ -451,7 +442,7 @@ export default function PostTable({
               <span>Next</span>
               <ChevronRight className="size-3.5" />
             </Button>
-            <Button
+            <Button aria-label="Last page"
               variant="outline"
               size="icon-xs"
               onClick={() => setCurrentPage(totalPages)}

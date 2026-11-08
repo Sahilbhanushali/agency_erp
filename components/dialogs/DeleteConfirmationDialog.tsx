@@ -281,7 +281,7 @@ export default function DeleteConfirmationDialog({
           <div className="space-y-3 pt-1 text-xs">
             {/* What will be deleted */}
             <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 space-y-1.5">
-              <span className="font-semibold text-red-600 dark:text-red-400 text-[11px] uppercase tracking-wider block mb-1">
+              <span className="font-semibold text-red-600 dark:text-red-400 text-xs uppercase tracking-wider block mb-1">
                 Will be deleted:
               </span>
               {config.willDelete.map((item, idx) => (
@@ -295,7 +295,7 @@ export default function DeleteConfirmationDialog({
             {/* What will NOT be deleted / preserved */}
             {config.willKeep.length > 0 && (
               <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 space-y-1.5">
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-[11px] uppercase tracking-wider block mb-1">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs uppercase tracking-wider block mb-1">
                   Will NOT be deleted (Safe):
                 </span>
                 {config.willKeep.map((item, idx) => (

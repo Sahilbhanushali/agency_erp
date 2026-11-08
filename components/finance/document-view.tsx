@@ -324,7 +324,7 @@ export default function DocumentView({
             <p className="border-t border-neutral-300 pt-1 text-neutral-700 font-medium">
               Authorised Signatory
             </p>
-            <p className="text-[11px] text-neutral-500">
+            <p className="text-xs text-neutral-500">
               For {String(company.name || "")}
             </p>
           </div>

@@ -8,7 +8,11 @@ import path from "path";
 import { z } from "zod";
 import nodemailer from "nodemailer";
 import CryptoJS from "crypto-js"; // Import crypto-js
-import { can, requireCan } from "@/lib/api-auth";
+import { can, requireCan, requireSession } from "@/lib/api-auth";
+import { transitionPost, workflowErrorResponse } from "@/lib/posts/workflow";
+import { decide, editInvalidatesApproval, isEditable, type WorkflowAction, type WorkflowStatus } from "@/lib/posts/workflow-rules";
+import { isPresentationFile } from "@/lib/posts/content-types";
+import { deleteLocalFile } from "@/lib/storage";
 import { APP_BASE_URL } from "@/lib/utils"
 import { formatFrom, htmlToText } from "@/lib/smtp"
 
@@ -137,23 +141,38 @@ console.log(JSON.stringify(projectManager, null, 2));
       if (file.size > maxFileSize) {
         return NextResponse.json({ error: `File ${file.name} exceeds 100MB limit` }, { status: 400 });
       }
-      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
-        return NextResponse.json({ error: `File ${file.name} is not an image or video` }, { status: 400 });
+      if (!file.type.startsWith("image/") && !file.type.startsWith("video/") && !isPresentationFile(file)) {
+        return NextResponse.json({ error: `File ${file.name} must be an image, a video or a presentation (.ppt, .pptx)` }, { status: 400 });
       }
     }
 
     const currentTime = new Date();
     const userId = parseInt(session.user.id, 10);
 
-    let newStatus: PostStatus | undefined;
-    if (post.status === PostStatus.DRAFT) {
-      newStatus = PostStatus.SUBMITTED;
-    } else if (post.status === PostStatus.SUBMITTED || post.status === PostStatus.REJECTED) {
-      newStatus = PostStatus.RESUBMITTED;
+    // Uploading a design is a submission. The status change goes through the workflow
+    // engine; it used to be computed here, which (among other things) left an approved
+    // or scheduled post approved after its creative was replaced.
+    const uploadAction: WorkflowAction =
+      post.status === PostStatus.DRAFT || post.status === PostStatus.REJECTED || post.status === PostStatus.NEEDS_MINOR_CHANGE
+        ? "SUBMIT"
+        : "EDIT_INVALIDATE";
+    const workflowState = { status: post.status as WorkflowStatus, requiresClientApproval: post.requiresClientApproval };
+    if (!isEditable(workflowState)) {
+      return NextResponse.json({ error: "Published and cancelled posts cannot receive new designs." }, { status: 409 });
     }
-     else if (post.status === PostStatus.RESUBMITTED ) {
-      newStatus = PostStatus.RESUBMITTED;
+    if (editInvalidatesApproval(workflowState) && formData.get("confirmReapproval") !== "true") {
+      return NextResponse.json(
+        {
+          error: "This post is already approved. Uploading a new design sends it back for approval.",
+          code: "REAPPROVAL_REQUIRED",
+        },
+        { status: 409 },
+      );
     }
+    // What the engine will do, so the task log / approval flow written below describe
+    // the real transition. The engine still decides authoritatively further down.
+    const predicted = decide({ post: workflowState, action: uploadAction, actorType: "USER", reason: "upload" });
+    let newStatus: PostStatus | undefined = predicted.ok ? (predicted.to as PostStatus) : undefined;
 
     const lastApprovalFlow = await prisma.approvalFlow.findFirst({
       where: { postId: params.id, flowType: "DESIGN" },
@@ -274,6 +293,26 @@ console.log(JSON.stringify(projectManager, null, 2));
       performedById: userId,
     };
 
+    try {
+      const transition = await transitionPost({
+        postId: params.id,
+        action: uploadAction,
+        actor: { type: "USER", session, userId },
+        authorizedBy: { module: "assets", action: "create" },
+        reason: feedback?.trim() || (uploadAction === "SUBMIT" ? "Design uploaded" : "New design uploaded"),
+        metadata: { fileCount: savedFiles.length },
+      });
+      newStatus = transition.post.status;
+    } catch (error) {
+      // Nothing was attached; do not leave the uploaded files behind.
+      await Promise.all(
+        savedFiles
+          .filter((f) => f.type !== "link")
+          .map((f) => deleteLocalFile(`/api/uploads/${f.generatedName}`).catch(() => undefined)),
+      );
+      return workflowErrorResponse(error);
+    }
+
     const result = await prisma.$transaction(async (tx: any) => {
       // Allow appending designer assets instead of deleting previous ones
       // await tx.asset.deleteMany({ where: { postId: params.id, isReference: false } });
@@ -292,13 +331,8 @@ console.log(JSON.stringify(projectManager, null, 2));
       );
       const assets = await Promise.all(assetPromises);
 
-      let updatedPost = null;
-      if (newStatus) {
-        updatedPost = await tx.post.update({
-          where: { id: params.id },
-          data: { status: newStatus },
-        });
-      }
+      // Status already moved by the workflow engine before this transaction.
+      const updatedPost = null;
 
       const taskLog = await tx.taskLog.create({ data: taskLogData });
       const userActivity = await tx.userActivity.create({ data: userActivityData });
@@ -558,449 +592,50 @@ if (newStatus && (newStatus === PostStatus.SUBMITTED || newStatus === PostStatus
   }
 }
 
-// PATCH endpoint for updating design status
+// PATCH: legacy "set design status" endpoint. No screen calls it any more, but it stays
+// working for any external caller — now as a thin wrapper over the workflow engine, so
+// it can no longer jump a post to APPROVED/SCHEDULED/POSTED with only posts:update.
 const postStatusSchema = z.object({
   status: z.nativeEnum(PostStatus),
   feedback: z.string().optional(),
-  approvedAt: z.string().datetime().optional(),
-  rejectedAt: z.string().datetime().optional(),
   scheduledAt: z.string().datetime().optional(),
-  postedAt: z.string().datetime().optional(),
+  expectedVersion: z.coerce.number().int().positive().optional(),
 });
+
+const LEGACY_STATUS_ACTION: Partial<Record<PostStatus, WorkflowAction>> = {
+  SUBMITTED: "SUBMIT",
+  RESUBMITTED: "SUBMIT",
+  APPROVED: "APPROVE",
+  REJECTED: "REJECT",
+  NEEDS_MINOR_CHANGE: "REQUEST_CHANGES",
+  SCHEDULED: "SCHEDULE",
+  POSTED: "PUBLISH",
+};
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  console.log(`[Design Status API] Received PATCH request for post ID: ${id}`);
+  const auth = await requireSession();
+  if (!auth.ok) return auth.response;
 
-  try {
-    if (!prisma) {
-      console.error("[Design Status API] Prisma client not initialized");
-      return NextResponse.json({ error: "Database not available" }, { status: 503 });
-    }
-
-    const session = await getServerSession(authOptions);
-    if (!session || !(await can(session, "posts", "update"))) {
-      console.warn(`[Design Status API] Unauthorized access: session=${!!session}, role=${session?.user.role}`);
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!id) {
-      console.warn("[Design Status API] Invalid post ID provided");
-      return NextResponse.json({ error: "Invalid post ID" }, { status: 400 });
-    }
-
-    const body = await request.json();
-    const parsedBody = postStatusSchema.safeParse(body);
-    if (!parsedBody.success) {
-      console.warn("[Design Status API] Invalid request body:", parsedBody.error.errors);
-      return NextResponse.json({ error: "Invalid request body", details: parsedBody.error.errors }, { status: 400 });
-    }
-
-    const { status, feedback, approvedAt, rejectedAt, scheduledAt, postedAt } = parsedBody.data;
-
-    if (!Object.values(PostStatus).includes(status)) {
-      console.warn(`[Design Status API] Invalid status: ${status}`);
-      return NextResponse.json({ error: `Status must be one of: ${Object.values(PostStatus).join(", ")}` }, { status: 400 });
-    }
-
-    const post = await prisma.post.findUnique({
-      where: { id },
-      include: { project: true, assignedTo: { select: { email: true, name: true, id: true } } },
-    });
-
-    if (!post) {
-      console.warn(`[Design Status API] Post not found: ${id}`);
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
-    }
-
-    if (status === PostStatus.RESUBMITTED && post.status !== PostStatus.REJECTED) {
-      console.warn(`[Design Status API] Cannot set RESUBMITTED status on post with status: ${post.status}`);
-      return NextResponse.json({ error: "Can only resubmit a post that is in REJECTED status" }, { status: 400 });
-    }
-
-    if (status === PostStatus.REJECTED && !feedback) {
-      console.warn("[Design Status API] Feedback is required for REJECTED status");
-      return NextResponse.json({ error: "Feedback is required for rejected posts" }, { status: 400 });
-    }
-
-    const currentTime = new Date();
-    const userId = parseInt(session.user.id, 10);
-    const newWorkflowStage = determineWorkflowStage(status, post.contentStatus);
-
-    const updateData: any = { status };
-    if (status === PostStatus.APPROVED) {
-      updateData.approvedAt = approvedAt ? new Date(approvedAt) : currentTime;
-      updateData.designApprovedAt = currentTime;
-      updateData.designApprovedById = userId;
-    } else if (status === PostStatus.REJECTED) {
-      updateData.rejectedAt = rejectedAt ? new Date(rejectedAt) : currentTime;
-      updateData.designRejectedAt = currentTime;
-      updateData.designRejectedById = userId;
-    } else if (status === PostStatus.SCHEDULED) {
-      updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : currentTime;
-    } else if (status === PostStatus.POSTED) {
-      updateData.postedAt = postedAt ? new Date(postedAt) : currentTime;
-    }
-
-    const taskLogData = {
-      action: `DESIGN_${status}`,
-      oldStatus: post.status,
-      newStatus: status,
-      oldValues: { status: post.status },
-      newValues: { status },
-      feedback: feedback || null,
-      ipAddress: request.headers.get("x-forwarded-for") || null,
-      userAgent: request.headers.get("user-agent") || null,
-      postId: id,
-      userId: userId,
-    };
-
-    const activityTypeMap: { [key in PostStatus]?: string } = {
-      [PostStatus.SUBMITTED]: "DESIGN_SUBMITTED",
-      [PostStatus.RESUBMITTED]: "DESIGN_RESUBMITTED",
-      [PostStatus.APPROVED]: "DESIGN_APPROVED",
-      [PostStatus.REJECTED]: "DESIGN_REJECTED",
-      [PostStatus.SCHEDULED]: "POST_SCHEDULED",
-      [PostStatus.POSTED]: "POST_POSTED",
-      [PostStatus.DRAFT]: "DESIGN_STARTED",
-    };
-
-    const userActivityData = {
-      activityType: activityTypeMap[status] || "DESIGN_UPLOADED",
-      entityType: "Post",
-      entityId: id,
-      description: `Design status changed to ${status} for post: ${post.title}`,
-      metadata: {
-        oldStatus: post.status,
-        newStatus: status,
-        oldWorkflowStage: "DESIGN_REVIEW",
-        newWorkflowStage: newWorkflowStage,
-        feedback: feedback || null,
-      },
-      ipAddress: request.headers.get("x-forwarded-for") || null,
-      userAgent: request.headers.get("user-agent") || null,
-      createdAt: currentTime,
-      userId: userId,
-      projectId: post.projectId,
-    };
-
-    const existingApprovalFlow = await prisma.approvalFlow.findFirst({
-      where: { postId: id, flowType: "DESIGN" },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const approvalFlowData = {
-      flowType: "DESIGN",
-      status: status,
-      feedback: feedback || null,
-      reviewedAt: (status === PostStatus.APPROVED || status === PostStatus.REJECTED) ? currentTime : null,
-      reviewedById: (status === PostStatus.APPROVED || status === PostStatus.REJECTED) ? userId : null,
-      submittedById: status === PostStatus.SUBMITTED || status === PostStatus.RESUBMITTED ? userId : existingApprovalFlow?.submittedById,
-      submittedAt: status === PostStatus.SUBMITTED || status === PostStatus.RESUBMITTED ? currentTime : existingApprovalFlow?.submittedAt,
-      submissionCount: existingApprovalFlow ? existingApprovalFlow.submissionCount + (status === PostStatus.RESUBMITTED ? 1 : 0) : 1,
-      version: existingApprovalFlow ? existingApprovalFlow.version + 1 : 1,
-      postId: id,
-      assignedToId: status === PostStatus.REJECTED ? post.assignedToId : null,
-      rejectionReason: status === PostStatus.REJECTED ? feedback : null,
-    };
-
-    const approvalHistoryData = {
-      action: status,
-      fromStatus: post.status,
-      toStatus: status,
-      feedback: feedback || null,
-      version: approvalFlowData.version,
-      metadata: {
-        oldStatus: post.status,
-        newStatus: status,
-        workflowStage: newWorkflowStage,
-        reviewedBy: session.user.name,
-      },
-      createdAt: currentTime,
-      approvalFlowId: "",
-      performedById: userId,
-    };
-
-    let nextAssigneeId: number | null = null;
-    let assignmentRole = "";
-    let assignmentStage = newWorkflowStage;
-
-    if (status === PostStatus.REJECTED) {
-      nextAssigneeId = post.assignedToId;
-      assignmentRole = "DESIGNER";
-      assignmentStage = WorkflowStage.DESIGN_PENDING;
-    }
-
-    const result = await prisma.$transaction(async (tx: any) => {
-      const updatedPost = await tx.post.update({
-        where: { id },
-        data: updateData,
-        select: { id: true, title: true, status: true, contentStatus: true, approvedAt: true, rejectedAt: true, scheduledAt: true, postedAt: true },
-      });
-
-      const taskLog = await tx.taskLog.create({ data: taskLogData });
-      const userActivity = await tx.userActivity.create({ data: userActivityData });
-      const approvalFlow = await tx.approvalFlow.create({ data: approvalFlowData });
-      const approvalHistory = await tx.approvalHistory.create({
-        data: { ...approvalHistoryData, approvalFlowId: approvalFlow.id },
-      });
-
-      const designerAssignment = await tx.postAssignment.findFirst({
-        where: { postId: id, role: "DESIGNER", status: "ACTIVE" },
-      });
-
-      if (designerAssignment) {
-        await tx.postAssignment.update({
-          where: { id: designerAssignment.id },
-          data: {
-            status: status === PostStatus.APPROVED ? "COMPLETED" : "ACTIVE",
-            completedAt: status === PostStatus.APPROVED ? currentTime : null,
-            stage: newWorkflowStage,
-          },
-        });
-      }
-
-      if (nextAssigneeId && assignmentRole) {
-        await tx.postAssignment.create({
-          data: {
-            postId: id,
-            userId: nextAssigneeId,
-            role: assignmentRole,
-            stage: assignmentStage,
-            status: "ACTIVE",
-            assignedAt: currentTime,
-          },
-        });
-      }
-
-      if (status === PostStatus.REJECTED && feedback) {
-        const pendingAttachments = await tx.approvalAttachment.findMany({
-          where: { approvalFlowId: approvalFlow.id, type: "AUDIO" },
-          orderBy: { uploadedAt: "desc" },
-        });
-
-        const commentContent = pendingAttachments.length > 0
-          ? `Design Status ${status}: ${feedback}\n\n🎙️ Audio feedback attached (${pendingAttachments.length} file(s))`
-          : `Design Status ${status}: ${feedback}`;
-
-        await tx.comment.create({
-          data: {
-            content: commentContent,
-            type: "DESIGN",
-            postId: id,
-            userId: userId,
-          },
-        });
-
-        await tx.userActivity.create({
-          data: {
-            activityType: "COMMENT_ADDED",
-            entityType: "Post",
-            entityId: id,
-            description: `Comment added for design status ${status} on post: ${post.title}`,
-            metadata: {
-              comment: feedback,
-              status: status,
-              hasAudioAttachment: pendingAttachments.length > 0,
-              audioAttachments: pendingAttachments.map((a: any) => ({ id: a.id, url: a.url, filename: a.filename })),
-            },
-            ipAddress: request.headers.get("x-forwarded-for") || null,
-            userAgent: request.headers.get("user-agent") || null,
-            createdAt: currentTime,
-            userId: userId,
-            projectId: post.projectId,
-          },
-        });
-      }
-
-      const rolesToNotify = ["Social Media Manager", "Manager", "Admin"];
-      const usersToNotify = await tx.user.findMany({
-        where: { role: { name: { in: rolesToNotify } } },
-        select: { id: true, email: true, name: true },
-      });
-
-      if (post.project.managerId && !usersToNotify.some((user: any) => user.id === post.project.managerId)) {
-        const manager = await tx.user.findUnique({
-          where: { id: post.project.managerId },
-          select: { id: true, email: true, name: true },
-        });
-        if (manager) usersToNotify.push(manager);
-      }
-
-      if (status === PostStatus.REJECTED && post.assignedToId && !usersToNotify.some((user: any) => user.id === post.assignedToId)) {
-        const designer = await tx.user.findUnique({
-          where: { id: post.assignedToId },
-          select: { id: true, email: true, name: true },
-        });
-        if (designer) usersToNotify.push(designer);
-      }
-
-      const notificationData = usersToNotify.map((user: any) => ({
-        title: `Post: ${post.title}`,
-        message: `The post "${post.title}" has been "${status}" by ${session.user.name}. ${feedback ? `Feedback: ${feedback}` : ""}`,
-        userId: user.id,
-        isRead: false,
-        createdAt: currentTime,
-        link: `/dashboard/projects/posts/${post.id}`,
-      }));
-
-      await tx.notification.createMany({ data: notificationData });
-
-      return { updatedPost, taskLog, userActivity, approvalFlow, approvalHistory, usersToNotify };
-    });
-
-    // Send email notification for SUBMITTED, RESUBMITTED, or REJECTED status
-    if ((status === PostStatus.SUBMITTED || status === PostStatus.RESUBMITTED || status === PostStatus.REJECTED) && post.assignedTo) {
-      try {
-        if (!submissionEmailTemplate || !rejectionEmailTemplate) {
-          await loadEmailTemplates();
-        }
-
-        const smtpDetails = await prisma.smtpDetails.findUnique({
-          where: { userId: userId },
-          select: { host: true, port: true, username: true, password: true, encryption: true, isVerified: true },
-        });
-               const encryptionKey = process.env.SMTP_PASSWORD_ENCRYPTION_KEY;
-     if (!encryptionKey) {
-       console.error('SMTP password encryption key not found in environment variables');
-       return NextResponse.json({ error: 'SMTP password encryption key not configured' }, { status: 500 });
-     }
- 
-     let decryptedPassword: string;
-     try {
-       const bytes = CryptoJS.AES.decrypt(smtpDetails.password, encryptionKey);
-       decryptedPassword = bytes.toString(CryptoJS.enc.Utf8);
-       if (!decryptedPassword) {
-         throw new Error('Decryption failed: Invalid key or corrupted data');
-       }
-     } catch (decryptError: any) {
-       console.error('Failed to decrypt SMTP password:', decryptError.message);
-       return NextResponse.json(
-         { error: 'Failed to decrypt SMTP password', details: decryptError.message },
-         { status: 500 }
-       );
-     }
-
-        if (!smtpDetails || !smtpDetails.isVerified) {
-          console.error(`[Design Status API] SMTP not configured or verified for user ID: ${userId}`);
-        } else {
-          const transporter = nodemailer.createTransport({
-            host: smtpDetails.host,
-            port: smtpDetails.port,
-            secure: smtpDetails.port === 465,
-            auth: { user: smtpDetails.username, pass: decryptedPassword },
-            tls: { minVersion: "TLSv1.2", rejectUnauthorized: true },
-          });
-
-          await transporter.verify();
-
-const postWithAssets = await prisma.post.findFirst({
-  where: { id: id },
-  select: {
-    assets: {
-      where: { isReference: false, isEdited: false },
-      orderBy: { order: "asc" },
-      select: { url: true },
-      take: 1,
-    },
-  },
-});
-
-          let assetUrl: string | null = null;
-          if (postWithAssets?.assets && postWithAssets.assets.length > 0) {
-            assetUrl = `${APP_BASE_URL}${postWithAssets.assets[0].url}`;
-          }
-
-          let emailHtml: string;
-          let subject: string;
-          let recipients: string[];
-
-if (status === PostStatus.REJECTED) {
-  emailHtml = rejectionEmailTemplate!;
-  subject = `Post Rejected: ${post.title}`;
-  recipients = [post.assignedTo.email].filter(email => email) as string[];
-  emailHtml = emailHtml.replace("{{ designerName }}", post.assignedTo.name || "Designer");
-  emailHtml = emailHtml.replace("{{ postTitle }}", post.title);
-  emailHtml = emailHtml.replace("{{ projectName }}", post.project.name);
-  emailHtml = emailHtml.replace("{{ feedback }}", feedback || "No feedback provided");
-  emailHtml = emailHtml.replace("{{ rejectedAt }}", currentTime.toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    hour12: true,
-  }));
-} else {
-  emailHtml = submissionEmailTemplate!;
-  subject = `Post ${status}: ${post.title}`;
-  recipients = result.usersToNotify.map((user: any) => user.email).filter((email: any) => email) as string[];
-  const statusVerb = status === PostStatus.SUBMITTED ? "submitted" : "resubmitted";
-  // Join recipient names, handling null values and multiple recipients
-  const recipientNames = result.usersToNotify
-    .map((user: any) => user.name || "Team Member")
-    .join(", ");
-  emailHtml = emailHtml.replace("{{ status }}", status);
-  emailHtml = emailHtml.replace("{{ statusVerb }}", statusVerb);
-  emailHtml = emailHtml.replace("{{ recipientName }}", recipientNames || "Team");
-  emailHtml = emailHtml.replace("{{ postTitle }}", post.title);
-  emailHtml = emailHtml.replace("{{ projectName }}", post.project.name);
-  emailHtml = emailHtml.replace("{{ submittedByName }}", session.user.name || "");
-  emailHtml = emailHtml.replace("{{ submittedAt }}", currentTime.toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    hour12: true,
-  }));
-  if (feedback) {
-    emailHtml = emailHtml.replace("{{ #feedback }}", "");
-    emailHtml = emailHtml.replace("{{ /feedback }}", "");
-    emailHtml = emailHtml.replace("{{ feedback }}", feedback);
-  } else {
-    emailHtml = emailHtml.replace(/{{ #feedback }}[\s\S]*?{{ \/feedback }}/g, "");
+  const parsed = postStatusSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request body", details: parsed.error.errors }, { status: 400 });
   }
-}
-
-          emailHtml = emailHtml.replace("{{ dashboardUrl }}", `${APP_BASE_URL}/dashboard/projects/posts?projectId=${post.projectId}`);
-          emailHtml = emailHtml.replace("{{ currentYear }}", currentTime.getFullYear().toString());
-
-          if (assetUrl) {
-            emailHtml = emailHtml.replace("{{ #assetUrl }}", "");
-            emailHtml = emailHtml.replace("{{ /assetUrl }}", "");
-            emailHtml = emailHtml.replace("{{ assetUrl }}", assetUrl);
-          } else {
-            emailHtml = emailHtml.replace(/{{ #assetUrl }}[\s\S]*?{{ \/assetUrl }}/g, "");
-          }
-
-          if (recipients.length > 0) {
-            await transporter.sendMail({
-              from: formatFrom(smtpDetails.username),
-              to: recipients.join(","),
-              subject,
-              html: emailHtml,
-              // HTML-only mail is a heavy spam signal; this is the text/plain alternative.
-              text: htmlToText(emailHtml),
-            });
-            console.log(`[Design Status API] ${status} email sent successfully to ${recipients.join(", ")}`);
-          }
-        }
-      } catch (emailError: any) {
-        console.error(`[Design Status API] Error sending ${status} email:`, emailError);
-      }
-    }
-
-    console.log(`[Design Status API] Updated post ${id}: status=${status}, workflow stage=${newWorkflowStage}`);
-    return NextResponse.json({
-      message: "Design status updated successfully",
-      workflowStage: newWorkflowStage,
-      ...result,
+  const action = LEGACY_STATUS_ACTION[parsed.data.status];
+  if (!action) {
+    return NextResponse.json({ error: `A post cannot be moved to ${parsed.data.status} directly.` }, { status: 409 });
+  }
+  try {
+    const result = await transitionPost({
+      postId: id,
+      action,
+      actor: { type: "USER", session: auth.session, userId: auth.userId },
+      reason: parsed.data.feedback ?? null,
+      expectedVersion: parsed.data.expectedVersion,
+      scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : undefined,
     });
-  } catch (error: any) {
-    console.error("[Design Status API] Error updating post status:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ post: result.post });
+  } catch (error) {
+    return workflowErrorResponse(error);
   }
 }

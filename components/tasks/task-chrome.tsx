@@ -1,6 +1,6 @@
 "use client"
 
-import { CalendarClock, User as UserIcon } from "lucide-react"
+import { FolderKanban, CalendarClock, User as UserIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import {
   TASK_PRIORITY_LABELS,
@@ -58,7 +58,7 @@ export function PriorityBadge({ priority }: { priority: TaskPriority }) {
   return (
     <Badge
       variant="outline"
-      className={`border-transparent text-[11px] ${TASK_PRIORITY_STYLES[priority]}`}
+      className={`border-transparent text-xs ${TASK_PRIORITY_STYLES[priority]}`}
     >
       {TASK_PRIORITY_LABELS[priority]}
     </Badge>
@@ -70,7 +70,7 @@ export function DueDate({ task, short = true }: { task: Task; short?: boolean })
   const late = isOverdue(task)
   return (
     <span
-      className={`inline-flex items-center gap-1 whitespace-nowrap text-[11px] ${
+      className={`inline-flex items-center gap-1 whitespace-nowrap text-xs ${
         late ? "font-medium text-destructive" : "text-muted-foreground"
       }`}
     >
@@ -89,6 +89,21 @@ export function LinkedTo({ task }: { task: Task }) {
   return <span className="text-xs text-muted-foreground">{label}</span>
 }
 
+/** The task's project — its own, or its post's — as a scannable chip. */
+export function ProjectChip({ task }: { task: Task }) {
+  const project = task.project ?? task.post?.project
+  if (!project) return null
+  return (
+    <span
+      title={`Project: ${project.name}`}
+      className="inline-flex max-w-full items-center gap-1 truncate rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary"
+    >
+      <FolderKanban className="h-3 w-3 shrink-0" aria-hidden="true" />
+      <span className="truncate">{project.name}</span>
+    </span>
+  )
+}
+
 /** `compact` renders initial chips for dense layouts; otherwise a readable name list. */
 export function Assignees({ task, compact = false }: { task: Task; compact?: boolean }) {
   if (task.assignees.length === 0) {
@@ -101,7 +116,7 @@ export function Assignees({ task, compact = false }: { task: Task; compact?: boo
           <li
             key={user.id}
             title={user.name ?? user.email}
-            className="flex h-6 items-center gap-1 rounded-full bg-muted px-2 text-[10px] font-medium"
+            className="flex h-6 items-center gap-1 rounded-full bg-muted px-2 text-xs font-medium"
           >
             <UserIcon className="h-2.5 w-2.5" aria-hidden="true" />
             {initials(user.name, user.email)}

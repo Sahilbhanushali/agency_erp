@@ -36,11 +36,20 @@ export function QuickScheduleModal({ postId, currentSchedule, onScheduleUpdate }
       const response = await fetch(`/api/posts/${postId}/schedule`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scheduledAt }),
+        // datetime-local has no zone; convert in the browser so the server stores the
+        // moment the person actually picked.
+        body: JSON.stringify({ scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null }),
       })
 
       if (response.ok) {
-        toast.success("Schedule updated successfully")
+        const result = await response.json().catch(() => ({}))
+        toast.success(
+          result.scheduled === false
+            ? result.message ?? "Planned date saved"
+            : scheduledAt
+              ? "Post scheduled"
+              : "Post unscheduled",
+        )
         setIsOpen(false)
         onScheduleUpdate()
       } else {

@@ -348,7 +348,7 @@ export function HrmsInterviewsTab({
       <div className="flex flex-wrap items-center justify-between gap-3 bg-card/60 p-3 rounded-lg border border-border/60">
         <div className="flex flex-wrap items-center gap-2.5">
           <Select value={selectedJob} onValueChange={setSelectedJob}>
-            <SelectTrigger className="h-8 text-xs w-[170px]">
+            <SelectTrigger aria-label="All Jobs" className="h-8 text-xs w-[170px]">
               <SelectValue placeholder="All Jobs" />
             </SelectTrigger>
             <SelectContent>
@@ -362,7 +362,7 @@ export function HrmsInterviewsTab({
           </Select>
 
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="h-8 text-xs w-[140px]">
+            <SelectTrigger aria-label="All Statuses" className="h-8 text-xs w-[140px]">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -375,7 +375,7 @@ export function HrmsInterviewsTab({
           </Select>
 
           <Select value={selectedInterviewer} onValueChange={setSelectedInterviewer}>
-            <SelectTrigger className="h-8 text-xs w-[160px]">
+            <SelectTrigger aria-label="All Panellists" className="h-8 text-xs w-[160px]">
               <SelectValue placeholder="All Panellists" />
             </SelectTrigger>
             <SelectContent>
@@ -455,7 +455,7 @@ export function HrmsInterviewsTab({
                   <CardHeader className="p-4 pb-2">
                     <div className="flex items-start justify-between">
                       <div>
-                        <Badge variant="outline" className="text-[10px] uppercase font-bold">
+                        <Badge variant="outline" className="text-xs uppercase font-bold">
                           Round {item.roundNumber} • {item.type}
                         </Badge>
                         <CardTitle className="text-sm font-bold mt-1 text-foreground">
@@ -474,7 +474,7 @@ export function HrmsInterviewsTab({
                             ? "destructive"
                             : "secondary"
                         }
-                        className="text-[10px]"
+                        className="text-xs"
                       >
                         {item.status}
                       </Badge>
@@ -490,7 +490,7 @@ export function HrmsInterviewsTab({
                         <Clock className="size-3.5 text-amber-500" />
                         <span>{item.startTime} - {item.endTime}</span>
                       </div>
-                      <div className="text-[11px] text-muted-foreground">
+                      <div className="text-xs text-muted-foreground">
                         Position: {item.jobOpening.title} ({item.jobOpening.department})
                       </div>
                     </div>
@@ -498,7 +498,7 @@ export function HrmsInterviewsTab({
                     {/* Interview Link / Location */}
                     {item.meetingLink && (
                       <div className="flex items-center justify-between text-xs pt-1">
-                        <span className="flex items-center gap-1 text-muted-foreground text-[11px]">
+                        <span className="flex items-center gap-1 text-muted-foreground text-xs">
                           <Video className="size-3 text-blue-500" /> Online Meeting
                         </span>
                         <a
@@ -514,7 +514,7 @@ export function HrmsInterviewsTab({
 
                     {/* Panellists Assigned */}
                     <div className="border-t border-border/40 pt-2.5">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1.5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase mb-1.5">
                         Assigned Interviewers
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -523,19 +523,19 @@ export function HrmsInterviewsTab({
                             <Badge
                               key={iv.id}
                               variant="outline"
-                              className="text-[11px] bg-background gap-1 py-0.5"
+                              className="text-xs bg-background gap-1 py-0.5"
                             >
                               <Avatar className="size-3.5">
-                                <AvatarFallback className="text-[9px]">
+                                <AvatarFallback className="text-xs">
                                   {iv.user.name.slice(0, 1)}
                                 </AvatarFallback>
                               </Avatar>
                               <span>{iv.user.name}</span>
-                              {iv.isLead && <span className="text-[9px] text-primary font-bold">(Lead)</span>}
+                              {iv.isLead && <span className="text-xs text-primary font-bold">(Lead)</span>}
                             </Badge>
                           ))
                         ) : (
-                          <span className="text-[11px] text-muted-foreground">No panellist assigned</span>
+                          <span className="text-xs text-muted-foreground">No panellist assigned</span>
                         )}
                       </div>
                     </div>
@@ -560,7 +560,7 @@ export function HrmsInterviewsTab({
                             ))}
                           </div>
                         </div>
-                        <p className="text-[11px] text-emerald-900/80 dark:text-emerald-200 mt-1">
+                        <p className="text-xs text-emerald-900/80 dark:text-emerald-200 mt-1">
                           {item.feedback}
                         </p>
                       </div>
@@ -627,7 +627,7 @@ export function HrmsInterviewsTab({
                     {new Date(iv.scheduledDate).toLocaleString("default", { month: "short" })}
                   </div>
                   <div className="text-lg">{new Date(iv.scheduledDate).getDate()}</div>
-                  <div className="text-[10px] font-normal text-muted-foreground">{iv.startTime}</div>
+                  <div className="text-xs font-normal text-muted-foreground">{iv.startTime}</div>
                 </div>
 
                 <div className="flex-1 space-y-1">
@@ -635,14 +635,14 @@ export function HrmsInterviewsTab({
                     <h4 className="text-xs font-bold text-foreground">
                       {iv.candidate.name} — {iv.title}
                     </h4>
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       {iv.status}
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Role: {iv.jobOpening.title} ({iv.type})
                   </p>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground pt-1">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                     <span>
                       Panellists: {iv.interviewers.map((i) => i.user.name).join(", ") || "None"}
                     </span>
@@ -683,7 +683,7 @@ export function HrmsInterviewsTab({
                   value={scheduleData.candidateId}
                   onValueChange={(val) => setScheduleData({ ...scheduleData, candidateId: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Candidate" className="h-8 text-xs">
                     <SelectValue placeholder="Select candidate" />
                   </SelectTrigger>
                   <SelectContent>
@@ -703,7 +703,7 @@ export function HrmsInterviewsTab({
                   value={scheduleData.jobOpeningId}
                   onValueChange={(val) => setScheduleData({ ...scheduleData, jobOpeningId: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Job Opening" className="h-8 text-xs">
                     <SelectValue placeholder="Select opening" />
                   </SelectTrigger>
                   <SelectContent>
@@ -719,7 +719,7 @@ export function HrmsInterviewsTab({
               {/* Title */}
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Interview Title *</Label>
-                <Input
+                <Input aria-label="Interview Title"
                   required
                   value={scheduleData.title}
                   onChange={(e) => setScheduleData({ ...scheduleData, title: e.target.value })}
@@ -731,7 +731,7 @@ export function HrmsInterviewsTab({
               {/* Round Number */}
               <div className="space-y-1">
                 <Label className="text-xs">Round Number</Label>
-                <Input
+                <Input aria-label="Round Number"
                   type="number"
                   min="1"
                   value={scheduleData.roundNumber}
@@ -749,7 +749,7 @@ export function HrmsInterviewsTab({
                   value={scheduleData.type}
                   onValueChange={(val) => setScheduleData({ ...scheduleData, type: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Interview Type" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -763,7 +763,7 @@ export function HrmsInterviewsTab({
               {/* Date */}
               <div className="space-y-1">
                 <Label className="text-xs">Date *</Label>
-                <Input
+                <Input aria-label="Date"
                   type="date"
                   required
                   value={scheduleData.scheduledDate}
@@ -776,7 +776,7 @@ export function HrmsInterviewsTab({
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Start Time *</Label>
-                  <Input
+                  <Input aria-label="Start Time"
                     type="time"
                     required
                     value={scheduleData.startTime}
@@ -786,7 +786,7 @@ export function HrmsInterviewsTab({
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">End Time *</Label>
-                  <Input
+                  <Input aria-label="End Time"
                     type="time"
                     required
                     value={scheduleData.endTime}
@@ -823,7 +823,7 @@ export function HrmsInterviewsTab({
                     <AlertTriangle className="size-4 text-amber-600" />
                     <span>Scheduling Conflict Detected!</span>
                   </div>
-                  <div className="space-y-1 text-[11px]">
+                  <div className="space-y-1 text-xs">
                     {conflictsList.map((c, idx) => (
                       <div key={idx}>
                         • Panellist <strong>{c.conflictingInterviewers.join(", ")}</strong> has an
@@ -839,7 +839,7 @@ export function HrmsInterviewsTab({
                 <Label className="text-xs">
                   {scheduleData.type === "ONLINE" ? "Meeting Link" : "Office Location / Instructions"}
                 </Label>
-                <Input
+                <Input aria-label="https://meet.google.com/"
                   value={scheduleData.meetingLink}
                   onChange={(e) => setScheduleData({ ...scheduleData, meetingLink: e.target.value })}
                   placeholder="https://meet.google.com/..."
@@ -850,7 +850,7 @@ export function HrmsInterviewsTab({
               {/* Instructions */}
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Candidate Instructions</Label>
-                <Textarea
+                <Textarea aria-label="Candidate Instructions"
                   value={scheduleData.instructions}
                   onChange={(e) => setScheduleData({ ...scheduleData, instructions: e.target.value })}
                   rows={2}
@@ -891,7 +891,7 @@ export function HrmsInterviewsTab({
                 value={feedbackModal.recommendation}
                 onValueChange={(val) => setFeedbackModal({ ...feedbackModal, recommendation: val })}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label="Overall Recommendation" className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -908,7 +908,7 @@ export function HrmsInterviewsTab({
               <Label className="text-xs">Rating (1 to 5 Stars)</Label>
               <div className="flex items-center gap-1.5">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <button
+                  <button aria-label={`Rate ${star} out of 5`}
                     key={star}
                     type="button"
                     onClick={() => setFeedbackModal({ ...feedbackModal, rating: star })}
@@ -928,7 +928,7 @@ export function HrmsInterviewsTab({
 
             <div className="space-y-1.5">
               <Label className="text-xs">Detailed Evaluation Feedback *</Label>
-              <Textarea
+              <Textarea aria-label="Detailed Evaluation Feedback"
                 required
                 value={feedbackModal.feedback}
                 onChange={(e) => setFeedbackModal({ ...feedbackModal, feedback: e.target.value })}
@@ -970,7 +970,7 @@ export function HrmsInterviewsTab({
 
           <div className="space-y-3 py-2">
             <Label className="text-xs">Cancellation Reason</Label>
-            <Input
+            <Input aria-label="Cancellation Reason"
               value={cancelModal.reason}
               onChange={(e) => setCancelModal({ ...cancelModal, reason: e.target.value })}
               placeholder="e.g. Candidate rescheduled, interviewer unavailable"

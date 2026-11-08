@@ -250,7 +250,7 @@ export default function ClientsPage() {
         {/* Page Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Clients</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Clients</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Manage client directory, brand accounts, and active retainers.
             </p>
@@ -270,21 +270,21 @@ export default function ClientsPage() {
           <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
             <div className="size-2 rounded-full bg-primary" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Clients</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Clients</span>
               <span className="text-base font-bold tabular-nums text-foreground">{totalClients}</span>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
             <div className="size-2 rounded-full bg-emerald-500" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Active Projects</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Projects</span>
               <span className="text-base font-bold tabular-nums text-foreground">{activeProjectsCount}</span>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
             <div className="size-2 rounded-full bg-blue-500" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Filtered Results</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Filtered Results</span>
               <span className="text-base font-bold tabular-nums text-foreground">{filteredClients.length}</span>
             </div>
           </div>
@@ -306,7 +306,7 @@ export default function ClientsPage() {
 
             {/* Status Filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
+              <SelectTrigger aria-label="Status" className="h-9 w-[130px] bg-background text-xs">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -318,7 +318,7 @@ export default function ClientsPage() {
 
             {/* Project Activity Filter */}
             <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger className="h-9 w-[150px] bg-background text-xs">
+              <SelectTrigger aria-label="Projects" className="h-9 w-[150px] bg-background text-xs">
                 <SelectValue placeholder="Projects" />
               </SelectTrigger>
               <SelectContent>
@@ -330,7 +330,7 @@ export default function ClientsPage() {
 
             {/* Sort Filter */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="h-9 w-[140px] bg-background text-xs">
+              <SelectTrigger aria-label="Sort" className="h-9 w-[140px] bg-background text-xs">
                 <SelectValue placeholder="Sort" />
               </SelectTrigger>
               <SelectContent>
@@ -431,12 +431,12 @@ export default function ClientsPage() {
                         <span className="font-medium text-foreground">{client.company || "—"}</span>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {client.industry && (
-                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                               {client.industry}
                             </span>
                           )}
                           {client.status && client.status !== "ACTIVE" && (
-                            <span className="text-[10px] text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium">
+                            <span className="text-xs text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium">
                               {client.status}
                             </span>
                           )}

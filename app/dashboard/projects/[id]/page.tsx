@@ -1,5 +1,6 @@
 "use client";
 
+import { statusLabel, typeLabel } from "@/lib/post-status";
 import { useLiveRefresh } from "@/hooks/use-live-refresh"
 
 import { useEffect, useState, useMemo } from "react";
@@ -378,7 +379,7 @@ export default function ProjectDetailsPage() {
           </Button>
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 {project.name}
               </h1>
               <Badge variant={project.isActive ? "success" : "secondary"}>
@@ -583,7 +584,7 @@ export default function ProjectDetailsPage() {
                 <div className="space-y-0.5 text-xs truncate">
                   <p className="font-semibold text-foreground truncate">{project.manager.name}</p>
                   <p className="text-muted-foreground truncate">{project.manager.email}</p>
-                  <Badge variant="outline" className="text-[10px] mt-1">
+                  <Badge variant="outline" className="text-xs mt-1">
                     Manager
                   </Badge>
                 </div>
@@ -628,7 +629,7 @@ export default function ProjectDetailsPage() {
                           <IconComponent className="size-3.5 text-muted-foreground" />
                           <span className="uppercase tracking-wide text-xs">{type}</span>
                           {!stats.isPlanned && (
-                            <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
+                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
                               Unplanned
                             </Badge>
                           )}
@@ -706,7 +707,7 @@ export default function ProjectDetailsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-3">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-              <Input
+              <Input aria-label="Search posts"
                 type="text"
                 placeholder="Search posts..."
                 className="pl-8 h-8 text-xs"
@@ -716,6 +717,7 @@ export default function ProjectDetailsPage() {
             </div>
 
             <select
+              aria-label="Filter posts by status"
               className="h-8 px-2.5 rounded-md border border-input bg-background text-foreground text-xs focus:ring-1 focus:ring-primary outline-hidden"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -723,12 +725,13 @@ export default function ProjectDetailsPage() {
               <option value="">All Statuses</option>
               {uniqueStatuses.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {statusLabel(status)}
                 </option>
               ))}
             </select>
 
             <select
+              aria-label="Filter posts by content type"
               className="h-8 px-2.5 rounded-md border border-input bg-background text-foreground text-xs focus:ring-1 focus:ring-primary outline-hidden"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
@@ -736,13 +739,14 @@ export default function ProjectDetailsPage() {
               <option value="">All Types</option>
               {uniqueTypes.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {typeLabel(type)}
                 </option>
               ))}
             </select>
 
             <Input
               type="date"
+              aria-label="Filter posts by date"
               className="h-8 text-xs"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
@@ -750,6 +754,7 @@ export default function ProjectDetailsPage() {
 
             <div className="flex gap-1.5">
               <select
+                aria-label="Sort posts by"
                 className="flex-1 h-8 px-2.5 rounded-md border border-input bg-background text-foreground text-xs focus:ring-1 focus:ring-primary outline-hidden"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -840,7 +845,7 @@ export default function ProjectDetailsPage() {
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <TypeIcon className="size-3 text-primary" />
                         <span className="font-medium text-foreground uppercase">{post.type}</span>

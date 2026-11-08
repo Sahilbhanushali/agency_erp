@@ -277,7 +277,7 @@ export default function SettingsPage() {
                 {utility.values.map((value, index) => (
                   <Badge key={index} variant="outline" className="flex items-center gap-1">
                     {value}
-                    <button onClick={() => removeValue(utility.id, value)} className="ml-1 hover:text-destructive">
+                    <button aria-label={`Remove ${value}`} onClick={() => removeValue(utility.id, value)} className="ml-1 hover:text-destructive">
                       <X className="w-3 h-3" />
                     </button>
                   </Badge>
@@ -287,7 +287,7 @@ export default function SettingsPage() {
 
               {/* Add New Value */}
               <div className="flex gap-2">
-                <Input
+                <Input aria-label={`New value for ${utility.name}`}
                   value={editingUtility === utility.id ? newValue : ""}
                   onChange={(e) => {
                     setNewValue(e.target.value)

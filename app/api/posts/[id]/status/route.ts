@@ -8,7 +8,22 @@ import nodemailer from "nodemailer";
 import fs from "fs/promises";
 import path from "path";
 import CryptoJS from "crypto-js";
-import { requireCan } from "@/lib/api-auth";
+import { requireSession } from "@/lib/api-auth";
+import { transitionPost, workflowErrorResponse } from "@/lib/posts/workflow";
+import type { WorkflowAction } from "@/lib/posts/workflow-rules";
+
+/** The status a legacy caller asks for → the workflow action that produces it. */
+const STATUS_TO_ACTION: Partial<Record<PostStatus, WorkflowAction>> = {
+  SUBMITTED: "SUBMIT",
+  RESUBMITTED: "SUBMIT",
+  APPROVED: "APPROVE",
+  REJECTED: "REJECT",
+  NEEDS_MINOR_CHANGE: "REQUEST_CHANGES",
+  SCHEDULED: "SCHEDULE",
+  POSTED: "PUBLISH",
+  CANCELLED: "CANCEL",
+  DRAFT: "REOPEN",
+};
 import { APP_BASE_URL } from "@/lib/utils"
 import { formatFrom, htmlToText } from "@/lib/smtp"
 // Load the email template
@@ -52,6 +67,8 @@ async function loadEmailTemplate() {
 
 const postStatusSchema = z.object({
   status: z.nativeEnum(PostStatus),
+  /** The post version the caller's screen showed; a mismatch is a 409, not an overwrite. */
+  expectedVersion: z.coerce.number().int().positive().optional(),
   feedback: z.string().optional(),
   approvedAt: z.string().datetime().optional(),
   rejectedAt: z.string().datetime().optional(),
@@ -108,14 +125,12 @@ export async function PATCH(
       );
     }
 
-    const auth = await requireCan("posts", "update");
+    // Signed in is all this checks: the permission depends on the transition, so the
+    // workflow engine authorizes each one (approve needs posts:approve, schedule needs
+    // posts:publish, ...) together with the caller's scope over this post.
+    const auth = await requireSession();
     if (!auth.ok) return auth.response;
     const session = auth.session;
-    // Was a hardcoded deny-list of role names. The same policy now lives in the
-    // permission catalog as posts:status, so an administrator can change who may
-    // move a post through its workflow without editing this file.
-    const statusAuth = await requireCan("posts", "status");
-    if (!statusAuth.ok) return statusAuth.response;
 
     if (!id) {
       console.warn("[Design Status API] Invalid post ID provided");
@@ -246,6 +261,40 @@ export async function PATCH(
     const userId = parseInt(session.user.id, 10);
     const oldPost = { ...post };
 
+    // The status itself changes ONLY through the workflow engine, which validates the
+    // transition, records it in the post timeline and refuses stale or duplicate
+    // requests. Everything below this point is the route's existing bookkeeping
+    // (approval flow, task log, assignments, emails) for a transition that succeeded.
+    const action = STATUS_TO_ACTION[status];
+    if (!action || (action === "REOPEN" && post.status !== PostStatus.CANCELLED)) {
+      return NextResponse.json(
+        {
+          error:
+            status === PostStatus.C_APPROVED
+              ? "Client approval is recorded by the client through their share link."
+              : `A post cannot be moved to ${status} directly.`,
+        },
+        { status: 409 },
+      );
+    }
+    try {
+      await transitionPost({
+        postId: id,
+        action,
+        actor: { type: "USER", session, userId },
+        reason: feedback ?? null,
+        expectedVersion: parsedBody.data.expectedVersion,
+        scheduledAt:
+          action === "SCHEDULE"
+            ? scheduledAt
+              ? new Date(scheduledAt)
+              : post.scheduledAt
+            : undefined,
+      });
+    } catch (error) {
+      return workflowErrorResponse(error);
+    }
+
     // Determine new workflow stage
     const newWorkflowStage = determineWorkflowStage(status, post.contentStatus);
 
@@ -261,36 +310,14 @@ export async function PATCH(
       },
     });
 
-    // Prepare update data
-    const updateData: any = {
-      status,
-    };
-
-    // Sync designerHeadApproval with post status for all statuses
-    if ([PostStatus.SUBMITTED, PostStatus.RESUBMITTED, PostStatus.DRAFT, PostStatus.REJECTED, PostStatus.NEEDS_MINOR_CHANGE, PostStatus.APPROVED, PostStatus.SCHEDULED, PostStatus.POSTED, PostStatus.C_APPROVED].includes(status)) {
-      updateData.designerHeadApproval = status;
-    }
-
-    // Auto-approve content status whenever design status is APPROVED, SCHEDULED, or POSTED
-    if (status === PostStatus.APPROVED || status === PostStatus.SCHEDULED || status === PostStatus.POSTED) {
+    // Status, timestamps and the designerHeadApproval mirror were written by the engine.
+    // Only the existing business rule that approving the post approves its copy stays
+    // here — and only for a real approval, no longer for SCHEDULED/POSTED.
+    const updateData: any = {};
+    if (status === PostStatus.APPROVED) {
       updateData.contentStatus = ContentStatus.APPROVED;
       updateData.contentApprovedAt = currentTime;
       updateData.contentApprovedById = userId;
-    }
-
-    // Handle timestamps
-    if (status === PostStatus.APPROVED) {
-      updateData.approvedAt = approvedAt ? new Date(approvedAt) : currentTime;
-      updateData.designApprovedAt = currentTime;
-      updateData.designApprovedById = userId;
-    } else if (status === PostStatus.REJECTED || status === PostStatus.NEEDS_MINOR_CHANGE) {
-      updateData.rejectedAt = rejectedAt ? new Date(rejectedAt) : currentTime;
-      updateData.designRejectedAt = currentTime;
-      updateData.designRejectedById = userId;
-    } else if (status === PostStatus.SCHEDULED) {
-      updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : currentTime;
-    } else if (status === PostStatus.POSTED) {
-      updateData.postedAt = postedAt ? new Date(postedAt) : currentTime;
     }
 
     let usersToNotify: { id: number; email: string | null; name: string | null }[] = [];

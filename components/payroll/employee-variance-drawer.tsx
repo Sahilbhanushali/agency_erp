@@ -209,11 +209,11 @@ export default function EmployeeVarianceDrawer({
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-bold text-foreground">{employeeName}</h2>
                   {isHeld ? (
-                    <Badge variant="destructive" className="text-[10px] uppercase font-mono tracking-wider">
+                    <Badge variant="destructive" className="text-xs uppercase font-mono tracking-wider">
                       On Hold
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider">
+                    <Badge variant="outline" className="text-xs uppercase font-mono tracking-wider">
                       Active
                     </Badge>
                   )}
@@ -247,7 +247,7 @@ export default function EmployeeVarianceDrawer({
                       Add Adjustment
                     </Button>
 
-                    <Button
+                    <Button aria-label="Recalculate Employee"
                       variant="ghost"
                       size="icon-xs"
                       onClick={handleRecalculateSingle}
@@ -283,7 +283,7 @@ export default function EmployeeVarianceDrawer({
               <div className="grid grid-cols-2 gap-3">
                 {/* Last Month Card */}
                 <div className="p-3.5 rounded-xl border border-border bg-muted/30 space-y-2">
-                  <p className="text-[11px] font-medium text-muted-foreground">Previous Cycle</p>
+                  <p className="text-xs font-medium text-muted-foreground">Previous Cycle</p>
                   <div>
                     <p className="text-xs text-muted-foreground">Gross</p>
                     <p className="text-sm font-semibold font-mono">{formatInr(prevGross)}</p>
@@ -297,10 +297,10 @@ export default function EmployeeVarianceDrawer({
                 {/* This Month Card with Delta */}
                 <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/5 space-y-2 relative overflow-hidden">
                   <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-medium text-primary">This Cycle</p>
+                    <p className="text-xs font-medium text-primary">This Cycle</p>
                     {prevGross !== null && (
                       <span
-                        className={`text-[11px] font-mono font-bold flex items-center gap-0.5 ${
+                        className={`text-xs font-mono font-bold flex items-center gap-0.5 ${
                           percentDelta >= 0 ? "text-emerald-600" : "text-amber-600"
                         }`}
                       >
@@ -324,7 +324,7 @@ export default function EmployeeVarianceDrawer({
               {varianceData?.reasons && varianceData.reasons.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {varianceData.reasons.map((r: string, idx: number) => (
-                    <Badge key={idx} variant="neutral" className="text-[10px] py-0.5">
+                    <Badge key={idx} variant="neutral" className="text-xs py-0.5">
                       {r}
                     </Badge>
                   ))}
@@ -339,17 +339,17 @@ export default function EmployeeVarianceDrawer({
               </h3>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="p-2.5 rounded-lg bg-muted/40 border border-border">
-                  <p className="text-[10px] text-muted-foreground">Payable Days</p>
+                  <p className="text-xs text-muted-foreground">Payable Days</p>
                   <p className="text-sm font-bold font-mono text-foreground mt-0.5">{payslip.payableDays} d</p>
                 </div>
                 <div className="p-2.5 rounded-lg bg-muted/40 border border-border">
-                  <p className="text-[10px] text-muted-foreground">Present / Paid Leaves</p>
+                  <p className="text-xs text-muted-foreground">Present / Paid Leaves</p>
                   <p className="text-sm font-bold font-mono text-foreground mt-0.5">
                     {calcBreakdown.presentDays || 0}P + {payslip.paidLeaveDays || 0}L
                   </p>
                 </div>
                 <div className="p-2.5 rounded-lg bg-muted/40 border border-border">
-                  <p className="text-[10px] text-muted-foreground">LOP / Late Penalty</p>
+                  <p className="text-xs text-muted-foreground">LOP / Late Penalty</p>
                   <p className="text-sm font-bold font-mono text-red-600 mt-0.5">
                     {payslip.lopDays || 0} LOP • {payslip.lateDeductionDays || 0}d Pen
                   </p>
@@ -357,7 +357,7 @@ export default function EmployeeVarianceDrawer({
               </div>
 
               {calcBreakdown.formulaBreakdown?.payableDaysFormula && (
-                <p className="text-[11px] font-mono text-muted-foreground bg-muted/30 p-2 rounded-md mt-2">
+                <p className="text-xs font-mono text-muted-foreground bg-muted/30 p-2 rounded-md mt-2">
                   Formula: {calcBreakdown.formulaBreakdown.payableDaysFormula}
                 </p>
               )}
@@ -395,7 +395,7 @@ export default function EmployeeVarianceDrawer({
                           </span>
                         </div>
                         {line.calculationNote && (
-                          <p className="text-[10px] text-muted-foreground pl-3 font-mono">
+                          <p className="text-xs text-muted-foreground pl-3 font-mono">
                             ↳ {line.calculationNote}
                           </p>
                         )}
@@ -415,11 +415,11 @@ export default function EmployeeVarianceDrawer({
               </h3>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-2.5 rounded-lg border border-border bg-muted/20">
-                  <span className="text-muted-foreground text-[10px]">PAN:</span>
+                  <span className="text-muted-foreground text-xs">PAN:</span>
                   <p className="font-mono font-bold mt-0.5">{payslip.panNumberMasked || "Not Linked"}</p>
                 </div>
                 <div className="p-2.5 rounded-lg border border-border bg-muted/20">
-                  <span className="text-muted-foreground text-[10px]">Bank A/C:</span>
+                  <span className="text-muted-foreground text-xs">Bank A/C:</span>
                   <p className="font-mono font-bold mt-0.5">{payslip.bankAccountMasked || "Not Linked"}</p>
                 </div>
               </div>
@@ -443,7 +443,7 @@ export default function EmployeeVarianceDrawer({
           {!isHeld && (
             <div className="space-y-2 py-2">
               <Label className="text-xs font-semibold">Mandatory Hold Reason *</Label>
-              <Textarea
+              <Textarea aria-label="Mandatory Hold Reason"
                 placeholder="e.g. Attendance regularisation pending, resignation clearance in progress..."
                 value={holdReason}
                 onChange={(e) => setHoldReason(e.target.value)}
@@ -482,7 +482,7 @@ export default function EmployeeVarianceDrawer({
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Adjustment Type</Label>
               <Select value={adjType} onValueChange={setAdjType}>
-                <SelectTrigger className="text-xs">
+                <SelectTrigger aria-label="Adjustment Type" className="text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -498,7 +498,7 @@ export default function EmployeeVarianceDrawer({
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Title / Reason *</Label>
-              <Input
+              <Input aria-label="Title / Reason"
                 placeholder="e.g. Spot award for client launch"
                 value={adjTitle}
                 onChange={(e) => setAdjTitle(e.target.value)}
@@ -508,7 +508,7 @@ export default function EmployeeVarianceDrawer({
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Amount (₹ Rupees) *</Label>
-              <Input
+              <Input aria-label="Amount (₹ Rupees)"
                 type="number"
                 step="any"
                 min="1"
@@ -521,7 +521,7 @@ export default function EmployeeVarianceDrawer({
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Optional Notes</Label>
-              <Input
+              <Input aria-label="Optional Notes"
                 placeholder="Additional audit context"
                 value={adjNotes}
                 onChange={(e) => setAdjNotes(e.target.value)}

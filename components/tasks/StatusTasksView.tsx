@@ -165,11 +165,11 @@ const STATUS_CONFIG: Record<StatusFilter, StatusConfigItem> = {
   changes: {
     label: "Changes Required",
     description: "Tasks sent back for revision or minor adjustments",
-    badgeColor: "bg-slate-200 text-slate-700 border-slate-300",
+    badgeColor: "bg-slate-200 text-foreground border-border",
     headerGradient: "from-slate-600 to-slate-700",
     icon: <RefreshCcw className="h-5 w-5 text-white" />,
     accentBorder: "border-l-slate-400",
-    chipClass: "bg-slate-100 text-slate-700 border border-slate-300",
+    chipClass: "bg-muted text-foreground border border-border",
     emptyMsg: "No tasks requiring changes",
   },
 };
@@ -178,7 +178,7 @@ const STATUS_CONFIG: Record<StatusFilter, StatusConfigItem> = {
 
 function getStatusBadgeClass(status: string): string {
   const map: Record<string, string> = {
-    DRAFT: "bg-slate-100 text-slate-600 border border-slate-200",
+    DRAFT: "bg-muted text-muted-foreground border border-border",
     SUBMITTED: "bg-violet-100 text-violet-700 border border-violet-200",
     RESUBMITTED: "bg-violet-100 text-violet-700 border border-violet-200",
     APPROVED: "bg-emerald-100 text-emerald-700 border border-emerald-200",
@@ -187,15 +187,15 @@ function getStatusBadgeClass(status: string): string {
     REJECTED: "bg-rose-100 text-rose-700 border border-rose-200",
     NEEDS_MINOR_CHANGE: "bg-orange-100 text-orange-700 border border-orange-200",
   };
-  return map[status] ?? "bg-gray-100 text-gray-700";
+  return map[status] ?? "bg-muted text-foreground";
 }
 
 function getStatusLabel(status: string): string {
   const map: Record<string, string> = {
     DRAFT: "Draft",
     SUBMITTED: "Submitted",
-    APPROVED: "I Approve",
-    C_APPROVED: "C Approve",
+    APPROVED: "Approved",
+    C_APPROVED: "Client approved",
     REJECTED: "Rejected",
     SCHEDULED: "Scheduled",
     POSTED: "Posted",
@@ -287,12 +287,12 @@ function MiniTaskCard({
           <h4 className="text-sm font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
             {task.title}
           </h4>
-          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+          <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
             {task.type}
           </span>
         </div>
         <span
-          className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(task.status)}`}
+          className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(task.status)}`}
         >
           {getStatusLabel(task.status)}
         </span>
@@ -310,13 +310,13 @@ function MiniTaskCard({
             return (
               <div
                 key={asset.id}
-                className="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center relative"
+                className="w-14 h-14 rounded-lg overflow-hidden bg-muted border border-border shrink-0 flex items-center justify-center relative"
               >
                 {isLink ? (
                   <LinkIcon className="h-5 w-5 text-blue-500" />
                 ) : isVideo ? (
-                  <div className="flex flex-col items-center justify-center text-slate-500">
-                    <Video className="h-5 w-5 text-slate-600" />
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <Video className="h-5 w-5 text-muted-foreground" />
                   </div>
                 ) : (
                   <img
@@ -343,8 +343,8 @@ function MiniTaskCard({
             );
           })}
           {imageAssets.length > 3 && (
-            <div className="w-14 h-14 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <span className="text-[10px] text-slate-500 font-bold">
+            <div className="w-14 h-14 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0">
+              <span className="text-xs text-muted-foreground font-bold">
                 +{imageAssets.length - 3}
               </span>
             </div>
@@ -361,33 +361,33 @@ function MiniTaskCard({
               {task.platforms.slice(0, 2).map((p) => (
                 <span
                   key={p.id}
-                  className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
-                    platformColors[p.platform] ?? "bg-slate-100 text-slate-600"
+                  className={`text-xs px-1.5 py-0.5 rounded font-semibold ${
+                    platformColors[p.platform] ?? "bg-muted text-muted-foreground"
                   }`}
                 >
                   {p.platform.charAt(0) + p.platform.slice(1).toLowerCase()}
                 </span>
               ))}
               {task.platforms.length > 2 && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold bg-slate-100 text-slate-500">
+                <span className="text-xs px-1.5 py-0.5 rounded font-semibold bg-muted text-muted-foreground">
                   +{task.platforms.length - 2}
                 </span>
               )}
             </>
           ) : (
-            <span className="text-[10px] text-slate-400">—</span>
+            <span className="text-xs text-muted-foreground">—</span>
           )}
         </div>
 
         {/* Due date */}
         {designDue && (
           <div
-            className={`flex items-center gap-1 text-[11px] font-medium ${
+            className={`flex items-center gap-1 text-xs font-medium ${
               isOverdue
                 ? "text-rose-600"
                 : daysLeft !== null && daysLeft <= 3
                 ? "text-amber-600"
-                : "text-slate-500"
+                : "text-muted-foreground"
             }`}
           >
             {isOverdue ? (
@@ -408,7 +408,7 @@ function MiniTaskCard({
 
       {/* Feedback */}
       {task.feedback && (
-        <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-[11px] text-amber-700 line-clamp-2">
+        <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-700 line-clamp-2">
           💬 {task.feedback}
         </div>
       )}
@@ -449,7 +449,7 @@ function ProjectSection({
               <span className="font-semibold text-foreground text-sm truncate">
                 {project.projectName}
               </span>
-              <span className="text-[11px] text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">•</span>
               <div className="flex items-center gap-1">
                 <Users className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground truncate">{project.clientName}</span>
@@ -539,7 +539,7 @@ export default function StatusTasksView({
               {config.icon}
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">{config.label}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">{config.label}</h1>
               <p className="text-muted-foreground text-sm mt-0.5">{config.description}</p>
             </div>
           </div>
@@ -581,7 +581,7 @@ export default function StatusTasksView({
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
+        <Input aria-label="Search by project or client"
           placeholder="Search by project or client..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}

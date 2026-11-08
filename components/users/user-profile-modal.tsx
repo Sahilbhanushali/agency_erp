@@ -1,5 +1,6 @@
 "use client";
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useState, useEffect } from "react";
 import useSWR from "swr";
 import toast from "react-hot-toast";
@@ -66,7 +67,8 @@ interface UserProfileModalProps {
   onUserUpdated?: () => void;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 export default function UserProfileModal({
   userId,
@@ -328,7 +330,7 @@ export default function UserProfileModal({
                     <FileCheck className="size-4 text-primary" />
                     <div>
                       <p className="text-xs font-semibold text-foreground">Joining Offer Letter</p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {user?.offerLetterUrl ? "Offer letter is attached to profile" : "No offer letter uploaded yet"}
                       </p>
                     </div>
@@ -568,7 +570,7 @@ export default function UserProfileModal({
                     HR Documents Vault
                     <Sparkles className="size-3 text-primary" />
                   </h4>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Multi-file drag & drop, inline preview lightbox, verification approval, and categories.
                   </p>
                 </div>
@@ -674,32 +676,32 @@ export default function UserProfileModal({
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="text-xs font-medium text-foreground truncate">{doc.title}</p>
-                            <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
+                            <Badge variant="neutral" className="text-xs px-1.5 py-0">
                               {(doc.category || "OTHER").replace(/_/g, " ")}
                             </Badge>
                             {doc.status === "VERIFIED" && (
-                              <Badge variant="success" className="text-[10px] py-0">
+                              <Badge variant="success" className="text-xs py-0">
                                 Verified
                               </Badge>
                             )}
                             {doc.status === "PENDING" && (
-                              <Badge variant="warning" className="text-[10px] py-0">
+                              <Badge variant="warning" className="text-xs py-0">
                                 Pending
                               </Badge>
                             )}
                             {doc.status === "REJECTED" && (
-                              <Badge variant="destructive" className="text-[10px] py-0">
+                              <Badge variant="destructive" className="text-xs py-0">
                                 Rejected
                               </Badge>
                             )}
                           </div>
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             {doc.fileName} • {formatFileSize(doc.fileSize)} • {new Date(doc.uploadedAt).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Button
+                        <Button aria-label="Open document"
                           variant="ghost"
                           size="icon-xs"
                           onClick={() => window.open(doc.fileUrl, "_blank")}
@@ -707,7 +709,7 @@ export default function UserProfileModal({
                         >
                           <ExternalLink className="size-3.5 text-muted-foreground" />
                         </Button>
-                        <Button
+                        <Button aria-label="Delete document and remove local file"
                           variant="ghost"
                           size="icon-xs"
                           onClick={() => setDocToDelete({ id: doc.id, name: doc.name })}

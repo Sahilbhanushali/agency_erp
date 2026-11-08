@@ -216,7 +216,7 @@ export function CredentialFormDialog({
                 control={control}
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger aria-label="Select Client" className="w-full">
                       <SelectValue placeholder="Select Client" />
                     </SelectTrigger>
                     <SelectContent>
@@ -241,7 +241,7 @@ export function CredentialFormDialog({
                     value={field.value}
                     disabled={!selectedClient || !selectedClient.projects?.length}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger aria-label="Select Project" className="w-full">
                       <SelectValue placeholder="Select Project" />
                     </SelectTrigger>
                     <SelectContent>
@@ -307,7 +307,7 @@ export function CredentialFormDialog({
                 
                 <div className="flex-1 w-full space-y-1">
                   <Label className="text-xs">Username / email</Label>
-                  <Input
+                  <Input aria-label="Username / email"
                     type="text"
                     {...register(`platforms.${index}.userId`, { required: true })} 
                     placeholder="Username/Email"
@@ -318,7 +318,7 @@ export function CredentialFormDialog({
 
                 <div className="flex-1 w-full space-y-1">
                   <Label className="text-xs">Password</Label>
-                  <Input 
+                  <Input aria-label="Password" 
                     type="password"
                     {...register(`platforms.${index}.password`, { required: true })} 
                     placeholder="Password"
@@ -328,7 +328,7 @@ export function CredentialFormDialog({
                 </div>
 
                 {!isEditMode && (
-                  <Button 
+                  <Button aria-label="Remove this credential row" 
                     type="button" 
                     variant="ghost" 
                     size="icon" 

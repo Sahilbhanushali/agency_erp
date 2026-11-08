@@ -1,5 +1,6 @@
 "use client";
 
+import { POST_CONTENT_TYPES } from "@/lib/posts/content-types";
 import {useMemo} from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -132,7 +133,7 @@ export default function PostFilters({
         <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-            <Input
+            <Input aria-label="Search posts, captions, or clients"
               placeholder="Search posts, captions, or clients..."
               className="pl-9 h-9 text-xs bg-background"
               value={searchTerm}
@@ -141,7 +142,7 @@ export default function PostFilters({
           </div>
           <div className="flex gap-2 flex-wrap items-center">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[125px] h-9 text-xs bg-background">
+              <SelectTrigger aria-label="Status" className="w-[125px] h-9 text-xs bg-background">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -150,30 +151,31 @@ export default function PostFilters({
                 <SelectItem value="draft" className="text-xs">Draft</SelectItem>
                 <SelectItem value="submitted" className="text-xs">Submitted</SelectItem>
                 <SelectItem value="resubmitted" className="text-xs">Re-Submitted</SelectItem>
-                <SelectItem value="approved" className="text-xs">I Approve</SelectItem>
-                <SelectItem value="c_approved" className="text-xs">C Approve</SelectItem>
+                <SelectItem value="approved" className="text-xs">Approved</SelectItem>
+                <SelectItem value="c_approved" className="text-xs">Client approved</SelectItem>
                 <SelectItem value="rejected" className="text-xs">Changes</SelectItem>
                 <SelectItem value="scheduled" className="text-xs">Scheduled</SelectItem>
                 <SelectItem value="posted" className="text-xs">Posted</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[120px] h-9 text-xs bg-background">
+              <SelectTrigger aria-label="Type" className="w-[120px] h-9 text-xs bg-background">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all" className="text-xs">All Types</SelectItem>
-                <SelectItem value="photo" className="text-xs">Photo</SelectItem>
-                <SelectItem value="reel" className="text-xs">Reel</SelectItem>
-                <SelectItem value="story" className="text-xs">Story</SelectItem>
-                <SelectItem value="carousel" className="text-xs">Carousel</SelectItem>
-                <SelectItem value="video" className="text-xs">Video</SelectItem>
-                <SelectItem value="custom" className="text-xs">Custom</SelectItem>
+                {/* From the shared type list, so every real type (incl. PPT) is filterable
+                    and none that does not exist (the old "Video") is offered. */}
+                {POST_CONTENT_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value.toLowerCase()} className="text-xs">
+                    {t.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {!hideProjectFilter && (
               <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="w-[130px] h-9 text-xs bg-background">
+                <SelectTrigger aria-label="Project" className="w-[130px] h-9 text-xs bg-background">
                   <SelectValue placeholder="Project" />
                 </SelectTrigger>
                 <SelectContent>
@@ -187,7 +189,7 @@ export default function PostFilters({
               </Select>
             )}
             <Select value={yearFilter} onValueChange={setYearFilter}>
-              <SelectTrigger className="w-[110px] h-9 text-xs bg-background">
+              <SelectTrigger aria-label="Year" className="w-[110px] h-9 text-xs bg-background">
                 <SelectValue placeholder="Year" />
               </SelectTrigger>
               <SelectContent>
@@ -208,7 +210,7 @@ export default function PostFilters({
               variant={monthFilter === "all" ? "default" : "outline"}
               size="xs"
               onClick={() => setMonthFilter("all")}
-              className={`h-7 px-2.5 text-[11px] font-semibold ${
+              className={`h-7 px-2.5 text-xs font-semibold ${
                 monthFilter === "all"
                   ? "bg-primary text-primary-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -235,8 +237,8 @@ export default function PostFilters({
                   }`}
                 >
                   <div className="flex flex-col items-center leading-none gap-0.5">
-                    <span className="text-[11px] font-semibold">{month.short}</span>
-                    <span className="text-[9px] opacity-80 tabular-nums">
+                    <span className="text-xs font-semibold">{month.short}</span>
+                    <span className="text-xs opacity-80 tabular-nums">
                       ({scheduledPosts}/{plannedPosts})
                     </span>
                   </div>

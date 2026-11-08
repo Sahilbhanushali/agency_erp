@@ -226,7 +226,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                     className="h-9 text-xs"
                     required
                   />
-                  {errors.name && <p className="text-[11px] text-destructive">{errors.name[0]}</p>}
+                  {errors.name && <p className="text-xs text-destructive">{errors.name[0]}</p>}
                 </div>
 
                 <div className="space-y-1.5">
@@ -259,7 +259,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                       className="h-9 pl-9 text-xs"
                     />
                   </div>
-                  {errors.email && <p className="text-[11px] text-destructive">{errors.email[0]}</p>}
+                  {errors.email && <p className="text-xs text-destructive">{errors.email[0]}</p>}
                 </div>
 
                 <div className="space-y-1.5">
@@ -317,7 +317,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                       <FileImage className="size-3.5 text-primary" />
                       Letterhead Top Banner
                     </Label>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Appears across the top of every generated proposal and invoice. Recommended: 1200×250px.
                     </p>
                   </div>
@@ -353,7 +353,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                       className="w-full h-24 object-contain rounded-lg bg-white"
                     />
                     <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
-                      <span className="truncate max-w-[260px] text-[11px]">{formData.letterhead}</span>
+                      <span className="truncate max-w-[260px] text-xs">{formData.letterhead}</span>
                       <Button
                         type="button"
                         variant="outline"
@@ -371,7 +371,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                   >
                     <Upload className="size-6 text-muted-foreground mb-2" />
                     <p className="text-xs font-semibold text-foreground">Click to upload letterhead banner</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">PNG or JPG banner header (Max 5MB)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">PNG or JPG banner header (Max 5MB)</p>
                   </div>
                 )}
               </div>
@@ -421,7 +421,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                           type="button"
                           variant="link"
                           size="xs"
-                          className="p-0 h-auto text-[11px] text-primary"
+                          className="p-0 h-auto text-xs text-primary"
                           onClick={() => logoInputRef.current?.click()}
                         >
                           Replace image
@@ -485,7 +485,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                           type="button"
                           variant="link"
                           size="xs"
-                          className="p-0 h-auto text-[11px] text-primary"
+                          className="p-0 h-auto text-xs text-primary"
                           onClick={() => signatureInputRef.current?.click()}
                         >
                           Replace signature
@@ -748,11 +748,11 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
         <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-6">
           <Card className="shadow-xs border-border/80 overflow-hidden bg-card">
             <div className="bg-gradient-to-r from-muted/60 via-muted/30 to-muted/60 p-4 border-b border-border/60 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="size-3.5 text-primary" />
                 Live Document Template Preview
               </span>
-              <Badge variant={formData.isActive ? "success" : "neutral"} className="text-[10px]">
+              <Badge variant={formData.isActive ? "success" : "neutral"} className="text-xs">
                 {formData.isActive ? "Active Issuer" : "Inactive"}
               </Badge>
             </div>
@@ -787,12 +787,12 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                         <h4 className="font-bold text-sm text-neutral-900">
                           {formData.name || "Company Display Name"}
                         </h4>
-                        <p className="text-[10px] text-neutral-500">
+                        <p className="text-xs text-neutral-500">
                           {formData.legalName || "Official Billing Entity"}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right text-[10px] text-neutral-600 space-y-0.5">
+                    <div className="text-right text-xs text-neutral-600 space-y-0.5">
                       <p className="font-semibold text-neutral-800">TAX INVOICE</p>
                       <p>INV-2026-001</p>
                     </div>
@@ -800,7 +800,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                 )}
 
                 {/* 2. Mockup Issuer Metadata */}
-                <div className="p-4 space-y-3 text-[11px] leading-relaxed">
+                <div className="p-4 space-y-3 text-xs leading-relaxed">
                   <div className="flex justify-between items-start border-b border-neutral-100 pb-2">
                     <div>
                       <p className="font-semibold text-neutral-800">
@@ -814,7 +814,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                         {[formData.email, formData.phone].filter(Boolean).join(" · ") || <span className="font-normal italic text-neutral-400">Email · phone not added</span>}
                       </p>
                     </div>
-                    <div className="text-right font-mono text-[10px] space-y-0.5">
+                    <div className="text-right font-mono text-xs space-y-0.5">
                       <p>
                         <span className="text-neutral-500">GST:</span>{" "}
                         <span className="font-bold text-neutral-800">{formData.gstNumber || <span className="font-normal italic text-neutral-400">Not added</span>}</span>
@@ -828,14 +828,14 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
 
                   {/* 3. Where line items go. Deliberately not a sample item: a made-up
                       service and amount on a preview reads as real billing data. */}
-                  <div className="rounded border border-dashed border-neutral-200 p-2 text-[10px] text-center italic text-neutral-400">
+                  <div className="rounded border border-dashed border-neutral-200 p-2 text-xs text-center italic text-neutral-400">
                     Invoice line items appear here
                   </div>
 
                   {/* 4. Bank Details & Signature Section */}
                   <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-100">
-                    <div className="bg-neutral-50 p-2 rounded text-[10px] space-y-0.5 text-neutral-600">
-                      <p className="font-semibold text-neutral-800 text-[10px]">Payment Remittance:</p>
+                    <div className="bg-neutral-50 p-2 rounded text-xs space-y-0.5 text-neutral-600">
+                      <p className="font-semibold text-neutral-800 text-xs">Payment Remittance:</p>
                       <p>Bank: {formData.bankName || <span className="font-normal italic text-neutral-400">Not added</span>}</p>
                       <p>A/C: {formData.bankAccountNumber || <span className="font-normal italic text-neutral-400">Not added</span>}</p>
                       <p>IFSC: {formData.bankIfsc || <span className="font-normal italic text-neutral-400">Not added</span>}</p>
@@ -849,12 +849,12 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                           className="h-10 object-contain mb-1"
                         />
                       ) : (
-                        <div className="h-10 flex items-center justify-end text-[10px] text-neutral-400 italic">
+                        <div className="h-10 flex items-center justify-end text-xs text-neutral-400 italic">
                           [Signatory Stamp]
                         </div>
                       )}
-                      <p className="text-[10px] font-semibold text-neutral-800">Authorised Signatory</p>
-                      <p className="text-[9px] text-neutral-500">For {formData.name || "Agency"}</p>
+                      <p className="text-xs font-semibold text-neutral-800">Authorised Signatory</p>
+                      <p className="text-xs text-neutral-500">For {formData.name || "Agency"}</p>
                     </div>
                   </div>
                 </div>
@@ -870,7 +870,7 @@ export function CompanyPageForm({ initialCompany, isEditing = false }: CompanyPa
                 Billing Capabilities
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-[11px] text-muted-foreground">
+            <CardContent className="space-y-2 text-xs text-muted-foreground">
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0 mt-0.5" />
                 <span>Multiple companies let you issue invoices from different legal entities or brands.</span>

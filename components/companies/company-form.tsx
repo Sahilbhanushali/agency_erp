@@ -231,7 +231,7 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
                   </Button>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Appears at the very top of quotations and invoices. Recommended: full width banner, PNG or JPG.
               </p>
 
@@ -266,7 +266,7 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
                     <>
                       <Upload className="size-5 text-muted-foreground mb-1" />
                       <p className="text-xs font-medium text-foreground">Click to upload Letterhead</p>
-                      <p className="text-[10px] text-muted-foreground">PNG, JPG or WEBP up to 5MB</p>
+                      <p className="text-xs text-muted-foreground">PNG, JPG or WEBP up to 5MB</p>
                     </>
                   )}
                 </div>
@@ -302,7 +302,7 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
                   </Button>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Printed in the footer above &quot;Authorised Signatory&quot;. Transparent PNG recommended.
               </p>
 
@@ -337,7 +337,7 @@ export default function CompanyForm({ open, onOpenChange, company, onSaved }: Co
                     <>
                       <PenTool className="size-4 text-muted-foreground mb-1" />
                       <p className="text-xs font-medium text-foreground">Click to upload Signature</p>
-                      <p className="text-[10px] text-muted-foreground">Transparent PNG or JPG</p>
+                      <p className="text-xs text-muted-foreground">Transparent PNG or JPG</p>
                     </>
                   )}
                 </div>

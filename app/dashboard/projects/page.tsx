@@ -389,7 +389,7 @@ export default function ProjectsPage() {
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Projects</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Projects</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage your clients&apos; social media campaigns and deliverables.
           </p>
@@ -412,28 +412,28 @@ export default function ProjectsPage() {
           <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
             <div className="size-2 rounded-full bg-primary" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Active Projects</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Projects</span>
               <span className="text-base font-bold tabular-nums text-foreground">{filteredProjects.filter(p => p.isActive).length}</span>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
             <div className="size-2 rounded-full bg-blue-500" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Target Posts</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target Posts</span>
               <span className="text-base font-bold tabular-nums text-foreground">{totalTargetPosts}</span>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
             <div className="size-2 rounded-full bg-emerald-500" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Posts Created</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Posts Created</span>
               <span className="text-base font-bold tabular-nums text-foreground">{totalPostsCreated}</span>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3.5 py-2 shadow-2xs">
             <div className="size-2 rounded-full bg-amber-500" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Completion</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Completion</span>
               <span className="text-base font-bold tabular-nums text-foreground">
                 {totalTargetPosts > 0 ? Math.round((totalPostsCreated / totalTargetPosts) * 100) : 0}%
               </span>
@@ -586,7 +586,7 @@ export default function ProjectsPage() {
                             title="Click to view logo"
                           />
                         ) : (
-                          <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center border border-border text-[10px] font-semibold text-muted-foreground uppercase flex-shrink-0">
+                          <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center border border-border text-xs font-semibold text-muted-foreground uppercase flex-shrink-0">
                             {project.name ? project.name.substring(0, 2) : "PR"}
                           </div>
                         )}

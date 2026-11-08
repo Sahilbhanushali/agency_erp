@@ -190,7 +190,7 @@ export default function AssetUpload({
         </DialogHeader>
         <div className="space-y-6 mt-4">
           {/* Info Banner */}
-          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="p-4 bg-card border border-border rounded-lg shadow-sm">
             <p className="text-sm text-black font-medium leading-relaxed">
               Upload images or videos to submit your post. Supported formats: JPEG, PNG, GIF, WebP, MP4, MOV, AVI. Max {maxFiles} files.
             </p>
@@ -267,7 +267,7 @@ export default function AssetUpload({
                         {formatFileSize(file.size)} • {file.type.startsWith("image/") ? "Image" : "Video"}
                       </p>
                     </div>
-                    <button
+                    <button aria-label={`Remove ${file.name}`}
                       onClick={() => removeFile(index)}
                       disabled={uploading}
                       className="p-1 text-muted-foreground hover:text-red-500 hover:bg-red-950/20 rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"

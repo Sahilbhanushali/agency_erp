@@ -67,9 +67,9 @@ export function TaskAssignmentModal({ isOpen, onClose, post, onAssigned }: TaskA
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="p-3 bg-muted/50 rounded-lg">
             <h4 className="font-medium">{post.title}</h4>
-            <p className="text-sm text-gray-600">{post.project?.client?.name}</p>
+            <p className="text-sm text-muted-foreground">{post.project?.client?.name}</p>
             <div className="flex items-center space-x-2 mt-2">
               <Badge variant="outline">{post.type}</Badge>
               <Badge variant="outline">{post.platforms?.join(", ")}</Badge>
@@ -79,7 +79,7 @@ export function TaskAssignmentModal({ isOpen, onClose, post, onAssigned }: TaskA
           <div className="space-y-2">
             <label className="text-sm font-medium">Assign to Designer:</label>
             <Select value={selectedDesigner} onValueChange={setSelectedDesigner}>
-              <SelectTrigger>
+              <SelectTrigger aria-label="Assign to Designer">
                 <SelectValue placeholder="Select a designer" />
               </SelectTrigger>
               <SelectContent>

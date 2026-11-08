@@ -462,42 +462,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(dashboardData);
   } catch (error) {
+    // Never answer a failure with zeros and a 200: that is indistinguishable from
+    // "this account has no data" and hid real failures behind an empty dashboard.
     console.error("Dashboard data fetch error:", error);
-    
-    const emptyData = {
-      totalPosts: 0,
-      pendingPosts: 0,
-      approvedPosts: 0,
-      rejectedPosts: 0,
-      recentPosts: [],
-      scheduledPosts: 0,
-      postedThisWeek: 0,
-      activeProjects: 0,
-      postedLastWeek: 0,
-      totalProjects: 0,
-      monthlyBreakdown: {},
-      strategyStats: {
-        totalStrategy: 0,
-        contentWritten: 0,
-        contentApproved: 0,
-        contentPending: 0,
-        contentRejected: 0,
-        contentResubmitted: 0,
-      },
-      designStats: {
-        designAssigned: 0,
-        designSubmitted: 0,
-        designApproved: 0,
-        designPending: 0,
-        designRejected: 0,
-      },
-      postingStats: {
-        posted: 0,
-        scheduled: 0,
-        readyToSchedule: 0,
-      },
-    };
-    
-    return NextResponse.json(emptyData);
+    return NextResponse.json({ error: "Could not load dashboard data" }, { status: 500 });
   }
 }

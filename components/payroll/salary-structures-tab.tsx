@@ -406,7 +406,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
           <div className="flex items-center justify-between gap-3">
             <div className="relative w-full sm:w-72">
               <Search className="size-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
-              <Input
+              <Input aria-label="Search employee, email, role"
                 placeholder="Search employee, email, role..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -462,19 +462,19 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                             <div className="flex items-center gap-2.5">
                               <Avatar className="size-7">
                                 <AvatarImage src={u.avatar ?? undefined} />
-                                <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
+                                <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
                                   {u.name?.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
                                 <p className="text-xs font-bold text-foreground">{u.name}</p>
-                                <p className="text-[10px] text-muted-foreground">{u.email}</p>
+                                <p className="text-xs text-muted-foreground">{u.email}</p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-xs">
                             <span className="font-medium text-foreground">{u.designation || "Staff"}</span>
-                            <span className="text-muted-foreground text-[10px] block">{u.department || "General"}</span>
+                            <span className="text-muted-foreground text-xs block">{u.department || "General"}</span>
                           </TableCell>
                           <TableCell className="text-right text-xs font-mono font-bold text-foreground">
                             {monthlyGross > 0 ? (
@@ -485,7 +485,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                               </span>
                             )}
                             {u.structure?.template && (
-                              <span className="block text-[10px] font-sans font-normal text-muted-foreground">{u.structure.template.name}</span>
+                              <span className="block text-xs font-sans font-normal text-muted-foreground">{u.structure.template.name}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right text-xs font-mono font-bold text-emerald-600">
@@ -493,11 +493,11 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground font-mono">
                             {u.bankLast4 ? (
-                              <span className="text-[11px] text-foreground">
+                              <span className="text-xs text-foreground">
                                 ••••{u.bankLast4} ({u.bankName || "Bank"})
                               </span>
                             ) : (
-                              <Badge variant="destructive" className="text-[9px] py-0">Missing A/C</Badge>
+                              <Badge variant="destructive" className="text-xs py-0">Missing A/C</Badge>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
@@ -551,16 +551,16 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                         <CardTitle className="text-sm font-bold text-foreground flex items-center gap-1.5 flex-wrap">
                           <span>{t.name}</span>
                           {t.isDefault && (
-                            <Badge variant="default" className="text-[10px] bg-primary gap-0.5 py-0 px-1.5">
+                            <Badge variant="default" className="text-xs bg-primary gap-0.5 py-0 px-1.5">
                               <Star className="size-2.5 fill-current" /> Default
                             </Badge>
                           )}
                         </CardTitle>
                         <div className="flex items-center gap-1.5 mt-1">
-                          <Badge variant="outline" className="text-[10px] font-mono tracking-wider">
+                          <Badge variant="outline" className="text-xs font-mono tracking-wider">
                             {t.code}
                           </Badge>
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {t._count?.assignedStructures || 0} Employees Assigned
                           </span>
                         </div>
@@ -576,24 +576,24 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                   <CardContent className="p-4 pt-2 space-y-3">
                     {/* Component percentage split bar */}
                     <div className="space-y-1.5 p-3 rounded-lg border border-border bg-muted/20">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                         Component Allocation (% of Gross)
                       </span>
                       <div className="grid grid-cols-4 gap-1 text-center text-xs font-mono pt-1">
                         <div className="p-1 rounded bg-blue-500/10 text-blue-700 dark:text-blue-300">
-                          <span className="text-[9px] block text-muted-foreground font-sans">Basic</span>
+                          <span className="text-xs block text-muted-foreground font-sans">Basic</span>
                           <strong>{t.basicPercentage}%</strong>
                         </div>
                         <div className="p-1 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-                          <span className="text-[9px] block text-muted-foreground font-sans">HRA</span>
+                          <span className="text-xs block text-muted-foreground font-sans">HRA</span>
                           <strong>{t.hraPercentage}%</strong>
                         </div>
                         <div className="p-1 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                          <span className="text-[9px] block text-muted-foreground font-sans">Special</span>
+                          <span className="text-xs block text-muted-foreground font-sans">Special</span>
                           <strong>{t.specialPercentage}%</strong>
                         </div>
                         <div className="p-1 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300">
-                          <span className="text-[9px] block text-muted-foreground font-sans">Other</span>
+                          <span className="text-xs block text-muted-foreground font-sans">Other</span>
                           <strong>{t.otherPercentage}%</strong>
                         </div>
                       </div>
@@ -601,13 +601,13 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
 
                     {/* Statutory Tags */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                      <Badge variant={t.pfApplicable ? "outline" : "neutral"} className="text-[10px] py-0">
+                      <Badge variant={t.pfApplicable ? "outline" : "neutral"} className="text-xs py-0">
                         {t.pfApplicable ? "PF (12%) Included" : "No PF"}
                       </Badge>
-                      <Badge variant={t.esiApplicable ? "outline" : "neutral"} className="text-[10px] py-0">
+                      <Badge variant={t.esiApplicable ? "outline" : "neutral"} className="text-xs py-0">
                         {t.esiApplicable ? "ESI Applicable" : "No ESI"}
                       </Badge>
-                      <Badge variant={t.professionalTax ? "outline" : "neutral"} className="text-[10px] py-0">
+                      <Badge variant={t.professionalTax ? "outline" : "neutral"} className="text-xs py-0">
                         {t.professionalTax ? "PT Deducted" : "No PT"}
                       </Badge>
                     </div>
@@ -628,7 +628,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                       </Button>
 
                       <div className="flex items-center gap-1">
-                        <Button
+                        <Button aria-label="Edit Structure Template"
                           variant="ghost"
                           size="icon-xs"
                           onClick={() => handleOpenEditTemplate(t)}
@@ -637,7 +637,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                           <Edit className="size-3.5 text-muted-foreground" />
                         </Button>
                         {!t.isDefault && (
-                          <Button
+                          <Button aria-label="Delete Structure Template"
                             variant="ghost"
                             size="icon-xs"
                             onClick={() => setDeleteTemplateModal({ isOpen: true, id: t.id, name: t.name })}
@@ -675,7 +675,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1 col-span-2 sm:col-span-1">
                   <Label className="text-xs font-semibold">Structure Name *</Label>
-                  <Input
+                  <Input aria-label="Structure Name"
                     required
                     value={templateForm.name}
                     onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
@@ -686,7 +686,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
 
                 <div className="space-y-1 col-span-2 sm:col-span-1">
                   <Label className="text-xs font-semibold">Structure Code *</Label>
-                  <Input
+                  <Input aria-label="Structure Code"
                     required
                     value={templateForm.code}
                     onChange={(e) => setTemplateForm({ ...templateForm, code: e.target.value.toUpperCase() })}
@@ -697,7 +697,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
 
                 <div className="space-y-1 col-span-2">
                   <Label className="text-xs">Description</Label>
-                  <Input
+                  <Input aria-label="Description"
                     value={templateForm.description}
                     onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
                     placeholder="Target employee tier, applicability notes..."
@@ -714,7 +714,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                   </span>
                   <Badge
                     variant={Math.abs(percentageSum - 100) < 0.01 ? "success" : "destructive"}
-                    className="text-[10px] font-mono"
+                    className="text-xs font-mono"
                   >
                     Sum: {percentageSum.toFixed(1)}% / 100%
                   </Badge>
@@ -723,7 +723,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Basic Salary (%) *</Label>
-                    <Input
+                    <Input aria-label="Basic Salary (%)"
                       type="number"
                       step="0.1"
                       min="0"
@@ -737,7 +737,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
 
                   <div className="space-y-1">
                     <Label className="text-xs">HRA (%) *</Label>
-                    <Input
+                    <Input aria-label="HRA (%)"
                       type="number"
                       step="0.1"
                       min="0"
@@ -751,7 +751,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
 
                   <div className="space-y-1">
                     <Label className="text-xs">Special Allowance (%)</Label>
-                    <Input
+                    <Input aria-label="Special Allowance (%)"
                       type="number"
                       step="0.1"
                       min="0"
@@ -764,7 +764,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
 
                   <div className="space-y-1">
                     <Label className="text-xs">Other Allowance (%)</Label>
-                    <Input
+                    <Input aria-label="Other Allowance (%)"
                       type="number"
                       step="0.1"
                       min="0"
@@ -926,7 +926,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                   )}
                 </div>
 
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Each employee&apos;s components are split from the salary on their HR profile.
                   To change a salary, edit it there; greyed-out employees have none set yet.
                 </p>
@@ -936,7 +936,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Salary Structure Template *</Label>
                 <Select value={assignTemplateId} onValueChange={setAssignTemplateId}>
-                  <SelectTrigger className="h-8 text-xs w-full min-w-0 [&>span]:truncate">
+                  <SelectTrigger aria-label="Salary Structure Template" className="h-8 text-xs w-full min-w-0 [&>span]:truncate">
                     <SelectValue placeholder="Select salary structure template" />
                   </SelectTrigger>
                   <SelectContent>
@@ -953,7 +953,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Effective From Date</Label>
-                  <Input
+                  <Input aria-label="Effective From Date"
                     type="date"
                     value={effectiveFrom}
                     onChange={(e) => setEffectiveFrom(e.target.value)}
@@ -964,7 +964,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Revision Reason</Label>
-                  <Input
+                  <Input aria-label="Revision Reason"
                     value={revisionReason}
                     onChange={(e) => setRevisionReason(e.target.value)}
                     placeholder="e.g. Annual Appraisal, Promotion"
@@ -979,7 +979,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                   <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
                     Breakdown preview
                   </span>
-                  <span className="text-[10px] text-muted-foreground">Net is an estimate</span>
+                  <span className="text-xs text-muted-foreground">Net is an estimate</span>
                 </div>
                 {previewRows.length === 0 ? (
                   <p className="px-3.5 py-5 text-center text-xs text-muted-foreground">
@@ -987,7 +987,7 @@ export function SalaryStructuresTab({ onRefresh }: { onRefresh?: () => void }) {
                   </p>
                 ) : (
                   <div className="max-h-56 overflow-auto">
-                    <table className="w-full text-[11px]">
+                    <table className="w-full text-xs">
                       <thead className="sticky top-0 bg-card text-muted-foreground">
                         <tr className="text-left">
                           <th className="px-3 py-1.5 font-medium">Employee</th>

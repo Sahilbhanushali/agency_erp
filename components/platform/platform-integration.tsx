@@ -35,11 +35,13 @@ export function PlatformIntegration({ postId, platforms, status }: PlatformInteg
       const response = await fetch(`/api/posts/${postId}/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform }),
+        // The server no longer pretends to publish: this records a confirmation that
+        // the post is live on the platform.
+        body: JSON.stringify({ platform, confirmed: true }),
       })
 
       if (response.ok) {
-        toast.success(`Successfully published to ${platform}!`)
+        toast.success(`Marked as published on ${platform}`)
       } else {
         toast.error(`Failed to publish to ${platform}`)
       }
@@ -122,7 +124,7 @@ export function PlatformIntegration({ postId, platforms, status }: PlatformInteg
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="auto-post">Auto-publish when scheduled</Label>
-            <p className="text-sm text-gray-500">Automatically publish posts at scheduled time</p>
+            <p className="text-sm text-muted-foreground">Automatically publish posts at scheduled time</p>
           </div>
           <Switch id="auto-post" checked={autoPost} onCheckedChange={setAutoPost} />
         </div>

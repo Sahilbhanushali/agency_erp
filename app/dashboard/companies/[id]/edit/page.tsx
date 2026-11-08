@@ -1,5 +1,6 @@
 "use client";
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
@@ -13,7 +14,8 @@ import { CompanyPageForm } from "@/components/companies/company-page-form";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
 import type { Company } from "@/types/finance";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 export default function EditCompanyPage() {
   const params = useParams();

@@ -446,7 +446,7 @@ export default function TaskKanbanBoard({
           {/* Real-time search */}
           <div className="relative flex-1 min-w-[180px] max-w-xs">
             <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <Input aria-label="Search tasks, client, assignee"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search tasks, client, assignee..."
@@ -457,7 +457,7 @@ export default function TaskKanbanBoard({
           {/* Assignee Filter - Critical for Admin */}
           <div className="w-[180px]">
             <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
-              <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectTrigger aria-label="Assignee" className="h-8 text-xs bg-background">
                 <SelectValue placeholder="Assignee" />
               </SelectTrigger>
               <SelectContent>
@@ -476,7 +476,7 @@ export default function TaskKanbanBoard({
           {/* Project Filter */}
           <div className="w-[160px]">
             <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectTrigger aria-label="Project" className="h-8 text-xs bg-background">
                 <SelectValue placeholder="Project" />
               </SelectTrigger>
               <SelectContent>
@@ -495,7 +495,7 @@ export default function TaskKanbanBoard({
           {/* Post Type Filter */}
           <div className="w-[130px]">
             <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectTrigger aria-label="Post Type" className="h-8 text-xs bg-background">
                 <SelectValue placeholder="Post Type" />
               </SelectTrigger>
               <SelectContent>
@@ -505,6 +505,7 @@ export default function TaskKanbanBoard({
                 <SelectItem value="STORY" className="text-xs">Story</SelectItem>
                 <SelectItem value="CAROUSEL" className="text-xs">Carousel</SelectItem>
                 <SelectItem value="BLOG" className="text-xs">Blog</SelectItem>
+                <SelectItem value="PPT" className="text-xs">Presentation</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -528,11 +529,11 @@ export default function TaskKanbanBoard({
 
         {/* Counter Pill */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="outline" className="text-[11px] tabular-nums font-mono">
+          <Badge variant="outline" className="text-xs tabular-nums font-mono">
             {filteredTasks.length} tasks visible
           </Badge>
           {isAdmin && (
-            <Badge variant="neutral" className="text-[10px] hidden sm:inline-flex">
+            <Badge variant="neutral" className="text-xs hidden sm:inline-flex">
               Admin Board View
             </Badge>
           )}
@@ -562,7 +563,7 @@ export default function TaskKanbanBoard({
                   }`} />
                   <h3 className="text-xs font-bold text-foreground tracking-tight">{column.title}</h3>
                 </div>
-                <Badge variant={column.badgeVariant} className="text-[10px] font-mono tabular-nums px-1.5 py-0">
+                <Badge variant={column.badgeVariant} className="text-xs font-mono tabular-nums px-1.5 py-0">
                   {colTasks.length}
                 </Badge>
               </div>
@@ -571,8 +572,8 @@ export default function TaskKanbanBoard({
               <div className="flex-1 space-y-2.5 overflow-y-auto pr-0.5">
                 {colTasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center p-6 text-center rounded-lg border border-dashed border-border/60 bg-background/50 text-xs text-muted-foreground min-h-[140px]">
-                    <p className="font-medium text-[11px]">No tasks</p>
-                    <p className="text-[10px] text-muted-foreground/80 mt-0.5">Drop tasks here</p>
+                    <p className="font-medium text-xs">No tasks</p>
+                    <p className="text-xs text-muted-foreground/80 mt-0.5">Drop tasks here</p>
                   </div>
                 ) : (
                   colTasks.map((task) => {
@@ -604,7 +605,7 @@ export default function TaskKanbanBoard({
                                 className="size-4 rounded-full object-cover shrink-0"
                               />
                             ) : null}
-                            <span className="text-[10px] font-semibold text-muted-foreground truncate">
+                            <span className="text-xs font-semibold text-muted-foreground truncate">
                               {projectCompanyName(task.project) || task.project?.client?.name || "Client"}
                             </span>
                           </div>
@@ -612,7 +613,7 @@ export default function TaskKanbanBoard({
                           {/* Quick move dropdown */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button
+                              <Button aria-label="More actions for this post"
                                 variant="ghost"
                                 size="icon-xs"
                                 className="size-5 p-0 text-muted-foreground hover:text-foreground opacity-60 group-hover:opacity-100"
@@ -632,7 +633,7 @@ export default function TaskKanbanBoard({
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">
+                              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
                                 Move to Status
                               </div>
                               {COLUMNS.map((col) => (
@@ -659,7 +660,7 @@ export default function TaskKanbanBoard({
 
                         {/* Project name */}
                         {task.project?.name && (
-                          <p className="text-[10px] text-muted-foreground truncate mb-2">
+                          <p className="text-xs text-muted-foreground truncate mb-2">
                             {task.project.name}
                           </p>
                         )}
@@ -673,7 +674,7 @@ export default function TaskKanbanBoard({
                               className="size-full object-cover"
                             />
                             {task.assets.length > 1 && (
-                              <Badge variant="neutral" className="absolute bottom-1 right-1 text-[9px] px-1 py-0 bg-black/60 text-white border-0">
+                              <Badge variant="neutral" className="absolute bottom-1 right-1 text-xs px-1 py-0 bg-black/60 text-white border-0">
                                 +{task.assets.length - 1} more
                               </Badge>
                             )}
@@ -682,38 +683,38 @@ export default function TaskKanbanBoard({
 
                         {/* Metadata row: Type, Due Date, Asset Count */}
                         <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 gap-1 font-mono">
+                          <Badge variant="outline" className="text-xs px-1.5 py-0 gap-1 font-mono">
                             <TypeIcon className="size-2.5" />
                             {task.type}
                           </Badge>
 
                           {task.assets.length > 0 && !firstImage && (
-                            <Badge variant="neutral" className="text-[9px] px-1.5 py-0 gap-1 font-mono">
+                            <Badge variant="neutral" className="text-xs px-1.5 py-0 gap-1 font-mono">
                               <FileText className="size-2.5" />
                               {task.assets.length} file{task.assets.length !== 1 ? "s" : ""}
                             </Badge>
                           )}
 
                           {task.scheduledAt && (
-                            <div className={`flex items-center gap-1 text-[10px] tabular-nums ${
+                            <div className={`flex items-center gap-1 text-xs tabular-nums ${
                               overdue ? "text-rose-600 font-semibold dark:text-rose-400" : "text-muted-foreground"
                             }`}>
                               <Clock className="size-2.5" />
                               <span>{formatDate(task.scheduledAt)}</span>
-                              {overdue && <span className="text-[9px]">(Late)</span>}
+                              {overdue && <span className="text-xs">(Late)</span>}
                             </div>
                           )}
                         </div>
 
                         {/* Assignee Footer (Critical for Admin View) */}
-                        <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[11px]">
+                        <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs">
                           <div className="flex items-center gap-1.5 min-w-0" title={`Assigned to: ${assigneeName}`}>
                             <Avatar className="size-5 shrink-0 border border-border/80">
-                              <AvatarFallback className="text-[9px] font-bold bg-primary/10 text-primary">
+                              <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
                                 {initial}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-[11px] font-medium text-foreground truncate max-w-[110px]">
+                            <span className="text-xs font-medium text-foreground truncate max-w-[110px]">
                               {assigneeName}
                             </span>
                           </div>
@@ -727,7 +728,7 @@ export default function TaskKanbanBoard({
                                   ? "warning"
                                   : "neutral"
                               }
-                              className="text-[9px] px-1 py-0 font-mono"
+                              className="text-xs px-1 py-0 font-mono"
                             >
                               {task.priority}
                             </Badge>

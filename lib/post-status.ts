@@ -4,6 +4,7 @@ import {
   Image as ImageIcon,
   Sparkles,
   Zap,
+  Presentation,
   type LucideIcon,
 } from "lucide-react"
 
@@ -30,8 +31,9 @@ export type PostStatus =
   | "POSTED"
   | "NEEDS_MINOR_CHANGE"
   | "RESUBMITTED"
+  | "CANCELLED"
 
-export type PostType = "PHOTO" | "REEL" | "STORY" | "CAROUSEL" | "CUSTOM"
+export type PostType = "PHOTO" | "REEL" | "STORY" | "CAROUSEL" | "CUSTOM" | "PPT"
 
 interface StatusStyle {
   /** Shown to people. "I Approve"/"C Approve" read as nonsense outside the team. */
@@ -67,14 +69,16 @@ export const POST_STATUS: Record<PostStatus, StatusStyle> = {
     rank: 2,
   },
   APPROVED: {
-    label: "Internally approved",
+    // On a post that needs client approval this is "pending client approval"; the
+    // workflow panel shows that stage (lib/posts/workflow-rules.ts → stageOf).
+    label: "Approved",
     badge:
       "bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-950 dark:text-sky-200 dark:border-sky-800",
     rail: "bg-sky-500",
     rank: 3,
   },
   SUBMITTED: {
-    label: "In review",
+    label: "Pending approval",
     badge:
       "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800",
     rail: "bg-blue-500",
@@ -88,14 +92,14 @@ export const POST_STATUS: Record<PostStatus, StatusStyle> = {
     rank: 5,
   },
   NEEDS_MINOR_CHANGE: {
-    label: "Minor changes",
+    label: "Changes requested",
     badge:
       "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800",
     rail: "bg-amber-500",
     rank: 6,
   },
   REJECTED: {
-    label: "Changes requested",
+    label: "Rejected",
     badge:
       "bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-800",
     rail: "bg-rose-500",
@@ -107,7 +111,28 @@ export const POST_STATUS: Record<PostStatus, StatusStyle> = {
     rail: "bg-muted-foreground/40",
     rank: 8,
   },
+  CANCELLED: {
+    label: "Cancelled",
+    badge: "bg-muted text-muted-foreground border-border line-through",
+    rail: "bg-muted-foreground/20",
+    rank: 9,
+  },
 }
+
+/** Copy (content) review statuses — a separate track from the post's workflow status. */
+export const CONTENT_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+  PENDING_REVIEW: "Pending review",
+  NEEDS_REVISION: "Needs revision",
+  NEEDS_MINOR_CHANGE: "Changes requested",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  RESUBMITTED: "Resubmitted",
+}
+
+export const contentStatusLabel = (status: string): string =>
+  CONTENT_STATUS_LABELS[status] ?? status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, " ")
 
 /** Unknown statuses render as a draft rather than throwing or showing a blank chip. */
 export const statusStyle = (status: string): StatusStyle =>
@@ -125,10 +150,11 @@ export const POST_TYPE_ICON: Record<PostType, LucideIcon> = {
   STORY: Zap,
   CAROUSEL: GalleryHorizontalEnd,
   CUSTOM: Sparkles,
+  PPT: Presentation,
 }
 
 export const typeIcon = (type: string): LucideIcon =>
   POST_TYPE_ICON[type as PostType] ?? POST_TYPE_ICON.CUSTOM
 
 export const typeLabel = (type: string): string =>
-  type.charAt(0) + type.slice(1).toLowerCase()
+  type === "PPT" ? "Presentation" : type.charAt(0) + type.slice(1).toLowerCase()

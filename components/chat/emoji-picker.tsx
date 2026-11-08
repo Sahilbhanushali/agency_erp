@@ -113,7 +113,7 @@ export function EmojiPicker({ onPick, autoFocus = true }: { onPick: (emoji: stri
         </div>
       )}
 
-      <p className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" aria-live="polite">
+      <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground" aria-live="polite">
         {query ? `${shown.length} result${shown.length === 1 ? "" : "s"}` : tab}
       </p>
       <div ref={gridRef} onKeyDown={onGridKey} className="grid max-h-56 grid-cols-8 gap-0.5 overflow-y-auto p-2 pt-1">

@@ -474,7 +474,7 @@ export function HrmsCandidatesTab({
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative w-64">
             <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-            <Input
+            <Input aria-label="Search candidate name, email, tags"
               placeholder="Search candidate name, email, tags..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -484,7 +484,7 @@ export function HrmsCandidatesTab({
           </div>
 
           <Select value={selectedJob} onValueChange={setSelectedJob}>
-            <SelectTrigger className="h-8 text-xs w-[170px]">
+            <SelectTrigger aria-label="All Jobs" className="h-8 text-xs w-[170px]">
               <SelectValue placeholder="All Jobs" />
             </SelectTrigger>
             <SelectContent>
@@ -498,7 +498,7 @@ export function HrmsCandidatesTab({
           </Select>
 
           <Select value={selectedStage} onValueChange={setSelectedStage}>
-            <SelectTrigger className="h-8 text-xs w-[150px]">
+            <SelectTrigger aria-label="All Stages" className="h-8 text-xs w-[150px]">
               <SelectValue placeholder="All Stages" />
             </SelectTrigger>
             <SelectContent>
@@ -512,7 +512,7 @@ export function HrmsCandidatesTab({
           </Select>
 
           <Select value={selectedSource} onValueChange={setSelectedSource}>
-            <SelectTrigger className="h-8 text-xs w-[130px]">
+            <SelectTrigger aria-label="All Sources" className="h-8 text-xs w-[130px]">
               <SelectValue placeholder="All Sources" />
             </SelectTrigger>
             <SelectContent>
@@ -619,9 +619,9 @@ export function HrmsCandidatesTab({
                               <div>
                                 <div className="text-xs font-bold text-foreground hover:text-primary transition-colors flex items-center gap-1.5">
                                   <span>{cand.name}</span>
-                                  {cand.city && <span className="text-[10px] text-muted-foreground font-normal">({cand.city})</span>}
+                                  {cand.city && <span className="text-xs text-muted-foreground font-normal">({cand.city})</span>}
                                 </div>
-                                <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                                   <span>{cand.email}</span>
                                   {cand.phone && <span>• {cand.phone}</span>}
                                 </div>
@@ -633,18 +633,18 @@ export function HrmsCandidatesTab({
                             <div className="text-xs font-medium text-foreground">
                               {latestApp?.jobOpening?.title || cand.currentTitle || "—"}
                             </div>
-                            <div className="text-[10px] text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               {latestApp?.jobOpening?.department || cand.currentCompany || ""}
                             </div>
                           </TableCell>
 
                           <TableCell>
                             {stageConfig ? (
-                              <Badge variant={stageConfig.badgeVariant} className="text-[10px]">
+                              <Badge variant={stageConfig.badgeVariant} className="text-xs">
                                 {latestApp.stage}
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-[10px]">
+                              <Badge variant="outline" className="text-xs">
                                 Applied
                               </Badge>
                             )}
@@ -658,7 +658,7 @@ export function HrmsCandidatesTab({
                             <div className="font-medium">
                               Exp: {cand.expectedSalary ? formatCurrencyINR(cand.expectedSalary) : "—"}
                             </div>
-                            <div className="text-[10px] text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               Cur: {cand.currentSalary ? formatCurrencyINR(cand.currentSalary) : "—"}
                             </div>
                           </TableCell>
@@ -686,7 +686,7 @@ export function HrmsCandidatesTab({
 
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
-                              <Button
+                              <Button aria-label="Edit candidate profile"
                                 variant="ghost"
                                 size="icon-xs"
                                 onClick={() => handleOpenEdit(cand)}
@@ -694,7 +694,7 @@ export function HrmsCandidatesTab({
                               >
                                 <Edit className="size-3.5 text-muted-foreground hover:text-foreground" />
                               </Button>
-                              <Button
+                              <Button aria-label="Delete candidate"
                                 variant="ghost"
                                 size="icon-xs"
                                 onClick={() => triggerDeleteConfirm(cand)}
@@ -757,11 +757,11 @@ export function HrmsCandidatesTab({
                       </div>
 
                       {stageConfig ? (
-                        <Badge variant={stageConfig.badgeVariant} className="text-[10px] shrink-0">
+                        <Badge variant={stageConfig.badgeVariant} className="text-xs shrink-0">
                           {latestApp.stage}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] shrink-0">
+                        <Badge variant="outline" className="text-xs shrink-0">
                           Applied
                         </Badge>
                       )}
@@ -771,8 +771,8 @@ export function HrmsCandidatesTab({
                   <CardContent className="p-4 pt-1 space-y-3">
                     {/* Applied Position Banner */}
                     <div className="rounded-md bg-muted/40 p-2 text-xs flex items-center justify-between">
-                      <span className="text-muted-foreground text-[11px]">Applied For:</span>
-                      <strong className="text-foreground text-[11px] truncate max-w-[170px]">
+                      <span className="text-muted-foreground text-xs">Applied For:</span>
+                      <strong className="text-foreground text-xs truncate max-w-[170px]">
                         {latestApp?.jobOpening?.title || "Direct Sourcing"}
                       </strong>
                     </div>
@@ -807,12 +807,12 @@ export function HrmsCandidatesTab({
                     {tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-1">
                         {tags.slice(0, 4).map((t, i) => (
-                          <Badge key={i} variant="outline" className="text-[9px] bg-background">
+                          <Badge key={i} variant="outline" className="text-xs bg-background">
                             {t}
                           </Badge>
                         ))}
                         {tags.length > 4 && (
-                          <Badge variant="outline" className="text-[9px] text-muted-foreground">
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
                             +{tags.length - 4}
                           </Badge>
                         )}
@@ -914,11 +914,11 @@ export function HrmsCandidatesTab({
                       {activeProfile.city && <span>• {activeProfile.city}</span>}
                     </p>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Mail className="size-3 text-primary" /> {activeProfile.email}
                       </span>
                       {activeProfile.phone && (
-                        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Phone className="size-3 text-emerald-500" /> {activeProfile.phone}
                         </span>
                       )}
@@ -978,14 +978,14 @@ export function HrmsCandidatesTab({
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] text-muted-foreground font-medium">Advance to:</span>
+                    <span className="text-xs text-muted-foreground font-medium">Advance to:</span>
                     <Select
                       value={activeProfile.applications[0].stage}
                       onValueChange={(val) =>
                         handleStageChangeRequest(activeProfile.applications[0].id, val as HrmsStage)
                       }
                     >
-                      <SelectTrigger className="h-7 text-xs w-[170px] bg-background">
+                      <SelectTrigger aria-label="Candidate stage" className="h-7 text-xs w-[170px] bg-background">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1035,7 +1035,7 @@ export function HrmsCandidatesTab({
                         </div>
                         <div>
                           Sourcing Channel:{" "}
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             {activeProfile.source}
                           </Badge>
                         </div>
@@ -1092,7 +1092,7 @@ export function HrmsCandidatesTab({
                       <h4 className="font-bold text-foreground mb-1.5">Candidate Skills & Tags</h4>
                       <div className="flex flex-wrap gap-1.5">
                         {activeProfile.tags.split(",").map((t: string, idx: number) => (
-                          <Badge key={idx} variant="secondary" className="text-[10px]">
+                          <Badge key={idx} variant="secondary" className="text-xs">
                             {t.trim()}
                           </Badge>
                         ))}
@@ -1112,7 +1112,7 @@ export function HrmsCandidatesTab({
                 <TabsContent value="timeline" className="space-y-3 pt-3">
                   {/* Add Recruiter Note Box */}
                   <form onSubmit={handleAddTimelineNote} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20">
-                    <Input
+                    <Input aria-label="Recruiter note"
                       placeholder="Add recruiter note or screening insight to candidate timeline..."
                       value={newNoteText}
                       onChange={(e) => setNewNoteText(e.target.value)}
@@ -1136,13 +1136,13 @@ export function HrmsCandidatesTab({
                           <div className="absolute -left-[21px] top-1 size-2 rounded-full bg-primary" />
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-foreground">{act.title}</span>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               {formatDatePretty(act.createdAt)}
                             </span>
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{act.notes}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{act.notes}</p>
                           {act.performedBy && (
-                            <span className="text-[10px] text-muted-foreground italic">
+                            <span className="text-xs text-muted-foreground italic">
                               By {act.performedBy.name}
                             </span>
                           )}
@@ -1250,7 +1250,7 @@ export function HrmsCandidatesTab({
                 value={reasonModal.reason}
                 onValueChange={(val) => setReasonModal((prev) => ({ ...prev, reason: val }))}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label="Pre-defined Reason" className="h-8 text-xs">
                   <SelectValue placeholder="Select a reason" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1268,7 +1268,7 @@ export function HrmsCandidatesTab({
 
             <div className="space-y-1">
               <Label className="text-xs">Additional Notes / Remarks</Label>
-              <Textarea
+              <Textarea aria-label="Additional Notes / Remarks"
                 placeholder="Optional feedback details for candidate profile..."
                 value={reasonModal.notes}
                 onChange={(e) => setReasonModal((prev) => ({ ...prev, notes: e.target.value }))}
@@ -1349,7 +1349,7 @@ export function HrmsCandidatesTab({
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1">
                 <Label className="text-xs">Full Name *</Label>
-                <Input
+                <Input aria-label="Full Name"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -1360,7 +1360,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Email Address *</Label>
-                <Input
+                <Input aria-label="Email Address"
                   required
                   type="email"
                   value={formData.email}
@@ -1372,7 +1372,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Phone Number</Label>
-                <Input
+                <Input aria-label="Phone Number"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="+91 98765 43210"
@@ -1382,7 +1382,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Current City</Label>
-                <Input
+                <Input aria-label="Current City"
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   placeholder="Bengaluru"
@@ -1392,7 +1392,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Current Designation</Label>
-                <Input
+                <Input aria-label="Current Designation"
                   value={formData.currentTitle}
                   onChange={(e) => setFormData({ ...formData, currentTitle: e.target.value })}
                   placeholder="Senior Software Engineer"
@@ -1402,7 +1402,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Current Organization</Label>
-                <Input
+                <Input aria-label="Current Organization"
                   value={formData.currentCompany}
                   onChange={(e) => setFormData({ ...formData, currentCompany: e.target.value })}
                   placeholder="Acme Corp"
@@ -1412,7 +1412,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Experience (Years)</Label>
-                <Input
+                <Input aria-label="Experience (Years)"
                   type="number"
                   step="0.5"
                   value={formData.experienceYears}
@@ -1424,7 +1424,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Current Salary (Annual CTC in ₹)</Label>
-                <Input
+                <Input aria-label="Current Salary (Annual CTC in ₹)"
                   type="number"
                   value={formData.currentSalary}
                   onChange={(e) => setFormData({ ...formData, currentSalary: e.target.value })}
@@ -1435,7 +1435,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Expected Salary (Annual CTC in ₹)</Label>
-                <Input
+                <Input aria-label="Expected Salary (Annual CTC in ₹)"
                   type="number"
                   value={formData.expectedSalary}
                   onChange={(e) => setFormData({ ...formData, expectedSalary: e.target.value })}
@@ -1446,7 +1446,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Notice Period (Days)</Label>
-                <Input
+                <Input aria-label="Notice Period (Days)"
                   type="number"
                   value={formData.noticePeriodDays}
                   onChange={(e) => setFormData({ ...formData, noticePeriodDays: e.target.value })}
@@ -1461,7 +1461,7 @@ export function HrmsCandidatesTab({
                   value={formData.source}
                   onValueChange={(val) => setFormData({ ...formData, source: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Application Source" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1479,7 +1479,7 @@ export function HrmsCandidatesTab({
                 <Label className="text-xs">Candidate Rating</Label>
                 <div className="flex items-center gap-1.5 h-8">
                   {[1, 2, 3, 4, 5].map((s) => (
-                    <button
+                    <button aria-label={`Rate ${s} out of 5`}
                       type="button"
                       key={s}
                       onClick={() => setFormData({ ...formData, rating: s })}
@@ -1507,7 +1507,7 @@ export function HrmsCandidatesTab({
                     value={formData.jobOpeningId}
                     onValueChange={(val) => setFormData({ ...formData, jobOpeningId: val })}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger aria-label="Job Position to Apply For" className="h-8 text-xs">
                       <SelectValue placeholder="Select target opening" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1523,7 +1523,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Resume URL / Document Link</Label>
-                <Input
+                <Input aria-label="Resume URL / Document Link"
                   value={formData.resumeUrl}
                   onChange={(e) => setFormData({ ...formData, resumeUrl: e.target.value })}
                   placeholder="https://drive.google.com/resume.pdf"
@@ -1533,7 +1533,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">LinkedIn Profile URL</Label>
-                <Input
+                <Input aria-label="LinkedIn Profile URL"
                   value={formData.linkedinUrl}
                   onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
                   placeholder="https://linkedin.com/in/username"
@@ -1543,7 +1543,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Skills & Tags (Comma separated)</Label>
-                <Input
+                <Input aria-label="Skills & Tags (Comma separated)"
                   value={formData.tags}
                   onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                   placeholder="Next.js, TypeScript, PostgreSQL, Figma"
@@ -1553,7 +1553,7 @@ export function HrmsCandidatesTab({
 
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Internal Notes / Interview Feedback</Label>
-                <Textarea
+                <Textarea aria-label="Internal Notes / Interview Feedback"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={2}

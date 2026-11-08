@@ -382,10 +382,10 @@ export default function RunReviewModal({
                 ))}
               </select>
               {savingTemplate && (
-                <span className="text-[11px] text-muted-foreground">Saving…</span>
+                <span className="text-xs text-muted-foreground">Saving…</span>
               )}
               {payslipTemplates.length === 0 && (
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   No templates yet — create one under Payroll → Payslip Templates.
                 </span>
               )}
@@ -397,27 +397,27 @@ export default function RunReviewModal({
                   <DialogTitle className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
                     {MONTH_NAMES[run.month - 1]} {run.year} Payroll Run
                   </DialogTitle>
-                  <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider">
+                  <Badge variant="outline" className="text-xs uppercase font-mono tracking-wider">
                     {run.runType || "REGULAR"}
                   </Badge>
                   {run.status === "LOCKED" ? (
-                    <Badge variant="neutral" className="gap-1 text-[10px]">
+                    <Badge variant="neutral" className="gap-1 text-xs">
                       <Lock className="size-2.5" /> Locked
                     </Badge>
                   ) : run.status === "PAID" ? (
-                    <Badge variant="success" className="text-[10px]">
+                    <Badge variant="success" className="text-xs">
                       Paid & Disbursed
                     </Badge>
                   ) : run.status === "APPROVED" ? (
-                    <Badge variant="success" className="text-[10px]">
+                    <Badge variant="success" className="text-xs">
                       Approved
                     </Badge>
                   ) : run.status === "UNDER_REVIEW" ? (
-                    <Badge variant="info" className="text-[10px]">
+                    <Badge variant="info" className="text-xs">
                       Under Review
                     </Badge>
                   ) : (
-                    <Badge variant="warning" className="text-[10px]">
+                    <Badge variant="warning" className="text-xs">
                       Calculated
                     </Badge>
                   )}
@@ -453,7 +453,7 @@ export default function RunReviewModal({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 text-xs">
-                    <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">Disbursement Format</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs uppercase text-muted-foreground">Disbursement Format</DropdownMenuLabel>
                     <DropdownMenuItem asChild>
                       <a href={`/api/payroll/runs/${run.id}/export/bank-csv?format=HDFC`} download className="cursor-pointer">
                         HDFC Bank (E-Net)
@@ -496,7 +496,7 @@ export default function RunReviewModal({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 text-xs">
-                    <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">Statutory Registers</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs uppercase text-muted-foreground">Statutory Registers</DropdownMenuLabel>
                     <DropdownMenuItem asChild>
                       <a href={`/api/payroll/runs/${run.id}/export/register-csv`} download className="cursor-pointer">
                         Statutory Register (CSV)
@@ -528,7 +528,7 @@ export default function RunReviewModal({
                       </a>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">Accounting Journal</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs uppercase text-muted-foreground">Accounting Journal</DropdownMenuLabel>
                     <DropdownMenuItem asChild>
                       <a href={`/api/payroll/runs/${run.id}/export/journal-entry?format=standard`} download className="cursor-pointer">
                         Standard Journal Entry (CSV)
@@ -705,7 +705,7 @@ export default function RunReviewModal({
                 <div className="flex items-center justify-between text-muted-foreground text-xs">
                   <span className="font-medium">Total Employer Cost</span>
                   {flaggedCount > 0 && (
-                    <Badge variant="warning" className="text-[10px] py-0 px-1 font-mono">
+                    <Badge variant="warning" className="text-xs py-0 px-1 font-mono">
                       {flaggedCount} Flagged
                     </Badge>
                   )}
@@ -767,7 +767,7 @@ export default function RunReviewModal({
                     {/* Department Filter */}
                     {departments.length > 1 && (
                       <Select value={selectedDept} onValueChange={setSelectedDept}>
-                        <SelectTrigger className="w-32 h-8 text-xs">
+                        <SelectTrigger aria-label="Department" className="w-32 h-8 text-xs">
                           <SelectValue placeholder="Department" />
                         </SelectTrigger>
                         <SelectContent>
@@ -784,7 +784,7 @@ export default function RunReviewModal({
                     {/* Search */}
                     <div className="relative w-44">
                       <Search className="size-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
-                      <Input
+                      <Input aria-label="Search employee"
                         placeholder="Search employee..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -829,7 +829,7 @@ export default function RunReviewModal({
                                   <p className="text-xs font-bold text-foreground">
                                     {slip.user?.name || slip.employeeName}
                                   </p>
-                                  <p className="text-[11px] text-muted-foreground truncate">
+                                  <p className="text-xs text-muted-foreground truncate">
                                     {slip.user?.designation || slip.designation || "Staff"} • {slip.user?.department || slip.department || "General"}
                                   </p>
                                 </div>
@@ -856,7 +856,7 @@ export default function RunReviewModal({
                                 <div className="flex flex-col gap-1 items-start">
                                   {v?.previousGross !== null && v ? (
                                     <span
-                                      className={`text-[11px] font-mono font-bold flex items-center gap-0.5 ${
+                                      className={`text-xs font-mono font-bold flex items-center gap-0.5 ${
                                         v.percentDelta >= 0 ? "text-emerald-600" : "text-amber-600"
                                       }`}
                                     >
@@ -864,7 +864,7 @@ export default function RunReviewModal({
                                       {v.percentDelta > 0 ? `+${v.percentDelta}%` : `${v.percentDelta}%`}
                                     </span>
                                   ) : (
-                                    <Badge variant="outline" className="text-[10px] py-0">
+                                    <Badge variant="outline" className="text-xs py-0">
                                       New Joiner
                                     </Badge>
                                   )}
@@ -874,14 +874,14 @@ export default function RunReviewModal({
                                       {v.reasons.slice(0, 3).map((r: string, idx: number) => (
                                         <span
                                           key={idx}
-                                          className="text-[9px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground truncate"
+                                          className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground truncate"
                                           title={r}
                                         >
                                           {r}
                                         </span>
                                       ))}
                                       {v.reasons.length > 3 && (
-                                        <span className="text-[9px] text-muted-foreground font-medium">
+                                        <span className="text-xs text-muted-foreground font-medium">
                                           +{v.reasons.length - 3} more
                                         </span>
                                       )}
@@ -893,11 +893,11 @@ export default function RunReviewModal({
                               {/* Status pill */}
                               <TableCell className="text-center w-24">
                                 {isHeld ? (
-                                  <Badge variant="destructive" className="text-[10px] py-0" title={slip.holdReason}>
+                                  <Badge variant="destructive" className="text-xs py-0" title={slip.holdReason}>
                                     On Hold
                                   </Badge>
                                 ) : (
-                                  <Badge variant="neutral" className="text-[10px] py-0">
+                                  <Badge variant="neutral" className="text-xs py-0">
                                     Ready
                                   </Badge>
                                 )}
@@ -953,7 +953,7 @@ export default function RunReviewModal({
                         <div key={log.id} className="p-3 text-xs flex items-start justify-between gap-4 bg-card">
                           <div>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-[10px] font-mono">
+                              <Badge variant="outline" className="text-xs font-mono">
                                 {log.action}
                               </Badge>
                               <span className="font-semibold text-foreground">
@@ -964,7 +964,7 @@ export default function RunReviewModal({
                               {log.details || "Status change recorded"}
                             </p>
                           </div>
-                          <span className="text-[11px] font-mono text-muted-foreground shrink-0">
+                          <span className="text-xs font-mono text-muted-foreground shrink-0">
                             {new Date(log.createdAt).toLocaleString()}
                           </span>
                         </div>
@@ -1012,7 +1012,7 @@ export default function RunReviewModal({
 
           <div className="space-y-2 py-2">
             <Label className="text-xs font-semibold">Rejection Reason *</Label>
-            <Textarea
+            <Textarea aria-label="Rejection Reason"
               placeholder="e.g. Incentive discrepancy in design team, unpaid leave unadjusted for Rahul..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
@@ -1048,7 +1048,7 @@ export default function RunReviewModal({
 
           <div className="space-y-2 py-2">
             <Label className="text-xs font-semibold">Mandatory Void Reason *</Label>
-            <Textarea
+            <Textarea aria-label="Mandatory Void Reason"
               placeholder="e.g. Duplicate batch initialized by mistake..."
               value={voidReason}
               onChange={(e) => setVoidReason(e.target.value)}
