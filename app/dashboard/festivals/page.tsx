@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, PartyPopper } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -745,7 +746,18 @@ export default function FestivalsPage() {
 
   const renderFestivals = () => {
     if (displayedFestivals.length === 0 && upcomingFestivals.length === 0) {
-      return <p className="text-muted-foreground">No festivals found.</p>;
+      return (
+        <EmptyState
+          icon={PartyPopper}
+          title={`No festivals in ${months.find((m) => m.value === selectedMonth)?.label ?? "this month"}`}
+          description={
+            canManageFestivals
+              ? "Add a festival to plan its greeting post, or pick another month."
+              : "Pick another month to see its festivals."
+          }
+          {...(canManageFestivals ? { actionLabel: "Add festival", onAction: () => setFormOpen(true) } : {})}
+        />
+      );
     }
 
     if (viewMode === "list") {
@@ -948,11 +960,18 @@ export default function FestivalsPage() {
                 <Button
                   key={m.value}
                   variant={selectedMonth === m.value ? "default" : "outline"}
-                  onClick={() => {
-                    console.log("Month selected:", m.value);
-                    setSelectedMonth(m.value);
+                  aria-pressed={selectedMonth === m.value}
+                  // Keep the selected month visible in the scrolling strip (scrolls the strip only, never the page).
+                  ref={(el) => {
+                    if (el && selectedMonth === m.value && el.parentElement) {
+                      const strip = el.parentElement;
+                      strip.scrollLeft = el.offsetLeft - strip.offsetLeft - (strip.clientWidth - el.offsetWidth) / 2;
+                    }
                   }}
-                  className="flex-1 px-2 py-1 text-sm min-w-0"
+                  onClick={() => setSelectedMonth(m.value)}
+                  // A fixed minimum width so labels never get clipped; the strip scrolls
+                  // sideways on narrow screens instead of squashing twelve buttons.
+                  className="min-w-14 flex-1 shrink-0 px-2 py-1 text-sm"
                 >
                   {m.label}
                 </Button>

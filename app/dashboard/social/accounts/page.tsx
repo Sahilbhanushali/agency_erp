@@ -178,7 +178,7 @@ export default function SocialAccountsPage() {
         </div>
 
         {canConnect && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={connectFor} onValueChange={setConnectFor}>
               <SelectTrigger className="w-56 h-9" aria-label="Account belongs to">
                 <SelectValue />

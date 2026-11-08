@@ -562,7 +562,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
 
       <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList className="bg-muted/60 p-1 border border-border/60 rounded-lg">
-          <TabsTrigger value="users" className="text-xs">Users ({users.length})</TabsTrigger>
+          <TabsTrigger value="users" className="text-xs">Users{isLoading ? "" : ` (${users.length})`}</TabsTrigger>
           <TabsTrigger value="roles" className="text-xs">Roles & Permissions</TabsTrigger>
           <TabsTrigger value="smtp" className="text-xs">SMTP Settings</TabsTrigger>
         </TabsList>
@@ -709,7 +709,18 @@ const testSmtpConnection = async (config: SmtpConfig) => {
 
           <div className="rounded-xl border border-border/70 bg-card shadow-2xs overflow-hidden">
             {isLoading ? (
-              <div className="p-8 text-center text-xs text-muted-foreground">Loading users...</div>
+              <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading users">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="size-9 rounded-full" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3.5 w-1/3" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                ))}
+              </div>
             ) : filteredUsers.length === 0 ? (
               <div className="p-8 text-center text-xs text-muted-foreground">No users found.</div>
             ) : (
