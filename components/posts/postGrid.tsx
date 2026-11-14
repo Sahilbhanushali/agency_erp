@@ -17,7 +17,6 @@ import Link from "next/link";
 import { Eye, Edit, MoreHorizontal, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, AlertCircle, Link as LinkIcon, Instagram, Facebook, Twitter, Linkedin, Youtube, Globe } from "lucide-react";
 import MediaRenderer from "@/components/MediaRenderer";
 import ImageModal from "@/components/ImageModal";
-import { Session } from "next-auth";
 import { useState } from "react";
 import { getMediaUrl, getGoogleDriveEmbedUrl } from "@/lib/utils";
 import MediaWithFallback from "@/components/MediaWithFallback";
@@ -56,7 +55,6 @@ interface Post {
 interface PostGridProps {
   posts: Post[];
   permissions: string[];
-  session: Session | null;
   selectedPosts: string[];
   handleSelectAll: (checked: boolean) => void;
   handleSelectPost: (postId: string, checked: boolean) => void;
@@ -127,7 +125,6 @@ const getPlatformIcon = (platformName: string, isSelected: boolean = false) => {
 export default function PostGrid({
   posts,
   permissions,
-  session,
   selectedPosts,
   handleSelectAll,
   handleSelectPost,
@@ -144,6 +141,9 @@ export default function PostGrid({
   handleVideoPlay,
   openExportLinkForPost,
 }: PostGridProps) {
+  // Names from /api/me/permissions are canonical `module:action`; the old "Manage-post",
+  // "Manage-content" and "Manage-design" all resolve to posts:update in the catalog.
+  const canEditPosts = permissions.includes("posts:update");
   const [imageModal, setImageModal] = useState<{
     src: string;
     alt: string;
@@ -172,7 +172,7 @@ export default function PostGrid({
 
   return (
     <>
-      {permissions.includes("Manage-post") && (
+      {canEditPosts && (
         <div className="flex items-center mb-4">
           <Checkbox
             checked={posts.length > 0 && selectedPosts.length === posts.length}
@@ -270,7 +270,7 @@ export default function PostGrid({
                       <div className="absolute top-2 right-2 bg-card/90 dark:bg-card rounded-full p-1 shadow-sm">
                         <PostTypeIcon type={post.type} className="size-4 text-foreground" />
                       </div>
-                      {permissions.includes("Manage-post") && (
+                      {canEditPosts && (
                         <div className="absolute bottom-2 left-2">
                           <Checkbox
                             checked={selectedPosts.includes(post.id)}
@@ -354,7 +354,7 @@ export default function PostGrid({
                           </Button>
                         )}
                       </div>
-                      {(permissions.includes("Manage-content") || permissions.includes("Manage-design")) && (
+                      {canEditPosts && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button size="sm" variant="ghost" className="h-7 p-1">
@@ -362,7 +362,6 @@ export default function PostGrid({
                             </Button>
                           </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="text-xs">
-                          {permissions.includes("Manage-post") && (
                             <>
                               <DropdownMenuItem asChild>
                                 <Link href={`/dashboard/projects/posts/${post.id}/edit`}>
@@ -370,13 +369,15 @@ export default function PostGrid({
                                   Edit
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeletePost(post.id)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-3 w-3" />
-                                Delete
-                              </DropdownMenuItem>
+                              {permissions.includes("posts:delete") && (
+                                <DropdownMenuItem
+                                  onClick={() => handleDeletePost(post.id)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-3 w-3" />
+                                  Delete
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 onClick={() => openApprovalDialog(post.id, "reject")}
                               >
@@ -391,18 +392,9 @@ export default function PostGrid({
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                             </>
-                          )}
-                          {(() => {
-                            const userRole = session?.user?.role?.toUpperCase() || "";
-                            const isAdminOrManager = userRole === "ADMIN" || userRole === "MANAGER" || userRole === "ADMINISTRATOR";
-                            return (permissions.includes("Manage-content") ||
-                              permissions.includes("Manage-design") ||
-                              isAdminOrManager) ? (
-                              <DropdownMenuItem onClick={() => openStatusChange(post.id)}>
-                                Change Status
-                              </DropdownMenuItem>
-                            ) : null;
-                          })()}
+                          <DropdownMenuItem onClick={() => openStatusChange(post.id)}>
+                            Change Status
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}

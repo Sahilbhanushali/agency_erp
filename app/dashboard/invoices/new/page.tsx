@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { hasPermission } from "@/lib/api-auth"
+import { can } from "@/lib/api-auth"
 import InvoiceEditor from "@/components/finance/invoice-editor"
 import NoAccess from "@/components/finance/no-access"
 
@@ -13,7 +13,7 @@ export default async function NewInvoicePage({
   searchParams: Promise<{ companyId?: string; clientId?: string }>
 }) {
   const session = await getServerSession(authOptions)
-  if (!(await hasPermission(session, "Manage-invoices"))) {
+  if (!(await can(session, "invoices", "create"))) {
     return <NoAccess what="creating invoices" />
   }
 

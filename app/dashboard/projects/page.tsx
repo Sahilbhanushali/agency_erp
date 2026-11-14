@@ -317,7 +317,6 @@ export default function ProjectsPage() {
     );
   }
 
-  const roleName = session.user.role || "Unknown";
   const canManageProjects = can("projects", "update") || can("projects", "create");
 
   const getProjectPostMetrics = (project: Project) => {
@@ -720,12 +719,10 @@ export default function ProjectsPage() {
           <div className="flex flex-col items-center">
             <Plus className="mb-3 size-9 text-muted-foreground/60" />
             <h3 className="mb-2 text-base font-semibold tracking-tight text-foreground">
-              {roleName === "ADMIN" ? "No projects match your filters" : "No assigned projects match your filters"}
+              No projects match your filters
             </h3>
             <p className="mb-4 text-sm text-muted-foreground">
-              {roleName === "ADMIN"
-                ? "No projects match the current filters."
-                : "No assigned projects match the current filters."}
+              Try clearing a filter or searching for a different name.
             </p>
             {can("projects", "create") && (
               <Link href="/dashboard/projects/new">

@@ -101,8 +101,9 @@ export default function PayrollPage() {
   // re-checks payroll:update and payroll:delete on every one of those calls.
   const { can } = usePermissions();
   const { data: session } = useSession();
-  const userRole = (session?.user as any)?.role || "";
-  const isHRorAdmin = ["ADMIN", "MANAGER", "HR", "FINANCE"].includes(userRole);
+  // payroll:read is what /api/payroll/* treats as staff-wide access; the old exact-name list
+  // missed roles like "Manager" and any role created in the permission matrix.
+  const isHRorAdmin = can("payroll", "read");
 
   const [activeTab, setActiveTab] = useState("runs");
 
@@ -663,7 +664,7 @@ export default function PayrollPage() {
               <RunReviewModal
                 runId={selectedRunId}
                 onClose={() => setSelectedRunId(null)}
-                userRole={userRole}
+                canVoid={can("payroll", "approve") && can("payroll", "delete")}
                 onRunUpdated={mutateRuns}
               />
             )}

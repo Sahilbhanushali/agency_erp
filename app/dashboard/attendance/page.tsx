@@ -68,12 +68,13 @@ const fetcher = async (url: string) => {
 
 export default function AttendancePage() {
   const { data: session } = useSession();
-  const userRole = (session?.user as any)?.role || "";
-  const isHRorAdmin = ["ADMIN", "MANAGER", "HR"].includes(userRole);
   const currentUserId = Number(session?.user?.id);
   // Managing someone else's leave: adjusting balances needs leaves:update, recording
   // leave on their behalf needs leaves:approve. The routes check the same.
   const { can, ready: permsReady } = useCan();
+  // attendance:read is what /api/attendance treats as staff-wide access; the old exact-name
+  // list missed "Manager" and every role created in the permission matrix.
+  const isHRorAdmin = permsReady && can("attendance", "read");
   const canAdjustLeave = permsReady && can("leaves", "update");
   const canRecordLeave = permsReady && can("leaves", "approve");
 

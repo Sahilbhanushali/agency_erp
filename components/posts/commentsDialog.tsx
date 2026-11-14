@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { Edit2, Trash2, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import toast from "react-hot-toast";
 
 interface Post {
@@ -45,6 +46,7 @@ export default function CommentsDialog({
   onRefreshComments,
 }: CommentsDialogProps) {
   const { data: session } = useSession();
+  const { can } = usePermissions();
   const post = posts.find((p) => p.id === commentingPost);
 
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -146,7 +148,9 @@ export default function CommentsDialog({
                   const isAuthor =
                     (session?.user?.email && authorEmail === session.user.email) ||
                     (session?.user?.name && authorName === session.user.name);
-                  const canModify = isAuthor || session?.user?.role === "ADMIN" || session?.user?.role === "Manager";
+                  // Mirrors app/api/comments/[commentId]: authors, or posts:update / posts:delete.
+                  const canEdit = isAuthor || can("posts", "update");
+                  const canDelete = isAuthor || can("posts", "delete");
 
                   return (
                     <div key={comment.id} className="border-b pb-3 group">
@@ -187,8 +191,9 @@ export default function CommentsDialog({
                             <p className="text-xs text-muted-foreground font-medium">
                               {authorName} - {format(new Date(comment.createdAt), "MMM dd, yyyy HH:mm")}
                             </p>
-                            {canModify && (
+                            {(canEdit || canDelete) && (
                               <div className="flex items-center space-x-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                {canEdit && (
                                 <button aria-label="Edit comment"
                                   type="button"
                                   onClick={() => handleStartEdit(comment)}
@@ -197,6 +202,8 @@ export default function CommentsDialog({
                                 >
                                   <Edit2 className="h-3.5 w-3.5" />
                                 </button>
+                                )}
+                                {canDelete && (
                                 <button aria-label="Delete comment"
                                   type="button"
                                   onClick={() => setDeletingCommentId(comment.id)}
@@ -205,6 +212,7 @@ export default function CommentsDialog({
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
+                                )}
                               </div>
                             )}
                           </div>

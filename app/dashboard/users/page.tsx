@@ -7,6 +7,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { usePermissions } from "@/hooks/use-permissions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -75,6 +76,7 @@ interface SmtpConfig {
 
 export default function UsersPage() {
   const { data: session, status } = useSession()
+  const { can, isLoading: permissionsLoading } = usePermissions()
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
@@ -481,7 +483,7 @@ const testSmtpConnection = async (config: SmtpConfig) => {
     }
   }
 
-  if (status === "loading") {
+  if (status === "loading" || permissionsLoading) {
 
     return (
       <div className="space-y-6 animate-in fade-in-50 duration-200">
@@ -510,15 +512,15 @@ const testSmtpConnection = async (config: SmtpConfig) => {
     );
   }
 
-  const userRole = session.user.role || "CLIENT"
-
-  if (!["ADMIN", "MANAGER", "Manager"].includes(userRole)) {
+  // users:read is what /api/users needs for full records and what shows this page in the
+  // sidebar; the old role-name list locked out every role built in the permission matrix.
+  if (!can("users", "read")) {
     return (
       <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
         <EmptyState
           icon={AlertCircle}
           title="Access Denied"
-          description="Only administrators and managers can access user management and system settings."
+          description="You need the User Management → Read permission to view this page. Ask an administrator to grant it."
         />
       </div>
     );
