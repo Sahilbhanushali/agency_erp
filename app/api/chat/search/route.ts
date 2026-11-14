@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
   if (q.length < 2) return NextResponse.json(empty)
 
   const memberships = await prisma.conversationMember.findMany({
-    where: { userId: me, ...(conversationId ? { conversationId } : {}) },
+    // Approval discussions live on their post (lib/chat/approval.ts), not in the inbox.
+    where: { userId: me, conversation: { type: { not: "APPROVAL" } }, ...(conversationId ? { conversationId } : {}) },
     select: { conversationId: true, leftAt: true, leftAtSeq: true, clearedSeq: true, hiddenAt: true },
   })
   if (memberships.length === 0) {

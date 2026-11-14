@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { isOnline, publish, type ChatEvent } from "@/lib/realtime/hub"
+import { mayDiscussPost } from "@/lib/chat/approval"
 
 /**
  * The rules every chat route shares, so none of them has to remember them.
@@ -25,9 +26,16 @@ export interface Access {
 export async function memberAccess(conversationId: string, userId: number): Promise<Access | null> {
   const m = await prisma.conversationMember.findUnique({
     where: { conversationId_userId: { conversationId, userId } },
-    select: { role: true, leftAt: true, leftAtSeq: true, lastReadSeq: true, mutedUntil: true, clearedSeq: true },
+    select: {
+      role: true, leftAt: true, leftAtSeq: true, lastReadSeq: true, mutedUntil: true, clearedSeq: true,
+      conversation: { select: { type: true, postId: true } },
+    },
   })
   if (!m) return null
+  // An approval discussion follows its post: losing access to the post loses the thread,
+  // whatever the membership row says. Every chat route goes through here.
+  const { type, postId } = m.conversation
+  if (type === "APPROVAL" && (!postId || !(await mayDiscussPost(userId, postId)))) return null
   return {
     active: m.leftAt === null,
     role: m.role,
@@ -173,13 +181,15 @@ export async function sendMessage(input: SendInput): Promise<{ message: WireMess
   }
 
   let row: MessageRow
+  let isApproval = false
   try {
     row = await prisma.$transaction(async (tx) => {
       const conv = await tx.conversation.update({
         where: { id: input.conversationId },
         data: { lastSeq: { increment: 1 }, lastMessageAt: new Date() },
-        select: { lastSeq: true },
+        select: { lastSeq: true, type: true },
       })
+      isApproval = conv.type === "APPROVAL"
       const created = await tx.chatMessage.create({
         data: {
           conversationId: input.conversationId,
@@ -232,6 +242,10 @@ export async function sendMessage(input: SendInput): Promise<{ message: WireMess
   }
 
   const message = toWire(row)
+  // Approval discussions are shown on the post, not in the chat inbox: the row write
+  // already triggers a live refresh there (lib/realtime/invalidate.ts), and a chat
+  // "message" event would raise an inbox notification pointing at the wrong place.
+  if (isApproval) return { message, duplicate: false }
   const members = await activeMemberIds(input.conversationId)
   publish(members, { type: "message", conversationId: input.conversationId, message })
 
@@ -300,6 +314,7 @@ export async function deliverPending(userId: number) {
     FROM chat_members cm
     JOIN chat_conversations c ON c.id = cm.conversationId
     WHERE cm.userId = ${userId} AND cm.leftAt IS NULL AND cm.lastDeliveredSeq < c.lastSeq
+      AND c.type <> 'APPROVAL'
   `)
   for (const row of behind) await markDelivered(row.conversationId, [userId], Number(row.lastSeq))
 }

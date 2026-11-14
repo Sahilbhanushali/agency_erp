@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { Edit2, Trash2, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { usePermissions } from "@/hooks/use-permissions";
 import toast from "react-hot-toast";
@@ -29,9 +30,6 @@ interface CommentsDialogProps {
   setCommentingPost: (postId: string | null) => void;
   posts: Post[];
   postComments: { [key: string]: Comment[] };
-  newComment: string;
-  setNewComment: (value: string) => void;
-  handleAddComment: (postId: string) => void;
   onRefreshComments?: (postId: string) => void;
 }
 
@@ -40,9 +38,6 @@ export default function CommentsDialog({
   setCommentingPost,
   posts,
   postComments,
-  newComment,
-  setNewComment,
-  handleAddComment,
   onRefreshComments,
 }: CommentsDialogProps) {
   const { data: session } = useSession();
@@ -226,28 +221,19 @@ export default function CommentsDialog({
                 <p className="text-sm text-muted-foreground">No comments yet</p>
               )}
             </div>
-            <div>
-              <label className="text-sm font-medium">Add a comment</label>
-              <Textarea aria-label="Add a comment"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Write your comment..."
-                rows={3}
-                className="text-sm"
-              />
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Feedback history is read-only. Talk with the creator and reviewers in the post&apos;s discussion.
+            </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCommentingPost(null)} className="h-8 text-xs">
-              Cancel
+            <Button variant="outline" onClick={() => setCommentingPost(null)} className="min-h-9 text-xs">
+              Close
             </Button>
-            <Button
-              onClick={() => commentingPost && handleAddComment(commentingPost)}
-              className="h-8 text-xs"
-              disabled={!newComment.trim()}
-            >
-              Add Comment
-            </Button>
+            {commentingPost && (
+              <Button asChild className="min-h-9 text-xs">
+                <Link href={`/dashboard/projects/posts/${commentingPost}?tab=discussion`}>Open discussion</Link>
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -22,8 +22,9 @@ export async function GET() {
   if (!auth.ok) return auth.response
   const me = auth.userId
 
+  // Approval discussions live on their post (lib/chat/approval.ts), not in the inbox.
   const memberships = await prisma.conversationMember.findMany({
-    where: { userId: me },
+    where: { userId: me, conversation: { type: { not: "APPROVAL" } } },
     select: {
       role: true,
       lastReadSeq: true,

@@ -301,6 +301,19 @@ export async function transitionPost(input: TransitionInput) {
     await afterTransition(input, result.post, actorId, actorName).catch((error) =>
       console.error("[post-workflow] notification/audit failed:", error),
     )
+    // Imported lazily: lib/chat/approval imports this module for its access rule.
+    await import("@/lib/chat/approval")
+      .then(({ noteWorkflowInDiscussion }) =>
+        noteWorkflowInDiscussion({
+          postId,
+          action,
+          version: result.post.version,
+          actorId,
+          actorName,
+          reason: input.reason,
+        }),
+      )
+      .catch((error) => console.error("[post-workflow] discussion note failed:", { postId, action, error }))
   }
   return result
 }

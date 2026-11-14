@@ -1,6 +1,7 @@
 "use client";
 
 import { contentStatusLabel, statusLabel } from "@/lib/post-status";
+import { UnreadDiscussionBadge } from "@/components/posts/unread-discussion-badge";
 import { PostTypeIcon, typeLabel } from "@/components/posts/post-type-icon";
 import { useState, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -64,6 +65,8 @@ interface Post {
 interface PostTableProps {
   posts: Post[];
   permissions: string[];
+  /** Unread approval-discussion messages per post id. */
+  unreadDiscussions?: Record<string, number>;
   selectedPosts: string[];
   handleSelectAll: (checked: boolean) => void;
   handleSelectPost: (postId: string, checked: boolean) => void;
@@ -136,6 +139,7 @@ const getStatusDisplay = (post: Post) => {
 export default function PostTable({
   posts,
   permissions,
+  unreadDiscussions,
   selectedPosts,
   handleSelectAll,
   handleSelectPost,
@@ -278,6 +282,7 @@ export default function PostTable({
                         <span className="font-semibold text-foreground text-xs sm:text-sm line-clamp-1">
                           {post.title}
                         </span>
+                        <UnreadDiscussionBadge postId={post.id} count={unreadDiscussions?.[post.id]} />
                         <PostTimingBadge post={post} />
                       </div>
                       {post.caption && !isCompact && (

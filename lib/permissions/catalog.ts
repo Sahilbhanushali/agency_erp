@@ -114,6 +114,19 @@ export const MODULES: PermissionModule[] = [
     actions: [{ action: "read", label: "Keep personal todos", legacy: [] }] },
   { key: "projects", label: "Projects", href: "/dashboard/projects", group: "Delivery",
     actions: crud("View-project", "Manage-projects") },
+  /**
+   * Canvas & mood boards. Which boards a person sees is decided per board (owner,
+   * members it is shared with, or roles that plan all content); these switch the
+   * capabilities on.
+   */
+  { key: "canvas", label: "Canvas & Mood Boards", href: "/dashboard/canvas", group: "Delivery",
+    actions: [
+      { action: "read", label: "Open boards", legacy: [] },
+      { action: "create", label: "Create & duplicate boards", legacy: [] },
+      { action: "update", label: "Edit boards", legacy: [] },
+      { action: "delete", label: "Delete boards", legacy: [] },
+      { action: "share", label: "Share boards", legacy: [] },
+    ] },
   { key: "posts", label: "Content & Posts", href: "/dashboard/projects/posts", group: "Delivery",
     actions: [
       { action: "read", label: "Read", legacy: ["View-post", "View-posts"] },

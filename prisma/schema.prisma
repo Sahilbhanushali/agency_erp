@@ -277,6 +277,12 @@ model User {
   personalTodos           PersonalTodo[]        @relation("PersonalTodos")
   conversationsCreated    Conversation[]        @relation("ConversationsCreated")
   chatMemberships         ConversationMember[]  @relation("ChatMemberships")
+  canvasesCreated         Canvas[]              @relation("CanvasCreator")
+  canvasesUpdated         Canvas[]              @relation("CanvasUpdater")
+  canvasMemberships       CanvasMember[]        @relation("CanvasMemberships")
+  canvasElements          CanvasElement[]       @relation("CanvasElementAuthor")
+  canvasComments          CanvasComment[]       @relation("CanvasCommentAuthor")
+  canvasActivities        CanvasActivity[]      @relation("CanvasActivityActor")
   chatReceiptMarks        ChatReceiptMark[]
   chatMessagesSent        ChatMessage[]         @relation("ChatMessagesSent")
   chatReactions           ChatReaction[]        @relation("ChatReactions")
@@ -317,6 +323,7 @@ model Client {
   contracts      Contract[]
   expenses       Expense[]
   tasks          Task[]
+  canvases       Canvas[]
 
   @@map("clients")
 }
@@ -384,6 +391,7 @@ model Project {
   contracts     Contract[]
   expenses      Expense[]
   tasks         Task[]
+  canvases      Canvas[]
 
   @@map("projects")
 }
@@ -480,6 +488,9 @@ model Post {
   instagramMediaInsights InstagramMediaInsight[]
   tasks                  Task[]
   statusChanges          PostStatusChange[]
+  /// The approval discussion for this post (one per post, created on first open).
+  discussion             Conversation?
+  canvases               Canvas[]
 
   @@index([status])
   @@index([projectId, status])
@@ -3301,6 +3312,9 @@ model PersonalTodo {
 enum ConversationType {
   DIRECT
   GROUP
+  /// The discussion attached to one post's approval. Membership is synced from who may
+  /// access the post, and every access check also re-checks the post itself.
+  APPROVAL
 }
 
 enum ChatMemberRole {
@@ -3352,7 +3366,11 @@ model Conversation {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy    User?                @relation("ConversationsCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy User? @relation("ConversationsCreated", fields: [createdById], references: [id], onDelete: SetNull)
+
+  /// APPROVAL only: the post this discussion belongs to. Goes with the post.
+  postId       String?              @unique
+  post         Post?                @relation(fields: [postId], references: [id], onDelete: Cascade)
   members      ConversationMember[]
   messages     ChatMessage[]
   receiptMarks ChatReceiptMark[]
@@ -3485,4 +3503,149 @@ model ChatReaction {
 
   @@unique([messageId, userId, emoji])
   @@map("chat_reactions")
+}
+
+// ---------------------------------------------------------------------------
+// Canvas & mood boards
+// ---------------------------------------------------------------------------
+
+enum CanvasKind {
+  /// Free-form board.
+  CANVAS
+  /// Board started from the mood-board template (theme, palette, typography, ...).
+  MOODBOARD
+}
+
+enum CanvasElementType {
+  IMAGE
+  TEXT
+  HEADING
+  NOTE
+  COLOR
+  LINK
+  /// A titled frame that groups the elements placed inside it.
+  SECTION
+}
+
+enum CanvasMemberRole {
+  VIEWER
+  EDITOR
+}
+
+/// A visual workspace. Visible to its creator, to members it is shared with, and to
+/// roles that plan all content (contentScope "all"); see lib/canvas/access.ts.
+model Canvas {
+  id          String     @id @default(cuid())
+  title       String     @db.VarChar(160)
+  description String?    @db.Text
+  kind        CanvasKind @default(CANVAS)
+  /// Board background colour (hex).
+  background  String     @default("#f8fafc") @db.VarChar(16)
+  /// Bumped on every structural change; clients send it back to detect stale writes.
+  version     Int        @default(1)
+
+  clientId  String?
+  projectId String?
+  postId    String?
+
+  createdById Int?
+  updatedById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  createdBy User?    @relation("CanvasCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?    @relation("CanvasUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  elements   CanvasElement[]
+  members    CanvasMember[]
+  comments   CanvasComment[]
+  activities CanvasActivity[]
+
+  @@index([projectId])
+  @@index([clientId])
+  @@index([postId])
+  @@index([createdById])
+  @@index([updatedAt])
+  @@map("canvases")
+}
+
+model CanvasElement {
+  id       String            @id @default(cuid())
+  canvasId String
+  type     CanvasElementType
+  x        Float             @default(0)
+  y        Float             @default(0)
+  width    Float             @default(240)
+  height   Float             @default(160)
+  /// Stacking order; higher draws on top.
+  z        Int               @default(0)
+  /// Type-specific payload: text, colour hex, url, image key, font size... validated
+  /// per type by lib/canvas/schema.ts before it is stored.
+  data     Json
+
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  canvas    Canvas          @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  createdBy User?           @relation("CanvasElementAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  comments  CanvasComment[]
+
+  @@index([canvasId, z])
+  @@map("canvas_elements")
+}
+
+model CanvasMember {
+  id       String           @id @default(cuid())
+  canvasId String
+  userId   Int
+  role     CanvasMemberRole @default(VIEWER)
+  addedAt  DateTime         @default(now())
+
+  canvas Canvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  user   User   @relation("CanvasMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([canvasId, userId])
+  @@index([userId])
+  @@map("canvas_members")
+}
+
+/// Feedback on a board, optionally pinned to one element.
+model CanvasComment {
+  id        String   @id @default(cuid())
+  canvasId  String
+  elementId String?
+  body      String   @db.Text
+  resolved  Boolean  @default(false)
+  authorId  Int?
+  createdAt DateTime @default(now())
+
+  canvas  Canvas         @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  element CanvasElement? @relation(fields: [elementId], references: [id], onDelete: Cascade)
+  author  User?          @relation("CanvasCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([canvasId, createdAt])
+  @@index([elementId])
+  @@map("canvas_comments")
+}
+
+/// Append-only activity trail for a board.
+model CanvasActivity {
+  id        String   @id @default(cuid())
+  canvasId  String
+  actorId   Int?
+  /// CREATED, UPDATED, DUPLICATED, ELEMENT_ADDED, ELEMENT_UPDATED, ELEMENT_REMOVED,
+  /// COMMENTED, SHARED, UNSHARED, LINKED
+  action    String   @db.VarChar(40)
+  summary   String   @db.VarChar(300)
+  createdAt DateTime @default(now())
+
+  canvas Canvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  actor  User?  @relation("CanvasActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([canvasId, createdAt])
+  @@map("canvas_activities")
 }

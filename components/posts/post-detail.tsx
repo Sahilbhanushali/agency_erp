@@ -18,6 +18,9 @@ import { ExportLinkDialog } from "@/components/projects/export-link-dialog";
 import { PlatformIntegration } from "../platform/platform-integration";
 import { PostWorkflowPanel } from "./post-workflow-panel";
 import { PresentationFileCard, isPresentationAsset } from "./presentation-file-card";
+import { PresentationPreviewButton } from "./presentation-preview-dialog";
+import { PostDiscussionPanel } from "./post-discussion-panel";
+import { LinkedBoards } from "@/components/canvas/linked-boards";
 import { 
   Dialog, 
   DialogContent, 
@@ -27,7 +30,7 @@ import {
   DialogDescription 
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, FileImage, User, Type, Link as LinkIcon, History, Play, Pause, ChevronLeft, ChevronRight, X, Image as ImageIcon, Video, FileText, Settings, Upload, CheckCircle, Clock, Check, MoreVertical, Search, Filter, RefreshCw, Maximize2, Trash2, ArrowLeft, Send, Download, Phone, Mail, Building2, Copy, PlayCircle, Plus, Edit2, CheckCircle2, RotateCcw, AlertCircle, Eye, EyeOff, Loader2, UserCheck, MessageSquare, Mic, XCircle } from "lucide-react";
+import { Calendar, FileImage, User, Type, Link as LinkIcon, History, Play, Pause, ChevronLeft, ChevronRight, X, Image as ImageIcon, Video, FileText, Settings, Upload, CheckCircle, Clock, Check, MoreVertical, Search, Filter, RefreshCw, Maximize2, Trash2, ArrowLeft, Send, Download, Phone, Mail, Building2, Copy, PlayCircle, Plus, Edit2, CheckCircle2, RotateCcw, AlertCircle, Eye, EyeOff, Loader2, UserCheck, MessageSquare, XCircle } from "lucide-react";
 import Link from "next/link";
 import { format, isLastDayOfMonth, lastDayOfMonth } from "date-fns";
 import toast from "react-hot-toast";
@@ -239,7 +242,6 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
       ? post.customData.notes
       : null;
 
-  const [comment, setComment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const [isDraggingRef, setIsDraggingRef] = useState(false);
@@ -404,12 +406,6 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
     e.target.value = '';
   };
 
-  // Comments Audio Recording States
-  const [isRecordingComment, setIsRecordingComment] = useState(false);
-  const [recordingCommentTime, setRecordingCommentTime] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const commentsEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -417,138 +413,6 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
       commentsEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [post.comments]);
-
-  const startRecordingComment = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: "audio/webm;codecs=opus",
-      });
-      audioChunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        stream.getTracks().forEach((track) => track.stop());
-        await handleSendAudioComment(blob);
-      };
-
-      mediaRecorderRef.current.start();
-      setIsRecordingComment(true);
-      setRecordingCommentTime(0);
-
-      timerRef.current = setInterval(() => {
-        setRecordingCommentTime((prev) => prev + 1);
-      }, 1000);
-    } catch (error) {
-      console.error("Error starting comment recording:", error);
-      toast.error("Could not access microphone. Please check permissions.");
-    }
-  };
-
-  const stopRecordingComment = (shouldSend = true) => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      if (!shouldSend) {
-        mediaRecorderRef.current.onstop = () => {
-          // Do nothing on stop
-        };
-      }
-      mediaRecorderRef.current.stop();
-      setIsRecordingComment(false);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      setRecordingCommentTime(0);
-    }
-  };
-
-  const handleSendAudioComment = async (audioBlob: Blob) => {
-    setIsLoading(true);
-    const tempId = Date.now().toString();
-    const newComment = {
-      id: tempId,
-      user: { 
-        name: currentUser.name || "You",
-        email: currentUser.email || undefined
-      },
-      content: "🎙️ Audio feedback comment uploading...",
-      createdAt: new Date().toISOString(),
-    };
-
-    const optimisticPost = {
-      ...post,
-      comments: [newComment, ...post.comments],
-    };
-
-    await mutatePost(optimisticPost, false);
-
-    try {
-      const formData = new FormData();
-      formData.append("audio", audioBlob, "comment-audio.webm");
-      formData.append("postId", post.id);
-
-      const uploadResponse = await fetch("/api/comments/audio", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Failed to upload comment audio");
-      }
-
-      const uploadData = await uploadResponse.json();
-      const audioUrl = uploadData.url;
-      const commentContent = `🎙️ Audio comment: [AUDIO:${audioUrl}]`;
-
-      const response = await fetch(`/api/posts/${post.id}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${(session as any)?.accessToken}`,
-        },
-        body: JSON.stringify({ content: commentContent }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create audio comment");
-      }
-
-      const { notifiedUsersList, ...addedComment } = await response.json();
-      
-      if (notifiedUsersList && notifiedUsersList.length > 0) {
-        toast.success(`Audio comment added & mail sent to: ${notifiedUsersList.join(", ")}`, { duration: 5000 });
-      } else {
-        toast.success("Audio comment added successfully");
-      }
-
-      const finalPost = {
-        ...post,
-        comments: [addedComment, ...post.comments],
-      };
-      await mutatePost(finalPost, false);
-      await globalMutate(`/api/posts/${post.id}`, finalPost, false);
-      
-      router.refresh();
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Error sending audio comment");
-      await mutatePost();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const formatCommentTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
 
   const renderCommentContent = (content: string, isSelf: boolean) => {
     const audioRegex = /\[AUDIO:(.*?)\]/;
@@ -685,7 +549,10 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
 
   const currentUser = session?.user || { id: "", role: "", name: "" };
   const canSubmit = post.createdById === currentUser.id && post.status === "DRAFT";
-  const canEdit = post.createdById === currentUser.id && ["DRAFT", "REJECTED"].includes(post.status);
+  // Same rule as PUT /api/posts/[id]: posts:update, and not yet published or cancelled.
+  // Draft, sent-back and pending posts are edited in place; editing an approved post
+  // asks for confirmation and restarts approval (handled by the edit form and API).
+  const canEdit = can("posts", "update") && post.status !== "POSTED" && post.status !== "CANCELLED";
   /**
    * Driven by permissions, not role names.
    *
@@ -853,74 +720,6 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
     }
   };
 
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!comment.trim()) return;
-
-    setIsLoading(true);
-
-    const tempId = Date.now().toString();
-    const newComment = {
-      id: tempId,
-      user: { 
-        name: currentUser.name || "You",
-        email: currentUser.email || undefined
-      },
-      content: comment,
-      createdAt: new Date().toISOString(),
-    };
-
-    const optimisticPost = {
-      ...post,
-      comments: [newComment, ...post.comments],
-    };
-
-    await mutatePost(optimisticPost, false); // Optimistic update
-
-    try {
-      const response = await fetch(`/api/posts/${post.id}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${(session as any)?.accessToken}`,
-        },
-        body: JSON.stringify({ content: comment }),
-      });
-
-      if (response.ok) {
-        const { notifiedUsersList, ...addedComment } = await response.json();
-        setComment("");
-        
-        if (notifiedUsersList && notifiedUsersList.length > 0) {
-          toast.success(`Comment added & mail sent to: ${notifiedUsersList.join(", ")}`, { duration: 5000 });
-        } else {
-          toast.success("Comment added successfully");
-        }
-        
-        // Update both local component SWR and global page SWR
-        const finalPost = {
-          ...post,
-          comments: [addedComment, ...post.comments],
-        };
-        await mutatePost(finalPost, false);
-        await globalMutate(`/api/posts/${post.id}`, finalPost, false);
-        
-        // Force refresh for server
-        router.refresh();
-      } else {
-        const errorData = await response.json();
-        toast.error(`Error adding comment: ${errorData.message || "Unknown error"}`);
-        await mutatePost(); // Rollback
-      }
-    } catch (error) {
-      console.error("[PostDetail] Error adding comment:", error);
-      toast.error("Error adding comment");
-      await mutatePost(); // Rollback
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleScheduleUpdate = () => {
     mutatePost(); // Revalidate after schedule
   };
@@ -1060,7 +859,12 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
               className="relative group aspect-square bg-muted rounded-lg overflow-hidden border border-border"
             >
               {isPresentationAsset(asset) ? (
-                <PresentationFileCard asset={asset} className="absolute inset-0" />
+                <>
+                  <PresentationFileCard asset={asset} className="absolute inset-0" />
+                  <div className="absolute inset-x-0 bottom-2 flex justify-center">
+                    <PresentationPreviewButton postId={post.id} asset={asset} />
+                  </div>
+                </>
               ) : asset.type === "link" ? (
                 <a
                   href={asset.url}
@@ -1485,6 +1289,8 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
           {/* Stage, who it waits on, the actions this person may take, and history. */}
           <PostWorkflowPanel postId={post.id} onChanged={() => mutatePost()} />
 
+          <LinkedBoards projectId={post.project.id} postId={post.id} />
+
           <Card className="shadow-sm border border-border">
             <CardHeader className="py-2.5 px-4 bg-muted/30 border-b border-border">
               <CardTitle className="text-sm font-semibold text-foreground">Post Information</CardTitle>
@@ -1590,12 +1396,20 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
             </CardContent>
           </Card>
 
-          <Card className="flex flex-col h-[600px]">
+          <PostDiscussionPanel postId={post.id} currentUserId={Number(currentUser.id)} />
+
+          {/* Earlier comments, rejection notes and the client's share-link feedback.
+              Read-only here: the team talks in the Discussion above. */}
+          {post.comments.length > 0 && (
+          <Card className="flex flex-col max-h-[600px]">
             <CardHeader className="py-3 px-4 bg-muted/30 border-b border-border flex-shrink-0">
               <CardTitle className="text-sm font-semibold text-foreground flex items-center">
                 <MessageSquare className="mr-2 h-4 w-4 text-indigo-500" />
-                Comments ({post.comments.length})
+                Feedback history ({post.comments.length})
               </CardTitle>
+              <CardDescription className="text-xs">
+                Client feedback and earlier comments. Reply in the Discussion.
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1 min-h-0 p-3">
               {/* Comments list takes up flex-1 and scrolls */}
@@ -1791,97 +1605,12 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                     </div>
                   );
                 })}
-                {post.comments.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No comments yet. Be the first to add feedback!
-                  </p>
-                )}
                 <div ref={commentsEndRef} />
               </div>
 
-              <Separator className="mb-3 flex-shrink-0" />
-
-              {/* WhatsApp style Comment Input Box */}
-              <form onSubmit={handleAddComment} className="flex items-center space-x-2 bg-muted p-2 rounded-xl border border-border shadow-sm flex-shrink-0">
-                {isRecordingComment ? (
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center space-x-2 text-red-600 animate-pulse text-xs font-semibold">
-                      <div className="h-2 w-2 rounded-full bg-red-600"></div>
-                      <span>Recording ({formatCommentTime(recordingCommentTime)})</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button aria-label="Discard voice note"
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => stopRecordingComment(false)}
-                        className="h-8 w-8 text-red-500 hover:text-red-650 hover:bg-red-950/20 rounded-full"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button aria-label="Send voice note"
-                        type="button"
-                        variant="default"
-                        size="icon"
-                        onClick={() => stopRecordingComment(true)}
-                        className="h-8 w-8 bg-green-600 hover:bg-green-700 text-white rounded-full"
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <Button aria-label="Record a voice note"
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={startRecordingComment}
-                      disabled={isLoading}
-                      className="h-9 w-9 text-muted-foreground hover:text-indigo-400 hover:bg-muted rounded-full flex-shrink-0"
-                    >
-                      <Mic className="h-4 w-4" />
-                    </Button>
-                    
-                    <textarea aria-label="Add a comment"
-                      value={comment}
-                      onChange={(e) => {
-                        setComment(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = (e.target.scrollHeight) + 'px';
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          if (comment.trim() && !isLoading) {
-                            handleAddComment(e as any);
-                          }
-                        }
-                      }}
-                      placeholder="Add a comment..."
-                      disabled={isLoading}
-                      rows={1}
-                      className="flex-1 bg-transparent border-0 outline-none text-xs text-foreground placeholder-muted-foreground focus:ring-0 focus:outline-none min-w-0 resize-none py-1.5"
-                      style={{ maxHeight: '120px' }}
-                    />
-                    
-                    <Button aria-label="Send comment" 
-                      type="submit" 
-                      size="icon" 
-                      disabled={isLoading || !comment.trim()}
-                      className="h-9 w-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex-shrink-0 transition-all shadow-sm flex items-center justify-center"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </>
-                )}
-              </form>
             </CardContent>
           </Card>
+          )}
         </div>
       </div>
 
