@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { hasPermission } from "@/lib/api-auth"
+import { can } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { invoiceDetailSelect, toNumber } from "@/lib/finance"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Edit invoice" }
 
 export default async function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
-  if (!(await hasPermission(session, "Manage-invoices"))) {
+  if (!(await can(session, "invoices", "update"))) {
     return <NoAccess what="editing invoices" />
   }
 

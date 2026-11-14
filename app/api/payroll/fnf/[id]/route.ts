@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
-import { can, hasPermission, requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
@@ -43,7 +43,7 @@ export async function PATCH(
     if (!auth.ok) return auth.response;
     const session = auth.session;
     const canApprove =
-      (await hasPermission(session, "Approve-payroll")) ||
+      (await can(session, "payroll", "approve")) ||
       (await can(session, "payroll", "update"));
 
     if (!canApprove) {

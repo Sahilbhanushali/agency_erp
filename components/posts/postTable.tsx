@@ -40,7 +40,6 @@ import {
   ChevronsRight,
   SlidersHorizontal,
 } from "lucide-react";
-import { Session } from "next-auth";
 import PostTimingBadge from "./postTimingBadge";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "SCHEDULED" | "POSTED" | "RESUBMITTED" | "NEEDS_MINOR_CHANGE" | "C_APPROVED";
@@ -65,7 +64,6 @@ interface Post {
 interface PostTableProps {
   posts: Post[];
   permissions: string[];
-  session: Session | null;
   selectedPosts: string[];
   handleSelectAll: (checked: boolean) => void;
   handleSelectPost: (postId: string, checked: boolean) => void;
@@ -138,7 +136,6 @@ const getStatusDisplay = (post: Post) => {
 export default function PostTable({
   posts,
   permissions,
-  session,
   selectedPosts,
   handleSelectAll,
   handleSelectPost,
@@ -151,6 +148,14 @@ export default function PostTable({
   handleFileUpload,
   uploadingFiles,
 }: PostTableProps) {
+  // Canonical names only (see /api/me/permissions); the old "Manage-post" is posts:update.
+  // Each flag is the permission the matching API route enforces, not a role name.
+  const canSelectPosts = permissions.includes("posts:update");
+  const canEditPost = canSelectPosts;
+  const canDeletePost = permissions.includes("posts:delete");
+  const canApprovePost = permissions.includes("posts:approve");
+  const canChangeStatus = canApprovePost || permissions.includes("posts:publish") || permissions.includes("posts:status");
+  const canUploadFiles = permissions.includes("assets:create");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [isCompact, setIsCompact] = useState(false);
@@ -227,7 +232,7 @@ export default function PostTable({
         <Table>
           <TableHeader className="bg-muted/40 sticky top-0 z-10 backdrop-blur-sm">
             <TableRow>
-              {permissions.includes("Manage-post") && (
+              {canSelectPosts && (
                 <TableHead className="w-10">
                   <Checkbox
                     checked={selectedPosts.length === posts.length && posts.length > 0}
@@ -256,7 +261,7 @@ export default function PostTable({
                     isCompact ? "py-1" : "py-2.5"
                   }`}
                 >
-                  {permissions.includes("Manage-post") && (
+                  {canSelectPosts && (
                     <TableCell className={isCompact ? "py-1.5" : "py-3"}>
                       <Checkbox
                         checked={selectedPosts.includes(post.id)}
@@ -322,21 +327,25 @@ export default function PostTable({
                             View Details
                           </Link>
                         </DropdownMenuItem>
-                        {["ADMIN", "Manager", "Content Writer"].includes(session?.user?.role || "") && (
+                        {(canEditPost || canDeletePost) && (
                           <>
-                            <DropdownMenuItem asChild className="cursor-pointer">
-                              <Link href={`/dashboard/projects/posts/${post.id}/edit`}>
-                                <Edit className="mr-2 size-3.5" />
-                                Edit
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeletePost(post.id)}
-                              className="text-destructive focus:text-destructive cursor-pointer"
-                            >
-                              <Trash2 className="mr-2 size-3.5" />
-                              Delete
-                            </DropdownMenuItem>
+                            {canEditPost && (
+                              <DropdownMenuItem asChild className="cursor-pointer">
+                                <Link href={`/dashboard/projects/posts/${post.id}/edit`}>
+                                  <Edit className="mr-2 size-3.5" />
+                                  Edit
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            {canDeletePost && (
+                              <DropdownMenuItem
+                                onClick={() => handleDeletePost(post.id)}
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                              >
+                                <Trash2 className="mr-2 size-3.5" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                           </>
                         )}
@@ -347,10 +356,10 @@ export default function PostTable({
                           <FileText className="mr-2 size-3.5" />
                           View Assets ({post.assets?.length || 0})
                         </DropdownMenuItem>
-                        {["ADMIN", "Manager", "Team Lead"].includes(session?.user?.role || "") && (
+                        {(canApprovePost || canChangeStatus || canUploadFiles) && (
                           <>
                             <DropdownMenuSeparator />
-                            {(post.status === "SUBMITTED" || post.status === "RESUBMITTED") && (
+                            {canApprovePost && (post.status === "SUBMITTED" || post.status === "RESUBMITTED") && (
                               <>
                                 <DropdownMenuItem
                                   onClick={() => openApprovalDialog(post.id, "approve")}
@@ -368,9 +377,12 @@ export default function PostTable({
                                 </DropdownMenuItem>
                               </>
                             )}
-                            <DropdownMenuItem onClick={() => openStatusChange(post.id)} className="cursor-pointer">
-                              Change Status
-                            </DropdownMenuItem>
+                            {canChangeStatus && (
+                              <DropdownMenuItem onClick={() => openStatusChange(post.id)} className="cursor-pointer">
+                                Change Status
+                              </DropdownMenuItem>
+                            )}
+                            {canUploadFiles && (
                             <DropdownMenuItem className="cursor-pointer">
                               <label className="flex items-center cursor-pointer w-full">
                                 <Upload className="mr-2 size-3.5" />
@@ -384,6 +396,7 @@ export default function PostTable({
                                 />
                               </label>
                             </DropdownMenuItem>
+                            )}
                             {uploadingFiles[post.id] && (
                               <DropdownMenuItem disabled className="text-muted-foreground">Uploading...</DropdownMenuItem>
                             )}

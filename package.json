@@ -94,5 +94,12 @@
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "@tailwindcss/oxide@4.1.13": true,
+    "core-js": false
   }
 }

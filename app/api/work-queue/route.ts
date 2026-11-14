@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { projectCompanyName, projectLogo } from '@/lib/client-company';
-import { hasPermission, requireCan } from '@/lib/api-auth';
+import { can, requireCan } from '@/lib/api-auth';
 // Define the PostStatus enum to match the Prisma schema
 enum PostStatus {
   DRAFT = "DRAFT",
@@ -107,8 +107,9 @@ export async function GET(request: Request) {
   const userId = auth.userId;
 
   // Who sees everyone's work is an RBAC question, not a role-name string match.
-  // Manage-projects is what leads and managers hold; everyone else sees only their own.
-  const seesAllWork = await hasPermission(auth.session, 'Manage-projects');
+  // Resolved through the catalog: the literal legacy name "Manage-projects" is never
+  // granted by the permission matrix, so a role given every permission still saw an empty queue.
+  const seesAllWork = await can(auth.session, 'projects', 'update');
 
   try {
     // Build where clause based on role

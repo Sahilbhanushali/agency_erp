@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Instagram, Facebook, Twitter, Linkedin, Youtube, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Session } from "next-auth";
 import { format } from "date-fns";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "SCHEDULED" | "POSTED" | "NEEDS_MINOR_CHANGE" | "RESUBMITTED";
@@ -21,7 +20,6 @@ interface StatusChangeDialogProps {
   selectedDate: string;
   setSelectedDate: (value: string) => void;
   handleConfirmStatusChange: (statusType: "content" | "design", postedPlatforms?: string[]) => void;
-  session: Session | null;
   permissions?: string[];
   currentPostStatus?: PostStatus;
   postTitle?: string;
@@ -64,16 +62,15 @@ export default function StatusChangeDialog({
   selectedDate,
   setSelectedDate,
   handleConfirmStatusChange,
-  session,
   permissions = [],
   currentPostStatus,
   postTitle,
   currentPostPlatforms,
 }: StatusChangeDialogProps) {
-  const userRole = session?.user?.role?.toUpperCase() || "";
-  const isAdminOrManager = userRole === "ADMIN" || userRole === "MANAGER" || userRole === "ADMINISTRATOR";
-  const hasContentPermission = permissions.includes("Manage-content") || isAdminOrManager;
-  const hasDesignPermission = permissions.includes("Manage-design") || isAdminOrManager;
+  // The catalog folded the old "Manage-content" and "Manage-design" into posts:update, so
+  // both tabs now follow it; /api/me/permissions only returns canonical names.
+  const hasContentPermission = permissions.includes("posts:update");
+  const hasDesignPermission = hasContentPermission;
 
   // Determine initial tab based on permissions
   const initialTab = hasContentPermission && !hasDesignPermission ? "content" : "design";

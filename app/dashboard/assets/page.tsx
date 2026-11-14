@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { AssetManager } from "@/components/assets/assets-manager";
+import { usePermissions } from "@/hooks/use-permissions";
 
 type Asset = {
   id: string;
@@ -34,20 +35,20 @@ type Asset = {
 };
 
 export default function AssetsPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userPermissions, setUserPermissions] = useState<string[]>([]);
-  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
+  // Resolved through the catalog, so a role granted assets:* in the permission matrix
+  // passes; the old check wanted the literal "Manage-assets" or a role named ADMIN.
+  const { can, isLoading: isPermissionsLoading } = usePermissions();
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
     } else if (status === "authenticated") {
       fetchAssets();
-      fetchPermissions();
     }
   }, [status, router]);
 
@@ -67,26 +68,6 @@ export default function AssetsPage() {
   };
   // Live: re-read when someone else changes what this shows.
   useLiveRefresh(fetchAssets, ["Asset", "Post"])
-
-  const fetchPermissions = async () => {
-    try {
-      const response = await fetch(`/api/users/permissions?id=${session?.user?.id}`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch permissions");
-      }
-      const data = await response.json();
-      setUserPermissions(data.permissions || []);
-    } catch (err) {
-      console.error("Error fetching permissions:", err);
-      setUserPermissions([]);
-    } finally {
-      setIsPermissionsLoading(false);
-    }
-  };
 
   if (status === "loading" || loading || isPermissionsLoading) {
 
@@ -123,14 +104,11 @@ export default function AssetsPage() {
     );
   }
 
-  const isAdmin = session?.user?.role === "ADMIN";
-  const hasManageAssetsPermission = isAdmin || userPermissions.includes("Manage-assets");
-
-  if (!hasManageAssetsPermission) {
+  if (!can("assets", "read")) {
     return (
       <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
         <h3 className="text-base font-semibold text-destructive mb-1">Access Denied</h3>
-        <p className="text-xs text-muted-foreground">You do not have permission to manage assets.</p>
+        <p className="text-xs text-muted-foreground">You do not have permission to view assets. Ask an administrator to grant Assets → Read.</p>
       </div>
     );
   }
@@ -145,7 +123,7 @@ export default function AssetsPage() {
           </p>
         </div>
       </div>
-      <AssetManager assets={assets as any} hasManageAssetsPermission={hasManageAssetsPermission} />
+      <AssetManager assets={assets as any} hasManageAssetsPermission={can("assets", "delete")} />
     </div>
   );
 }

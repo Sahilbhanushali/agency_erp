@@ -27,10 +27,10 @@ import AssetsDialog from '@/components/posts/assetsDialog';
 import { ProofingApprovalDialog } from "@/components/approvals/proofing-approval-dialog";
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import useSWR, { mutate as globalMutate } from 'swr';
-import { useSession } from 'next-auth/react';
 import { getMediaUrl } from '@/lib/utils';
 import { STAGE_LABELS, stageOf, type WorkflowStatus } from '@/lib/posts/workflow-rules';
 import { projectCompanyName, projectLogo } from "@/lib/client-company";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface Asset {
   id: string;
@@ -208,7 +208,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 }
 
 const ApprovalTab: React.FC = () => {
-  const { data: session } = useSession();
+  const { can } = usePermissions();
   // Queues, filters and paging all run on the server (/api/design-approvals?queue=…).
   const [queue, setQueue] = useState<QueueKey>('mine');
   const [page, setPage] = useState(1);
@@ -454,10 +454,10 @@ const ApprovalTab: React.FC = () => {
   };
 
   const openStatusChange = (approval: ApprovalFlow, status: string, statusType: "content" | "design" | "designerHead") => {
-    const userRole = (session?.user?.role || "").toString().toLowerCase().replace(/_/g, " ").trim();
-    const restrictedRoles = ["client", "content writer", "designer"];
-    if (restrictedRoles.includes(userRole)) {
-      toast.error("Client, Content Writer, and Designer roles cannot change post status");
+    // Status decisions are posts:approve / publish / status in the workflow engine; posts:update
+    // alone (what designers and writers hold) only submits work.
+    if (!can("posts", "approve") && !can("posts", "publish") && !can("posts", "status")) {
+      toast.error("You do not have permission to change post status");
       return;
     }
     if (statusType === "designerHead" && ["REJECTED", "NEEDS_MINOR_CHANGE"].includes(status)) {

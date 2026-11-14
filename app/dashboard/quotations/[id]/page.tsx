@@ -4,7 +4,7 @@ import Link from "next/link"
 import { getServerSession } from "next-auth"
 import { ArrowLeft } from "lucide-react"
 import { authOptions } from "@/lib/auth"
-import { hasPermission } from "@/lib/api-auth"
+import { can } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { quotationDetailSelect } from "@/lib/finance"
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,7 @@ export default async function QuotationPage({
   params: Promise<{ id: string }>
 }) {
   const session = await getServerSession(authOptions)
-  if (!(await hasPermission(session, "View-quotations"))) return <NoAccess what="quotations" />
+  if (!(await can(session, "quotations", "read"))) return <NoAccess what="quotations" />
 
   const { id } = await params
   const quotation = await prisma.quotation.findUnique({
@@ -30,7 +30,7 @@ export default async function QuotationPage({
   })
   if (!quotation) notFound()
 
-  const canManage = await hasPermission(session, "Manage-quotations")
+  const canManage = await can(session, "quotations", "update")
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">

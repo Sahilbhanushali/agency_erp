@@ -99,14 +99,15 @@ function formatInr(minorUnits: number | null | undefined): string {
 interface RunReviewModalProps {
   runId: string | null;
   onClose: () => void;
-  userRole?: string;
+  /** payroll:approve + payroll:delete, the pair app/api/payroll/runs/[id]/void requires. */
+  canVoid?: boolean;
   onRunUpdated: () => void;
 }
 
 export default function RunReviewModal({
   runId,
   onClose,
-  userRole = "ADMIN",
+  canVoid = false,
   onRunUpdated,
 }: RunReviewModalProps) {
   const [activeTab, setActiveTab] = useState("employees");
@@ -621,8 +622,7 @@ export default function RunReviewModal({
                   </Button>
                 )}
 
-                {/* Super-admin void button */}
-                {userRole === "ADMIN" && run.status !== "PAID" && (
+                {canVoid && run.status !== "PAID" && (
                   <Button
                     variant="ghost"
                     size="xs"

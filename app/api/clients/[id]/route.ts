@@ -188,25 +188,6 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   try {
     const auth = await requireCan("clients", "delete");
     if (!auth.ok) return auth.response;
-    const session = auth.session;
-
-    // Check user permissions
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              select: { permission: { select: { name: true } } },
-            },
-          },
-        },
-      },
-    });
-
-    if (!user || !user.role || !user.role.permissions.some((rp: any) => rp.permission.name === "Manage-clients")) {
-      return NextResponse.json({ error: "Unauthorized: Insufficient permissions" }, { status: 403 });
-    }
 
     // Check if client exists
     const client = await prisma.client.findUnique({

@@ -538,7 +538,7 @@ export default function PostsPage() {
     }
   };
   const handleDeletePost = async (postId: string) => {
-    if (!permissionsData?.includes("Manage-post")) {
+    if (!can("posts", "delete")) {
       toast.error("You do not have permission to delete posts");
       return;
     }
@@ -596,7 +596,7 @@ export default function PostsPage() {
   };
 
   const handleBulkDelete = async () => {
-    if (!permissionsData?.includes("Manage-post")) {
+    if (!can("posts", "delete")) {
       toast.error("You do not have permission to delete posts");
       return;
     }
@@ -604,7 +604,7 @@ export default function PostsPage() {
     setShowBulkDeleteConfirm(true);
   };
   const handleFileUpload = async (postId: string, files: FileList) => {
-    if (!permissionsData?.includes("Manage-post")) {
+    if (!can("assets", "create")) {
       toast.error("You do not have permission to upload files");
       return;
     }
@@ -677,7 +677,7 @@ export default function PostsPage() {
     setSelectedPosts([]);
   };
   const handleBulkContentStatusChange = async (newContentStatus: string) => {
-    if (!permissionsData?.includes("Manage-content") && !permissionsData?.includes("Manage-design")) {
+    if (!can("posts", "update")) {
       toast.error("You do not have permission to update content status");
       return;
     }
@@ -795,10 +795,10 @@ export default function PostsPage() {
   };
 
   const openStatusChange = (postId: string, initialStatus?: any) => {
-    const userRole = (session?.user?.role || "").toString().toLowerCase().replace(/_/g, " ").trim();
-    const restrictedRoles = ["client", "content writer", "designer"];
-    if (restrictedRoles.includes(userRole)) {
-      toast.error("Client, Content Writer, and Designer roles cannot change post status");
+    // Status decisions are posts:approve / publish / status in the workflow engine; posts:update
+    // alone (what designers and writers hold) only submits work.
+    if (!can("posts", "approve") && !can("posts", "publish") && !can("posts", "status")) {
+      toast.error("You do not have permission to change post status");
       return;
     }
     const post = postsData?.find((p) => p.id === postId);
@@ -810,7 +810,7 @@ export default function PostsPage() {
   };
 
   const openApprovalDialog = (postId: string, action: "approve" | "reject") => {
-    if (!permissionsData?.includes("Manage-post")) {
+    if (!can("posts", "approve")) {
       toast.error("You do not have permission to change post status");
       return;
     }
@@ -1231,7 +1231,7 @@ export default function PostsPage() {
         </div>
 
         {/* Row 2: Action Buttons */}
-        {(permissionsData?.includes("Manage-post") || session?.user?.role?.toUpperCase() === "MANAGER") && (
+        {has("Manage-post") && (
           <div className="px-5 py-2.5 bg-muted/30 border-t border-border/60 flex items-center gap-2 flex-wrap">
             <Link href={urlProjectId ? `/dashboard/projects/posts/new?projectId=${urlProjectId}` : "/dashboard/posts/new"}>
               <Button size="sm" className="gap-1.5 shadow-2xs">
@@ -1328,7 +1328,7 @@ export default function PostsPage() {
 
       <ViewModeSelector viewMode={viewMode} setViewMode={setViewMode} />
 
-      {(permissionsData?.includes("Manage-post") || session?.user?.role?.toUpperCase() === "MANAGER") && selectedPosts.length > 0 && (
+      {has("Manage-post") && selectedPosts.length > 0 && (
         <BulkActions
           selectedPosts={selectedPosts}
           handleBulkStatusChange={handleBulkStatusChange}
@@ -1343,7 +1343,6 @@ export default function PostsPage() {
         <PostTable
           posts={filteredPosts as any[]}
           permissions={permissionsData}
-          session={session}
           selectedPosts={selectedPosts}
           handleSelectAll={handleSelectAll}
           handleSelectPost={handleSelectPost}
@@ -1360,7 +1359,6 @@ export default function PostsPage() {
         <PostGrid
           posts={filteredPosts as any[]}
           permissions={permissionsData}
-          session={session}
           selectedPosts={selectedPosts}
           handleSelectPost={handleSelectPost}
           handleSelectAll={handleSelectAll}
@@ -1391,7 +1389,6 @@ export default function PostsPage() {
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
         handleConfirmStatusChange={handleConfirmStatusChange}
-        session={session}
         permissions={permissionsData}
         currentPostStatus={postsData?.find((p) => p.id === statusChangeDialog?.postId)?.status as any}
         postTitle={postsData?.find((p) => p.id === statusChangeDialog?.postId)?.title}

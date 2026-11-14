@@ -1606,7 +1606,9 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                     (comment.user?.name === currentUser.name) ||
                     (comment.user?.name === "You");
 
-                  const canModifyComment = isSelf || currentUser.role === "ADMIN" || currentUser.role === "Manager";
+                  // Mirrors app/api/comments/[commentId]: authors, or posts:update / posts:delete.
+                  const canEditComment = isSelf || can("posts", "update");
+                  const canDeleteComment = isSelf || can("posts", "delete");
 
                   return (
                     <div 
@@ -1664,8 +1666,9 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                               </Badge>
                             )}
 
-                            {canModifyComment && editingCommentId !== comment.id && (
+                            {(canEditComment || canDeleteComment) && editingCommentId !== comment.id && (
                               <div className={`flex items-center space-x-1 ${isSelf ? 'mr-auto' : 'ml-auto'}`}>
+                                {canEditComment && (
                                 <button aria-label="Edit comment"
                                   type="button"
                                   onClick={(e) => {
@@ -1679,6 +1682,8 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                                 >
                                   <Edit2 className="h-3 w-3" />
                                 </button>
+                                )}
+                                {canDeleteComment && (
                                 <button aria-label="Delete comment"
                                   type="button"
                                   onClick={(e) => {
@@ -1692,6 +1697,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </button>
+                                )}
                               </div>
                             )}
                           </div>

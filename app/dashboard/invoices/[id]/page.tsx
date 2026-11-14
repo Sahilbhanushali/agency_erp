@@ -4,7 +4,7 @@ import Link from "next/link"
 import { getServerSession } from "next-auth"
 import { ArrowLeft } from "lucide-react"
 import { authOptions } from "@/lib/auth"
-import { hasPermission } from "@/lib/api-auth"
+import { can } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { invoiceDetailSelect, isInvoiceOverdue, paymentSummary, toNumber } from "@/lib/finance"
 import { Button } from "@/components/ui/button"
@@ -19,13 +19,13 @@ export const metadata: Metadata = { title: "Invoice" }
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
-  if (!(await hasPermission(session, "View-invoices"))) return <NoAccess what="invoices" />
+  if (!(await can(session, "invoices", "read"))) return <NoAccess what="invoices" />
 
   const { id } = await params
   const invoice = await prisma.invoice.findUnique({ where: { id }, select: invoiceDetailSelect })
   if (!invoice) notFound()
 
-  const canManage = await hasPermission(session, "Manage-invoices")
+  const canManage = await can(session, "invoices", "update")
   const summary = paymentSummary(invoice.totalAmount, invoice.payments, invoice.status)
   const overdue = isInvoiceOverdue(invoice, summary.balance)
 

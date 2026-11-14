@@ -224,7 +224,7 @@ export default function NewProjectPage() {
         <EmptyState
           icon={ShieldAlert}
           title="Access Restricted"
-          description='You do not have the required permission ("Manage-projects") to create or configure campaigns. Please contact your administrator.'
+          description='You need the Projects → Create permission to create or configure campaigns. Please contact your administrator.'
           actionLabel="Go Back to Dashboard"
           onAction={() => router.push("/dashboard")}
         />

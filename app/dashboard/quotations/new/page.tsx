@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { hasPermission } from "@/lib/api-auth"
+import { can } from "@/lib/api-auth"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ export default async function NewQuotationPage({
   searchParams: Promise<{ companyId?: string; clientId?: string }>
 }) {
   const session = await getServerSession(authOptions)
-  if (!(await hasPermission(session, "Manage-quotations"))) {
+  if (!(await can(session, "quotations", "create"))) {
     return <NoAccess what="creating quotations" />
   }
 

@@ -27,6 +27,7 @@ import TaskStatsGrid from "@/components/tasks/taskStats";
 import ContentWriterTasksPage from "@/components/tasks/ContentWritersTaskPage";
 import StatusTasksView, { StatusFilter } from "@/components/tasks/StatusTasksView";
 import TaskKanbanBoard from "@/components/tasks/TaskKanbanBoard";
+import { usePermissions } from "@/hooks/use-permissions";
 
 enum PostStatus {
   DRAFT = "DRAFT",
@@ -106,7 +107,9 @@ const fetcher = async (url: string) => {
 export default function WorkQueueView() {
   const { data: session, status } = useSession();
   const userRole = session?.user?.role;
-  const isAdmin = userRole ? ['ADMIN', 'MANAGER', 'SOCIAL MEDIA MANAGER', 'TEAM LEAD', 'TEAM_LEAD'].includes(userRole.toUpperCase()) : false;
+  // Same rule /api/work-queue uses to return everyone's work instead of only your own.
+  const { can } = usePermissions();
+  const isAdmin = can("projects", "update");
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectIdFromUrl = searchParams.get("projectId"); // Get projectId from URL
