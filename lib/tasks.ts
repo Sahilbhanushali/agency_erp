@@ -24,7 +24,9 @@ export const taskSelect = {
   clientId: true,
   createdBy: { select: { id: true, name: true } },
   assignees: { select: { id: true, name: true, email: true, avatar: true } },
-  post: { select: { id: true, title: true } },
+  // The post's project too, so a task attached to a post can show which project it is
+  // for (older post tasks carry only a postId).
+  post: { select: { id: true, title: true, project: { select: { id: true, name: true } } } },
   project: { select: { id: true, name: true } },
   client: { select: { id: true, name: true, company: true } },
 } satisfies Prisma.TaskSelect

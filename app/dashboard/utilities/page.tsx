@@ -363,14 +363,14 @@ export default function UtilitiesPage() {
                   <TableRow key={u.id}>
                     <TableCell className="font-medium text-xs text-foreground">{u.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="font-mono text-[10px]">
+                      <Badge variant="outline" className="font-mono text-xs">
                         {u.type}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1 max-w-md">
                         {Array.isArray(u.values) && u.values.map((v, i) => (
-                          <Badge key={i} variant="secondary" className="text-[10px] font-normal">
+                          <Badge key={i} variant="secondary" className="text-xs font-normal">
                             {v}
                           </Badge>
                         ))}
@@ -417,9 +417,9 @@ export default function UtilitiesPage() {
             <p>No users found.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse border border-gray-200">
+              <table className="w-full border-collapse border border-border">
                 <thead>
-                  <tr className="bg-gray-100">
+                  <tr className="bg-muted">
                     <th className="border p-2 text-left">Name</th>
                     <th className="border p-2 text-left">Email</th>
                     <th className="border p-2 text-left">Role</th>
@@ -428,7 +428,7 @@ export default function UtilitiesPage() {
                 </thead>
                 <tbody>
                   {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
+                    <tr key={user.id} className="hover:bg-muted/50">
                       <td className="border p-2">{user.name}</td>
                       <td className="border p-2">{user.email}</td>
                       <td className="border p-2">
@@ -436,7 +436,7 @@ export default function UtilitiesPage() {
                           value={userRoleChanges[user.id] || user.role}
                           onValueChange={(role) => handleUserRoleChange(user.id, role)}
                         >
-                          <SelectTrigger className="w-[180px]">
+                          <SelectTrigger aria-label="Select role" className="w-[180px]">
                             <SelectValue placeholder="Select role" />
                           </SelectTrigger>
                           <SelectContent>

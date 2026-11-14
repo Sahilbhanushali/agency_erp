@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { projectCompanyName, projectLogo } from "@/lib/client-company"
-import { PostStatus, ContentStatus } from "@prisma/client"
+import { PostStatus, ContentStatus, Prisma } from "@prisma/client"
+import { transitionPost, WorkflowError } from "@/lib/posts/workflow"
 import {
   verifyPassword,
   createCustomerSessionToken,
@@ -15,6 +16,29 @@ import { deleteLocalFile } from "@/lib/storage"
 interface RouteParams {
   params: Promise<{ token: string }>
 }
+
+/**
+ * The posts a share link covers: its project, narrowed to the link's own post list or
+ * month when it has one. Every client action is confined to this set — the client's
+ * request body can narrow it further but never widen it.
+ */
+function linkScope(exportLink: { projectId: string | null; postIds: unknown; month: number | null; year: number | null }): Prisma.PostWhereInput {
+  const where: Prisma.PostWhereInput = { projectId: exportLink.projectId ?? "__none__" }
+  const ids = Array.isArray(exportLink.postIds) ? (exportLink.postIds as string[]) : []
+  if (ids.length > 0) return { ...where, id: { in: ids } }
+  if (exportLink.month && exportLink.year) {
+    const start = new Date(Date.UTC(exportLink.year, exportLink.month - 1, 1))
+    const end = new Date(Date.UTC(exportLink.year, exportLink.month, 0, 23, 59, 59, 999))
+    return {
+      ...where,
+      OR: [{ scheduledAt: { gte: start, lte: end } }, { scheduledAt: null, createdAt: { gte: start, lte: end } }],
+    }
+  }
+  return where
+}
+
+/** Posts waiting on THIS client's decision: internally approved, client approval on. */
+const PENDING_CLIENT: Prisma.PostWhereInput = { status: PostStatus.APPROVED, requiresClientApproval: true }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -491,60 +515,46 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "Post ID is required" }, { status: 400 })
       }
 
-      // Verify post belongs to this project and is eligible for customer view
+      // Only a post in this link's scope, and only while it is waiting for the client.
+      // This used to accept any post whose COPY was approved and set it to "client
+      // approved" — promoting unfinished designs and knocking scheduled or published
+      // posts back to approved.
       const post = await prisma.post.findFirst({
-        where: {
-          id: postId,
-          projectId: exportLink.projectId,
-          OR: [
-            { contentStatus: ContentStatus.APPROVED },
-            { status: PostStatus.C_APPROVED },
-          ],
-        },
+        where: { AND: [{ id: postId }, linkScope(exportLink)] },
+        select: { id: true, title: true, status: true, requiresClientApproval: true },
       })
-
       if (!post) {
-        return NextResponse.json(
-          { error: "Post not found or not eligible for customer approval" },
-          { status: 404 }
-        )
+        return NextResponse.json({ error: "Post not found" }, { status: 404 })
       }
-
-      const updatedPost = await prisma.post.update({
-        where: { id: postId },
-        data: {
-          status: PostStatus.C_APPROVED,
-          approvedAt: now,
-        },
-      })
 
       try {
-        await prisma.auditLog.create({
-          data: {
-            action: "CLIENT_APPROVED_POST",
-            entityType: "Post",
-            entityId: postId,
-            oldValues: JSON.stringify({ status: post.status, contentStatus: post.contentStatus }),
-            newValues: JSON.stringify({ status: PostStatus.C_APPROVED, approvedAt: now }),
-            feedback: `Post "${post.title}" approved by ${clientName}`,
-            ipAddress: clientIp,
-            userAgent: userAgent,
-          },
+        const result = await transitionPost({
+          postId,
+          action: "CLIENT_APPROVE",
+          actor: { type: "CLIENT", name: clientName, email: email ? String(email).trim() : null, exportLinkId: exportLink.id },
+          metadata: { exportLinkId: exportLink.id, ipAddress: clientIp },
         })
-      } catch (auditErr) {
-        console.error("Audit log error:", auditErr)
+        return NextResponse.json({
+          success: true,
+          message: `"${post.title}" approved successfully`,
+          post: { id: post.id, status: result.post.status },
+        })
+      } catch (error) {
+        if (error instanceof WorkflowError) {
+          return NextResponse.json(
+            {
+              error:
+                post.status === PostStatus.C_APPROVED
+                  ? "You have already approved this post."
+                  : post.requiresClientApproval
+                    ? "This post is not ready for your approval yet."
+                    : "This post does not need your approval.",
+            },
+            { status: 409 },
+          )
+        }
+        throw error
       }
-
-      return NextResponse.json({
-        success: true,
-        message: `"${post.title}" approved successfully`,
-        post: {
-          id: updatedPost.id,
-          status: updatedPost.status,
-          contentStatus: updatedPost.contentStatus,
-          approvedAt: updatedPost.approvedAt,
-        },
-      })
     }
 
     // ==========================================
@@ -655,21 +665,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
 
       const post = await prisma.post.findFirst({
-        where: {
-          id: postId,
-          projectId: exportLink.projectId,
-          OR: [
-            { contentStatus: ContentStatus.APPROVED },
-            { status: PostStatus.C_APPROVED },
-          ],
-        },
+        where: { AND: [{ id: postId }, linkScope(exportLink)] },
+        select: { id: true, title: true, status: true, requiresClientApproval: true },
       })
 
       if (!post) {
-        return NextResponse.json(
-          { error: "Post not found or not eligible for customer actions" },
-          { status: 404 }
-        )
+        return NextResponse.json({ error: "Post not found" }, { status: 404 })
       }
 
       let audioUrl: string | null = null
@@ -692,14 +693,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           : `🎙️ Audio feedback: [AUDIO:${audioUrl}]`
       }
 
-      // Update real post status to REJECTED
-      const updatedPost = await prisma.post.update({
-        where: { id: postId },
-        data: {
-          status: PostStatus.REJECTED,
-          rejectedAt: now,
-        },
-      })
+      // A change request on a post awaiting the client sends it back for edits through
+      // the workflow. On any other post it is recorded as client feedback (the comment
+      // below) without moving the status — it used to force REJECTED even on scheduled
+      // or published posts.
+      let newStatus: PostStatus = post.status
+      if (post.status === PostStatus.APPROVED && post.requiresClientApproval) {
+        const result = await transitionPost({
+          postId,
+          action: "CLIENT_REQUEST_CHANGES",
+          actor: { type: "CLIENT", name: clientName, email: email ? String(email).trim() : null, exportLinkId: exportLink.id },
+          reason: rawFeedback || "Changes requested (audio feedback)",
+          metadata: { exportLinkId: exportLink.id, ipAddress: clientIp, ...(audioUrl ? { audioUrl } : {}) },
+        })
+        newStatus = result.post.status
+      }
+      const updatedPost = { id: post.id, status: newStatus, rejectedAt: newStatus !== post.status ? now : null }
 
       // Create a real Comment associated with the post
       const comment = await prisma.comment.create({
@@ -806,38 +815,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
       })
 
-      let targetPostWhere: any = {
-        projectId: exportLink.projectId,
-        OR: [
-          { contentStatus: ContentStatus.APPROVED },
-          { status: PostStatus.C_APPROVED },
-        ],
-      }
-
+      // Approve every post in this link's scope that is waiting for the client — each
+      // through the workflow engine, so each gets its own timeline entry. The client's
+      // list can narrow the set but never reach outside the link. Posts that are not
+      // awaiting the client (drafts, scheduled, published) are left exactly as they are.
+      const narrowed: Prisma.PostWhereInput[] = [linkScope(exportLink), PENDING_CLIENT]
       if (Array.isArray(approvedPostIds) && approvedPostIds.length > 0) {
-        targetPostWhere.id = { in: approvedPostIds }
-      } else if (Array.isArray(exportLink.postIds) && exportLink.postIds.length > 0) {
-        targetPostWhere.id = { in: exportLink.postIds as string[] }
-      } else if (exportLink.month && exportLink.year) {
-        const startOfMonth = new Date(Date.UTC(exportLink.year, exportLink.month - 1, 1))
-        const endOfMonth = new Date(Date.UTC(exportLink.year, exportLink.month, 0, 23, 59, 59, 999))
-        targetPostWhere.AND = [
-          {
-            OR: [
-              { scheduledAt: { gte: startOfMonth, lte: endOfMonth } },
-              { scheduledAt: null, createdAt: { gte: startOfMonth, lte: endOfMonth } },
-            ],
-          },
-        ]
+        narrowed.push({ id: { in: approvedPostIds.filter((id: unknown): id is string => typeof id === "string") } })
       }
-
-      await prisma.post.updateMany({
-        where: targetPostWhere,
-        data: {
-          status: PostStatus.C_APPROVED,
-          approvedAt: now,
-        },
-      })
+      const pending = await prisma.post.findMany({ where: { AND: narrowed }, select: { id: true }, take: 500 })
+      let approvedCount = 0
+      for (const { id } of pending) {
+        try {
+          await transitionPost({
+            postId: id,
+            action: "CLIENT_APPROVE",
+            actor: { type: "CLIENT", name: clientName, email: email ? String(email).trim() : null, exportLinkId: exportLink.id },
+            reason: feedback ? String(feedback).trim() : null,
+            metadata: { exportLinkId: exportLink.id, ipAddress: clientIp, batch: true },
+          })
+          approvedCount++
+        } catch (error) {
+          // Moved by someone else meanwhile — skip it rather than fail the whole batch.
+          if (!(error instanceof WorkflowError)) throw error
+        }
+      }
 
       try {
         await prisma.auditLog.create({
@@ -863,7 +865,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       return NextResponse.json({
         success: true,
-        message: "All posts confirmed and approved successfully!",
+        message:
+          approvedCount > 0
+            ? `${approvedCount} post${approvedCount === 1 ? "" : "s"} approved. Thank you!`
+            : "Thank you — your confirmation has been recorded.",
+        approvedCount,
         confirmedAt: now,
         confirmedByName: updatedLink.confirmedByName,
       })

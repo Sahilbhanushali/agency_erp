@@ -260,6 +260,8 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
     festivalId: postData.festivalId,
     customData: postData.customData,
     writeUp: postData.writeUp,
+    requiresClientApproval: Boolean((postData as any).requiresClientApproval),
+    version: (postData as any).version as number | undefined,
   };
 
   // Extract reference assets

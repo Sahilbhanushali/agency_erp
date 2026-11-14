@@ -1,11 +1,13 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useEffect, useRef, useState } from "react"
 import useSWR from "swr"
 import { Bell, BellOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 interface Note {
   id: string | number
@@ -90,10 +92,12 @@ export default function DesktopNotifications() {
       variant="ghost"
       size="sm"
       className="text-xs"
+      aria-label={permission === "denied" ? "Desktop alerts are blocked in this browser" : "Enable desktop alerts"}
       onClick={async () => setPermission(await Notification.requestPermission())}
     >
-      <BellOff className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-      {permission === "denied" ? "Alerts blocked" : "Enable alerts"}
+      <BellOff className="h-3.5 w-3.5 sm:mr-1.5" aria-hidden="true" />
+      {/* Icon-only on phones: the label pushed the fixed top bar past the screen edge. */}
+      <span className="hidden sm:inline">{permission === "denied" ? "Alerts blocked" : "Enable alerts"}</span>
     </Button>
   )
 }

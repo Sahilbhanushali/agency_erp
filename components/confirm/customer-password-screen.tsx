@@ -151,7 +151,7 @@ export function CustomerPasswordScreen({
                   Password
                 </label>
                 <div className="relative">
-                  <Input
+                  <Input aria-label="Password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => {
@@ -188,7 +188,7 @@ export function CustomerPasswordScreen({
             </form>
           )}
 
-          <div className="pt-2 text-center text-[11px] text-slate-400 flex items-center justify-center gap-1">
+          <div className="pt-2 text-center text-xs text-slate-400 flex items-center justify-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5" /> End-to-end encrypted approval link
           </div>
         </CardContent>

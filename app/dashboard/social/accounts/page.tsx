@@ -165,7 +165,7 @@ export default function SocialAccountsPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Social Accounts</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Social Accounts</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Instagram professional accounts this agency is authorised to publish to.
           </p>
@@ -178,7 +178,7 @@ export default function SocialAccountsPage() {
         </div>
 
         {canConnect && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={connectFor} onValueChange={setConnectFor}>
               <SelectTrigger className="w-56 h-9" aria-label="Account belongs to">
                 <SelectValue />

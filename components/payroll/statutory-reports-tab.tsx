@@ -91,7 +91,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
             <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Payroll Period:</span>
             <Select value={selectedRunId} onValueChange={setSelectedRunId}>
-              <SelectTrigger className="w-full sm:w-56 h-9 text-xs">
+              <SelectTrigger aria-label="Select period" className="w-full sm:w-56 h-9 text-xs">
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
               <SelectContent>
@@ -112,7 +112,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
         <Card className="border border-border/70 shadow-2xs hover:border-border transition-colors">
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-[10px] font-mono">
+              <Badge variant="outline" className="text-xs font-mono">
                 HR / AUDIT
               </Badge>
               <FileText className="size-4 text-primary" />
@@ -126,7 +126,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
           </CardHeader>
           <CardContent className="p-4 pt-2">
             <div className="pt-3 border-t border-border/40 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-muted-foreground">{periodLabel}</span>
+              <span className="text-xs font-mono text-muted-foreground">{periodLabel}</span>
               <a href={`/api/payroll/runs/${selectedRunId}/export/register-csv`} download>
                 <Button size="xs" variant="outline" className="gap-1.5 text-xs">
                   <Download className="size-3.5" />
@@ -141,7 +141,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
         <Card className="border border-border/70 shadow-2xs hover:border-border transition-colors">
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-[10px] font-mono text-blue-600">
+              <Badge variant="outline" className="text-xs font-mono text-blue-600">
                 EPFO COMPLIANT
               </Badge>
               <ShieldCheck className="size-4 text-blue-600" />
@@ -155,7 +155,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
           </CardHeader>
           <CardContent className="p-4 pt-2">
             <div className="pt-3 border-t border-border/40 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-muted-foreground">{periodLabel}</span>
+              <span className="text-xs font-mono text-muted-foreground">{periodLabel}</span>
               <a href={`/api/payroll/runs/${selectedRunId}/export/reports?type=pf-ecr`} download>
                 <Button size="xs" variant="outline" className="gap-1.5 text-xs text-blue-600">
                   <Download className="size-3.5" />
@@ -170,7 +170,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
         <Card className="border border-border/70 shadow-2xs hover:border-border transition-colors">
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-[10px] font-mono text-emerald-600">
+              <Badge variant="outline" className="text-xs font-mono text-emerald-600">
                 ESIC COMPLIANT
               </Badge>
               <Receipt className="size-4 text-emerald-600" />
@@ -184,7 +184,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
           </CardHeader>
           <CardContent className="p-4 pt-2">
             <div className="pt-3 border-t border-border/40 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-muted-foreground">{periodLabel}</span>
+              <span className="text-xs font-mono text-muted-foreground">{periodLabel}</span>
               <a href={`/api/payroll/runs/${selectedRunId}/export/reports?type=esi-return`} download>
                 <Button size="xs" variant="outline" className="gap-1.5 text-xs text-emerald-600">
                   <Download className="size-3.5" />
@@ -199,7 +199,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
         <Card className="border border-border/70 shadow-2xs hover:border-border transition-colors">
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-[10px] font-mono">
+              <Badge variant="outline" className="text-xs font-mono">
                 STATE TAX
               </Badge>
               <Building className="size-4 text-foreground" />
@@ -213,7 +213,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
           </CardHeader>
           <CardContent className="p-4 pt-2">
             <div className="pt-3 border-t border-border/40 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-muted-foreground">{periodLabel}</span>
+              <span className="text-xs font-mono text-muted-foreground">{periodLabel}</span>
               <a href={`/api/payroll/runs/${selectedRunId}/export/reports?type=pt-summary`} download>
                 <Button size="xs" variant="outline" className="gap-1.5 text-xs">
                   <Download className="size-3.5" />
@@ -228,7 +228,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
         <Card className="border border-border/70 shadow-2xs hover:border-border transition-colors">
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-[10px] font-mono text-purple-600">
+              <Badge variant="outline" className="text-xs font-mono text-purple-600">
                 INCOME TAX (SEC 192)
               </Badge>
               <TrendingUp className="size-4 text-purple-600" />
@@ -242,7 +242,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
           </CardHeader>
           <CardContent className="p-4 pt-2">
             <div className="pt-3 border-t border-border/40 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-muted-foreground">{periodLabel}</span>
+              <span className="text-xs font-mono text-muted-foreground">{periodLabel}</span>
               <a href={`/api/payroll/runs/${selectedRunId}/export/reports?type=tds-24q`} download>
                 <Button size="xs" variant="outline" className="gap-1.5 text-xs text-purple-600">
                   <Download className="size-3.5" />
@@ -257,7 +257,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
         <Card className="border border-border/70 shadow-2xs hover:border-border transition-colors">
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-[10px] font-mono">
+              <Badge variant="outline" className="text-xs font-mono">
                 MANAGEMENT / COST
               </Badge>
               <Layers className="size-4 text-foreground" />
@@ -271,7 +271,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
           </CardHeader>
           <CardContent className="p-4 pt-2">
             <div className="pt-3 border-t border-border/40 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-muted-foreground">{periodLabel}</span>
+              <span className="text-xs font-mono text-muted-foreground">{periodLabel}</span>
               <a href={`/api/payroll/runs/${selectedRunId}/export/reports?type=ctc-dept`} download>
                 <Button size="xs" variant="outline" className="gap-1.5 text-xs">
                   <Download className="size-3.5" />
@@ -289,7 +289,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px] font-mono text-emerald-600 border-emerald-500/20 bg-emerald-500/10">
+                <Badge variant="outline" className="text-xs font-mono text-emerald-600 border-emerald-500/20 bg-emerald-500/10">
                   DOUBLE-ENTRY BALANCED (DR = CR)
                 </Badge>
               </div>
@@ -310,7 +310,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 text-xs">
-                <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">Accounting Systems</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs uppercase text-muted-foreground">Accounting Systems</DropdownMenuLabel>
                 <DropdownMenuItem asChild>
                   <a href={`/api/payroll/runs/${selectedRunId}/export/journal-entry?format=standard`} download className="cursor-pointer">
                     Standard Journal Entry (CSV)
@@ -336,7 +336,7 @@ export default function StatutoryReportsTab({ runs }: StatutoryReportsTabProps) 
               <ShieldCheck className="size-4 text-emerald-600" />
               Automated Ledger Mapping Schema:
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-muted-foreground font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-muted-foreground font-mono">
               <div className="p-2 rounded bg-card border border-border/40">
                 <span className="font-bold text-foreground block mb-0.5">Debit Accounts (Expenses):</span>
                 • Salaries & Wages Expense Dr (Gross)<br />

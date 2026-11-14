@@ -1,3 +1,6 @@
+import { transitionPost } from "@/lib/posts/workflow"
+import { isSchedulable, stageOf, type WorkflowStatus } from "@/lib/posts/workflow-rules"
+import { isSocialPublishable } from "@/lib/posts/content-types"
 import { randomUUID } from "node:crypto"
 import type { InstagramPublishJob, PublishJobStatus } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -76,6 +79,7 @@ export async function enqueuePost({ postId, socialAccountId, scheduledFor, userI
         type: true,
         caption: true,
         status: true,
+        requiresClientApproval: true,
         scheduledAt: true,
         assets: { select: { url: true, type: true }, orderBy: { order: "asc" } },
       },
@@ -94,6 +98,21 @@ export async function enqueuePost({ postId, socialAccountId, scheduledFor, userI
   if (account.status !== "CONNECTED") {
     throw new MediaRuleError(
       `@${account.username} needs to be reconnected before anything can be published to it.`,
+      409,
+    )
+  }
+
+  // Nothing reaches a platform before every required approval is in. This used to queue
+  // any post at all — a draft, or one still waiting for its client.
+  if (!isSocialPublishable(post.type)) {
+    throw new MediaRuleError("Presentations are internal deliverables and are not published to Instagram.")
+  }
+  const state = { status: post.status as WorkflowStatus, requiresClientApproval: post.requiresClientApproval }
+  if (post.status !== "SCHEDULED" && !isSchedulable(state)) {
+    throw new MediaRuleError(
+      stageOf(state) === "PENDING_CLIENT"
+        ? "This post is waiting for client approval and cannot be published yet."
+        : "Only approved posts can be published.",
       409,
     )
   }
@@ -260,15 +279,28 @@ async function markPublished(job: InstagramPublishJob, mediaId: string, permalin
         lastError: null,
       },
     }),
-    prisma.post.update({
-      where: { id: job.postId },
-      data: { status: "POSTED", postedAt: new Date() },
-    }),
     prisma.postPlatform.updateMany({
       where: { postId: job.postId, platform: "INSTAGRAM" },
       data: { isPosted: true },
     }),
   ])
+
+  // The post's status moves through the workflow engine (timeline + notifications),
+  // as a SYSTEM actor: this is the verified publishing result.
+  try {
+    await transitionPost({
+      postId: job.postId,
+      action: "PUBLISH",
+      actor: { type: "SYSTEM", name: "Instagram" },
+      reason: "Published to Instagram",
+      metadata: { source: "instagram", jobId: job.id, mediaId, ...(permalink ? { permalink } : {}) },
+    })
+  } catch (error) {
+    // The media IS live on Instagram; the job row above already records that. If the
+    // post was moved meanwhile (e.g. edited back into review) say so loudly rather
+    // than overwrite the newer workflow state.
+    console.error(`[instagram] published job ${job.id}, but post ${job.postId} could not be marked published:`, error)
+  }
 
   await logAuditAction({
     userId: String(job.createdById ?? "system"),

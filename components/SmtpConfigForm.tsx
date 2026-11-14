@@ -206,11 +206,11 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
       <form onSubmit={handleSubmit} className="space-y-4 pt-2">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="min-w-0">
-            <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="userId" className="block text-sm font-medium text-foreground mb-1">
               User *
             </label>
             <Select value={formData.userId?.toString() || ''} onValueChange={handleUserChange} required>
-              <SelectTrigger className="w-full">
+              <SelectTrigger aria-label="Select a user" className="w-full">
                 <SelectValue placeholder="Select a user" />
               </SelectTrigger>
               <SelectContent>
@@ -224,7 +224,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
           </div>
 
           <div className="min-w-0">
-            <label htmlFor="host" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="host" className="block text-sm font-medium text-foreground mb-1">
               SMTP Host *
             </label>
             <input
@@ -234,7 +234,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
               value={formData.host}
               onChange={handleInputChange}
               placeholder="smtp.gmail.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
@@ -242,7 +242,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
 
         <div className="grid grid-cols-2 gap-4">
           <div className="min-w-0">
-            <label htmlFor="port" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="port" className="block text-sm font-medium text-foreground mb-1">
               Port *
             </label>
             <input
@@ -251,13 +251,13 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
               name="port"
               value={formData.port}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
 
           <div className="min-w-0">
-            <label htmlFor="encryption" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="encryption" className="block text-sm font-medium text-foreground mb-1">
               Encryption *
             </label>
             <select
@@ -273,7 +273,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
                   port: commonPorts[e.target.value as keyof typeof commonPorts],
                 }));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
               <option value="TLS">TLS</option>
@@ -285,7 +285,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="min-w-0">
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">
               Username/Email *
             </label>
             <input
@@ -295,13 +295,13 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
               value={formData.username}
               onChange={handleInputChange}
               placeholder="your-email@example.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
 
           <div className="min-w-0">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
               Password {hasExistingConfig ? '(leave empty to keep current)' : '*'}
             </label>
 
@@ -313,7 +313,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder={hasExistingConfig && !isViewingPassword ? "••••••••" : "Enter password"}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 pr-10 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required={!hasExistingConfig}
               />
 
@@ -323,7 +323,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded focus:outline-none"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff className="w-5 h-5 text-gray-500" /> : <Eye className="w-5 h-5 text-gray-500" />}
+                {showPassword ? <EyeOff className="w-5 h-5 text-muted-foreground" /> : <Eye className="w-5 h-5 text-muted-foreground" />}
               </button>
             </div>
             
@@ -348,7 +348,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
             type="button"
             onClick={handleTestConnection}
             disabled={testing || !formData.host || !formData.username || !formData.password || !formData.userId}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-border text-foreground rounded-md hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FlaskConical className="w-4 h-4" />
             {testing ? 'Testing...' : 'Test Connection'}
@@ -376,9 +376,9 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
         </div>
       </form>
 
-      {/* <div className="mt-6 p-3 bg-gray-50 rounded-md">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">Common SMTP Settings:</h3>
-        <div className="text-xs text-gray-600 space-y-1">
+      {/* <div className="mt-6 p-3 bg-muted/50 rounded-md">
+        <h3 className="text-sm font-medium text-foreground mb-2">Common SMTP Settings:</h3>
+        <div className="text-xs text-muted-foreground space-y-1">
           <div>
             <strong>Gmail:</strong> smtp.gmail.com, Port 587 (TLS)
           </div>

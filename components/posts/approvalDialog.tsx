@@ -88,7 +88,7 @@ export default function ApprovalDialog({
                     <label className="text-sm font-medium">
                       {approvalDialog.action === "approve" ? "Approval notes (optional)" : "Change reason (Compulsory)"}
                     </label>
-                    <Textarea
+                    <Textarea aria-label={approvalDialog.action === "approve" ? "Approval notes" : "Reason for changes"}
                       value={actionComment}
                       onChange={(e) => setActionComment(e.target.value)}
                       placeholder={

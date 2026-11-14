@@ -634,7 +634,7 @@ export function HrmsTemplateEditor() {
               }
             }}
           >
-            <SelectTrigger className="h-8 text-xs w-[240px]">
+            <SelectTrigger aria-label="Select template" className="h-8 text-xs w-[240px]">
               <SelectValue placeholder="Select template" />
             </SelectTrigger>
             <SelectContent>
@@ -718,7 +718,7 @@ export function HrmsTemplateEditor() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="space-y-1 md:col-span-2">
               <Label className="text-xs">Template Name *</Label>
-              <Input
+              <Input aria-label="Template Name"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -738,7 +738,7 @@ export function HrmsTemplateEditor() {
                   setHasUnsavedChanges(true);
                 }}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label="Category" className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -759,7 +759,7 @@ export function HrmsTemplateEditor() {
                   setHasUnsavedChanges(true);
                 }}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label="Branded Letterhead" className="h-8 text-xs">
                   <SelectValue placeholder="Select letterhead" />
                 </SelectTrigger>
                 <SelectContent>
@@ -784,7 +784,7 @@ export function HrmsTemplateEditor() {
             <Card className="border-border/60 shadow-xs">
               <CardContent className="p-2 space-y-2">
                 <div className="flex flex-wrap items-center gap-1 border-b border-border/40 pb-1.5">
-                  <Button
+                  <Button aria-label="Bold"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "bold")}
@@ -792,7 +792,7 @@ export function HrmsTemplateEditor() {
                   >
                     <Bold className="size-3.5" />
                   </Button>
-                  <Button
+                  <Button aria-label="Italic"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "italic")}
@@ -800,7 +800,7 @@ export function HrmsTemplateEditor() {
                   >
                     <Italic className="size-3.5" />
                   </Button>
-                  <Button
+                  <Button aria-label="Underline"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "underline")}
@@ -811,7 +811,7 @@ export function HrmsTemplateEditor() {
 
                   <span className="w-px h-4 bg-border/60 mx-1" />
 
-                  <Button
+                  <Button aria-label="Align Left"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "justifyLeft")}
@@ -819,7 +819,7 @@ export function HrmsTemplateEditor() {
                   >
                     <AlignLeft className="size-3.5" />
                   </Button>
-                  <Button
+                  <Button aria-label="Align Center"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "justifyCenter")}
@@ -827,7 +827,7 @@ export function HrmsTemplateEditor() {
                   >
                     <AlignCenter className="size-3.5" />
                   </Button>
-                  <Button
+                  <Button aria-label="Align Right"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "justifyRight")}
@@ -838,7 +838,7 @@ export function HrmsTemplateEditor() {
 
                   <span className="w-px h-4 bg-border/60 mx-1" />
 
-                  <Button
+                  <Button aria-label="Bullet List"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "insertUnorderedList")}
@@ -846,7 +846,7 @@ export function HrmsTemplateEditor() {
                   >
                     <List className="size-3.5" />
                   </Button>
-                  <Button
+                  <Button aria-label="Numbered List"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "insertOrderedList")}
@@ -857,7 +857,7 @@ export function HrmsTemplateEditor() {
 
                   <span className="w-px h-4 bg-border/60 mx-1" />
 
-                  <Button
+                  <Button aria-label="Heading 2"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "formatBlock", "h2")}
@@ -865,7 +865,7 @@ export function HrmsTemplateEditor() {
                   >
                     <Heading2 className="size-3.5" />
                   </Button>
-                  <Button
+                  <Button aria-label="Heading 3"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "formatBlock", "h3")}
@@ -884,7 +884,7 @@ export function HrmsTemplateEditor() {
 
                   <span className="w-px h-4 bg-border/60 mx-1" />
 
-                  <Button
+                  <Button aria-label="Undo"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "undo")}
@@ -892,7 +892,7 @@ export function HrmsTemplateEditor() {
                   >
                     <Undo className="size-3.5" />
                   </Button>
-                  <Button
+                  <Button aria-label="Redo"
                     variant="ghost"
                     size="icon-xs"
                     onMouseDown={(e) => handleToolbarMouseDown(e, "redo")}
@@ -920,7 +920,7 @@ export function HrmsTemplateEditor() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-80 max-h-96 overflow-y-auto">
                         <div className="p-2 space-y-2">
-                          <Input
+                          <Input aria-label="Filter placeholders"
                             placeholder="Filter placeholders..."
                             value={placeholderSearch}
                             onChange={(e) => setPlaceholderSearch(e.target.value)}
@@ -932,7 +932,7 @@ export function HrmsTemplateEditor() {
                                 key={cat}
                                 type="button"
                                 onClick={() => setSelectedPlaceholderCategory(cat)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                                className={`px-1.5 py-0.5 rounded text-xs font-medium transition-colors ${
                                   selectedPlaceholderCategory === cat
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -951,7 +951,7 @@ export function HrmsTemplateEditor() {
                             className="flex flex-col items-start gap-0.5 cursor-pointer py-1.5"
                           >
                             <span className="text-xs font-mono font-bold text-primary">{p.token}</span>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               {p.label} • <em className="text-foreground/70">{p.exampleValue}</em>
                             </span>
                           </DropdownMenuItem>
@@ -1031,7 +1031,7 @@ export function HrmsTemplateEditor() {
                     value={selectedCandidateId}
                     onValueChange={setSelectedCandidateId}
                   >
-                    <SelectTrigger className="h-7 text-xs w-[200px]">
+                    <SelectTrigger aria-label="Preview Candidate" className="h-7 text-xs w-[200px]">
                       <SelectValue placeholder="Preview Candidate" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1048,7 +1048,7 @@ export function HrmsTemplateEditor() {
                 <div className="flex items-center gap-2">
                   {/* Zoom controls */}
                   <div className="flex items-center rounded-md border border-border/60 p-0.5 bg-muted/20">
-                    <Button
+                    <Button aria-label="Zoom Out"
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => setZoomLevel((z) => Math.max(60, z - 10))}
@@ -1056,8 +1056,8 @@ export function HrmsTemplateEditor() {
                     >
                       <ZoomOut className="size-3" />
                     </Button>
-                    <span className="text-[10px] font-mono px-1 font-semibold">{zoomLevel}%</span>
-                    <Button
+                    <span className="text-xs font-mono px-1 font-semibold">{zoomLevel}%</span>
+                    <Button aria-label="Zoom In"
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => setZoomLevel((z) => Math.min(130, z + 10))}
@@ -1106,11 +1106,11 @@ export function HrmsTemplateEditor() {
                         <h2 className="text-lg font-black tracking-tight text-blue-700">
                           {selectedLetterhead?.companyName || "ITS ME DEZINO"}
                         </h2>
-                        <p className="text-[10px] text-slate-500 font-semibold tracking-wide">
+                        <p className="text-xs text-slate-500 font-semibold tracking-wide">
                           DIGITAL TECHNOLOGIES & CREATIVE SOLUTIONS
                         </p>
                       </div>
-                      <div className="text-right text-[10px] text-slate-500 leading-tight">
+                      <div className="text-right text-xs text-slate-500 leading-tight">
                         <div>Level 4, Dezino Tower, Cyber City</div>
                         <div>Gurugram, Haryana 122002</div>
                         <div>careers@itsmedezino.com</div>
@@ -1132,7 +1132,7 @@ export function HrmsTemplateEditor() {
                     className="mt-8"
                   />
                 ) : (
-                  <div className="mt-8 border-t border-slate-200 pt-3 flex justify-between text-[10px] text-slate-400">
+                  <div className="mt-8 border-t border-slate-200 pt-3 flex justify-between text-xs text-slate-400">
                     <span>Confidential — Employment Document</span>
                     <span>www.itsmedezino.com</span>
                   </div>
@@ -1174,11 +1174,11 @@ export function HrmsTemplateEditor() {
                       <span className="font-bold text-xs text-foreground">{block.name}</span>
                       <Badge
                         variant={isPresent ? "default" : "outline"}
-                        className={`text-[10px] py-0 px-1.5 ${isPresent ? "bg-emerald-600 text-white" : ""}`}
+                        className={`text-xs py-0 px-1.5 ${isPresent ? "bg-emerald-600 text-white" : ""}`}
                       >
                         {isPresent ? "Included in Template" : "Not Included"}
                       </Badge>
-                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                         {block.category}
                       </span>
                     </div>

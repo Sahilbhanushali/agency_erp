@@ -14,7 +14,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             <LayoutDashboard className="size-5" />
           </div>
           <div className="space-y-0.5">
-            <h1 className="text-xl font-bold tracking-tight text-foreground">itsmeDezino</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">itsmeDezino</h1>
             <p className="text-xs text-muted-foreground font-medium">Agency Workspace Platform</p>
           </div>
         </div>

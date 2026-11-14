@@ -1,5 +1,6 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import toast from "react-hot-toast"
@@ -44,7 +45,8 @@ import {
   type TaskStatus,
 } from "@/types/task"
 
-const fetcher = (url: string) => fetch(url).then((response) => response.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 interface TaskFormProps {
   open: boolean

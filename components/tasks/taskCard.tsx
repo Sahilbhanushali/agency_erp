@@ -509,7 +509,7 @@ export default function TaskCard({
               <span>Created At : {task.createdAt ? formatDate(task.createdAt) : ""}</span>
             </div>
             {/* {task.assignedTo && (
-              <div className="text-xs text-gray-500 truncate">Assigned: {task.assignedTo.name}</div>
+              <div className="text-xs text-muted-foreground truncate">Assigned: {task.assignedTo.name}</div>
             )} */}
             {(task.priority || showAll) && task.priority && (
               <div className="text-xs text-muted-foreground">
@@ -526,7 +526,7 @@ export default function TaskCard({
               </div>
             )}
             {/* {task.scheduledAt && (
-              <div className={`text-xs ${isRejected ? "text-red-500" : "text-gray-500"}`}>
+              <div className={`text-xs ${isRejected ? "text-red-500" : "text-muted-foreground"}`}>
                 <span className="font-medium">Post Date: </span>
                 {formatDate(task.scheduledAt)}
               </div>

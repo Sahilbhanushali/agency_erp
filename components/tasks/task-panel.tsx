@@ -1,5 +1,6 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useState } from "react"
 import useSWR from "swr"
 import toast from "react-hot-toast"
@@ -29,7 +30,8 @@ import { Assignees, DueDate, PriorityBadge } from "@/components/tasks/task-chrom
 import { usePermissions } from "@/hooks/use-permissions"
 import { TASK_STATUS_LABELS, type Task, type TaskLink } from "@/types/task"
 
-const fetcher = (url: string) => fetch(url).then((response) => response.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 /**
  * The task list for one record — drop it on a post, project or client page and it shows
@@ -236,7 +238,7 @@ export default function TaskPanel({
                     <span className="mt-1 flex flex-wrap items-center gap-1.5">
                       {!done && <PriorityBadge priority={task.priority} />}
                       {task.status !== "TODO" && !done && (
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {TASK_STATUS_LABELS[task.status]}
                         </span>
                       )}

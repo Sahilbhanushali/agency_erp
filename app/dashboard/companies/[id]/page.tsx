@@ -1,5 +1,6 @@
 "use client";
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
 import Link from "next/link";
@@ -60,7 +61,8 @@ interface CompanyDetails extends Company {
   }>;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 export default function CompanyDetailPage() {
   const params = useParams();
@@ -138,7 +140,7 @@ export default function CompanyDetailPage() {
             <Badge variant={company.isActive ? "success" : "neutral"} dot className="text-xs">
               {company.isActive ? "Active Issuer" : "Inactive"}
             </Badge>
-            <Badge variant="outline" className="font-mono text-[10px]">
+            <Badge variant="outline" className="font-mono text-xs">
               {company.currency || "INR"}
             </Badge>
           </div>
@@ -164,7 +166,7 @@ export default function CompanyDetailPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Quotations</span>
+            <span className="text-xs font-medium uppercase tracking-wider">Quotations</span>
             <FileText className="size-4" />
           </div>
           <p className="mt-2 text-2xl font-bold tracking-tight text-foreground tabular-nums">
@@ -174,7 +176,7 @@ export default function CompanyDetailPage() {
 
         <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Tax Invoices</span>
+            <span className="text-xs font-medium uppercase tracking-wider">Tax Invoices</span>
             <Receipt className="size-4" />
           </div>
           <p className="mt-2 text-2xl font-bold tracking-tight text-foreground tabular-nums">
@@ -184,7 +186,7 @@ export default function CompanyDetailPage() {
 
         <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[11px] font-medium uppercase tracking-wider">GSTIN Registered</span>
+            <span className="text-xs font-medium uppercase tracking-wider">GSTIN Registered</span>
             <ShieldCheck className="size-4" />
           </div>
           <p className="mt-2 text-sm font-semibold tracking-tight text-foreground font-mono truncate">
@@ -194,7 +196,7 @@ export default function CompanyDetailPage() {
 
         <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Bank Wire</span>
+            <span className="text-xs font-medium uppercase tracking-wider">Bank Wire</span>
             <Landmark className="size-4" />
           </div>
           <p className="mt-2 text-sm font-semibold tracking-tight text-foreground truncate">
@@ -221,7 +223,7 @@ export default function CompanyDetailPage() {
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-muted-foreground">GSTIN</span>
+                  <span className="text-xs font-medium text-muted-foreground">GSTIN</span>
                   {company.gstNumber && (
                     <button
                       onClick={() => copyToClipboard(company.gstNumber!, "GSTIN")}
@@ -239,7 +241,7 @@ export default function CompanyDetailPage() {
 
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-muted-foreground">PAN Number</span>
+                  <span className="text-xs font-medium text-muted-foreground">PAN Number</span>
                   {company.panNumber && (
                     <button
                       onClick={() => copyToClipboard(company.panNumber!, "PAN")}
@@ -256,14 +258,14 @@ export default function CompanyDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                <span className="text-[11px] font-medium text-muted-foreground">HSN / SAC Code</span>
+                <span className="text-xs font-medium text-muted-foreground">HSN / SAC Code</span>
                 <p className="mt-1 font-mono text-xs font-semibold text-foreground">
                   {company.hsnNumber || "—"}
                 </p>
               </div>
 
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                <span className="text-[11px] font-medium text-muted-foreground">Default Currency</span>
+                <span className="text-xs font-medium text-muted-foreground">Default Currency</span>
                 <p className="mt-1 font-mono text-xs font-semibold text-foreground">
                   {company.currency || "INR"}
                 </p>
@@ -285,16 +287,16 @@ export default function CompanyDetailPage() {
             <CardContent className="space-y-3 pt-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <span className="text-[11px] font-medium text-muted-foreground">Bank Name</span>
+                  <span className="text-xs font-medium text-muted-foreground">Bank Name</span>
                   <p className="text-xs font-semibold text-foreground mt-0.5">{company.bankName || "—"}</p>
                 </div>
                 <div>
-                  <span className="text-[11px] font-medium text-muted-foreground">Account Holder</span>
+                  <span className="text-xs font-medium text-muted-foreground">Account Holder</span>
                   <p className="text-xs font-semibold text-foreground mt-0.5">{company.bankAccountName || "—"}</p>
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-muted-foreground">Account Number</span>
+                    <span className="text-xs font-medium text-muted-foreground">Account Number</span>
                     {company.bankAccountNumber && (
                       <button
                         onClick={() => copyToClipboard(company.bankAccountNumber!, "Account No")}
@@ -310,7 +312,7 @@ export default function CompanyDetailPage() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-muted-foreground">IFSC / SWIFT Code</span>
+                    <span className="text-xs font-medium text-muted-foreground">IFSC / SWIFT Code</span>
                     {company.bankIfsc && (
                       <button
                         onClick={() => copyToClipboard(company.bankIfsc!, "IFSC")}
@@ -326,7 +328,7 @@ export default function CompanyDetailPage() {
                 </div>
                 {company.bankBranch && (
                   <div className="sm:col-span-2">
-                    <span className="text-[11px] font-medium text-muted-foreground">Branch Location</span>
+                    <span className="text-xs font-medium text-muted-foreground">Branch Location</span>
                     <p className="text-xs text-foreground mt-0.5">{company.bankBranch}</p>
                   </div>
                 )}
@@ -344,7 +346,7 @@ export default function CompanyDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4 pt-1">
               <div>
-                <span className="text-[11px] font-medium text-muted-foreground">Physical Address</span>
+                <span className="text-xs font-medium text-muted-foreground">Physical Address</span>
                 <p className="text-xs text-foreground mt-1 whitespace-pre-line leading-relaxed">
                   {[
                     company.addressLine1,
@@ -361,7 +363,7 @@ export default function CompanyDetailPage() {
                 <div className="flex items-center gap-2">
                   <Mail className="size-3.5 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground">Email</p>
+                    <p className="text-xs text-muted-foreground">Email</p>
                     <p className="text-xs font-medium text-foreground truncate">{company.email || "—"}</p>
                   </div>
                 </div>
@@ -369,7 +371,7 @@ export default function CompanyDetailPage() {
                 <div className="flex items-center gap-2">
                   <Phone className="size-3.5 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground">Phone</p>
+                    <p className="text-xs text-muted-foreground">Phone</p>
                     <p className="text-xs font-medium text-foreground truncate">{company.phone || "—"}</p>
                   </div>
                 </div>
@@ -377,7 +379,7 @@ export default function CompanyDetailPage() {
                 <div className="flex items-center gap-2">
                   <Globe className="size-3.5 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground">Website</p>
+                    <p className="text-xs text-muted-foreground">Website</p>
                     {company.website ? (
                       <a
                         href={company.website.startsWith("http") ? company.website : `https://${company.website}`}
@@ -407,7 +409,7 @@ export default function CompanyDetailPage() {
                   <FileCheck2 className="size-4 text-muted-foreground" />
                   <CardTitle className="text-sm font-semibold">Document Template Preview</CardTitle>
                 </div>
-                <Badge variant="outline" className="text-[10px] font-mono">
+                <Badge variant="outline" className="text-xs font-mono">
                   Live Header Layout
                 </Badge>
               </div>
@@ -418,7 +420,7 @@ export default function CompanyDetailPage() {
 
             <CardContent className="p-4 space-y-4">
               {/* Document Mockup Canvas */}
-              <div className="rounded-lg border border-border/80 bg-background shadow-xs overflow-hidden text-[11px]">
+              <div className="rounded-lg border border-border/80 bg-background shadow-xs overflow-hidden text-xs">
                 {/* Letterhead Top Banner */}
                 {letterheadUrl ? (
                   <div className="w-full bg-muted/40 border-b border-border/60 overflow-hidden">
@@ -452,9 +454,9 @@ export default function CompanyDetailPage() {
                       <div>
                         <h4 className="font-bold text-foreground text-xs">{company.name}</h4>
                         {company.legalName && (
-                          <p className="text-[10px] text-muted-foreground">{company.legalName}</p>
+                          <p className="text-xs text-muted-foreground">{company.legalName}</p>
                         )}
-                        <p className="text-[9px] text-muted-foreground font-mono mt-0.5">
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">
                           GST: {company.gstNumber || "PENDING"} • PAN: {company.panNumber || "PENDING"}
                         </p>
                       </div>
@@ -464,12 +466,12 @@ export default function CompanyDetailPage() {
                       <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
                         TAX INVOICE
                       </span>
-                      <p className="font-mono text-[10px] text-muted-foreground">#INV-SAMPLE</p>
+                      <p className="font-mono text-xs text-muted-foreground">#INV-SAMPLE</p>
                     </div>
                   </div>
 
                   {/* Wire Instructions Snippet */}
-                  <div className="rounded border border-border/50 bg-muted/10 p-2 text-[10px] space-y-0.5 text-muted-foreground">
+                  <div className="rounded border border-border/50 bg-muted/10 p-2 text-xs space-y-0.5 text-muted-foreground">
                     <div className="flex justify-between font-mono">
                       <span>Bank:</span>
                       <span className="font-semibold text-foreground">{company.bankName || <span className="font-normal italic text-muted-foreground">Not set</span>}</span>
@@ -488,7 +490,7 @@ export default function CompanyDetailPage() {
 
                   {/* Signature Section */}
                   <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-                    <span className="text-[9px] text-muted-foreground italic">Authorized Signatory</span>
+                    <span className="text-xs text-muted-foreground italic">Authorized Signatory</span>
                     {signatureUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
@@ -497,7 +499,7 @@ export default function CompanyDetailPage() {
                         className="h-8 max-w-[110px] object-contain"
                       />
                     ) : (
-                      <span className="text-[9px] text-muted-foreground font-mono border-b border-dashed border-border px-4 py-0.5">
+                      <span className="text-xs text-muted-foreground font-mono border-b border-dashed border-border px-4 py-0.5">
                         [Signature Stamp]
                       </span>
                     )}
@@ -509,19 +511,19 @@ export default function CompanyDetailPage() {
               <div className="space-y-2 pt-2 text-xs">
                 <div className="flex items-center justify-between py-1.5 border-b border-border/60">
                   <span className="text-muted-foreground">Document Letterhead</span>
-                  <Badge variant={letterheadUrl ? "success" : "neutral"} className="text-[10px]">
+                  <Badge variant={letterheadUrl ? "success" : "neutral"} className="text-xs">
                     {letterheadUrl ? "Uploaded" : "Default Strip"}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between py-1.5 border-b border-border/60">
                   <span className="text-muted-foreground">Company Logo</span>
-                  <Badge variant={logoUrl ? "success" : "neutral"} className="text-[10px]">
+                  <Badge variant={logoUrl ? "success" : "neutral"} className="text-xs">
                     {logoUrl ? "Uploaded" : "Initials Badge"}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between py-1.5">
                   <span className="text-muted-foreground">Authorized Signature</span>
-                  <Badge variant={signatureUrl ? "success" : "neutral"} className="text-[10px]">
+                  <Badge variant={signatureUrl ? "success" : "neutral"} className="text-xs">
                     {signatureUrl ? "Uploaded" : "Missing"}
                   </Badge>
                 </div>
@@ -581,7 +583,7 @@ export default function CompanyDetailPage() {
                           {inv.client?.name || "—"}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             {inv.status}
                           </Badge>
                         </TableCell>
@@ -636,7 +638,7 @@ export default function CompanyDetailPage() {
                           {qt.client?.name || "—"}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             {qt.status}
                           </Badge>
                         </TableCell>

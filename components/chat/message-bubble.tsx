@@ -157,7 +157,7 @@ export const MessageBubble = memo(function MessageBubble({
   if (m.type === "SYSTEM") {
     return (
       <div className="my-2 flex justify-center px-4" role="note">
-        <span className="rounded-full bg-muted px-3 py-1 text-center text-[11px] text-muted-foreground">{m.body}</span>
+        <span className="rounded-full bg-muted px-3 py-1 text-center text-xs text-muted-foreground">{m.body}</span>
       </div>
     )
   }
@@ -202,7 +202,7 @@ export const MessageBubble = memo(function MessageBubble({
           )}
 
           {m.forwarded && !deleted && (
-            <p className={`mb-1 flex items-center gap-1 text-[11px] italic ${mine ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+            <p className={`mb-1 flex items-center gap-1 text-xs italic ${mine ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
               <Forward className="h-3 w-3" aria-hidden /> Forwarded
             </p>
           )}
@@ -248,7 +248,7 @@ export const MessageBubble = memo(function MessageBubble({
                       <FileText className="h-5 w-5 shrink-0" aria-hidden />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-xs font-medium">{a.name}</span>
-                        <span className="block text-[10px] opacity-70">{formatSize(a.size)}</span>
+                        <span className="block text-xs opacity-70">{formatSize(a.size)}</span>
                       </span>
                       <Download className="h-4 w-4 shrink-0" aria-label={`Download ${a.name}`} />
                     </a>
@@ -268,7 +268,7 @@ export const MessageBubble = memo(function MessageBubble({
             <Progress value={m.progress} className="mt-1.5 h-1" aria-label="Upload progress" />
           )}
 
-          <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
+          <div className={`mt-0.5 flex items-center justify-end gap-1 text-xs ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
             {m.editedAt && !deleted && <span>edited</span>}
             <span className="tabular-nums">{time}</span>
             {mine &&
@@ -303,7 +303,7 @@ export const MessageBubble = memo(function MessageBubble({
                   }`}
                 >
                   {emoji}
-                  {g.count > 1 && <span className="text-[11px] tabular-nums">{g.count}</span>}
+                  {g.count > 1 && <span className="text-xs tabular-nums">{g.count}</span>}
                 </button>
               ))}
             </div>

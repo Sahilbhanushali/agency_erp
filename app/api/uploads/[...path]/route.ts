@@ -36,7 +36,12 @@ const CONTENT_TYPES: Record<string, string> = {
   ".mp3": "audio/mpeg",
   ".wav": "audio/wav",
   ".pdf": "application/pdf",
+  ".ppt": "application/vnd.ms-powerpoint",
+  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 };
+
+/** Office files have no in-browser renderer; send them as a download with their name. */
+const DOWNLOAD_EXTENSIONS = new Set([".ppt", ".pptx"]);
 
 const notFound = () => NextResponse.json({ error: "File not found" }, { status: 404 });
 
@@ -122,6 +127,9 @@ export async function GET(
         // Same origin as the app: an uploaded SVG or HTML file must not run script here.
         "X-Content-Type-Options": "nosniff",
         "Content-Security-Policy": "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox",
+        ...(DOWNLOAD_EXTENSIONS.has(ext)
+          ? { "Content-Disposition": `attachment; filename="${path.basename(file).replace(/^\d+-/, "").replace(/"/g, "")}"` }
+          : {}),
       },
     });
   } catch (error: unknown) {

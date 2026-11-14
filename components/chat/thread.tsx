@@ -843,7 +843,7 @@ export function Thread({
                 <Fragment key={m.clientId && m.pending ? m.clientId : m.id}>
                   {newDay && (
                     <div className="my-3 flex justify-center">
-                      <span className="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-xs">
+                      <span className="rounded-full bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-xs">
                         {dayLabel(d)}
                       </span>
                     </div>

@@ -156,7 +156,7 @@ export default function InstagramInsightsPage() {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Instagram insights</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Instagram insights</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             How published content performed, pulled from Instagram on a schedule.
           </p>
@@ -403,7 +403,7 @@ function TopPosts({ rows }: { rows: MediaRow[] }) {
                     </span>
                     <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                       {row.mediaType && (
-                        <Badge variant="outline" className="rounded px-1 py-px text-[10px]">
+                        <Badge variant="outline" className="rounded px-1 py-px text-xs">
                           {row.mediaType}
                         </Badge>
                       )}

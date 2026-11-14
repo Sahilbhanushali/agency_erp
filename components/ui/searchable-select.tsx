@@ -134,7 +134,7 @@ export function SearchableSelect({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-foreground font-medium">{option.label}</p>
                     {option.subLabel && (
-                      <p className="text-[10px] text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {option.subLabel}
                       </p>
                     )}
@@ -145,7 +145,7 @@ export function SearchableSelect({
                 </div>
               ))}
               {totalMatches > maxDisplay && (
-                <div className="px-2.5 py-1.5 text-[10px] text-center text-muted-foreground border-t border-border/40 mt-1">
+                <div className="px-2.5 py-1.5 text-xs text-center text-muted-foreground border-t border-border/40 mt-1">
                   Showing top {maxDisplay} of {totalMatches}. Type to search more.
                 </div>
               )}

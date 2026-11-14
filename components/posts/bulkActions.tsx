@@ -58,13 +58,10 @@ export default function BulkActions({
               <SelectValue placeholder="Design Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="DRAFT">Draft</SelectItem>
-              <SelectItem value="SUBMITTED">Submitted</SelectItem>
-              <SelectItem value="APPROVED">Approve (I Approve)</SelectItem>
-              <SelectItem value="C_APPROVED">Client Approved</SelectItem>
-              <SelectItem value="REJECTED">Request Changes</SelectItem>
-              <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-              <SelectItem value="POSTED">Posted</SelectItem>
+              {/* Each post is moved through the workflow; ones that cannot make the move
+                  (wrong stage, no permission) are reported, not forced. */}
+              <SelectItem value="SUBMITTED">Submit for approval</SelectItem>
+              <SelectItem value="APPROVED">Approve</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -79,9 +76,8 @@ export default function BulkActions({
             <SelectContent>
               <SelectItem value="DRAFT">Draft</SelectItem>
               <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
-              <SelectItem value="APPROVED">Approve Copy</SelectItem>
-              <SelectItem value="C_APPROVED">Client Approved</SelectItem>
-              <SelectItem value="REJECTED">Reject Copy</SelectItem>
+              <SelectItem value="APPROVED">Approve copy</SelectItem>
+              <SelectItem value="REJECTED">Reject copy</SelectItem>
               <SelectItem value="NEEDS_REVISION">Needs Revision</SelectItem>
             </SelectContent>
           </Select>
@@ -112,7 +108,7 @@ export default function BulkActions({
         </Button>
 
         {/* Dismiss / Clear Selection */}
-        <Button
+        <Button aria-label="Clear selection"
           variant="ghost"
           size="icon-xs"
           onClick={() => setSelectedPosts([])}

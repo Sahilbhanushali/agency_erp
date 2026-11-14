@@ -170,34 +170,34 @@ export default function StatusChangeDialog({
                       : setSelectedContentStatus(value as ContentStatus)
                   }
                 >
-                  <SelectTrigger className="w-full h-11 px-3.5 border border-input rounded-xl bg-background text-foreground text-sm font-medium focus:ring-2 focus:ring-ring">
+                  <SelectTrigger aria-label="Select Status" className="w-full h-11 px-3.5 border border-input rounded-xl bg-background text-foreground text-sm font-medium focus:ring-2 focus:ring-ring">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl shadow-lg">
                     {activeTab === "design" ? (
                       <>
-                        <SelectItem value="DRAFT">Draft</SelectItem>
-                        <SelectItem value="SUBMITTED">Submitted</SelectItem>
-                        <SelectItem value="RESUBMITTED">ReSubmitted</SelectItem>
-                        <SelectItem value="APPROVED">I Approve</SelectItem>
-                        <SelectItem value="C_APPROVED">C Approve</SelectItem>
-                        <SelectItem value="REJECTED" disabled={!canReject}>
-                          Changes {!canReject && "(Cannot request changes for draft)"}
-                        </SelectItem>
+                        {/*
+                          Only moves a person makes here. Client approval is the client's
+                          (share link); scheduling and publishing have their own controls in
+                          the post's Approval workflow panel. The server refuses anything else.
+                        */}
+                        <SelectItem value="SUBMITTED">Submit for approval</SelectItem>
+                        <SelectItem value="RESUBMITTED">Resubmit after changes</SelectItem>
+                        <SelectItem value="APPROVED">Approve</SelectItem>
                         <SelectItem value="NEEDS_MINOR_CHANGE" disabled={!canReject}>
-                          Needs Minor Change {!canReject && "(Cannot request changes for draft)"}
+                          Request changes {!canReject && "(not available for drafts)"}
                         </SelectItem>
-                        <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                        <SelectItem value="POSTED">Posted</SelectItem>
+                        <SelectItem value="REJECTED" disabled={!canReject}>
+                          Reject {!canReject && "(not available for drafts)"}
+                        </SelectItem>
                       </>
                     ) : (
                       <>
                         <SelectItem value="DRAFT">Draft</SelectItem>
-                        <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
-                        <SelectItem value="APPROVED">I Approve</SelectItem>
-                        <SelectItem value="C_APPROVED">C Approve</SelectItem>
-                        <SelectItem value="REJECTED">Changes</SelectItem>
-                        <SelectItem value="NEEDS_MINOR_CHANGE">Needs Minor Change</SelectItem>
+                        <SelectItem value="PENDING_REVIEW">Pending review</SelectItem>
+                        <SelectItem value="APPROVED">Approve copy</SelectItem>
+                        <SelectItem value="NEEDS_MINOR_CHANGE">Request changes</SelectItem>
+                        <SelectItem value="REJECTED">Reject copy</SelectItem>
                       </>
                     )}
                   </SelectContent>
@@ -241,7 +241,7 @@ export default function StatusChangeDialog({
                   <label className="text-sm font-semibold text-foreground block mb-2">
                   Date & Time
                 </label>
-                <Input
+                <Input aria-label="Date & Time"
                   type="datetime-local"
                   value={selectedDate || format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                   onChange={(e) => setSelectedDate(e.target.value)}

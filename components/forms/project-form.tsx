@@ -173,7 +173,7 @@ const CustomSelect = ({
         <div className="p-2 border-b border-border/60">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
+            <Input aria-label="Search team members"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={`Search ${placeholder.toLowerCase()}...`}
@@ -214,7 +214,7 @@ const CustomSelect = ({
                 </div>
               ))}
               {options.length > maxDisplay && (
-                <div className="px-2 py-1.5 text-[10px] text-muted-foreground text-center border-t border-border/40 mt-1">
+                <div className="px-2 py-1.5 text-xs text-muted-foreground text-center border-t border-border/40 mt-1">
                   Showing top {filteredOptions.length} of {options.length} records • Type to search
                 </div>
               )}
@@ -820,7 +820,7 @@ export default function ProjectForm({
                   {imagePreview && (
                     <div className="relative size-12 shrink-0 rounded-md overflow-hidden border border-border">
                       <img src={imagePreview} alt="Project Preview" className="size-full object-cover" />
-                      <Button
+                      <Button aria-label="Remove project image"
                         type="button"
                         variant="destructive"
                         size="icon-xs"
@@ -937,7 +937,7 @@ export default function ProjectForm({
                     variant="ghost"
                     size="xs"
                     onClick={clearAllTeamMembers}
-                    className="text-[11px] text-muted-foreground hover:text-destructive"
+                    className="text-xs text-muted-foreground hover:text-destructive"
                   >
                     Clear All
                   </Button>
@@ -953,10 +953,10 @@ export default function ProjectForm({
                       className="gap-1.5 px-2 py-0.5 text-xs"
                     >
                       <span className={user.inactive ? "line-through" : undefined}>{user.name}</span>
-                      <span className="opacity-75 text-[10px]">
+                      <span className="opacity-75 text-xs">
                         ({user.inactive ? "deactivated" : user.role ?? "no role"})
                       </span>
-                      <button
+                      <button aria-label={`Remove ${user.name} from the team`}
                         type="button"
                         onClick={() => removeTeamMember(user.id.toString())}
                         className="hover:opacity-75"
@@ -1025,7 +1025,7 @@ export default function ProjectForm({
                               </div>
                               <span className="font-medium text-foreground">{user.name}</span>
                             </div>
-                            <Badge variant={getRoleBadgeVariant(user.role)} className="text-[10px]">
+                            <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
                               {user.role ?? "No role"}
                             </Badge>
                           </CommandItem>
@@ -1097,11 +1097,11 @@ export default function ProjectForm({
                 const IconComponent = getPostTypeIcon(postType);
                 return (
                   <div key={postType} className="space-y-1">
-                    <Label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                       <IconComponent className="size-3 text-primary" />
                       {getPostTypeLabel(postType)}
                     </Label>
-                    <Input
+                    <Input aria-label={`Number of ${getPostTypeLabel(postType)} posts`}
                       type="number"
                       min="0"
                       value={formData.postTypes[postType] !== undefined ? formData.postTypes[postType] : ""}

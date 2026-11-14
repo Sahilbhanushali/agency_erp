@@ -24,7 +24,7 @@ export interface Task {
   clientId: string | null
   createdBy: { id: number; name: string | null } | null
   assignees: TaskAssignee[]
-  post: { id: string; title: string } | null
+  post: { id: string; title: string; project?: { id: string; name: string } | null } | null
   project: { id: string; name: string } | null
   client: { id: string; name: string; company: string | null } | null
 }

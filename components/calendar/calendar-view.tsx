@@ -195,7 +195,7 @@ function PlatformBadges({ platforms }: { platforms?: Post["platforms"] }) {
       {platforms.map((p) => (
         <span
           key={p.id}
-          className={`inline-flex items-center rounded border px-1.5 py-px text-[10px] font-medium ${
+          className={`inline-flex items-center rounded border px-1.5 py-px text-xs font-medium ${
             PLATFORM_STYLE[p.platform] ?? "bg-muted text-muted-foreground border-border"
           }`}
         >
@@ -493,7 +493,7 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Content Calendar</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Content Calendar</h1>
             <Badge variant="secondary" className="rounded-full tabular-nums">
               {summary.total} {summary.total === 1 ? "post" : "posts"}
             </Badge>
@@ -652,7 +652,7 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
       </div>
 
       {/* Calendar + upcoming rail */}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 rounded-xl border border-border bg-card">
           {view === "list" ? (
             <div className="divide-y divide-border">
@@ -668,7 +668,7 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
                           {format(day, "EEEE, d MMMM")}
                         </h3>
                         {isSameDay(day, new Date()) && (
-                          <Badge variant="secondary" className="rounded-full text-[10px]">Today</Badge>
+                          <Badge variant="secondary" className="rounded-full text-xs">Today</Badge>
                         )}
                       </div>
                       <div className="space-y-2">
@@ -685,13 +685,16 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
+              {/* relative: makes this scroller the containing block for absolutely
+                  positioned descendants (the cells' sr-only labels), which otherwise
+                  escaped its clipping and stretched the whole page sideways on phones. */}
               <div className="min-w-[760px]">
                 <div className="grid grid-cols-7 border-b border-border bg-muted/40">
                   {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                     <div
                       key={d}
-                      className="py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+                      className="py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                     >
                       {d}
                     </div>
@@ -764,7 +767,7 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
                       <p className="truncate text-sm font-medium text-foreground">
                         {post.title || "Untitled post"}
                       </p>
-                      <span className="shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                      <span className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
                         {post.scheduledAt && (
                           <>
                             <span className="block font-medium text-foreground">
@@ -780,7 +783,7 @@ export function CalendarView({ posts = [], projects = [], currentUser }: { posts
                       <PlatformBadges platforms={post.platforms} />
                       <Badge
                         variant="outline"
-                        className={`${statusStyle(post.status).badge} rounded px-1.5 py-px text-[10px] font-medium`}
+                        className={`${statusStyle(post.status).badge} rounded px-1.5 py-px text-xs font-medium`}
                       >
                         {statusLabel(post.status)}
                       </Badge>
@@ -925,17 +928,17 @@ function PostEntry({ post, date }: { post: Post; date?: string | null }) {
     >
       <Thumb post={post} className="h-7 w-7" />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[11px] font-medium leading-tight text-foreground">
+        <span className="block truncate text-xs font-medium leading-tight text-foreground">
           {post.title || "Untitled post"}
         </span>
-        <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+        <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${style.rail}`} aria-hidden />
           <span className="tabular-nums">{date ? format(new Date(date), "HH:mm") : "--:--"}</span>
           <span className="sr-only">{statusLabel(post.status)}</span>
         </span>
       </span>
       {(post.assetCount ?? 0) > 1 && (
-        <span className="shrink-0 rounded bg-muted px-1 text-[10px] font-medium tabular-nums text-muted-foreground">
+        <span className="shrink-0 rounded bg-muted px-1 text-xs font-medium tabular-nums text-muted-foreground">
           {post.assetCount}
         </span>
       )}
@@ -953,13 +956,13 @@ function ShootEntry({ shoot, onEdit }: { shoot: ShootEvent; onEdit: (shoot: Shoo
     >
       <Camera className="h-3.5 w-3.5 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden />
       <span
-        className={`min-w-0 flex-1 truncate text-[11px] font-medium text-teal-900 dark:text-teal-100 ${
+        className={`min-w-0 flex-1 truncate text-xs font-medium text-teal-900 dark:text-teal-100 ${
           shoot.completed ? "line-through opacity-70" : ""
         }`}
       >
         {shoot.name}
       </span>
-      <span className="shrink-0 text-[10px] tabular-nums text-teal-700 dark:text-teal-300">
+      <span className="shrink-0 text-xs tabular-nums text-teal-700 dark:text-teal-300">
         {displayTime(shoot.time)}
       </span>
     </button>
@@ -1025,7 +1028,7 @@ function DayCell({
         <div className="flex shrink-0 items-center gap-1">
           {shoots.length > 0 && (
             <span
-              className="inline-flex items-center gap-0.5 rounded bg-teal-100 px-1 text-[10px] font-semibold tabular-nums text-teal-800 dark:bg-teal-950 dark:text-teal-300"
+              className="inline-flex items-center gap-0.5 rounded bg-teal-100 px-1 text-xs font-semibold tabular-nums text-teal-800 dark:bg-teal-950 dark:text-teal-300"
               title={`${shoots.length} shoot event${shoots.length === 1 ? "" : "s"}`}
             >
               <Camera className="h-2.5 w-2.5" aria-hidden />
@@ -1033,7 +1036,7 @@ function DayCell({
             </span>
           )}
           {posts.length > 0 && (
-            <span className="rounded bg-muted px-1 text-[10px] font-semibold tabular-nums text-muted-foreground">
+            <span className="rounded bg-muted px-1 text-xs font-semibold tabular-nums text-muted-foreground">
               {posts.length}
             </span>
           )}
@@ -1052,7 +1055,7 @@ function DayCell({
           <button
             type="button"
             onClick={() => onOverflow(day)}
-            className="rounded px-1.5 py-0.5 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded px-1.5 py-0.5 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             +{overflow} more
           </button>
@@ -1067,7 +1070,7 @@ function DayCell({
           onClick={() => onAddEvent(day)}
           tabIndex={-1}
           aria-hidden
-          className="min-h-[18px] flex-1 rounded text-left text-[11px] text-transparent transition-colors hover:bg-muted/60 hover:text-muted-foreground"
+          className="min-h-[18px] flex-1 rounded text-left text-xs text-transparent transition-colors hover:bg-muted/60 hover:text-muted-foreground"
         >
           + Add event
         </button>
@@ -1101,7 +1104,7 @@ function PostRow({
           <PlatformBadges platforms={post.platforms} />
           <Badge
             variant="outline"
-            className={`${statusStyle(post.status).badge} rounded px-1.5 py-px text-[10px] font-medium`}
+            className={`${statusStyle(post.status).badge} rounded px-1.5 py-px text-xs font-medium`}
           >
             {statusLabel(post.status)}
           </Badge>

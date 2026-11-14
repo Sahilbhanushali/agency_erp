@@ -1,5 +1,7 @@
 "use client";
 
+import { LoadError } from "@/components/load-error";
+import { jsonFetcher } from "@/lib/fetcher";
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -47,7 +49,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ContractDialog } from "@/components/contracts/contract-dialog";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 const formatCurrency = (amount: number | string, currency: string = "INR") => {
   const num = Number(amount) || 0;
@@ -62,7 +65,7 @@ export default function ContractDetailPage() {
   const router = useRouter();
   const id = params?.id as string;
 
-  const { data, isLoading, mutate } = useSWR(id ? `/api/contracts/${id}` : null, fetcher);
+  const { data, error: contractError, isLoading, mutate } = useSWR(id ? `/api/contracts/${id}` : null, fetcher);
   const contract = data?.contract;
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -129,6 +132,14 @@ export default function ContractDetailPage() {
           <Skeleton className="h-48 md:col-span-2 rounded-xl" />
           <Skeleton className="h-48 rounded-xl" />
         </div>
+      </div>
+    );
+  }
+
+  if (contractError && (contractError as { status?: number }).status !== 404) {
+    return (
+      <div className="py-16">
+        <LoadError what="this agreement" error={contractError} onRetry={() => mutate()} />
       </div>
     );
   }
@@ -210,7 +221,7 @@ export default function ContractDetailPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 {contract.title}
               </h1>
               <Badge variant="outline" className="font-mono text-xs">
@@ -275,25 +286,25 @@ export default function ContractDetailPage() {
               <CardContent className="pt-4">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-center">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase">Posts</span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase">Posts</span>
                     <p className="text-xl font-bold text-foreground mt-1 tabular-nums">
                       {quota?.posts ?? "—"}
                     </p>
                   </div>
                   <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-center">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase">Reels</span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase">Reels</span>
                     <p className="text-xl font-bold text-foreground mt-1 tabular-nums">
                       {quota?.reels ?? "—"}
                     </p>
                   </div>
                   <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-center">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase">Stories</span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase">Stories</span>
                     <p className="text-xl font-bold text-foreground mt-1 tabular-nums">
                       {quota?.stories ?? "—"}
                     </p>
                   </div>
                   <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-center">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase">Hours</span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase">Hours</span>
                     <p className="text-xl font-bold text-foreground mt-1 tabular-nums">
                       {contract.retainerHours ? `${contract.retainerHours} hrs` : "—"}
                     </p>
@@ -361,7 +372,7 @@ export default function ContractDetailPage() {
                       <p className="text-xs font-semibold text-foreground truncate">
                         Signed Agreement File
                       </p>
-                      <p className="text-[11px] text-muted-foreground truncate font-mono">
+                      <p className="text-xs text-muted-foreground truncate font-mono">
                         {contract.documentUrl}
                       </p>
                     </div>

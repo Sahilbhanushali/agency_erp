@@ -1,5 +1,6 @@
 "use client";
 
+import { contentStatusLabel, statusLabel } from "@/lib/post-status";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -15,6 +16,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { QuickScheduleModal } from "./quick-schedule-modal";
 import { ExportLinkDialog } from "@/components/projects/export-link-dialog";
 import { PlatformIntegration } from "../platform/platform-integration";
+import { PostWorkflowPanel } from "./post-workflow-panel";
+import { PresentationFileCard, isPresentationAsset } from "./presentation-file-card";
 import { 
   Dialog, 
   DialogContent, 
@@ -42,7 +45,7 @@ type PostStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "SCHEDULED" 
 type ContentStatus = "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "NEEDS_REVISION" | "NEEDS_MINOR_CHANGE" | "RESUBMITTED" | "DRAFT";
 
 const statusColors: Record<PostStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-800",
+  DRAFT: "bg-muted text-foreground",
   SUBMITTED: "bg-blue-100 text-blue-800",
   APPROVED: "bg-green-100 dark:bg-green-950/60 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-800",
   REJECTED: "bg-red-100 text-red-800",
@@ -53,22 +56,13 @@ const statusColors: Record<PostStatus, string> = {
 };
 
 const contentStatusColors: Record<ContentStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-800",
+  DRAFT: "bg-muted text-foreground",
   PENDING_REVIEW: "bg-yellow-100 text-yellow-800",
   APPROVED: "bg-green-100 text-green-800",
   REJECTED: "bg-red-100 text-red-800",
   NEEDS_REVISION: "bg-orange-200 text-orange-900",
   NEEDS_MINOR_CHANGE: "bg-amber-100 text-amber-800",
   RESUBMITTED: "bg-blue-200 text-blue-900",
-};
-
-const typeIcons: Record<string, string> = {
-  PHOTO: "📷",
-  REEL: "🎬",
-  STORY: "📱",
-  CAROUSEL: "🎠",
-  VIDEO: "🎥",
-  CUSTOM: "✨",
 };
 
 const renderTextWithLinks = (text: string) => {
@@ -931,10 +925,8 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
     mutatePost(); // Revalidate after schedule
   };
 
-  const getStatusDisplay = (status: string) => {
-    if (status === "REJECTED") return "Changes";
-    return status.charAt(0) + status.slice(1).toLowerCase().replace("_", " ");
-  };
+  /** Copy-status wording, shared with every other screen (lib/post-status.ts). */
+  const getStatusDisplay = (status: string) => contentStatusLabel(status);
 
   const getPlatformsDisplay = () => {
     if (!post.platforms) {
@@ -1055,7 +1047,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
           ref={replaceFileInputRef}
           onChange={handleReplaceFileSelect}
           className="hidden"
-          accept="image/*,video/*"
+          accept="image/*,video/*,.ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
         />
         {assets.map((asset: any) => {
           console.log(`[renderAssetSection] Loading asset: ${asset.url}, Filename: ${asset.filename}`);
@@ -1067,7 +1059,9 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
               key={asset.id}
               className="relative group aspect-square bg-muted rounded-lg overflow-hidden border border-border"
             >
-              {asset.type === "link" ? (
+              {isPresentationAsset(asset) ? (
+                <PresentationFileCard asset={asset} className="absolute inset-0" />
+              ) : asset.type === "link" ? (
                 <a
                   href={asset.url}
                   target="_blank"
@@ -1104,7 +1098,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                           {asset.filename}
                         </span>
                         {asset.createdAt && (
-                          <span className="text-white/80 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity text-center">
+                          <span className="text-white/80 text-xs opacity-0 group-hover:opacity-100 transition-opacity text-center">
                             {new Date(asset.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date(asset.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
@@ -1147,7 +1141,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                   </button>
                 )}
                 {(canDeleteAssets || String(asset.uploadedById) === String(currentUser.id)) && (
-                  <button
+                  <button aria-label="Delete asset"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1177,14 +1171,14 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={handleBack}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center space-x-4">
+          <Button variant="ghost" size="sm" onClick={handleBack} aria-label="Back to posts">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-3xl font-bold text-foreground">{post.title}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground break-words">{post.title}</h1>
               <PostTimingBadge post={post} />
             </div>
             <p className="text-muted-foreground mt-0.5">
@@ -1192,10 +1186,10 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-col space-y-1">
             <Badge className={statusColors[post.status as keyof typeof statusColors]}>
-              Design: {getStatusDisplay(post.status)}
+              Design: {statusLabel(post.status)}
             </Badge>
             <Badge className={contentStatusColors[post.contentStatus as keyof typeof contentStatusColors]}>
               Content: {getStatusDisplay(post.contentStatus)}
@@ -1405,7 +1399,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                 </label>
                 
                 <div className="flex items-center gap-2 pt-3 border-t border-border">
-                  <Input 
+                  <Input aria-label="Or paste an external link (e.g. Google Drive URL)" 
                     placeholder="Or paste an external link (e.g. Google Drive URL)" 
                     value={linkRef}
                     onChange={(e) => setLinkRef(e.target.value)}
@@ -1459,7 +1453,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                 </label>
                 
                 <div className="flex items-center gap-2 pt-3 border-t border-border">
-                  <Input 
+                  <Input aria-label="Or paste an external link (e.g. Google Drive URL)" 
                     placeholder="Or paste an external link (e.g. Google Drive URL)" 
                     value={linkDes}
                     onChange={(e) => setLinkDes(e.target.value)}
@@ -1488,6 +1482,9 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
         </div>
 
         <div className="space-y-6">
+          {/* Stage, who it waits on, the actions this person may take, and history. */}
+          <PostWorkflowPanel postId={post.id} onChanged={() => mutatePost()} />
+
           <Card className="shadow-sm border border-border">
             <CardHeader className="py-2.5 px-4 bg-muted/30 border-b border-border">
               <CardTitle className="text-sm font-semibold text-foreground">Post Information</CardTitle>
@@ -1497,7 +1494,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                 <div className="flex items-center space-x-2 min-w-0">
                   <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground/80 uppercase tracking-wider font-semibold">Created by</p>
+                    <p className="text-xs text-muted-foreground/80 uppercase tracking-wider font-semibold">Created by</p>
                     <p className="font-medium text-foreground/90 truncate">{post.createdBy?.name || "Deleted User"}</p>
                   </div>
                 </div>
@@ -1505,7 +1502,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                 <div className="flex items-center space-x-2 min-w-0">
                   <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground/80 uppercase tracking-wider font-semibold">Client</p>
+                    <p className="text-xs text-muted-foreground/80 uppercase tracking-wider font-semibold">Client</p>
                     <p className="font-medium text-foreground/90 truncate">{projectCompanyName(post.project) || "No Client"}</p>
                   </div>
                 </div>
@@ -1514,7 +1511,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                   <div className="flex flex-col space-y-2 min-w-0">
                     <div className="flex items-center space-x-2">
                       <UserCheck className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                      <p className="text-[10px] text-muted-foreground/80 uppercase tracking-wider font-semibold">Assigned to</p>
+                      <p className="text-xs text-muted-foreground/80 uppercase tracking-wider font-semibold">Assigned to</p>
                     </div>
                     <div className="pl-5 flex flex-wrap gap-1">
                       {post.assignedUsers.map((user: any) => (
@@ -1528,7 +1525,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                   <div className="flex items-center space-x-2 min-w-0">
                     <UserCheck className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-[10px] text-muted-foreground/80 uppercase tracking-wider font-semibold">Assigned to</p>
+                      <p className="text-xs text-muted-foreground/80 uppercase tracking-wider font-semibold">Assigned to</p>
                       <p className="font-medium text-foreground/90 truncate">{post.assignedTo.name}</p>
                     </div>
                   </div>
@@ -1537,7 +1534,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                 <div className="flex items-center space-x-2 min-w-0">
                   <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground/80 uppercase tracking-wider font-semibold">Created</p>
+                    <p className="text-xs text-muted-foreground/80 uppercase tracking-wider font-semibold">Created</p>
                     <p className="font-medium text-foreground/90">{format(new Date(post.createdAt), "MMM dd, yyyy")}</p>
                   </div>
                 </div>
@@ -1546,7 +1543,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                   <div className="flex items-center space-x-2 min-w-0">
                     <Calendar className="h-3.5 w-3.5 text-indigo-400 flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-[10px] text-indigo-500 uppercase tracking-wider font-bold">Due Design Date</p>
+                      <p className="text-xs text-indigo-500 uppercase tracking-wider font-bold">Due Design Date</p>
                       <p className="font-semibold text-indigo-600">{format(new Date(post.designDueDate), "MMM dd, yyyy")}</p>
                     </div>
                   </div>
@@ -1556,7 +1553,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                   <div className="flex items-center space-x-2 min-w-0">
                     <Calendar className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-[10px] text-emerald-600 uppercase tracking-wider font-bold">Posting Date</p>
+                      <p className="text-xs text-emerald-600 uppercase tracking-wider font-bold">Posting Date</p>
                       <p className="font-semibold text-emerald-700">{format(new Date(post.scheduledAt), "MMM dd, yyyy")}</p>
                     </div>
                   </div>
@@ -1566,7 +1563,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
               <Separator className="my-1.5" />
 
               <div className="space-y-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Asset Summary</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Asset Summary</p>
                 <div className="flex items-center space-x-4 text-xs">
                   <div className="flex items-center space-x-1.5">
                     <FileImage className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
@@ -1583,7 +1580,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                 <>
                   <Separator className="my-1.5" />
                   <div className="space-y-1">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Additional Notes</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Additional Notes</p>
                     <div className="p-2 bg-muted/40 rounded border border-border/50 text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed max-h-[150px] overflow-y-auto">
                       {renderTextWithLinks(additionalNotes)}
                     </div>
@@ -1617,7 +1614,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                       className={`flex items-start space-x-2.5 ${isSelf ? 'flex-row-reverse space-x-reverse' : ''}`}
                     >
                       <Avatar className="h-7 w-7 border border-border shadow-sm flex-shrink-0">
-                        <AvatarFallback className={`text-[10px] font-bold ${
+                        <AvatarFallback className={`text-xs font-bold ${
                           isSelf 
                             ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white' 
                             : comment.authorRole === 'Client'
@@ -1639,13 +1636,13 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                           <div className={`flex items-center space-x-1.5 mb-1.5 flex-wrap gap-y-0.5 ${
                             isSelf ? 'flex-row-reverse space-x-reverse' : ''
                           }`}>
-                            <span className={`text-[11px] font-semibold ${isSelf ? 'text-indigo-50' : 'text-foreground'}`}>
+                            <span className={`text-xs font-semibold ${isSelf ? 'text-indigo-50' : 'text-foreground'}`}>
                               {isSelf ? 'You' : (comment.authorName || comment.user?.name || 'Client')}
                             </span>
                             {comment.authorRole && (
                               <Badge 
                                 variant="outline" 
-                                className="text-[8px] px-1 py-0.1 rounded-full font-bold bg-emerald-100 text-emerald-800 border-emerald-300"
+                                className="text-xs px-1 py-0.1 rounded-full font-bold bg-emerald-100 text-emerald-800 border-emerald-300"
                               >
                                 {comment.authorRole}
                               </Badge>
@@ -1653,7 +1650,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                             {comment.type && (
                               <Badge 
                                 variant="outline" 
-                                className={`text-[8px] px-1 py-0.1 rounded-full font-medium ${
+                                className={`text-xs px-1 py-0.1 rounded-full font-medium ${
                                   isSelf
                                     ? 'bg-indigo-500/40 text-indigo-100 border-indigo-400/50'
                                     : comment.type === 'DESIGN' 
@@ -1669,7 +1666,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
 
                             {canModifyComment && editingCommentId !== comment.id && (
                               <div className={`flex items-center space-x-1 ${isSelf ? 'mr-auto' : 'ml-auto'}`}>
-                                <button
+                                <button aria-label="Edit comment"
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1682,7 +1679,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                                 >
                                   <Edit2 className="h-3 w-3" />
                                 </button>
-                                <button
+                                <button aria-label="Delete comment"
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1713,13 +1710,13 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                                     e.currentTarget.src = FALLBACK_IMAGE;
                                   }}
                                 />
-                                <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded">
+                                <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
                                   View Image
                                 </div>
                               </button>
                               
                               {canDeleteAssets && (
-                                <button
+                                <button aria-label="Delete marked image"
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1747,7 +1744,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                           
                           {editingCommentId === comment.id ? (
                             <div className="mt-1 space-y-1.5 min-w-[200px]">
-                              <Textarea
+                              <Textarea aria-label="Edit comment"
                                 value={editingCommentText}
                                 onChange={(e) => setEditingCommentText(e.target.value)}
                                 className="text-xs min-h-[50px] bg-background text-foreground border border-input rounded-md p-1.5"
@@ -1760,7 +1757,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                                   size="sm"
                                   variant="ghost"
                                   onClick={handleCancelEditComment}
-                                  className="h-5 px-1.5 text-[10px]"
+                                  className="h-5 px-1.5 text-xs"
                                   disabled={isUpdatingComment}
                                 >
                                   Cancel
@@ -1769,7 +1766,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                                   type="button"
                                   size="sm"
                                   onClick={() => handleSaveEditComment(comment.id)}
-                                  className="h-5 px-2 text-[10px] bg-indigo-500 hover:bg-indigo-600 text-white"
+                                  className="h-5 px-2 text-xs bg-indigo-500 hover:bg-indigo-600 text-white"
                                   disabled={isUpdatingComment || !editingCommentText.trim()}
                                 >
                                   {isUpdatingComment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
@@ -1781,7 +1778,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                           )}
                         </div>
                         
-                        <span className="text-[9px] text-muted-foreground font-medium mt-1 px-1">
+                        <span className="text-xs text-muted-foreground font-medium mt-1 px-1">
                           {format(new Date(comment.createdAt), "MMM dd, HH:mm")}
                         </span>
                       </div>
@@ -1807,7 +1804,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                       <span>Recording ({formatCommentTime(recordingCommentTime)})</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button
+                      <Button aria-label="Discard voice note"
                         type="button"
                         variant="ghost"
                         size="icon"
@@ -1816,7 +1813,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                      <Button
+                      <Button aria-label="Send voice note"
                         type="button"
                         variant="default"
                         size="icon"
@@ -1829,7 +1826,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                   </div>
                 ) : (
                   <>
-                    <Button
+                    <Button aria-label="Record a voice note"
                       type="button"
                       variant="ghost"
                       size="icon"
@@ -1840,7 +1837,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                       <Mic className="h-4 w-4" />
                     </Button>
                     
-                    <textarea
+                    <textarea aria-label="Add a comment"
                       value={comment}
                       onChange={(e) => {
                         setComment(e.target.value);
@@ -1862,7 +1859,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                       style={{ maxHeight: '120px' }}
                     />
                     
-                    <Button 
+                    <Button aria-label="Send comment" 
                       type="submit" 
                       size="icon" 
                       disabled={isLoading || !comment.trim()}
@@ -1930,7 +1927,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                         case "RESUBMITTED":
                           return <Send className="h-5 w-5 text-orange-600" />;
                         default:
-                          return <Clock className="h-5 w-5 text-gray-600" />;
+                          return <Clock className="h-5 w-5 text-muted-foreground" />;
                       }
                     };
 
@@ -1961,15 +1958,15 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                       switch (flow.status) {
                         case "APPROVED":
                           return (
-                            <Badge className={`${baseClass} bg-green-100 text-green-700 border-green-300`}>I Approve</Badge>
+                            <Badge className={`${baseClass} bg-green-100 text-green-700 border-green-300`}>Approved</Badge>
                           );
                         case "C_APPROVED":
                           return (
-                            <Badge className={`${baseClass} bg-emerald-100 text-emerald-700 border-emerald-300`}>C Approve</Badge>
+                            <Badge className={`${baseClass} bg-emerald-100 text-emerald-700 border-emerald-300`}>Client approved</Badge>
                           );
                         case "REJECTED":
                           return (
-                            <Badge className={`${baseClass} bg-red-100 text-red-700 border-red-300`}>Changes</Badge>
+                            <Badge className={`${baseClass} bg-red-100 text-red-700 border-red-300`}>Rejected</Badge>
                           );
                         case "SUBMITTED":
                           return (
@@ -1983,7 +1980,7 @@ export function PostDetail({ post: initialPost, isPublicView = false }: PostDeta
                           );
                         default:
                           return (
-                            <Badge className={`${baseClass} bg-gray-100 text-gray-700 border-gray-300`}>{flow.status}</Badge>
+                            <Badge className={`${baseClass} bg-muted text-foreground border-border`}>{flow.status}</Badge>
                           );
                       }
                     };

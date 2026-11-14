@@ -94,10 +94,10 @@ export default function EmployeeSelfService() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Badge variant="outline" className="text-[10px] font-mono uppercase tracking-wider text-primary">
+                <Badge variant="outline" className="text-xs font-mono uppercase tracking-wider text-primary">
                   Employee Self-Service Portal
                 </Badge>
-                <Badge variant="neutral" className="text-[10px]">
+                <Badge variant="neutral" className="text-xs">
                   ID: #{user.id}
                 </Badge>
               </div>
@@ -133,7 +133,7 @@ export default function EmployeeSelfService() {
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Financial Year Overview ({ytd.financialYear})
           </h3>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             Tax Year: Apr – Mar
           </span>
         </div>
@@ -141,13 +141,13 @@ export default function EmployeeSelfService() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="shadow-2xs border border-border/60">
             <CardContent className="p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Gross Compensation YTD
               </p>
               <h4 className="text-2xl font-black text-foreground mt-1">
                 {formatInr(ytd.gross)}
               </h4>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Accumulated earnings this FY
               </p>
             </CardContent>
@@ -155,13 +155,13 @@ export default function EmployeeSelfService() {
 
           <Card className="shadow-2xs border border-border/60">
             <CardContent className="p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Net Disbursed YTD
               </p>
               <h4 className="text-2xl font-black text-emerald-600 mt-1">
                 {formatInr(ytd.net)}
               </h4>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Credited take-home payout
               </p>
             </CardContent>
@@ -169,13 +169,13 @@ export default function EmployeeSelfService() {
 
           <Card className="shadow-2xs border border-border/60">
             <CardContent className="p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Income Tax (TDS) YTD
               </p>
               <h4 className="text-2xl font-black text-red-600 mt-1">
                 {formatInr(ytd.tax)}
               </h4>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Section 192 tax withheld
               </p>
             </CardContent>
@@ -183,13 +183,13 @@ export default function EmployeeSelfService() {
 
           <Card className="shadow-2xs border border-border/60">
             <CardContent className="p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Provident Fund YTD
               </p>
               <h4 className="text-2xl font-black text-blue-600 mt-1">
                 {formatInr(ytd.pf)}
               </h4>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Employee EPF contribution
               </p>
             </CardContent>
@@ -204,7 +204,7 @@ export default function EmployeeSelfService() {
           <CardHeader className="py-3 px-4 border-b border-border/50">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center justify-between">
               <span>My Leave Balances</span>
-              <span className="text-[11px] font-normal text-muted-foreground">
+              <span className="text-xs font-normal text-muted-foreground">
                 Annual Allocation
               </span>
             </CardTitle>
@@ -214,13 +214,13 @@ export default function EmployeeSelfService() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {leaveBalances.map((lb: any) => (
                   <div key={lb.id} className="p-3 rounded-lg border border-border/60 bg-muted/20 text-center">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">
+                    <span className="text-xs uppercase font-bold text-muted-foreground block truncate">
                       {lb.leaveType?.name || "Leave"}
                     </span>
                     <span className="text-xl font-black text-foreground mt-1 block">
                       {lb.balance}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       Used: {lb.used || 0}
                     </span>
                   </div>
@@ -239,7 +239,7 @@ export default function EmployeeSelfService() {
           <CardHeader className="py-3 px-4 border-b border-border/50">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center justify-between">
               <span>Current Cycle Attendance</span>
-              <span className="text-[11px] font-normal text-muted-foreground">
+              <span className="text-xs font-normal text-muted-foreground">
                 {MONTH_NAMES[attendanceSummary.month - 1]} {attendanceSummary.year}
               </span>
             </CardTitle>
@@ -247,7 +247,7 @@ export default function EmployeeSelfService() {
           <CardContent className="p-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               <div className="p-2.5 rounded-lg border border-border/50 bg-emerald-500/10">
-                <span className="text-[10px] uppercase font-semibold text-emerald-700 dark:text-emerald-400 block">
+                <span className="text-xs uppercase font-semibold text-emerald-700 dark:text-emerald-400 block">
                   Present
                 </span>
                 <span className="text-lg font-black text-emerald-600 mt-0.5 block">
@@ -255,7 +255,7 @@ export default function EmployeeSelfService() {
                 </span>
               </div>
               <div className="p-2.5 rounded-lg border border-border/50 bg-amber-500/10">
-                <span className="text-[10px] uppercase font-semibold text-amber-700 dark:text-amber-400 block">
+                <span className="text-xs uppercase font-semibold text-amber-700 dark:text-amber-400 block">
                   Half-Days
                 </span>
                 <span className="text-lg font-black text-amber-600 mt-0.5 block">
@@ -263,7 +263,7 @@ export default function EmployeeSelfService() {
                 </span>
               </div>
               <div className="p-2.5 rounded-lg border border-border/50 bg-blue-500/10">
-                <span className="text-[10px] uppercase font-semibold text-blue-700 dark:text-blue-400 block">
+                <span className="text-xs uppercase font-semibold text-blue-700 dark:text-blue-400 block">
                   On Leave
                 </span>
                 <span className="text-lg font-black text-blue-600 mt-0.5 block">
@@ -271,7 +271,7 @@ export default function EmployeeSelfService() {
                 </span>
               </div>
               <div className="p-2.5 rounded-lg border border-border/50 bg-red-500/10">
-                <span className="text-[10px] uppercase font-semibold text-red-700 dark:text-red-400 block">
+                <span className="text-xs uppercase font-semibold text-red-700 dark:text-red-400 block">
                   LOP / Absent
                 </span>
                 <span className="text-lg font-black text-red-600 mt-0.5 block">
@@ -288,7 +288,7 @@ export default function EmployeeSelfService() {
         <CardHeader className="py-3 px-4 border-b border-border/50 bg-muted/20">
           <CardTitle className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center justify-between">
             <span>My Official Salary Payslips</span>
-            <span className="text-[11px] font-normal text-muted-foreground">
+            <span className="text-xs font-normal text-muted-foreground">
               {payslips.length} published {payslips.length === 1 ? "payslip" : "payslips"}
             </span>
           </CardTitle>
@@ -328,7 +328,7 @@ export default function EmployeeSelfService() {
                       {formatInr(p.netSalary)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="success" className="text-[10px]">
+                      <Badge variant="success" className="text-xs">
                         {p.paymentStatus || "PAID"}
                       </Badge>
                     </TableCell>

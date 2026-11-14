@@ -28,9 +28,11 @@ const buttonVariants = cva(
         xs: "h-7 rounded-md gap-1 px-2 text-xs",
         sm: "h-8 rounded-md gap-1.5 px-3 text-xs has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-5 text-sm has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-sm": "size-8",
-        "icon-xs": "size-7",
+        // Icon buttons look compact but get an invisible ≥40–44px tap area (::after),
+        // so they meet touch-target guidance without changing any layout.
+        icon: "size-9 relative after:absolute after:content-[''] after:-inset-1.5 after:rounded-[inherit]",
+        "icon-sm": "size-8 relative after:absolute after:content-[''] after:-inset-1.5 after:rounded-[inherit]",
+        "icon-xs": "size-7 relative after:absolute after:content-[''] after:-inset-2 after:rounded-[inherit]",
       },
     },
     defaultVariants: {

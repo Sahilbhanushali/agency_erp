@@ -50,20 +50,24 @@ export function ClientPostView({ post, currentUser }: ClientPostViewProps) {
   const handleApproval = async (approved: boolean) => {
     setIsSubmitting(true)
     try {
-      const response = await fetch(`/api/posts/${post.id}/status`, {
+      // A client decision, recorded through the workflow as the client — this used to
+      // POST to a PATCH-only route and fail on every click. The server checks that the
+      // post belongs to this client and is actually waiting for their approval.
+      const response = await fetch(`/api/posts/${post.id}/workflow`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: approved ? "APPROVED" : "REJECTED",
-          comment: approved ? "Approved by client" : "Changes requested by client",
+          action: approved ? "CLIENT_APPROVE" : "CLIENT_REQUEST_CHANGES",
+          ...(approved ? {} : { reason: comment.trim() || "Changes requested by client" }),
         }),
       })
 
+      const result = await response.json().catch(() => ({}))
       if (response.ok) {
-        toast.success(approved ? "Post approved successfully" : "Changes requested")
+        toast.success(approved ? "Post approved" : "Changes requested")
         router.refresh()
       } else {
-        toast.error("Failed to update post status")
+        toast.error(result.error ?? "Could not update the post")
       }
     } catch (error) {
       toast.error("Failed to update post status")
@@ -214,7 +218,7 @@ export function ClientPostView({ post, currentUser }: ClientPostViewProps) {
             <CardContent className="space-y-4">
               {/* Add Comment */}
               <div className="space-y-3">
-                <Textarea
+                <Textarea aria-label="Add a comment"
                   placeholder="Add a comment..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}

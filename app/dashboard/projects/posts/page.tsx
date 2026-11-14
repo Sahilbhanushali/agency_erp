@@ -646,42 +646,35 @@ export default function PostsPage() {
   };
 
   const handleBulkStatusChange = async (newStatus: string) => {
-    if (!permissionsData?.includes("Manage-post")) {
-      toast.error("You do not have permission to update post status");
-      return;
-    }
     if (selectedPosts.length === 0) return;
-    try {
-      await Promise.all(
-        selectedPosts.map(async (postId) => {
-          const body: any = { status: newStatus.toUpperCase() };
-          const now = new Date().toISOString();
-          switch (newStatus.toUpperCase()) {
-            case "APPROVED":
-              body.approvedAt = now;
-              break;
-            case "REJECTED":
-              body.rejectedAt = now;
-              break;
-            case "SCHEDULED":
-              body.scheduledAt = now;
-              break;
-            case "POSTED":
-              body.postedAt = now;
-              break;
-          }
-          await fetch(`/api/posts/${postId}/status`, {
-            method: "PATCH",
+    // Each post goes through the workflow engine, which checks permission, scope and
+    // whether that post can make the move. Nothing is forced: refusals are counted and
+    // reported instead of being silently ignored as before.
+    const action = newStatus.toUpperCase() === "APPROVED" ? "APPROVE" : "SUBMIT";
+    const results = await Promise.all(
+      selectedPosts.map(async (postId) => {
+        try {
+          const res = await fetch(`/api/posts/${postId}/workflow`, {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ action }),
           });
-        })
-      );
-      mutatePosts(); // Revalidate posts data
-      setSelectedPosts([]);
-    } catch (err) {
-      console.error("Error updating posts:", err);
+          const body = await res.json().catch(() => ({}));
+          return { ok: res.ok, error: body.error as string | undefined };
+        } catch {
+          return { ok: false, error: "Network error" };
+        }
+      })
+    );
+    const moved = results.filter((r) => r.ok).length;
+    const refused = results.length - moved;
+    if (moved > 0) toast.success(`${moved} post${moved === 1 ? "" : "s"} ${action === "APPROVE" ? "approved" : "submitted"}`);
+    if (refused > 0) {
+      const reason = results.find((r) => !r.ok)?.error;
+      toast.error(`${refused} post${refused === 1 ? "" : "s"} could not be ${action === "APPROVE" ? "approved" : "submitted"}${reason ? `: ${reason}` : ""}`);
     }
+    mutatePosts();
+    setSelectedPosts([]);
   };
   const handleBulkContentStatusChange = async (newContentStatus: string) => {
     if (!permissionsData?.includes("Manage-content") && !permissionsData?.includes("Manage-design")) {
@@ -1168,8 +1161,8 @@ export default function PostsPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-4xl mb-4">⚠️</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Posts</h3>
-            <p className="text-gray-600 text-center mb-4">{postsError?.message || projectError?.message || "An error occurred"}</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">Error Loading Posts</h3>
+            <p className="text-muted-foreground text-center mb-4">{postsError?.message || projectError?.message || "An error occurred"}</p>
             <Button onClick={() => window.location.reload()}>Try Again</Button>
           </CardContent>
         </Card>
@@ -1185,7 +1178,7 @@ export default function PostsPage() {
           <div className="flex items-center gap-4">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                   {currentProject ? `${projectCompanyName(currentProject) || currentProject.name} Posts` : "All Posts"}
                 </h1>
                 <ProjectTimingBadge posts={filteredPosts as any} />
@@ -1220,7 +1213,7 @@ export default function PostsPage() {
                         : "bg-muted/40 border-border/60"
                     }`}
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{type}</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{type}</span>
                     <span className={`text-sm font-bold tabular-nums ${isComplete ? "text-primary" : "text-foreground"}`}>
                       {made}<span className="text-muted-foreground font-normal">/{total as number}</span>
                     </span>
@@ -1461,7 +1454,7 @@ export default function PostsPage() {
             <div className="space-y-2">
               <Label>Select Year</Label>
               <Select value={catalogYear} onValueChange={setCatalogYear}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Select Year">
                   <SelectValue placeholder="Choose a year" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1480,7 +1473,7 @@ export default function PostsPage() {
             <div className="space-y-2">
               <Label>Select Month</Label>
               <Select value={catalogMonth} onValueChange={setCatalogMonth}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Select Month">
                   <SelectValue placeholder="Choose a month" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1524,7 +1517,7 @@ export default function PostsPage() {
               <div className="space-y-4">
                 <Label>Select Client</Label>
                 <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Select Client">
                     <SelectValue placeholder="Choose a client" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1551,7 +1544,7 @@ export default function PostsPage() {
                     onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                   />
                   {importFile && (
-                    <p className="text-sm text-gray-600">Selected: {importFile.name}</p>
+                    <p className="text-sm text-muted-foreground">Selected: {importFile.name}</p>
                   )}
                 </div>
               </div>

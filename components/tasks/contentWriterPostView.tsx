@@ -321,7 +321,7 @@ function MonthTabs({
     <Card className="shadow-sm">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-blue-600" />
             Filter by Month
           </h3>
@@ -434,7 +434,7 @@ export default function ProjectTasksView({ project, onBack }: ProjectTasksViewPr
       case 'video': case 'reel': return <Video className="h-4 w-4 text-red-600" />;
       case 'carousel': return <Layers className="h-4 w-4 text-purple-600" />;
       case 'story': return <Grid3X3 className="h-4 w-4 text-orange-600" />;
-      default: return <FileText className="h-4 w-4 text-gray-600" />;
+      default: return <FileText className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -444,7 +444,7 @@ export default function ProjectTasksView({ project, onBack }: ProjectTasksViewPr
       case 'facebook': return <Facebook className="h-4 w-4 text-blue-600" />;
       case 'twitter': return <Twitter className="h-4 w-4 text-sky-600" />;
       case 'linkedin': return <Linkedin className="h-4 w-4 text-blue-700" />;
-      default: return <Globe className="h-4 w-4 text-gray-600" />;
+      default: return <Globe className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -626,7 +626,7 @@ export default function ProjectTasksView({ project, onBack }: ProjectTasksViewPr
               Back to Projects
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{project.projectName}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">{project.projectName}</h1>
               <div className="flex items-center gap-4 mt-2 text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
@@ -722,7 +722,7 @@ export default function ProjectTasksView({ project, onBack }: ProjectTasksViewPr
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
+              <Input aria-label="Search by title, caption, or assignee"
                 placeholder="Search by title, caption, or assignee..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -732,7 +732,7 @@ export default function ProjectTasksView({ project, onBack }: ProjectTasksViewPr
             
             <div className="flex flex-col sm:flex-row gap-3">
               <Select value={filterBy} onValueChange={(value) => setFilterBy(value as FilterBy)}>
-                <SelectTrigger className="w-[150px] h-11">
+                <SelectTrigger aria-label="Filter posts" className="w-[150px] h-11">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
@@ -740,14 +740,14 @@ export default function ProjectTasksView({ project, onBack }: ProjectTasksViewPr
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending_review">Pending Review</SelectItem>
                   <SelectItem value="needs_revision">Needs Revision</SelectItem>
-                  <SelectItem value="approved">I Approve</SelectItem>
-                  <SelectItem value="c_approved">C Approve</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="c_approved">Client approved</SelectItem>
                   <SelectItem value="rejected">Changes</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
-                <SelectTrigger className="w-[150px] h-11">
+                <SelectTrigger aria-label="Sort posts" className="w-[150px] h-11">
                   <BarChart3 className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>

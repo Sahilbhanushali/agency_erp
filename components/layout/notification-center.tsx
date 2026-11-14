@@ -102,7 +102,7 @@ export function NotificationCenter() {
       return <AlertCircle className="h-4 w-4 text-red-500" />;
     if (title.toLowerCase().includes("comment"))
       return <MessageSquare className="h-4 w-4 text-blue-500" />;
-    return <Clock className="h-4 w-4 text-gray-500" />;
+    return <Clock className="h-4 w-4 text-muted-foreground" />;
   };
 
 

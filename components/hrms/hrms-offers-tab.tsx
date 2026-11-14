@@ -333,7 +333,7 @@ export function HrmsOffersTab({
       <div className="flex flex-wrap items-center justify-between gap-3 bg-card/60 p-3 rounded-lg border border-border/60">
         <div className="flex flex-wrap items-center gap-2.5">
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="h-8 text-xs w-[160px]">
+            <SelectTrigger aria-label="All Offer Statuses" className="h-8 text-xs w-[160px]">
               <SelectValue placeholder="All Offer Statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -398,19 +398,19 @@ export function HrmsOffersTab({
 
                       <TableCell>
                         <div className="text-xs font-bold text-foreground">{offer.candidate.name}</div>
-                        <div className="text-[11px] text-muted-foreground">{offer.candidate.email}</div>
+                        <div className="text-xs text-muted-foreground">{offer.candidate.email}</div>
                       </TableCell>
 
                       <TableCell>
                         <div className="text-xs font-medium text-foreground">{offer.jobTitle}</div>
-                        <div className="text-[10px] text-muted-foreground">{offer.department}</div>
+                        <div className="text-xs text-muted-foreground">{offer.department}</div>
                       </TableCell>
 
                       <TableCell>
                         <div className="text-xs font-bold text-foreground">
                           {formatCurrencyINR(offer.annualCtc)}
                         </div>
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           {formatCurrencyINR(offer.monthlyGross)}/mo
                         </div>
                       </TableCell>
@@ -423,13 +423,13 @@ export function HrmsOffersTab({
 
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <Badge variant="outline" className="text-[10px] font-mono">
+                          <Badge variant="outline" className="text-xs font-mono">
                             v{offer.version}
                           </Badge>
                           {offer.revisions && offer.revisions.length > 0 && (
-                            <button
+                            <button aria-label="View version audit history"
                               onClick={() => setHistoryModal({ isOpen: true, offer })}
-                              className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                              className="text-xs text-primary hover:underline flex items-center gap-0.5"
                               title="View version audit history"
                             >
                               <History className="size-3" />
@@ -556,7 +556,7 @@ export function HrmsOffersTab({
                   value={formData.candidateId}
                   onValueChange={(val) => setFormData({ ...formData, candidateId: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Candidate" className="h-8 text-xs">
                     <SelectValue placeholder="Select candidate" />
                   </SelectTrigger>
                   <SelectContent>
@@ -583,7 +583,7 @@ export function HrmsOffersTab({
                     });
                   }}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Select position" className="h-8 text-xs">
                     <SelectValue placeholder="Select position" />
                   </SelectTrigger>
                   <SelectContent>
@@ -602,7 +602,7 @@ export function HrmsOffersTab({
                   value={formData.templateId}
                   onValueChange={(val) => setFormData({ ...formData, templateId: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Offer Letter Template" className="h-8 text-xs">
                     <SelectValue placeholder="Select template" />
                   </SelectTrigger>
                   <SelectContent>
@@ -621,7 +621,7 @@ export function HrmsOffersTab({
                   value={formData.letterheadId}
                   onValueChange={(val) => setFormData({ ...formData, letterheadId: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Branded Letterhead" className="h-8 text-xs">
                     <SelectValue placeholder="Select letterhead" />
                   </SelectTrigger>
                   <SelectContent>
@@ -636,7 +636,7 @@ export function HrmsOffersTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Annual CTC (₹ INR) *</Label>
-                <Input
+                <Input aria-label="Annual CTC (₹ INR)"
                   type="number"
                   required
                   value={formData.annualCtc}
@@ -647,7 +647,7 @@ export function HrmsOffersTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Monthly Gross (₹ INR) *</Label>
-                <Input
+                <Input aria-label="Monthly Gross (₹ INR)"
                   type="number"
                   required
                   value={formData.monthlyGross}
@@ -664,21 +664,21 @@ export function HrmsOffersTab({
                   <span>Salary Structure Breakdown (Auto-Calculated)</span>
                   <span className="text-primary font-bold">{formatCurrencyINR(formData.annualCtc)} / yr</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
                   <div className="rounded border bg-background p-1.5">
-                    <span className="text-muted-foreground block text-[10px]">Basic (50%)</span>
+                    <span className="text-muted-foreground block text-xs">Basic (50%)</span>
                     <strong className="text-foreground">{formatCurrencyINR(Math.round(formData.annualCtc * 0.5 / 12))}/mo</strong>
                   </div>
                   <div className="rounded border bg-background p-1.5">
-                    <span className="text-muted-foreground block text-[10px]">HRA (25%)</span>
+                    <span className="text-muted-foreground block text-xs">HRA (25%)</span>
                     <strong className="text-foreground">{formatCurrencyINR(Math.round(formData.annualCtc * 0.25 / 12))}/mo</strong>
                   </div>
                   <div className="rounded border bg-background p-1.5">
-                    <span className="text-muted-foreground block text-[10px]">Special (19%)</span>
+                    <span className="text-muted-foreground block text-xs">Special (19%)</span>
                     <strong className="text-foreground">{formatCurrencyINR(Math.round(formData.annualCtc * 0.19 / 12))}/mo</strong>
                   </div>
                   <div className="rounded border bg-background p-1.5">
-                    <span className="text-muted-foreground block text-[10px]">PF Employer</span>
+                    <span className="text-muted-foreground block text-xs">PF Employer</span>
                     <strong className="text-foreground">{formatCurrencyINR(Math.min(1800, Math.round(formData.annualCtc * 0.5 * 0.12 / 12)))}/mo</strong>
                   </div>
                 </div>
@@ -686,7 +686,7 @@ export function HrmsOffersTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Proposed Date of Joining *</Label>
-                <Input
+                <Input aria-label="Proposed Date of Joining"
                   type="date"
                   required
                   value={formData.joiningDate}
@@ -697,7 +697,7 @@ export function HrmsOffersTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Offer Expiry Deadline *</Label>
-                <Input
+                <Input aria-label="Offer Expiry Deadline"
                   type="date"
                   required
                   value={formData.validityDate}
@@ -708,7 +708,7 @@ export function HrmsOffersTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Probation Period (Months)</Label>
-                <Input
+                <Input aria-label="Probation Period (Months)"
                   type="number"
                   min="0"
                   value={formData.probationPeriodMonths}
@@ -725,7 +725,7 @@ export function HrmsOffersTab({
                   value={formData.reportingManagerId}
                   onValueChange={(val) => setFormData({ ...formData, reportingManagerId: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Reporting Manager" className="h-8 text-xs">
                     <SelectValue placeholder="Select manager" />
                   </SelectTrigger>
                   <SelectContent>
@@ -740,7 +740,7 @@ export function HrmsOffersTab({
 
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Work Location / Branch</Label>
-                <Input
+                <Input aria-label="Work Location / Branch"
                   value={formData.workLocation}
                   onChange={(e) => setFormData({ ...formData, workLocation: e.target.value })}
                   className="text-xs"
@@ -749,7 +749,7 @@ export function HrmsOffersTab({
 
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Benefits & Additional Terms</Label>
-                <Textarea
+                <Textarea aria-label="Benefits & Additional Terms"
                   value={formData.benefits}
                   onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
                   rows={2}
@@ -786,7 +786,7 @@ export function HrmsOffersTab({
           <form onSubmit={handleRevisionSubmit} className="space-y-3.5 py-2">
             <div className="space-y-1">
               <Label className="text-xs">Revised Annual CTC (₹)</Label>
-              <Input
+              <Input aria-label="Revised Annual CTC (₹)"
                 type="number"
                 value={revisionModal.annualCtc}
                 onChange={(e) => {
@@ -804,7 +804,7 @@ export function HrmsOffersTab({
 
             <div className="space-y-1">
               <Label className="text-xs">Revised Monthly Gross (₹)</Label>
-              <Input
+              <Input aria-label="Revised Monthly Gross (₹)"
                 type="number"
                 value={revisionModal.monthlyGross}
                 onChange={(e) =>
@@ -817,7 +817,7 @@ export function HrmsOffersTab({
 
             <div className="space-y-1">
               <Label className="text-xs">Revised Joining Date</Label>
-              <Input
+              <Input aria-label="Revised Joining Date"
                 type="date"
                 value={revisionModal.joiningDate}
                 onChange={(e) =>
@@ -830,7 +830,7 @@ export function HrmsOffersTab({
 
             <div className="space-y-1">
               <Label className="text-xs">Reason for Revision *</Label>
-              <Input
+              <Input aria-label="Reason for Revision"
                 value={revisionModal.changeReason}
                 onChange={(e) =>
                   setRevisionModal({ ...revisionModal, changeReason: e.target.value })
@@ -877,7 +877,7 @@ export function HrmsOffersTab({
                 <div key={rev.id} className="rounded-lg border p-3 text-xs space-y-1 bg-muted/20">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-foreground">Version {rev.version}</span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {formatDatePretty(rev.createdAt)}
                     </span>
                   </div>
@@ -887,7 +887,7 @@ export function HrmsOffersTab({
                     <div>Joining Date: <strong className="text-foreground">{formatDatePretty(rev.joiningDate)}</strong></div>
                   </div>
                   {rev.changeReason && (
-                    <div className="text-[11px] text-muted-foreground italic pt-1">
+                    <div className="text-xs text-muted-foreground italic pt-1">
                       Reason: "{rev.changeReason}"
                     </div>
                   )}

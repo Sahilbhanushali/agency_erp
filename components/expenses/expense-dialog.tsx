@@ -1,5 +1,6 @@
 "use client";
 
+import { jsonFetcher } from "@/lib/fetcher";
 import React, { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import toast from "react-hot-toast";
@@ -49,7 +50,8 @@ import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { getMediaUrl } from "@/lib/utils";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 interface ExpenseDialogProps {
   open: boolean;
@@ -281,7 +283,7 @@ export function ExpenseDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Expense Title *</Label>
-              <Input
+              <Input aria-label="Expense Title"
                 placeholder="e.g. Midjourney Annual License / Voiceover Artist Fee"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -293,7 +295,7 @@ export function ExpenseDialog({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Expense Category *</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="text-xs h-10">
+                <SelectTrigger aria-label="Expense Category" className="text-xs h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -322,7 +324,7 @@ export function ExpenseDialog({
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
                     ₹
                   </span>
-                  <Input
+                  <Input aria-label="Amount (₹)"
                     type="number"
                     step="0.01"
                     min="0"
@@ -338,7 +340,7 @@ export function ExpenseDialog({
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Date Incurred *</Label>
                 <div className="relative">
-                  <Input
+                  <Input aria-label="Date Incurred"
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -351,7 +353,7 @@ export function ExpenseDialog({
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Payment Method</Label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger className="text-xs h-10">
+                  <SelectTrigger aria-label="Payment Method" className="text-xs h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -373,7 +375,7 @@ export function ExpenseDialog({
                 <Building2 className="size-4 text-primary" />
                 <span>Client & Project Profit Margin Allocation</span>
               </div>
-              <Badge variant="outline" className="text-[10px]">
+              <Badge variant="outline" className="text-xs">
                 {clientId !== "NONE" ? "Direct Client Cost" : "Agency Overhead"}
               </Badge>
             </div>
@@ -431,7 +433,7 @@ export function ExpenseDialog({
                 <Label className="text-xs font-bold text-foreground block">
                   Rebillable to Client
                 </Label>
-                <p className="text-[11px] text-muted-foreground leading-tight">
+                <p className="text-xs text-muted-foreground leading-tight">
                   Pass through this cost directly on the client's next invoice.
                 </p>
               </div>
@@ -444,7 +446,7 @@ export function ExpenseDialog({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Approval / Settlement Status</Label>
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="text-xs h-10">
+                <SelectTrigger aria-label="Approval / Settlement Status" className="text-xs h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -491,7 +493,7 @@ export function ExpenseDialog({
                     >
                       {receiptName || "Uploaded Receipt"}
                     </a>
-                    <span className="text-[10px] text-muted-foreground">Document attached</span>
+                    <span className="text-xs text-muted-foreground">Document attached</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -505,7 +507,7 @@ export function ExpenseDialog({
                   >
                     Replace
                   </Button>
-                  <Button
+                  <Button aria-label="Remove receipt"
                     type="button"
                     variant="ghost"
                     size="icon"
@@ -530,7 +532,7 @@ export function ExpenseDialog({
                 <p className="text-xs font-bold text-foreground">
                   {uploading ? "Uploading receipt document..." : "Click to attach receipt or invoice voucher"}
                 </p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   PDF, PNG, JPG, or DOCX up to 15MB
                 </p>
               </div>
@@ -540,7 +542,7 @@ export function ExpenseDialog({
           {/* Section 6: Notes */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Commercial Notes & Description</Label>
-            <Textarea
+            <Textarea aria-label="Commercial Notes & Description"
               placeholder="Vendor details, commercial justifications, PO number, or disbursement notes..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -550,7 +552,7 @@ export function ExpenseDialog({
 
           {/* Sticky Modal Footer */}
           <DialogFooter className="pt-3 border-t border-border/60 flex items-center justify-between">
-            <div className="text-[11px] text-muted-foreground hidden sm:block">
+            <div className="text-xs text-muted-foreground hidden sm:block">
               {amount ? `Total: ₹${Number(amount).toLocaleString("en-IN")}` : "Enter amount"}
             </div>
             <div className="flex items-center gap-2">

@@ -339,7 +339,7 @@ export function VisualProofingCanvas({
                       setActivePinId(isActive ? null : ann.id);
                     }}
                     style={{ left: `${ann.x}%`, top: `${ann.y}%` }}
-                    className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center size-6 sm:size-7 rounded-full text-[11px] font-bold shadow-md transition-transform hover:scale-125 focus:outline-none z-10 ${
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center size-6 sm:size-7 rounded-full text-xs font-bold shadow-md transition-transform hover:scale-125 focus:outline-none z-10 ${
                       ann.isResolved
                         ? "bg-emerald-600 text-white ring-2 ring-emerald-300"
                         : isActive
@@ -373,7 +373,7 @@ export function VisualProofingCanvas({
                   <Pin className="size-3.5 text-primary" />
                   Add Feedback at ({pendingPin.x}%, {pendingPin.y}%)
                 </CardTitle>
-                <Button
+                <Button aria-label="Cancel new comment pin"
                   variant="ghost"
                   size="icon-sm"
                   className="size-6"
@@ -383,7 +383,7 @@ export function VisualProofingCanvas({
                 </Button>
               </CardHeader>
               <CardContent className="p-3 space-y-2.5">
-                <Textarea
+                <Textarea aria-label="Specify requested changes, corrections, or instructions"
                   placeholder="Specify requested changes, corrections, or instructions..."
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
@@ -426,7 +426,7 @@ export function VisualProofingCanvas({
                   </span>
                   <Badge
                     variant={activeAnnotation.isResolved ? "success" : "neutral"}
-                    className="text-[10px]"
+                    className="text-xs"
                   >
                     {activeAnnotation.isResolved ? "Resolved" : "Open"}
                   </Badge>
@@ -448,14 +448,14 @@ export function VisualProofingCanvas({
                     <span className="font-semibold text-foreground">
                       {activeAnnotation.authorName}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(activeAnnotation.createdAt), {
                         addSuffix: true,
                       })}
                     </span>
                   </div>
                   {activeAnnotation.authorRole && (
-                    <span className="text-[10px] text-muted-foreground block mb-2 uppercase font-medium">
+                    <span className="text-xs text-muted-foreground block mb-2 uppercase font-medium">
                       {activeAnnotation.authorRole}
                     </span>
                   )}
@@ -483,7 +483,7 @@ export function VisualProofingCanvas({
                     )}
                   </Button>
 
-                  <Button
+                  <Button aria-label="Delete Pin"
                     size="icon"
                     variant="ghost"
                     className="size-7 text-destructive hover:text-destructive"
@@ -496,7 +496,7 @@ export function VisualProofingCanvas({
 
                 {/* Thread Replies */}
                 <div className="space-y-2 pt-2 border-t border-border/40">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
                     Discussion ({activeAnnotation.replies?.length || 0})
                   </span>
 
@@ -507,11 +507,11 @@ export function VisualProofingCanvas({
                           key={reply.id}
                           className="bg-muted/30 p-2 rounded text-xs space-y-0.5 border border-border/30"
                         >
-                          <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center justify-between text-xs">
                             <span className="font-semibold text-foreground">
                               {reply.authorName}
                             </span>
-                            <span className="text-[9px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               {formatDistanceToNow(new Date(reply.createdAt), {
                                 addSuffix: true,
                               })}
@@ -525,7 +525,7 @@ export function VisualProofingCanvas({
 
                   {/* Add Reply Input */}
                   <div className="flex items-center gap-1.5 pt-1">
-                    <Input
+                    <Input aria-label="Reply to this thread"
                       placeholder="Reply to this thread..."
                       value={replyTextMap[activeAnnotation.id] || ""}
                       onChange={(e) =>
@@ -542,7 +542,7 @@ export function VisualProofingCanvas({
                       }}
                       className="text-xs h-8"
                     />
-                    <Button
+                    <Button aria-label="Send reply"
                       size="icon"
                       className="size-8 shrink-0"
                       onClick={() => handleAddReply(activeAnnotation.id)}
@@ -560,7 +560,7 @@ export function VisualProofingCanvas({
               <CardHeader className="py-2.5 px-4 border-b border-border/50">
                 <CardTitle className="text-xs font-semibold flex items-center justify-between">
                   <span>Annotation Pins ({filteredAnnotations.length})</span>
-                  <span className="text-[11px] font-normal text-muted-foreground">
+                  <span className="text-xs font-normal text-muted-foreground">
                     Click any pin to inspect
                   </span>
                 </CardTitle>
@@ -570,7 +570,7 @@ export function VisualProofingCanvas({
                   <div className="py-8 text-center text-xs text-muted-foreground">
                     No visual feedback pins placed yet.
                     {canAnnotate && (
-                      <p className="mt-1 text-[11px] text-primary">
+                      <p className="mt-1 text-xs text-primary">
                         Click "Drop Pin / Feedback" to tag annotations on the image.
                       </p>
                     )}
@@ -594,16 +594,16 @@ export function VisualProofingCanvas({
                           </div>
                           <Badge
                             variant={ann.isResolved ? "success" : "neutral"}
-                            className="text-[9px]"
+                            className="text-xs"
                           >
                             {ann.isResolved ? "Resolved" : "Open"}
                           </Badge>
                         </div>
-                        <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                           {ann.comment}
                         </p>
                         {ann.replies && ann.replies.length > 0 && (
-                          <div className="text-[10px] text-primary flex items-center gap-1 pt-0.5">
+                          <div className="text-xs text-primary flex items-center gap-1 pt-0.5">
                             <MessageSquare className="size-3" />
                             {ann.replies.length} {ann.replies.length === 1 ? "reply" : "replies"}
                           </div>

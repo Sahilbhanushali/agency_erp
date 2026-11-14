@@ -1,5 +1,6 @@
 "use client";
 
+import { jsonFetcher } from "@/lib/fetcher";
 import React, { useState, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -40,7 +41,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 const CATEGORIES = [
   { value: "SOFTWARE_TOOL", label: "Software & SaaS Subscriptions" },
@@ -271,7 +273,7 @@ export default function NewExpensePage() {
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Expense Category</Label>
                     <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger aria-label="Expense Category" className="h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -287,7 +289,7 @@ export default function NewExpensePage() {
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Payment Method</Label>
                     <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger aria-label="Payment Method" className="h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -322,7 +324,7 @@ export default function NewExpensePage() {
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Currency</Label>
                     <Select value={currency} onValueChange={setCurrency}>
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger aria-label="Currency" className="h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -404,7 +406,7 @@ export default function NewExpensePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                <Textarea
+                <Textarea aria-label="Expense notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Additional context, invoice breakdown or commercial justification..."
@@ -428,7 +430,7 @@ export default function NewExpensePage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Approval Status</Label>
                   <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="h-9 text-xs">
+                    <SelectTrigger aria-label="Approval Status" className="h-9 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -452,7 +454,7 @@ export default function NewExpensePage() {
                     <Label htmlFor="isBillable" className="text-xs font-semibold cursor-pointer">
                       Billable to Client
                     </Label>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Mark to include in client invoice recharges
                     </p>
                   </div>
@@ -488,7 +490,7 @@ export default function NewExpensePage() {
                         {receiptName || "Attached Receipt"}
                       </span>
                     </div>
-                    <Button
+                    <Button aria-label="Remove receipt"
                       type="button"
                       variant="ghost"
                       size="icon-xs"
@@ -511,7 +513,7 @@ export default function NewExpensePage() {
                     <p className="text-xs font-medium text-foreground">
                       {uploading ? "Uploading receipt..." : "Click to upload receipt"}
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       PDF, PNG, JPG up to 10MB
                     </p>
                   </div>

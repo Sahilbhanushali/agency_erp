@@ -248,7 +248,7 @@ export function AdjustmentsTab({
           {/* Search */}
           <div className="relative w-44 sm:w-56">
             <Search className="size-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
-            <Input
+            <Input aria-label="Search title, employee"
               placeholder="Search title, employee..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -258,7 +258,7 @@ export function AdjustmentsTab({
 
           {/* Type Filter */}
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="h-8 text-xs w-32">
+            <SelectTrigger aria-label="All Types" className="h-8 text-xs w-32">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
@@ -316,20 +316,20 @@ export function AdjustmentsTab({
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="size-6">
-                            <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-bold">
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
                               {a.user?.name?.charAt(0) || "E"}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="text-xs font-bold text-foreground">{a.user?.name || "Staff"}</p>
-                            <p className="text-[10px] text-muted-foreground">{a.user?.designation || a.user?.email}</p>
+                            <p className="text-xs text-muted-foreground">{a.user?.designation || a.user?.email}</p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant={isDeduction ? "destructive" : "success"}
-                          className="text-[10px] py-0 font-medium"
+                          className="text-xs py-0 font-medium"
                         >
                           {a.type}
                         </Badge>
@@ -351,7 +351,7 @@ export function AdjustmentsTab({
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           {/* VIEW ACTION */}
-                          <Button
+                          <Button aria-label="View Details"
                             variant="ghost"
                             size="icon-xs"
                             onClick={() => setViewAdjustment(a)}
@@ -361,7 +361,7 @@ export function AdjustmentsTab({
                           </Button>
 
                           {/* EDIT ACTION */}
-                          <Button
+                          <Button aria-label="Edit Adjustment"
                             variant="ghost"
                             size="icon-xs"
                             onClick={() => handleOpenEdit(a)}
@@ -371,7 +371,7 @@ export function AdjustmentsTab({
                           </Button>
 
                           {/* DELETE ACTION */}
-                          <Button
+                          <Button aria-label="Delete Adjustment"
                             variant="ghost"
                             size="icon-xs"
                             onClick={() => setDeleteAdjustment(a)}
@@ -412,7 +412,7 @@ export function AdjustmentsTab({
                   value={formData.userId}
                   onValueChange={(val) => setFormData({ ...formData, userId: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Employee" className="h-8 text-xs">
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
@@ -432,7 +432,7 @@ export function AdjustmentsTab({
                     value={formData.type}
                     onValueChange={(val) => setFormData({ ...formData, type: val })}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger aria-label="Adjustment Type" className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -447,7 +447,7 @@ export function AdjustmentsTab({
 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Amount (₹) *</Label>
-                  <Input
+                  <Input aria-label="Amount (₹)"
                     type="number"
                     min="1"
                     step="1"
@@ -462,7 +462,7 @@ export function AdjustmentsTab({
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Title / Description *</Label>
-                <Input
+                <Input aria-label="Title / Description"
                   required
                   placeholder="e.g. Q3 Sales Performance Bonus"
                   value={formData.title}
@@ -478,7 +478,7 @@ export function AdjustmentsTab({
                     value={formData.month}
                     onValueChange={(val) => setFormData({ ...formData, month: val })}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger aria-label="Pay Month" className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -493,7 +493,7 @@ export function AdjustmentsTab({
 
                 <div className="space-y-1">
                   <Label className="text-xs">Pay Year</Label>
-                  <Input
+                  <Input aria-label="Pay Year"
                     type="number"
                     value={formData.year}
                     onChange={(e) => setFormData({ ...formData, year: e.target.value })}
@@ -505,7 +505,7 @@ export function AdjustmentsTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Audit Remarks / Notes</Label>
-                <Input
+                <Input aria-label="Audit Remarks / Notes"
                   placeholder="Optional reference details, invoice number..."
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -548,7 +548,7 @@ export function AdjustmentsTab({
                     value={formData.type}
                     onValueChange={(val) => setFormData({ ...formData, type: val })}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger aria-label="Adjustment Type" className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -563,7 +563,7 @@ export function AdjustmentsTab({
 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Amount (₹) *</Label>
-                  <Input
+                  <Input aria-label="Amount (₹)"
                     type="number"
                     min="1"
                     step="1"
@@ -577,7 +577,7 @@ export function AdjustmentsTab({
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Title / Description *</Label>
-                <Input
+                <Input aria-label="Title / Description"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -592,7 +592,7 @@ export function AdjustmentsTab({
                     value={formData.month}
                     onValueChange={(val) => setFormData({ ...formData, month: val })}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger aria-label="Pay Month" className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -607,7 +607,7 @@ export function AdjustmentsTab({
 
                 <div className="space-y-1">
                   <Label className="text-xs">Pay Year</Label>
-                  <Input
+                  <Input aria-label="Pay Year"
                     type="number"
                     value={formData.year}
                     onChange={(e) => setFormData({ ...formData, year: e.target.value })}
@@ -619,7 +619,7 @@ export function AdjustmentsTab({
 
               <div className="space-y-1">
                 <Label className="text-xs">Remarks / Notes</Label>
-                <Input
+                <Input aria-label="Remarks / Notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="h-8 text-xs"
@@ -663,19 +663,19 @@ export function AdjustmentsTab({
                 </Avatar>
                 <div>
                   <h4 className="font-bold text-foreground text-xs">{viewAdjustment.user?.name}</h4>
-                  <p className="text-[11px] text-muted-foreground">{viewAdjustment.user?.designation || viewAdjustment.user?.email}</p>
+                  <p className="text-xs text-muted-foreground">{viewAdjustment.user?.designation || viewAdjustment.user?.email}</p>
                 </div>
               </div>
 
               {/* Amount hero */}
               <div className="p-3.5 rounded-xl border border-border bg-card flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  <span className="text-xs uppercase font-bold text-muted-foreground block">
                     Adjustment Amount
                   </span>
                   <Badge
                     variant={viewAdjustment.type.includes("DEDUCTION") ? "destructive" : "success"}
-                    className="text-[10px] mt-1"
+                    className="text-xs mt-1"
                   >
                     {viewAdjustment.type}
                   </Badge>
@@ -710,7 +710,7 @@ export function AdjustmentsTab({
                 {viewAdjustment.notes && (
                   <div className="py-1">
                     <span className="text-muted-foreground block mb-0.5">Notes:</span>
-                    <p className="text-foreground bg-muted/40 p-2 rounded text-[11px] font-mono">
+                    <p className="text-foreground bg-muted/40 p-2 rounded text-xs font-mono">
                       {viewAdjustment.notes}
                     </p>
                   </div>

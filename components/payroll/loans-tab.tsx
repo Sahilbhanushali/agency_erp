@@ -265,7 +265,7 @@ export default function LoansTab({ users = [] }: { users?: any[] }) {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
+            <Input aria-label="Search employee or reason"
               placeholder="Search employee or reason..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -273,7 +273,7 @@ export default function LoansTab({ users = [] }: { users?: any[] }) {
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-32 h-9 text-xs">
+            <SelectTrigger aria-label="Status" className="w-32 h-9 text-xs">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -331,8 +331,8 @@ export default function LoansTab({ users = [] }: { users?: any[] }) {
                     <TableRow key={l.id}>
                       <TableCell className="text-xs">
                         <div className="font-medium text-foreground">{l.user?.name}</div>
-                        <div className="text-[11px] text-muted-foreground">{l.user?.department || l.user?.email}</div>
-                        <div className="text-[10px] text-muted-foreground/80 italic mt-0.5">{l.reason}</div>
+                        <div className="text-xs text-muted-foreground">{l.user?.department || l.user?.email}</div>
+                        <div className="text-xs text-muted-foreground/80 italic mt-0.5">{l.reason}</div>
                       </TableCell>
                       <TableCell className="text-xs font-semibold">{formatInr(l.principalAmount)}</TableCell>
                       <TableCell className="text-xs">{formatInr(l.installmentEmi)}/mo</TableCell>
@@ -355,17 +355,17 @@ export default function LoansTab({ users = [] }: { users?: any[] }) {
                       </TableCell>
                       <TableCell className="text-xs">
                         {l.status === "ACTIVE" && (
-                          <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200 text-[10px]">
+                          <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200 text-xs">
                             ACTIVE
                           </Badge>
                         )}
                         {l.status === "PAUSED" && (
-                          <Badge variant="outline" className="text-amber-700 bg-amber-50 border-amber-200 text-[10px]">
+                          <Badge variant="outline" className="text-amber-700 bg-amber-50 border-amber-200 text-xs">
                             PAUSED
                           </Badge>
                         )}
                         {l.status === "COMPLETED" && (
-                          <Badge variant="outline" className="text-muted-foreground bg-muted text-[10px]">
+                          <Badge variant="outline" className="text-muted-foreground bg-muted text-xs">
                             COMPLETED
                           </Badge>
                         )}
@@ -556,16 +556,16 @@ export default function LoansTab({ users = [] }: { users?: any[] }) {
                       <TableCell className="text-xs font-semibold">{formatInr(inst.deductedEmi)}</TableCell>
                       <TableCell className="text-xs">
                         {inst.status === "RECOVERED" && (
-                          <Badge variant="outline" className="text-emerald-700 bg-emerald-50 text-[10px]">RECOVERED</Badge>
+                          <Badge variant="outline" className="text-emerald-700 bg-emerald-50 text-xs">RECOVERED</Badge>
                         )}
                         {inst.status === "PARTIAL" && (
-                          <Badge variant="outline" className="text-amber-700 bg-amber-50 text-[10px]">PARTIAL</Badge>
+                          <Badge variant="outline" className="text-amber-700 bg-amber-50 text-xs">PARTIAL</Badge>
                         )}
                         {inst.status === "SCHEDULED" && (
-                          <Badge variant="outline" className="text-muted-foreground text-[10px]">SCHEDULED</Badge>
+                          <Badge variant="outline" className="text-muted-foreground text-xs">SCHEDULED</Badge>
                         )}
                         {inst.status === "SKIPPED" && (
-                          <Badge variant="outline" className="text-red-700 bg-red-50 text-[10px]">SKIPPED</Badge>
+                          <Badge variant="outline" className="text-red-700 bg-red-50 text-xs">SKIPPED</Badge>
                         )}
                       </TableCell>
                     </TableRow>

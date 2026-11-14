@@ -1,5 +1,8 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/skeleton";
+import { LoadError } from "@/components/load-error";
+import { jsonFetcher } from "@/lib/fetcher";
 import { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import useSWR from "swr";
@@ -120,7 +123,8 @@ const PIPELINE_COLUMNS: Array<{
   { id: "LOST", title: "Closed Lost", color: "border-rose-300 text-rose-700 dark:text-rose-300", badgeVariant: "destructive" },
 ];
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 export default function LeadsPage() {
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
@@ -178,7 +182,7 @@ export default function LeadsPage() {
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<LeadStatus | null>(null);
 
-  const { data, mutate, isLoading } = useSWR<{
+  const { data, error: leadsError, mutate, isLoading } = useSWR<{
     leads: Lead[];
     metrics: {
       totalLeads: number;
@@ -483,8 +487,8 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2.5">
-            <Target className="size-7 text-primary" />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <Target className="size-6 text-primary" aria-hidden="true" />
             Leads Pipeline
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -529,7 +533,7 @@ export default function LeadsPage() {
           <p className="mt-2 text-2xl font-bold tracking-tight text-foreground tabular-nums">
             {metrics.totalLeads}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Across all stages</p>
+          <p className="mt-1 text-xs text-muted-foreground">Across all stages</p>
         </Card>
 
         <Card className="p-4 bg-card">
@@ -540,7 +544,7 @@ export default function LeadsPage() {
           <p className="mt-2 text-2xl font-bold tracking-tight text-foreground tabular-nums">
             {formatCurrency(metrics.pipelineValue)}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Active deal value</p>
+          <p className="mt-1 text-xs text-muted-foreground">Active deal value</p>
         </Card>
 
         <Card className="p-4 bg-card">
@@ -551,7 +555,7 @@ export default function LeadsPage() {
           <p className="mt-2 text-2xl font-bold tracking-tight text-foreground tabular-nums">
             {formatCurrency(metrics.wonValue)}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{metrics.wonCount} deals closed</p>
+          <p className="mt-1 text-xs text-muted-foreground">{metrics.wonCount} deals closed</p>
         </Card>
 
         <Card className="p-4 bg-card">
@@ -562,7 +566,7 @@ export default function LeadsPage() {
           <p className="mt-2 text-2xl font-bold tracking-tight text-foreground tabular-nums">
             {metrics.winRate}%
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Conversion effectiveness</p>
+          <p className="mt-1 text-xs text-muted-foreground">Conversion effectiveness</p>
         </Card>
       </div>
 
@@ -572,7 +576,7 @@ export default function LeadsPage() {
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <Input aria-label="Search leads by deal, contact, company, or email"
                 placeholder="Search leads by deal, contact, company, or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -581,7 +585,7 @@ export default function LeadsPage() {
             </div>
             <div className="flex items-center gap-2">
               <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
-                <SelectTrigger className="w-[180px] h-9 text-xs">
+                <SelectTrigger aria-label="Assigned Rep" className="w-[180px] h-9 text-xs">
                   <User className="size-3.5 mr-1.5 text-muted-foreground" />
                   <SelectValue placeholder="Assigned Rep" />
                 </SelectTrigger>
@@ -600,7 +604,15 @@ export default function LeadsPage() {
       </Card>
 
       {/* Main Content: Pipeline Kanban vs Table */}
-      {viewMode === "kanban" ? (
+      {leadsError && !data ? (
+        <LoadError what="leads" error={leadsError} onRetry={() => mutate()} />
+      ) : isLoading && !data ? (
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3 xl:grid-cols-6" aria-busy="true" aria-label="Loading leads">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-64 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : viewMode === "kanban" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 overflow-x-auto pb-4">
           {PIPELINE_COLUMNS.map((col) => {
             const columnLeads = filteredLeads.filter((l) => l.status === col.id);
@@ -627,12 +639,12 @@ export default function LeadsPage() {
                     <span className="text-xs font-semibold text-foreground truncate">
                       {col.title}
                     </span>
-                    <Badge variant={col.badgeVariant} className="text-[10px] px-1.5 py-0 tabular-nums">
+                    <Badge variant={col.badgeVariant} className="text-xs px-1.5 py-0 tabular-nums">
                       {columnLeads.length}
                     </Badge>
                   </div>
                   {columnTotal > 0 && (
-                    <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+                    <span className="text-xs font-medium text-muted-foreground tabular-nums">
                       {formatCurrency(columnTotal)}
                     </span>
                   )}
@@ -642,7 +654,7 @@ export default function LeadsPage() {
                 <div className="space-y-2.5 flex-1 min-h-[200px]">
                   {columnLeads.length === 0 ? (
                     <div
-                      className={`h-28 flex items-center justify-center rounded-lg border border-dashed text-[11px] transition-colors ${
+                      className={`h-28 flex items-center justify-center rounded-lg border border-dashed text-xs transition-colors ${
                         dragOverColumn === col.id
                           ? "border-primary text-primary font-medium bg-primary/10"
                           : "border-border/60 text-muted-foreground/60"
@@ -676,7 +688,7 @@ export default function LeadsPage() {
                             onClick={(e) => e.stopPropagation()}
                             onMouseDown={(e) => e.stopPropagation()}
                           >
-                            <Badge variant="neutral" className="text-[10px] px-1.5 py-0 font-mono">
+                            <Badge variant="neutral" className="text-xs px-1.5 py-0 font-mono">
                               {lead.source || "INBOUND"}
                             </Badge>
                             <DropdownMenu>
@@ -732,7 +744,7 @@ export default function LeadsPage() {
                           </div>
                         </div>
 
-                        <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                        <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1.5 font-medium text-foreground">
                             <User className="size-3 text-muted-foreground shrink-0" />
                             <span className="truncate">{lead.name}</span>
@@ -758,7 +770,7 @@ export default function LeadsPage() {
                                 </AvatarFallback>
                               </Avatar>
                             ) : (
-                              <span className="text-[10px] text-muted-foreground/80">Unassigned</span>
+                              <span className="text-xs text-muted-foreground/80">Unassigned</span>
                             )}
                           </div>
                         </div>
@@ -769,7 +781,7 @@ export default function LeadsPage() {
                             <Button
                               size="xs"
                               variant="default"
-                              className="w-full text-[10px] h-6 gap-1"
+                              className="w-full text-xs h-6 gap-1"
                               onMouseDown={(e) => e.stopPropagation()}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -783,7 +795,7 @@ export default function LeadsPage() {
                           </div>
                         )}
                         {lead.convertedToClientId && (
-                          <div className="mt-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                          <div className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                             <CheckCircle2 className="size-3" />
                             Client Active
                           </div>
@@ -793,7 +805,7 @@ export default function LeadsPage() {
                   )}
 
                   {columnLeads.length > 0 && dragOverColumn === col.id && (
-                    <div className="h-10 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 flex items-center justify-center text-[11px] font-medium text-primary animate-pulse">
+                    <div className="h-10 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 flex items-center justify-center text-xs font-medium text-primary animate-pulse">
                       Drop here to move to {col.title}
                     </div>
                   )}
@@ -844,11 +856,11 @@ export default function LeadsPage() {
                       <TableCell>
                         <div className="space-y-0.5">
                           <p className="text-xs font-medium text-foreground">{lead.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{lead.company || lead.email}</p>
+                          <p className="text-xs text-muted-foreground">{lead.company || lead.email}</p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={col?.badgeVariant || "neutral"} dot className="text-[10px]">
+                        <Badge variant={col?.badgeVariant || "neutral"} dot className="text-xs">
                           {lead.status.replace(/_/g, " ")}
                         </Badge>
                       </TableCell>
@@ -867,7 +879,7 @@ export default function LeadsPage() {
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-xs">
+                            <Button aria-label="More actions for this lead" variant="ghost" size="icon-xs">
                               <MoreHorizontal className="size-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -1124,7 +1136,7 @@ export default function LeadsPage() {
                     value={selectedLead.status}
                     onValueChange={(val) => handleStatusChange(selectedLead.id, val as LeadStatus)}
                   >
-                    <SelectTrigger className="h-8 text-xs font-semibold">
+                    <SelectTrigger aria-label="Lead stage" className="h-8 text-xs font-semibold">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1144,23 +1156,23 @@ export default function LeadsPage() {
               {/* Meta details banner */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 rounded-xl border border-border p-3 bg-muted/20">
                 <div>
-                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">Deal Value</p>
+                  <p className="text-xs uppercase font-semibold text-muted-foreground">Deal Value</p>
                   <p className="text-sm font-bold text-foreground tabular-nums mt-0.5">
                     {formatCurrency(selectedLead.estimatedValue)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">Lead Source</p>
+                  <p className="text-xs uppercase font-semibold text-muted-foreground">Lead Source</p>
                   <p className="text-xs font-medium text-foreground mt-0.5">{selectedLead.source}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">Email</p>
+                  <p className="text-xs uppercase font-semibold text-muted-foreground">Email</p>
                   <p className="text-xs font-medium text-foreground truncate mt-0.5">
                     {selectedLead.email || "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">Phone</p>
+                  <p className="text-xs uppercase font-semibold text-muted-foreground">Phone</p>
                   <p className="text-xs font-medium text-foreground truncate mt-0.5">
                     {selectedLead.phone || "—"}
                   </p>
@@ -1176,7 +1188,7 @@ export default function LeadsPage() {
                       <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
                         {selectedLead.convertedToClientId ? "Client Created" : "Deal is Won!"}
                       </p>
-                      <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80">
+                      <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">
                         {selectedLead.convertedToClientId
                           ? "This lead is active as an agency client in your CRM."
                           : "Ready to graduate this lead into your Client & Project workspace."}
@@ -1238,7 +1250,7 @@ export default function LeadsPage() {
                         <Clock className="size-3.5 text-primary shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-foreground text-xs">{act.content}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {new Date(act.createdAt).toLocaleString()}
                           </p>
                         </div>

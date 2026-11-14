@@ -154,7 +154,7 @@ export function DesignerPerformanceReport({ selectedPeriod, onPeriodChange }: De
 
           <div className="flex flex-wrap items-center gap-2">
             <Select value={projectFilter} onValueChange={setProjectFilter} disabled={!data && !error && isLoading}>
-              <SelectTrigger className="min-w-[180px]">
+              <SelectTrigger aria-label="All projects" className="min-w-[180px]">
                 <SelectValue placeholder="All projects" />
               </SelectTrigger>
               <SelectContent>
@@ -168,7 +168,7 @@ export function DesignerPerformanceReport({ selectedPeriod, onPeriodChange }: De
             </Select>
 
             <Select value={roleFilter} onValueChange={setRoleFilter} disabled={!data && !error && isLoading}>
-              <SelectTrigger className="min-w-[180px]">
+              <SelectTrigger aria-label="All roles" className="min-w-[180px]">
                 <SelectValue placeholder="All roles" />
               </SelectTrigger>
               <SelectContent>
@@ -189,7 +189,7 @@ export function DesignerPerformanceReport({ selectedPeriod, onPeriodChange }: De
               }}
               disabled={!data && !error && isLoading}
             >
-              <SelectTrigger className="min-w-[180px]">
+              <SelectTrigger aria-label="Select month" className="min-w-[180px]">
                 <SelectValue placeholder="Select month" />
               </SelectTrigger>
               <SelectContent>
@@ -321,7 +321,7 @@ export function DesignerPerformanceReport({ selectedPeriod, onPeriodChange }: De
                     <TableCell className="text-center text-amber-500">{designer.draftPosts}</TableCell>
                     <TableCell className="text-center text-violet-500">{designer.underReviewPosts}</TableCell>
                     <TableCell className="text-center text-emerald-500">{designer.approvedPosts}</TableCell>
-                    <TableCell className="text-center text-slate-500">{designer.changesPosts}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{designer.changesPosts}</TableCell>
                     <TableCell className="text-center text-rose-500">{designer.overduePosts}</TableCell>
                     <TableCell className="text-center">{designer.avgReworksPerPost.toFixed(2)}</TableCell>
                     <TableCell className="text-center">{designer.avgApprovalAttempts.toFixed(2)}</TableCell>

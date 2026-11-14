@@ -1,5 +1,7 @@
 "use client";
 
+import { LoadError } from "@/components/load-error";
+import { jsonFetcher } from "@/lib/fetcher";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
@@ -46,7 +48,8 @@ import Link from "next/link";
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog";
 import { useBreadcrumbTitle } from "@/lib/route-labels";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 const PIPELINE_STAGES = [
   { id: "NEW", title: "New Inquiry" },
@@ -62,7 +65,7 @@ export default function LeadDetailPage() {
   const router = useRouter();
   const leadId = params.id as string;
 
-  const { data: lead, mutate, isLoading } = useSWR<any>(
+  const { data: lead, error: leadError, mutate, isLoading } = useSWR<any>(
     leadId ? `/api/leads/${leadId}` : null,
     fetcher
   );
@@ -182,6 +185,15 @@ export default function LeadDetailPage() {
           </div>
           <Skeleton className="h-96 rounded-xl" />
         </div>
+      </div>
+    );
+  }
+
+  // A failed load is not "not found": a 403/500 now arrives as an error (lib/fetcher.ts).
+  if (leadError && (leadError as { status?: number }).status !== 404) {
+    return (
+      <div className="py-12">
+        <LoadError what="this lead" error={leadError} onRetry={() => mutate()} />
       </div>
     );
   }
@@ -309,7 +321,7 @@ export default function LeadDetailPage() {
                       : "bg-background text-muted-foreground border-dashed border-border/70 hover:border-border hover:text-foreground"
                   }`}
                 >
-                  <span className="text-[10px] uppercase tracking-wider opacity-80">
+                  <span className="text-xs uppercase tracking-wider opacity-80">
                     Step {idx + 1}
                   </span>
                   <span>{stg.title}</span>
@@ -451,7 +463,7 @@ export default function LeadDetailPage() {
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
               <form onSubmit={handleAddActivityNote} className="space-y-2.5">
-                <Textarea
+                <Textarea aria-label="Log a client interaction, call notes, or follow-up task"
                   placeholder="Log a client interaction, call notes, or follow-up task..."
                   value={noteContent}
                   onChange={(e) => setNoteContent(e.target.value)}
@@ -477,10 +489,10 @@ export default function LeadDetailPage() {
                       className="p-3 rounded-lg border border-border/60 bg-muted/20 text-xs space-y-1"
                     >
                       <div className="flex items-center justify-between text-muted-foreground">
-                        <span className="font-semibold text-foreground uppercase text-[10px]">
+                        <span className="font-semibold text-foreground uppercase text-xs">
                           {act.type}
                         </span>
-                        <span className="text-[11px] tabular-nums">
+                        <span className="text-xs tabular-nums">
                           {format(new Date(act.createdAt), "MMM d, yyyy h:mm a")}
                         </span>
                       </div>
@@ -514,7 +526,7 @@ export default function LeadDetailPage() {
                   <p className="font-semibold text-foreground">
                     {lead.assignedTo?.name || "Unassigned"}
                   </p>
-                  <p className="text-muted-foreground text-[11px]">
+                  <p className="text-muted-foreground text-xs">
                     {lead.assignedTo?.email || "No sales representative assigned"}
                   </p>
                 </div>

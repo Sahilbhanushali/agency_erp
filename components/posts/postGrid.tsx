@@ -1,5 +1,7 @@
 "use client";
 
+import { contentStatusLabel, statusLabel } from "@/lib/post-status";
+import { PostTypeIcon, typeLabel } from "@/components/posts/post-type-icon";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -94,16 +96,6 @@ const contentStatusColors: Record<string, string> = {
   NEEDS_REVISION: "bg-orange-200 dark:bg-orange-900/50 text-orange-900 dark:text-orange-300",
   NEEDS_MINOR_CHANGE: "bg-amber-200 dark:bg-amber-900/50 text-amber-900 dark:text-amber-300",
   RESUBMITTED: "bg-blue-200 dark:bg-blue-900/50 text-blue-900 dark:text-blue-300",
-};
-
-const typeIcons: Record<string, string> = {
-  PHOTO: "📷",
-  REEL: "🎬",
-  STORY: "📱",
-  CAROUSEL: "🎠",
-  VIDEO: "🎥",
-  CUSTOM: "✨",
-  UNKNOWN: "❓",
 };
 
 const getPlatformIcon = (platformName: string, isSelected: boolean = false) => {
@@ -273,10 +265,10 @@ export default function PostGrid({
                         </>
                       )}
                       <Badge className={`absolute top-2 left-2 ${statusColors[post.status]} text-xs font-medium`}>
-                        Design Status: {post.status === "REJECTED" ? "Changes" : post.status === "NEEDS_MINOR_CHANGE" ? "Needs Minor Change" : post.status === "APPROVED" ? "I Approve" : post.status === "C_APPROVED" ? "C Approve" : post.status.charAt(0) + post.status.slice(1).toLowerCase()}
+                        Design: {statusLabel(post.status)}
                       </Badge>
                       <div className="absolute top-2 right-2 bg-card/90 dark:bg-card rounded-full p-1 shadow-sm">
-                        <span className="text-lg">{typeIcons[post.type] || "📄"}</span>
+                        <PostTypeIcon type={post.type} className="size-4 text-foreground" />
                       </div>
                       {permissions.includes("Manage-post") && (
                         <div className="absolute bottom-2 left-2">
@@ -318,17 +310,17 @@ export default function PostGrid({
                         )}
                         <span>Posting: {post.scheduledAt ? convertToIST(post.scheduledAt) : "N/A"}</span>
                       </div>
-                      <div className="text-[11px] font-medium text-blue-600 dark:text-blue-400 mt-0.5 truncate">
+                      <div className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-0.5 truncate">
                         Status Updated By: {post.approvalFlows?.[0]?.reviewedBy?.name || post.approvalFlows?.[0]?.submittedBy?.name || post.createdBy?.name || "N/A"}
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center justify-between">
                       <Badge className={contentStatusColors[post.contentStatus] || "bg-muted text-muted-foreground"}>
-                        Content Status: {post.contentStatus === "REJECTED" ? "Changes" : post.contentStatus === "APPROVED" ? "I Approve" : post.contentStatus === "C_APPROVED" ? "C Approve" : post.contentStatus.charAt(0) + post.contentStatus.slice(1).toLowerCase().replace(/_/g, " ")}
+                        Copy: {contentStatusLabel(post.contentStatus)}
                       </Badge>
                       <div className="flex gap-1">
-                        <Badge variant="outline" className="text-[10px] bg-blue-50/50">Ref: {post.assets?.filter(a => a.isReference).length || 0}</Badge>
-                        <Badge variant="outline" className="text-[10px] bg-green-50/50">Des: {post.assets?.filter(a => !a.isReference).length || 0}</Badge>
+                        <Badge variant="outline" className="text-xs bg-blue-50/50">Ref: {post.assets?.filter(a => a.isReference).length || 0}</Badge>
+                        <Badge variant="outline" className="text-xs bg-green-50/50">Des: {post.assets?.filter(a => !a.isReference).length || 0}</Badge>
                       </div>
                     </div>
                   </div>

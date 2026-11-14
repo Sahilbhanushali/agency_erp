@@ -92,6 +92,7 @@ const generateTypeOptions = () => {
     { value: "REEL", label: "Reel" },
     { value: "CAROUSEL", label: "Carousel" },
     { value: "BLOG", label: "Linkedin/Article" },
+    { value: "PPT", label: "PPT (Presentation)" },
   ];
 };
 
@@ -101,7 +102,7 @@ const StatusCard = ({ icon: Icon, label, value, total, colorClass }: any) => {
   return (
     <div className="flex min-w-0 flex-col justify-between gap-3 rounded-xl border border-border/70 bg-card p-4 shadow-2xs transition-all hover:border-border hover:shadow-xs">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
         <div className={`flex size-8 items-center justify-center rounded-lg ${colorClass}`}>
           <Icon className="size-4 shrink-0" />
         </div>
@@ -113,7 +114,7 @@ const StatusCard = ({ icon: Icon, label, value, total, colorClass }: any) => {
         </div>
         <div className="mt-2 space-y-1">
           <Progress value={percentage} className="h-1.5 bg-muted" />
-          <p className="text-[10px] text-muted-foreground font-medium">{percentage}% completed</p>
+          <p className="text-xs text-muted-foreground font-medium">{percentage}% completed</p>
         </div>
       </div>
     </div>
@@ -124,7 +125,7 @@ const SimpleStatusCard = ({ icon: Icon, label, value, colorClass }: any) => {
   return (
     <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-4 shadow-2xs transition-all hover:border-border hover:shadow-xs">
       <div className="space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
         <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{value}</p>
       </div>
       <div className={`flex size-9 items-center justify-center rounded-lg ${colorClass}`}>
@@ -356,7 +357,7 @@ export default function DashboardPage() {
         title="Dashboard Overview"
         description={`Welcome back, ${session.user.name}. Overview of content planning, design approvals, and social publishing.`}
         badge={
-          <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider">
+          <Badge variant="outline" className="text-xs uppercase font-mono tracking-wider">
             {userRole}
           </Badge>
         }
@@ -422,7 +423,7 @@ export default function DashboardPage() {
             <FileText className="size-4 text-primary" />
             <h2 className="text-sm font-semibold tracking-tight text-foreground">Content Pipeline</h2>
           </div>
-          <Badge variant="neutral" className="text-[10px]">
+          <Badge variant="neutral" className="text-xs">
             Total Strategy Posts: {currentStrategyStats.totalStrategy}
           </Badge>
         </div>
@@ -470,7 +471,7 @@ export default function DashboardPage() {
             <Pencil className="size-4 text-violet-500" />
             <h2 className="text-sm font-semibold tracking-tight text-foreground">Design Workflow</h2>
           </div>
-          <Badge variant="neutral" className="text-[10px]">
+          <Badge variant="neutral" className="text-xs">
             Designs Assigned: {currentDesignStats.designAssigned}
           </Badge>
         </div>
@@ -520,7 +521,7 @@ export default function DashboardPage() {
               <Clock className="size-5" />
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Ready to Schedule</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Ready to Schedule</p>
               <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{currentPostingStats.readyToSchedule}</p>
             </div>
           </div>
@@ -532,7 +533,7 @@ export default function DashboardPage() {
               <Calendar className="size-5" />
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Scheduled Posts</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Scheduled Posts</p>
               <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{currentPostingStats.scheduled}</p>
             </div>
           </div>
@@ -544,7 +545,7 @@ export default function DashboardPage() {
               <CheckCircle className="size-5" />
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Published / Posted</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Published / Posted</p>
               <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{currentPostingStats.posted}</p>
             </div>
           </div>
@@ -581,7 +582,7 @@ export default function DashboardPage() {
                         <Link href={`/dashboard/projects/posts/${post.id}`} className="font-medium text-xs sm:text-sm text-foreground hover:text-primary transition-colors line-clamp-1">
                           {post.title}
                         </Link>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground/80">{post.project.client?.name || "No Client"}</span>
                           <span>•</span>
                           <span>{post.createdBy?.name || 'Deleted User'}</span>
@@ -592,10 +593,10 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
-                      <Badge variant={getStatusBadgeVariant(post.status)} dot className="text-[10px]">
+                      <Badge variant={getStatusBadgeVariant(post.status)} dot className="text-xs">
                         {post.status}
                       </Badge>
-                      <Button asChild variant="ghost" size="icon-xs" title="Edit Post">
+                      <Button aria-label="Edit Post" asChild variant="ghost" size="icon-xs" title="Edit Post">
                         <Link href={`/dashboard/projects/posts/${post.id}`}>
                           <Edit3 className="size-3.5 text-muted-foreground" />
                         </Link>

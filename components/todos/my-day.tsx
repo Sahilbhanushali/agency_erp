@@ -1,5 +1,6 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useState } from "react"
 import useSWR from "swr"
 import toast from "react-hot-toast"
@@ -52,7 +53,8 @@ import {
   type TodoStatus,
 } from "@/lib/validation/todo"
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 const STATUS_CONFIG: Record<TodoStatus, { label: string; class: string }> = {
   PENDING: { label: "Not Started", class: "bg-muted text-muted-foreground border-transparent" },
@@ -163,7 +165,7 @@ function PersonalTodoRow({
             {/* Status */}
             <Badge
               variant="outline"
-              className={`text-[10px] py-0 px-1.5 font-medium ${STATUS_CONFIG[todo.status]?.class}`}
+              className={`text-xs py-0 px-1.5 font-medium ${STATUS_CONFIG[todo.status]?.class}`}
             >
               {STATUS_CONFIG[todo.status]?.label}
             </Badge>
@@ -171,7 +173,7 @@ function PersonalTodoRow({
             {/* Priority */}
             <Badge
               variant="outline"
-              className={`text-[10px] py-0 px-1.5 font-medium ${PRIORITY_CONFIG[todo.priority]?.class}`}
+              className={`text-xs py-0 px-1.5 font-medium ${PRIORITY_CONFIG[todo.priority]?.class}`}
             >
               <Flag className="mr-1 h-2.5 w-2.5" />
               {PRIORITY_CONFIG[todo.priority]?.label}
@@ -179,7 +181,7 @@ function PersonalTodoRow({
 
             {/* Task Link */}
             {todo.task && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Link2 className="h-3 w-3" aria-hidden="true" />
                 {todo.task.project?.name ?? "Task"}
               </span>
@@ -193,7 +195,7 @@ function PersonalTodoRow({
                   e.stopPropagation()
                   onOpenDetails(todo)
                 }}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded hover:bg-destructive/20 transition-colors"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded hover:bg-destructive/20 transition-colors"
               >
                 <AlertTriangle className="h-3 w-3" />
                 {activeBlockers.length > 0
@@ -229,7 +231,7 @@ function PersonalTodoRow({
 
           {/* Add Blocker quick action */}
           {!done && (
-            <Button
+            <Button aria-label="Add Blocker"
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-muted-foreground hover:text-destructive"
@@ -243,7 +245,7 @@ function PersonalTodoRow({
           {/* More actions menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+              <Button aria-label="More actions for this to-do" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -389,7 +391,7 @@ export default function MyDay({ canSeeTeam = false }: { canSeeTeam: boolean }) {
     <div className="space-y-5">
       {/* View Switcher for Administrators */}
       {canSeeTeam && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
             <Button
               variant={view === "mine" ? "default" : "ghost"}
@@ -447,7 +449,7 @@ export default function MyDay({ canSeeTeam = false }: { canSeeTeam: boolean }) {
 
               {/* Date Navigation */}
               <div className="flex items-center gap-1.5 self-start sm:self-auto">
-                <Button
+                <Button aria-label="Previous Day"
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
@@ -468,14 +470,14 @@ export default function MyDay({ canSeeTeam = false }: { canSeeTeam: boolean }) {
                   </Button>
                 )}
 
-                <Input
+                <Input aria-label="Day to show"
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="h-7 w-[130px] text-xs font-medium"
                 />
 
-                <Button
+                <Button aria-label="Next Day"
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
@@ -525,7 +527,7 @@ export default function MyDay({ canSeeTeam = false }: { canSeeTeam: boolean }) {
                   value={quickPriority}
                   onValueChange={(val) => setQuickPriority(val as TaskPriority)}
                 >
-                  <SelectTrigger className="h-9 w-[110px] text-xs">
+                  <SelectTrigger aria-label="Priority" className="h-9 w-[110px] text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -550,7 +552,7 @@ export default function MyDay({ canSeeTeam = false }: { canSeeTeam: boolean }) {
                   Add
                 </Button>
 
-                <Button
+                <Button aria-label="Full details form"
                   type="button"
                   variant="outline"
                   size="icon"

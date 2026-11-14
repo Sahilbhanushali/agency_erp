@@ -81,10 +81,10 @@ export default function AssetsDialog({
                   </div>
                 </>
               )}
-              <p className="text-sm text-gray-600 mt-2 text-center">{assets[currentAssetIndex]?.filename}</p>
+              <p className="text-sm text-muted-foreground mt-2 text-center">{assets[currentAssetIndex]?.filename}</p>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">No assets available</div>
+            <div className="text-center py-8 text-muted-foreground">No assets available</div>
           )}
         </div>
         <DialogFooter>

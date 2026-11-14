@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AlertCircle, Link as LinkIcon } from "lucide-react";
 import MediaRenderer from "@/components/MediaRenderer";
+import { PresentationFileCard, isPresentationAsset } from "@/components/posts/presentation-file-card";
 import { getMediaUrl, getGoogleDriveEmbedUrl } from "@/lib/utils";
 
 interface MediaWithFallbackProps {
@@ -81,6 +82,12 @@ export default function MediaWithFallback({
         </span>
       </a>
     );
+  }
+
+  // Presentations have no in-browser renderer: show the file with a download link
+  // (and never the "Loading..." overlay, which would wait forever for an onLoad).
+  if (isPresentationAsset(asset)) {
+    return <PresentationFileCard asset={asset} className={className} />;
   }
 
   if (hasError) {

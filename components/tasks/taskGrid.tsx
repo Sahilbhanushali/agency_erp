@@ -82,9 +82,9 @@ export default function TaskGrid({
       <Card>
         <CardContent className="p-8 text-center">
           <div className="space-y-2">
-            <CheckCircle className="h-12 w-12 mx-auto text-gray-400" />
-            <p className="text-gray-500 font-medium">{emptyMessage}</p>
-            <p className="text-sm text-gray-400">{emptySubMessage}</p>
+            <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+            <p className="text-muted-foreground font-medium">{emptyMessage}</p>
+            <p className="text-sm text-muted-foreground">{emptySubMessage}</p>
           </div>
         </CardContent>
       </Card>

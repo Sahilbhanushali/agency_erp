@@ -391,7 +391,7 @@ export default function RolesManager() {
                             />
                           )}
                           {role.description && (
-                            <span className="block text-[11px] text-muted-foreground">
+                            <span className="block text-xs text-muted-foreground">
                               {role.description}
                             </span>
                           )}
@@ -406,7 +406,7 @@ export default function RolesManager() {
                     </td>
                     <td className="hidden px-3 py-2 sm:table-cell">
                       {role._count.permissions === 0 ? (
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-xs">
                           None yet
                         </Badge>
                       ) : (

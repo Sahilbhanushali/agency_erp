@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, PartyPopper } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -479,7 +480,7 @@ export default function FestivalsPage() {
               />
               <label
                 htmlFor={`project-${festivalId}-${project.id}`}
-                className="text-sm text-gray-700 cursor-pointer flex-1"
+                className="text-sm text-foreground cursor-pointer flex-1"
               >
                 {project.client.company} - {project.name}
               </label>
@@ -494,7 +495,7 @@ export default function FestivalsPage() {
     <div key={festival.id} className="p-4 border rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center">
       <div className="flex-1">
         <h3 className="text-md font-medium">{festival.name}</h3>
-        <p className="text-sm text-gray-600">{festival.description}</p>
+        <p className="text-sm text-muted-foreground">{festival.description}</p>
         <p className="text-sm">📅 {formatFestivalDate(festival.date)}</p>
         <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
           {festival.primaryType}
@@ -533,7 +534,7 @@ export default function FestivalsPage() {
                     />
                     <label
                       htmlFor={`selected-project-${festival.id}-${project.id}`}
-                      className="text-sm text-gray-700"
+                      className="text-sm text-foreground"
                     >
                       {project.client.company} - {project.name}
                     </label>
@@ -556,7 +557,7 @@ export default function FestivalsPage() {
   const renderGridFestivalCard = (festival: Festival) => (
     <div key={festival.id} className="p-4 border rounded-lg">
       <h3 className="text-md font-medium">{festival.name}</h3>
-      <p className="text-sm text-gray-600">{festival.description}</p>
+      <p className="text-sm text-muted-foreground">{festival.description}</p>
       <p className="text-sm">📅 {formatFestivalDate(festival.date)}</p>
       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
         {festival.primaryType}
@@ -594,7 +595,7 @@ export default function FestivalsPage() {
                     />
                     <label
                       htmlFor={`selected-project-${festival.id}-${project.id}`}
-                      className="text-sm text-gray-700"
+                      className="text-sm text-foreground"
                     >
                       {project.client.company} - {project.name}
                     </label>
@@ -648,8 +649,8 @@ export default function FestivalsPage() {
 
   const renderCalendarGrid = () => {
     return (
-      <div className="bg-white border rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+      <div className="bg-card border rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b bg-muted/50">
           <Button variant="ghost" size="sm" onClick={() => navigateMonth("prev")}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -662,7 +663,7 @@ export default function FestivalsPage() {
         </div>
         <div className="grid grid-cols-7 border-b">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-gray-700 bg-gray-50">
+            <div key={day} className="p-2 text-center text-sm font-medium text-foreground bg-muted/50">
               {day}
             </div>
           ))}
@@ -677,7 +678,7 @@ export default function FestivalsPage() {
             >
               <div
                 className={`text-sm font-medium mb-1 ${
-                  day.isToday ? "text-blue-600" : day.isCurrentMonth ? "text-gray-900" : "text-gray-400"
+                  day.isToday ? "text-blue-600" : day.isCurrentMonth ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
                 {day.date.getDate()}
@@ -693,7 +694,7 @@ export default function FestivalsPage() {
                     }}
                   >
                     <div className="font-medium truncate">{festival.name}</div>
-                    <div className="text-[10px] opacity-75 truncate">{festival.primaryType}</div>
+                    <div className="text-xs opacity-75 truncate">{festival.primaryType}</div>
                     {canManageFestivals && (
                       <div className="mt-1">
                         {/* {renderProjectSelector(festival.id)} */}
@@ -713,7 +714,7 @@ export default function FestivalsPage() {
                                   />
                                   <label
                                     htmlFor={`selected-project-${festival.id}-${project.id}`}
-                                    className="text-sm text-gray-700"
+                                    className="text-sm text-foreground"
                                   >
                                     {project.client.companyName} - {project.name}
                                   </label>
@@ -745,18 +746,29 @@ export default function FestivalsPage() {
 
   const renderFestivals = () => {
     if (displayedFestivals.length === 0 && upcomingFestivals.length === 0) {
-      return <p className="text-gray-600">No festivals found.</p>;
+      return (
+        <EmptyState
+          icon={PartyPopper}
+          title={`No festivals in ${months.find((m) => m.value === selectedMonth)?.label ?? "this month"}`}
+          description={
+            canManageFestivals
+              ? "Add a festival to plan its greeting post, or pick another month."
+              : "Pick another month to see its festivals."
+          }
+          {...(canManageFestivals ? { actionLabel: "Add festival", onAction: () => setFormOpen(true) } : {})}
+        />
+      );
     }
 
     if (viewMode === "list") {
       return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div>
-            <h3 className="text-lg font-semibold mb-4 text-gray-700">
+            <h3 className="text-lg font-semibold mb-4 text-foreground">
               Current & Past Festivals ({displayedFestivals.length})
             </h3>
             {displayedFestivals.length === 0 ? (
-              <p className="text-gray-500">No current or past festivals this month.</p>
+              <p className="text-muted-foreground">No current or past festivals this month.</p>
             ) : (
               <div className="space-y-4">
                 {displayedFestivals.map(renderFestivalCard)}
@@ -768,7 +780,7 @@ export default function FestivalsPage() {
               Upcoming Festivals ({upcomingFestivals.length})
             </h3>
             {upcomingFestivals.length === 0 ? (
-              <p className="text-gray-500">No upcoming festivals this month.</p>
+              <p className="text-muted-foreground">No upcoming festivals this month.</p>
             ) : (
               <div className="space-y-4">
                 {upcomingFestivals.map(renderFestivalCard)}
@@ -781,11 +793,11 @@ export default function FestivalsPage() {
       return (
         <div className="space-y-8">
           <div>
-            <h3 className="text-lg font-semibold mb-4 text-gray-700">
+            <h3 className="text-lg font-semibold mb-4 text-foreground">
               Current & Past Festivals ({displayedFestivals.length})
             </h3>
             {displayedFestivals.length === 0 ? (
-              <p className="text-gray-500">No current or past festivals this month.</p>
+              <p className="text-muted-foreground">No current or past festivals this month.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {displayedFestivals.map(renderGridFestivalCard)}
@@ -797,7 +809,7 @@ export default function FestivalsPage() {
               Upcoming Festivals ({upcomingFestivals.length})
             </h3>
             {upcomingFestivals.length === 0 ? (
-              <p className="text-gray-500">No upcoming festivals this month.</p>
+              <p className="text-muted-foreground">No upcoming festivals this month.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {upcomingFestivals.map(renderGridFestivalCard)}
@@ -832,14 +844,14 @@ export default function FestivalsPage() {
           {/* Page Header */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Festivals & Events</h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Festivals & Events</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Plan, assign, and publish social media greetings for cultural celebrations and holidays.
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="h-9 w-[110px] bg-card text-xs">
+                <SelectTrigger aria-label="Year" className="h-9 w-[110px] bg-card text-xs">
                   <SelectValue placeholder="Year" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px] overflow-y-auto">
@@ -852,7 +864,7 @@ export default function FestivalsPage() {
               </Select>
 
               <Select value={viewMode} onValueChange={(value: "list" | "grid" | "calendar") => setViewMode(value)}>
-                <SelectTrigger className="h-9 w-[125px] bg-card text-xs">
+                <SelectTrigger aria-label="View" className="h-9 w-[125px] bg-card text-xs">
                   <SelectValue placeholder="View" />
                 </SelectTrigger>
                 <SelectContent>
@@ -877,7 +889,7 @@ export default function FestivalsPage() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div>
                         <label className="block text-xs font-semibold text-foreground mb-1">Name</label>
-                        <Input
+                        <Input aria-label="Name"
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
@@ -889,7 +901,7 @@ export default function FestivalsPage() {
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-foreground mb-1">Description</label>
-                        <Textarea
+                        <Textarea aria-label="Description"
                           name="description"
                           value={formData.description}
                           onChange={handleInputChange}
@@ -901,7 +913,7 @@ export default function FestivalsPage() {
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-foreground mb-1">Date</label>
-                        <Input
+                        <Input aria-label="Date"
                           type="date"
                           name="date"
                           value={formData.date}
@@ -917,7 +929,7 @@ export default function FestivalsPage() {
                           value={formData.primaryType}
                           onValueChange={(value) => handleInputChange({ name: "primaryType", value })}
                         >
-                          <SelectTrigger className={formErrors.primaryType ? "border-destructive text-xs" : "text-xs"}>
+                          <SelectTrigger aria-label="Primary Type" className={formErrors.primaryType ? "border-destructive text-xs" : "text-xs"}>
                             <SelectValue placeholder="Select Type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -948,11 +960,18 @@ export default function FestivalsPage() {
                 <Button
                   key={m.value}
                   variant={selectedMonth === m.value ? "default" : "outline"}
-                  onClick={() => {
-                    console.log("Month selected:", m.value);
-                    setSelectedMonth(m.value);
+                  aria-pressed={selectedMonth === m.value}
+                  // Keep the selected month visible in the scrolling strip (scrolls the strip only, never the page).
+                  ref={(el) => {
+                    if (el && selectedMonth === m.value && el.parentElement) {
+                      const strip = el.parentElement;
+                      strip.scrollLeft = el.offsetLeft - strip.offsetLeft - (strip.clientWidth - el.offsetWidth) / 2;
+                    }
                   }}
-                  className="flex-1 px-2 py-1 text-sm min-w-0"
+                  onClick={() => setSelectedMonth(m.value)}
+                  // A fixed minimum width so labels never get clipped; the strip scrolls
+                  // sideways on narrow screens instead of squashing twelve buttons.
+                  className="min-w-14 flex-1 shrink-0 px-2 py-1 text-sm"
                 >
                   {m.label}
                 </Button>
@@ -996,22 +1015,22 @@ export default function FestivalsPage() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-1">Description</h4>
-                  <p className="text-sm text-gray-600">{selectedFestival?.description}</p>
+                  <h4 className="font-medium text-sm text-foreground mb-1">Description</h4>
+                  <p className="text-sm text-muted-foreground">{selectedFestival?.description}</p>
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-1">Date</h4>
+                  <h4 className="font-medium text-sm text-foreground mb-1">Date</h4>
                   <p className="text-sm">📅 {selectedFestival ? formatFestivalDate(selectedFestival.date) : ""}</p>
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-1">Type</h4>
+                  <h4 className="font-medium text-sm text-foreground mb-1">Type</h4>
                   <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                     {selectedFestival?.primaryType}
                   </span>
                 </div>
                 {canManageFestivals && (
                   <div>
-                    <h4 className="font-medium text-sm text-gray-700 mb-1">Create Post</h4>
+                    <h4 className="font-medium text-sm text-foreground mb-1">Create Post</h4>
                     <div className="flex flex-col space-y-2">
                       {renderProjectSelector(selectedFestival?.id)}
                       <div className="border rounded-md p-2 max-h-40 overflow-y-auto">
@@ -1026,7 +1045,7 @@ export default function FestivalsPage() {
                               />
                               <label
                                 htmlFor={`selected-project-detail-${selectedFestival.id}-${project.id}`}
-                                className="text-sm text-gray-700"
+                                className="text-sm text-foreground"
                               >
                                 {project.client.companyName} - {project.name}
                               </label>
@@ -1072,8 +1091,8 @@ export default function FestivalsPage() {
                 </DialogHeader>
                 <form onSubmit={handleEditSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <Input
+                    <label className="block text-sm font-medium text-foreground">Name</label>
+                    <Input aria-label="Name"
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
@@ -1084,8 +1103,8 @@ export default function FestivalsPage() {
                     {formErrors.name && <p className="text-red-600 text-sm mt-1">{formErrors.name}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <Textarea
+                    <label className="block text-sm font-medium text-foreground">Description</label>
+                    <Textarea aria-label="Description"
                       name="description"
                       value={formData.description}
                       onChange={handleInputChange}
@@ -1096,8 +1115,8 @@ export default function FestivalsPage() {
                     {formErrors.description && <p className="text-red-600 text-sm mt-1">{formErrors.description}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Date</label>
-                    <Input
+                    <label className="block text-sm font-medium text-foreground">Date</label>
+                    <Input aria-label="Date"
                       type="date"
                       name="date"
                       value={formData.date}
@@ -1108,12 +1127,12 @@ export default function FestivalsPage() {
                     {formErrors.date && <p className="text-red-600 text-sm mt-1">{formErrors.date}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Primary Type</label>
+                    <label className="block text-sm font-medium text-foreground">Primary Type</label>
                     <Select
                       value={formData.primaryType}
                       onValueChange={(value) => handleInputChange({ name: "primaryType", value })}
                     >
-                      <SelectTrigger className={formErrors.primaryType ? "border-red-500" : ""}>
+                      <SelectTrigger aria-label="Primary Type" className={formErrors.primaryType ? "border-red-500" : ""}>
                         <SelectValue placeholder="Select Type" />
                       </SelectTrigger>
                       <SelectContent>

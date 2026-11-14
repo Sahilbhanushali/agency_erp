@@ -373,7 +373,7 @@ export function HrmsLetterheadsTab() {
                     <CardTitle className="text-sm font-bold text-foreground flex items-center gap-1.5 flex-wrap">
                       <span>{lh.name}</span>
                       {lh.isDefault && (
-                        <Badge variant="default" className="text-[10px] bg-primary gap-0.5 py-0 px-1.5">
+                        <Badge variant="default" className="text-xs bg-primary gap-0.5 py-0 px-1.5">
                           <Star className="size-2.5 fill-current" /> Default
                         </Badge>
                       )}
@@ -385,7 +385,7 @@ export function HrmsLetterheadsTab() {
 
                   <Badge
                     variant={lh.status === "ACTIVE" ? "outline" : lh.status === "ARCHIVED" ? "destructive" : "secondary"}
-                    className="text-[10px] shrink-0"
+                    className="text-xs shrink-0"
                   >
                     {lh.status}
                   </Badge>
@@ -394,7 +394,7 @@ export function HrmsLetterheadsTab() {
 
               <CardContent className="p-4 pt-1 space-y-3">
                 {/* Mini Realistic Preview Box */}
-                <div className="rounded-lg border border-border p-3 bg-white text-slate-900 space-y-2 text-[10px] shadow-2xs">
+                <div className="rounded-lg border border-border p-3 bg-card text-foreground space-y-2 text-xs shadow-2xs">
                   <div
                     className="pb-2 border-b flex justify-between items-start gap-2"
                     style={{ borderColor: lh.primaryColor }}
@@ -404,38 +404,38 @@ export function HrmsLetterheadsTab() {
                         <img src={lh.logoUrl} alt="Logo" className="h-6 max-w-[80px] object-contain" />
                       ) : (
                         <div
-                          className="size-6 rounded flex items-center justify-center font-bold text-white text-[10px]"
+                          className="size-6 rounded flex items-center justify-center font-bold text-white text-xs"
                           style={{ backgroundColor: lh.primaryColor }}
                         >
                           {lh.companyName?.charAt(0) || "C"}
                         </div>
                       )}
                       <div>
-                        <span className="font-extrabold uppercase text-[10px] tracking-tight block" style={{ color: lh.primaryColor }}>
+                        <span className="font-extrabold uppercase text-xs tracking-tight block" style={{ color: lh.primaryColor }}>
                           {lh.companyName}
                         </span>
-                        <div className="text-[9px] text-slate-500">{[lh.city, lh.country].filter(Boolean).join(", ")}</div>
+                        <div className="text-xs text-muted-foreground">{[lh.city, lh.country].filter(Boolean).join(", ")}</div>
                       </div>
                     </div>
-                    <div className="text-right text-[9px] text-slate-500 shrink-0">
+                    <div className="text-right text-xs text-muted-foreground shrink-0">
                       {lh.email && <div>{lh.email}</div>}
                       {lh.phone && <div>{lh.phone}</div>}
                     </div>
                   </div>
 
-                  <div className="py-2 text-slate-400 italic text-center text-[9px]">
+                  <div className="py-2 text-muted-foreground italic text-center text-xs">
                     [ A4 Content: Margins T:{lh.marginTop}mm, B:{lh.marginBottom}mm, L:{lh.marginLeft}mm, R:{lh.marginRight}mm ]
                   </div>
 
-                  <div className="pt-2 border-t border-slate-200 flex justify-between text-[9px] text-slate-400">
+                  <div className="pt-2 border-t border-border flex justify-between text-xs text-muted-foreground">
                     <span>Confidential Document</span>
-                    <span>{lh.website || <span className="italic text-slate-400">No website</span>}</span>
+                    <span>{lh.website || <span className="italic text-muted-foreground">No website</span>}</span>
                   </div>
                 </div>
 
                 {/* Details row */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-                  <span className="text-[11px] font-mono">
+                  <span className="text-xs font-mono">
                     Font: {lh.fontFamily.replace(/['"]/g, "").split(",")[0]}
                   </span>
                   <div className="flex items-center gap-1.5">
@@ -465,17 +465,17 @@ export function HrmsLetterheadsTab() {
                         Set as Default
                       </Button>
                     ) : lh.isDefault ? (
-                      <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <CheckCircle className="size-3 text-emerald-600" /> Active Default
                       </span>
                     ) : (
-                      <span className="text-[11px] text-muted-foreground italic">Archived</span>
+                      <span className="text-xs text-muted-foreground italic">Archived</span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-1">
                     {/* Live Preview Button */}
-                    <Button
+                    <Button aria-label="View A4 Preview"
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => setPreviewLetterhead(lh)}
@@ -485,7 +485,7 @@ export function HrmsLetterheadsTab() {
                     </Button>
 
                     {/* Duplicate Button */}
-                    <Button
+                    <Button aria-label="Duplicate Letterhead"
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => handleDuplicate(lh.id)}
@@ -495,7 +495,7 @@ export function HrmsLetterheadsTab() {
                     </Button>
 
                     {/* Edit Button */}
-                    <Button
+                    <Button aria-label="Edit Letterhead"
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => handleOpenEdit(lh)}
@@ -507,7 +507,7 @@ export function HrmsLetterheadsTab() {
                     {/* Restore or Delete/Archive */}
                     {lh.status === "ARCHIVED" ? (
                       <>
-                        <Button
+                        <Button aria-label="Restore to Active"
                           variant="ghost"
                           size="icon-xs"
                           onClick={() => handleRestore(lh.id)}
@@ -516,7 +516,7 @@ export function HrmsLetterheadsTab() {
                         >
                           <RotateCcw className="size-3.5" />
                         </Button>
-                        <Button
+                        <Button aria-label="Permanently Delete"
                           variant="ghost"
                           size="icon-xs"
                           onClick={() => setDeleteModal({ isOpen: true, id: lh.id, name: lh.name, isPermanent: true })}
@@ -527,7 +527,7 @@ export function HrmsLetterheadsTab() {
                         </Button>
                       </>
                     ) : !lh.isDefault ? (
-                      <Button
+                      <Button aria-label="Archive Letterhead"
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => setDeleteModal({ isOpen: true, id: lh.id, name: lh.name, isPermanent: false })}
@@ -563,7 +563,7 @@ export function HrmsLetterheadsTab() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 p-3.5 rounded-xl border border-border bg-muted/20">
               <div className="space-y-1 md:col-span-2">
                 <Label className="text-xs font-semibold">Letterhead Profile Name *</Label>
-                <Input
+                <Input aria-label="Letterhead Profile Name"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -574,7 +574,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Company Legal Entity Name *</Label>
-                <Input
+                <Input aria-label="Company Legal Entity Name"
                   required
                   value={formData.companyName}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
@@ -585,7 +585,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Logo Image URL</Label>
-                <Input
+                <Input aria-label="Logo Image URL"
                   value={formData.logoUrl}
                   onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
                   placeholder="https://agency.com/logo.png"
@@ -595,7 +595,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1 md:col-span-2">
                 <Label className="text-xs font-semibold">Office Registered Address</Label>
-                <Input
+                <Input aria-label="Office Registered Address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   placeholder="Floor, Tower, Business Hub, Sector"
@@ -605,7 +605,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">City</Label>
-                <Input
+                <Input aria-label="City"
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   placeholder="Gurugram"
@@ -615,7 +615,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">State / Province</Label>
-                <Input
+                <Input aria-label="State / Province"
                   value={formData.state}
                   onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                   placeholder="Haryana"
@@ -625,7 +625,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">Country</Label>
-                <Input
+                <Input aria-label="Country"
                   value={formData.country}
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                   placeholder="India"
@@ -635,7 +635,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">Postal / PIN Code</Label>
-                <Input
+                <Input aria-label="Postal / PIN Code"
                   value={formData.postalCode}
                   onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
                   placeholder="122002"
@@ -648,7 +648,7 @@ export function HrmsLetterheadsTab() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 p-3.5 rounded-xl border border-border bg-muted/20">
               <div className="space-y-1">
                 <Label className="text-xs">Official Email</Label>
-                <Input
+                <Input aria-label="Official Email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -659,7 +659,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">Official Phone</Label>
-                <Input
+                <Input aria-label="Official Phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="+91 124 456 7890"
@@ -669,7 +669,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">Company Website</Label>
-                <Input
+                <Input aria-label="Company Website"
                   value={formData.website}
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   placeholder="https://company.com"
@@ -686,7 +686,7 @@ export function HrmsLetterheadsTab() {
                   value={formData.fontFamily}
                   onValueChange={(val) => setFormData({ ...formData, fontFamily: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Font Family" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -702,13 +702,13 @@ export function HrmsLetterheadsTab() {
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Primary Color</Label>
                 <div className="flex items-center gap-2">
-                  <Input
+                  <Input aria-label="Primary Color"
                     type="color"
                     value={formData.primaryColor}
                     onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
                     className="h-8 w-10 p-0.5"
                   />
-                  <Input
+                  <Input aria-label="Primary colour hex value"
                     value={formData.primaryColor}
                     onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
                     className="h-8 text-xs font-mono"
@@ -719,13 +719,13 @@ export function HrmsLetterheadsTab() {
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Secondary Color</Label>
                 <div className="flex items-center gap-2">
-                  <Input
+                  <Input aria-label="Secondary Color"
                     type="color"
                     value={formData.secondaryColor}
                     onChange={(e) => setFormData({ ...formData, secondaryColor: e.target.value })}
                     className="h-8 w-10 p-0.5"
                   />
-                  <Input
+                  <Input aria-label="Secondary colour hex value"
                     value={formData.secondaryColor}
                     onChange={(e) => setFormData({ ...formData, secondaryColor: e.target.value })}
                     className="h-8 text-xs font-mono"
@@ -735,7 +735,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">Top Margin (mm)</Label>
-                <Input
+                <Input aria-label="Top Margin (mm)"
                   type="number"
                   min="5"
                   max="60"
@@ -747,7 +747,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">Bottom Margin (mm)</Label>
-                <Input
+                <Input aria-label="Bottom Margin (mm)"
                   type="number"
                   min="5"
                   max="60"
@@ -759,7 +759,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">Left Margin (mm)</Label>
-                <Input
+                <Input aria-label="Left Margin (mm)"
                   type="number"
                   min="5"
                   max="40"
@@ -771,7 +771,7 @@ export function HrmsLetterheadsTab() {
 
               <div className="space-y-1">
                 <Label className="text-xs">Right Margin (mm)</Label>
-                <Input
+                <Input aria-label="Right Margin (mm)"
                   type="number"
                   min="5"
                   max="40"
@@ -803,7 +803,7 @@ export function HrmsLetterheadsTab() {
                   value={formData.status}
                   onValueChange={(val) => setFormData({ ...formData, status: val })}
                 >
-                  <SelectTrigger className="h-7 w-28 text-xs">
+                  <SelectTrigger aria-label="Status" className="h-7 w-28 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -830,25 +830,25 @@ export function HrmsLetterheadsTab() {
       {/* ================= LIVE A4 LETTERHEAD PREVIEW MODAL ================= */}
       {previewLetterhead && (
         <Dialog open={!!previewLetterhead} onOpenChange={() => setPreviewLetterhead(null)}>
-          <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[92vh] overflow-y-auto p-6 bg-slate-100">
-            <DialogHeader className="pb-3 border-b border-slate-300">
+          <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[92vh] overflow-y-auto p-6 bg-muted">
+            <DialogHeader className="pb-3 border-b border-border">
               <div className="flex items-center justify-between">
                 <div>
-                  <DialogTitle className="text-base text-slate-900 font-bold">
+                  <DialogTitle className="text-base text-foreground font-bold">
                     Letterhead Preview: {previewLetterhead.name}
                   </DialogTitle>
-                  <DialogDescription className="text-xs text-slate-600">
+                  <DialogDescription className="text-xs text-muted-foreground">
                     Rendered in standard A4 format with configured header, margins, and typography.
                   </DialogDescription>
                 </div>
-                <Badge variant="outline" className="text-xs bg-white text-slate-800">
+                <Badge variant="outline" className="text-xs bg-card text-foreground">
                   {previewLetterhead.companyName}
                 </Badge>
               </div>
             </DialogHeader>
 
             {/* A4 Sheet Simulation */}
-            <div className="my-4 mx-auto max-w-[750px] bg-white rounded-lg shadow-xl border border-slate-300 p-8 text-slate-900 space-y-6 min-h-[700px] flex flex-col justify-between font-sans">
+            <div className="my-4 mx-auto max-w-[750px] bg-card rounded-lg shadow-xl border border-border p-8 text-foreground space-y-6 min-h-[700px] flex flex-col justify-between font-sans">
               {/* Header */}
               <div
                 className="pb-4 border-b-2 flex items-start justify-between"
@@ -872,41 +872,41 @@ export function HrmsLetterheadsTab() {
                     >
                       {previewLetterhead.companyName}
                     </h2>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {previewLetterhead.address || "Level 4, Corporate Plaza"}, {previewLetterhead.city}, {previewLetterhead.country} - {previewLetterhead.postalCode}
                     </p>
                   </div>
                 </div>
 
-                <div className="text-right text-xs text-slate-600 space-y-0.5">
-                  <div><strong>Email:</strong> {previewLetterhead.email || <span className="italic text-slate-400">Not added</span>}</div>
-                  <div><strong>Phone:</strong> {previewLetterhead.phone || <span className="italic text-slate-400">Not added</span>}</div>
-                  <div><strong>Web:</strong> {previewLetterhead.website || <span className="italic text-slate-400">Not added</span>}</div>
+                <div className="text-right text-xs text-muted-foreground space-y-0.5">
+                  <div><strong>Email:</strong> {previewLetterhead.email || <span className="italic text-muted-foreground">Not added</span>}</div>
+                  <div><strong>Phone:</strong> {previewLetterhead.phone || <span className="italic text-muted-foreground">Not added</span>}</div>
+                  <div><strong>Web:</strong> {previewLetterhead.website || <span className="italic text-muted-foreground">Not added</span>}</div>
                 </div>
               </div>
 
               {/* Sample Document Body */}
               <div
-                className="flex-1 space-y-4 text-xs text-slate-700 leading-relaxed py-4"
+                className="flex-1 space-y-4 text-xs text-foreground leading-relaxed py-4"
                 style={{
                   fontFamily: previewLetterhead.fontFamily || "'Inter', sans-serif",
                   paddingLeft: `${Math.max(0, previewLetterhead.marginLeft - 15)}mm`,
                   paddingRight: `${Math.max(0, previewLetterhead.marginRight - 15)}mm`,
                 }}
               >
-                <div className="flex justify-between text-slate-500 font-mono text-[11px]">
+                <div className="flex justify-between text-muted-foreground font-mono text-xs">
                   <span>Ref: OFR-2026-DEV-001</span>
                   <span>Date: October 17, 2026</span>
                 </div>
 
-                <p className="font-semibold text-slate-900">Dear Candidate,</p>
+                <p className="font-semibold text-foreground">Dear Candidate,</p>
                 <p>
                   We are pleased to extend an offer of employment with <strong>{previewLetterhead.companyName}</strong>. This official document represents your employment terms, compensation breakdown, and company policies as approved by human resources.
                 </p>
 
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-md">
-                  <span className="font-semibold text-slate-900 block mb-1">Sample Employment Clause</span>
-                  <p className="text-[11px] text-slate-600">
+                <div className="p-3 bg-muted/50 border border-border rounded-md">
+                  <span className="font-semibold text-foreground block mb-1">Sample Employment Clause</span>
+                  <p className="text-xs text-muted-foreground">
                     Your compensation and statutory benefits (PF, ESI, and Professional Tax) are computed in strict accordance with the governing labor laws and agency payroll policies.
                   </p>
                 </div>
@@ -917,7 +917,7 @@ export function HrmsLetterheadsTab() {
               </div>
 
               {/* Footer */}
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-400">
+              <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
                 <span>{previewLetterhead.companyName} • Confidential Official Communication</span>
                 <span>Page 1 of 1</span>
               </div>

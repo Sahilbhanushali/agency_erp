@@ -250,6 +250,11 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  /* A spinner stopped after one turn looks like a frozen page; keep it turning, slowly. */
+  .animate-spin {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 /* Printable finance documents */
@@ -268,3 +273,4 @@
     break-inside: avoid;
   }
 }
+

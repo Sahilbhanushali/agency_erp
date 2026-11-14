@@ -314,7 +314,7 @@ export function DetailsSheet({
                         {m.jobRole && <span className="block truncate text-xs text-muted-foreground">{m.jobRole}</span>}
                       </span>
                       {m.role === "ADMIN" && (
-                        <Badge variant="secondary" className="gap-1 text-[10px]"><Crown className="h-3 w-3" aria-hidden />Admin</Badge>
+                        <Badge variant="secondary" className="gap-1 text-xs"><Crown className="h-3 w-3" aria-hidden />Admin</Badge>
                       )}
                       {perms.canManageMembers && m.id !== meId && (
                         <DropdownMenu>

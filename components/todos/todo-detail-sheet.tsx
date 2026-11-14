@@ -356,7 +356,7 @@ export default function TodoDetailSheet({
                     <Link2 className="h-3.5 w-3.5 text-primary" />
                     Linked Kanban Task
                   </span>
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-xs">
                     {todo.task.status}
                   </Badge>
                 </div>
@@ -434,15 +434,15 @@ export default function TodoDetailSheet({
                             <div className="flex flex-wrap items-center gap-1.5">
                               <Badge
                                 variant="outline"
-                                className={`text-[10px] border-transparent font-medium ${BLOCKER_STATUS_BADGES[b.status]?.class}`}
+                                className={`text-xs border-transparent font-medium ${BLOCKER_STATUS_BADGES[b.status]?.class}`}
                               >
                                 {BLOCKER_STATUS_BADGES[b.status]?.label}
                               </Badge>
-                              <Badge variant="secondary" className="text-[10px]">
+                              <Badge variant="secondary" className="text-xs">
                                 {CATEGORY_NAMES[b.category]}
                               </Badge>
                               {b.createdAt && (
-                                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
                                   <Clock className="h-3 w-3" />
                                   {new Date(b.createdAt).toLocaleDateString(undefined, {
                                     month: "short",
@@ -493,7 +493,7 @@ export default function TodoDetailSheet({
                               >
                                 Edit
                               </Button>
-                              <Button
+                              <Button aria-label="Delete blocker"
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-destructive hover:bg-destructive/10"
@@ -510,7 +510,7 @@ export default function TodoDetailSheet({
                         )}
 
                         {(b.impact || b.assistanceRequired || b.responsibleParty) && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-border/50 text-[11px]">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-border/50 text-xs">
                             {b.impact && (
                               <div>
                                 <span className="text-muted-foreground font-medium">Impact: </span>
@@ -539,7 +539,7 @@ export default function TodoDetailSheet({
                         )}
 
                         {isResolved && b.resolutionNotes && (
-                          <div className="rounded bg-emerald-500/10 p-2 text-[11px] text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
+                          <div className="rounded bg-emerald-500/10 p-2 text-xs text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
                             <strong>Resolution: </strong> {b.resolutionNotes}
                           </div>
                         )}

@@ -22,7 +22,7 @@ export default async function NewInvoicePage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">New invoice</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">New invoice</h1>
         <p className="text-sm text-muted-foreground">
           The number is assigned when you save, from the issuing company&apos;s own series.
         </p>

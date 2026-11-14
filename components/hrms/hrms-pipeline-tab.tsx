@@ -350,7 +350,7 @@ export function HrmsPipelineTab({
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative w-64">
               <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-              <Input
+              <Input aria-label="Search candidate or skills tags"
                 placeholder="Search candidate or skills tags..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -360,7 +360,7 @@ export function HrmsPipelineTab({
             </div>
 
             <Select value={selectedJob} onValueChange={setSelectedJob}>
-              <SelectTrigger className="h-8 text-xs w-[180px]">
+              <SelectTrigger aria-label="All Jobs" className="h-8 text-xs w-[180px]">
                 <SelectValue placeholder="All Jobs" />
               </SelectTrigger>
               <SelectContent>
@@ -374,7 +374,7 @@ export function HrmsPipelineTab({
             </Select>
 
             <Select value={selectedDept} onValueChange={setSelectedDept}>
-              <SelectTrigger className="h-8 text-xs w-[140px]">
+              <SelectTrigger aria-label="All Depts" className="h-8 text-xs w-[140px]">
                 <SelectValue placeholder="All Depts" />
               </SelectTrigger>
               <SelectContent>
@@ -407,7 +407,7 @@ export function HrmsPipelineTab({
 
         {/* Stage Group Focus Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pt-1 border-t border-border/40">
-          <span className="text-[11px] font-semibold text-muted-foreground mr-1 flex items-center gap-1 shrink-0">
+          <span className="text-xs font-semibold text-muted-foreground mr-1 flex items-center gap-1 shrink-0">
             <SlidersHorizontal className="size-3 text-primary" />
             <span>Focus Group:</span>
           </span>
@@ -431,7 +431,7 @@ export function HrmsPipelineTab({
               >
                 <span>{group.label}</span>
                 <span
-                  className={`text-[10px] px-1 rounded-full ${
+                  className={`text-xs px-1 rounded-full ${
                     isSelected ? "bg-white/20 text-white" : "bg-background/80 text-foreground"
                   }`}
                 >
@@ -472,14 +472,14 @@ export function HrmsPipelineTab({
                 <div className="flex items-center gap-1.5 truncate">
                   <span className={`text-xs font-bold truncate ${config.color}`}>{stage}</span>
                 </div>
-                <Badge variant={config.badgeVariant} className="text-[10px] px-1.5 py-0 h-4 font-bold">
+                <Badge variant={config.badgeVariant} className="text-xs px-1.5 py-0 h-4 font-bold">
                   {cards.length}
                 </Badge>
               </div>
 
               {/* Drop Target Indicator when dragging over */}
               {isOver && (
-                <div className="mx-2 mt-2 p-2 rounded-lg border-2 border-dashed border-primary bg-primary/15 text-center text-[11px] font-semibold text-primary animate-pulse">
+                <div className="mx-2 mt-2 p-2 rounded-lg border-2 border-dashed border-primary bg-primary/15 text-center text-xs font-semibold text-primary animate-pulse">
                   Drop candidate to move to {stage}
                 </div>
               )}
@@ -487,7 +487,7 @@ export function HrmsPipelineTab({
               {/* Column Cards Area */}
               <div className="p-2 space-y-2.5 flex-1 overflow-y-auto max-h-[700px]">
                 {cards.length === 0 ? (
-                  <div className="py-8 text-center text-[11px] text-muted-foreground border border-dashed border-border/60 rounded-lg">
+                  <div className="py-8 text-center text-xs text-muted-foreground border border-dashed border-border/60 rounded-lg">
                     No candidates in this stage
                   </div>
                 ) : (
@@ -513,7 +513,7 @@ export function HrmsPipelineTab({
                             <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1">
                               {candidate.name}
                             </h4>
-                            <p className="text-[11px] text-muted-foreground truncate">
+                            <p className="text-xs text-muted-foreground truncate">
                               {candidate.currentTitle || "Candidate"}
                               {candidate.currentCompany ? ` @ ${candidate.currentCompany}` : ""}
                             </p>
@@ -522,7 +522,7 @@ export function HrmsPipelineTab({
                           {/* Explicit Stage Change Menu */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button
+                              <Button aria-label="More actions for this candidate"
                                 variant="ghost"
                                 size="icon-xs"
                                 className="size-6 text-muted-foreground hover:text-foreground"
@@ -531,7 +531,7 @@ export function HrmsPipelineTab({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-52 text-xs">
-                              <DropdownMenuLabel className="text-[10px] text-muted-foreground">
+                              <DropdownMenuLabel className="text-xs text-muted-foreground">
                                 Quick Actions
                               </DropdownMenuLabel>
                               <DropdownMenuItem onClick={() => onSelectCandidate(candidate.id)}>
@@ -550,7 +550,7 @@ export function HrmsPipelineTab({
                                 Prepare Offer Letter
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuLabel className="text-[10px] text-muted-foreground">
+                              <DropdownMenuLabel className="text-xs text-muted-foreground">
                                 Move Stage To
                               </DropdownMenuLabel>
                               {HRMS_STAGES.filter((s) => s !== stage).slice(0, 8).map((targetSt) => (
@@ -579,7 +579,7 @@ export function HrmsPipelineTab({
                                 Reject Candidate
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="text-gray-600 focus:text-gray-600"
+                                className="text-muted-foreground focus:text-gray-600"
                                 onClick={() => {
                                   setConfirmModal({
                                     isOpen: true,
@@ -599,10 +599,10 @@ export function HrmsPipelineTab({
                         </div>
 
                         {/* Job Position Pill */}
-                        <div className="mt-2 flex items-center justify-between text-[10px]">
+                        <div className="mt-2 flex items-center justify-between text-xs">
                           <Badge
                             variant="outline"
-                            className="text-[10px] truncate max-w-[170px] bg-muted/40 font-normal"
+                            className="text-xs truncate max-w-[170px] bg-muted/40 font-normal"
                           >
                             {app.jobOpening.title}
                           </Badge>
@@ -615,12 +615,12 @@ export function HrmsPipelineTab({
 
                         {/* Interview Banner if scheduled */}
                         {nextInterview && (
-                          <div className="mt-2 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] text-amber-700 dark:text-amber-300 flex items-center justify-between">
+                          <div className="mt-2 rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300 flex items-center justify-between">
                             <span className="flex items-center gap-1 truncate">
                               <Clock className="size-2.5 shrink-0" />
                               {formatDatePretty(nextInterview.scheduledDate)} ({nextInterview.startTime})
                             </span>
-                            <span className="font-semibold uppercase text-[9px]">{nextInterview.type}</span>
+                            <span className="font-semibold uppercase text-xs">{nextInterview.type}</span>
                           </div>
                         )}
 
@@ -644,7 +644,7 @@ export function HrmsPipelineTab({
                               href={candidate.resumeUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[10px] text-primary hover:underline flex items-center gap-0.5 font-medium"
+                              className="text-xs text-primary hover:underline flex items-center gap-0.5 font-medium"
                             >
                               Resume <ExternalLink className="size-2.5" />
                             </a>
@@ -657,13 +657,13 @@ export function HrmsPipelineTab({
                             {tags.slice(0, 3).map((tag, i) => (
                               <span
                                 key={i}
-                                className="inline-block rounded-xs bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground"
+                                className="inline-block rounded-xs bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
                               >
                                 {tag}
                               </span>
                             ))}
                             {tags.length > 3 && (
-                              <span className="text-[9px] text-muted-foreground">
+                              <span className="text-xs text-muted-foreground">
                                 +{tags.length - 3}
                               </span>
                             )}
@@ -726,13 +726,13 @@ export function HrmsPipelineTab({
                     key={reason}
                     type="button"
                     onClick={() => setReasonInput(reason)}
-                    className="text-[10px] px-2 py-0.5 rounded-full border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors"
+                    className="text-xs px-2 py-0.5 rounded-full border border-border/80 bg-muted/40 hover:bg-muted text-left transition-colors"
                   >
                     {reason}
                   </button>
                 ))}
               </div>
-              <Input
+              <Input aria-label="Enter specific reason"
                 placeholder="Enter specific reason..."
                 value={reasonInput}
                 onChange={(e) => setReasonInput(e.target.value)}
@@ -743,7 +743,7 @@ export function HrmsPipelineTab({
 
             <div className="space-y-1.5">
               <Label className="text-xs">Additional HR Audit Notes</Label>
-              <Textarea
+              <Textarea aria-label="Additional HR Audit Notes"
                 placeholder="Optional internal remarks for the candidate activity timeline..."
                 value={actionNotes}
                 onChange={(e) => setActionNotes(e.target.value)}

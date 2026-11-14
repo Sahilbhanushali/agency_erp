@@ -284,7 +284,7 @@ export default function PayslipModal({
             </span>
             <Badge
               variant={payslip.paymentStatus === "PAID" ? "success" : "warning"}
-              className="text-[10px] py-0 font-mono"
+              className="text-xs py-0 font-mono"
             >
               {payslip.paymentStatus}
             </Badge>
@@ -353,7 +353,7 @@ export default function PayslipModal({
                 </Button>
               </>
             )}
-            <Button
+            <Button aria-label="Close payslip"
               variant="ghost"
               size="icon-xs"
               onClick={onClose}
@@ -370,7 +370,7 @@ export default function PayslipModal({
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-xs font-semibold">Edit payslip lines</h3>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Amounts are in rupees. Totals and net pay are recalculated from these
                   lines when you save.
                 </p>
@@ -474,7 +474,7 @@ export default function PayslipModal({
 
             <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-border/60 pt-3">
               <div className="space-y-1">
-                <Label htmlFor="payslip-reason" className="text-[11px] font-medium">
+                <Label htmlFor="payslip-reason" className="text-xs font-medium">
                   Reason for the change (recorded in the audit log)
                 </Label>
                 <Input
@@ -514,17 +514,17 @@ export default function PayslipModal({
         )}
 
         {/* Scrollable Printable Payslip Body */}
-        <div ref={printRef} className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 bg-white text-slate-900 print:p-0 print:overflow-visible">
+        <div ref={printRef} className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 bg-card text-foreground print:p-0 print:overflow-visible">
           {/* Branded Header */}
           <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b-2 border-slate-900 pb-5 gap-3">
             <div>
-              <h1 className="text-xl font-black uppercase tracking-tight text-slate-900">
+              <h1 className="text-xl font-black uppercase tracking-tight text-foreground">
                 {agencyName}
               </h1>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-muted-foreground font-medium">
                 Official Employee Pay Advice & Salary Certificate
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Ref ID: PAY-{payslip.id.slice(-8).toUpperCase()}
               </p>
             </div>
@@ -532,44 +532,44 @@ export default function PayslipModal({
               <div className="inline-block bg-slate-900 text-white text-xs font-bold px-3 py-1 rounded">
                 PAYSLIP FOR {monthLabel.toUpperCase()}
               </div>
-              <p className="text-[11px] text-slate-500 mt-1 font-mono">
+              <p className="text-xs text-muted-foreground mt-1 font-mono">
                 Currency: INR (₹)
               </p>
             </div>
           </div>
 
           {/* Employee & Bank Info Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 p-4 rounded-xl border border-border bg-muted/50 text-xs">
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-semibold">Employee Name</span>
-              <span className="font-bold text-slate-900">{payslip.user.name}</span>
+              <span className="text-muted-foreground block text-xs uppercase font-semibold">Employee Name</span>
+              <span className="font-bold text-foreground">{payslip.user.name}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-semibold">Designation</span>
-              <span className="font-medium text-slate-800">{payslip.user.designation || "Team Member"}</span>
+              <span className="text-muted-foreground block text-xs uppercase font-semibold">Designation</span>
+              <span className="font-medium text-foreground">{payslip.user.designation || "Team Member"}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-semibold">Department</span>
-              <span className="font-medium text-slate-800">{payslip.user.department || "Operations"}</span>
+              <span className="text-muted-foreground block text-xs uppercase font-semibold">Department</span>
+              <span className="font-medium text-foreground">{payslip.user.department || "Operations"}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-semibold">PAN Number</span>
-              <span className="font-mono font-medium text-slate-800">{payslip.user.panNumber || "N/A"}</span>
+              <span className="text-muted-foreground block text-xs uppercase font-semibold">PAN Number</span>
+              <span className="font-mono font-medium text-foreground">{payslip.user.panNumber || "N/A"}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-semibold">Bank Name</span>
-              <span className="font-medium text-slate-800">{payslip.user.bankName || "Not provided"}</span>
+              <span className="text-muted-foreground block text-xs uppercase font-semibold">Bank Name</span>
+              <span className="font-medium text-foreground">{payslip.user.bankName || "Not provided"}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-semibold">Account Number</span>
-              <span className="font-mono font-medium text-slate-800">{payslip.user.bankAccountNumber || "Not provided"}</span>
+              <span className="text-muted-foreground block text-xs uppercase font-semibold">Account Number</span>
+              <span className="font-mono font-medium text-foreground">{payslip.user.bankAccountNumber || "Not provided"}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-semibold">IFSC Code</span>
-              <span className="font-mono font-medium text-slate-800">{payslip.user.bankIfsc || "Not provided"}</span>
+              <span className="text-muted-foreground block text-xs uppercase font-semibold">IFSC Code</span>
+              <span className="font-mono font-medium text-foreground">{payslip.user.bankIfsc || "Not provided"}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-semibold">Payable Days</span>
+              <span className="text-muted-foreground block text-xs uppercase font-semibold">Payable Days</span>
               <span className="font-bold text-emerald-700">
                 {payslip.payableDays} / {calc?.divisorDays || 30} Days
               </span>
@@ -579,42 +579,42 @@ export default function PayslipModal({
           {/* Earnings & Deductions Tables Side-by-Side */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Earnings Table */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <div className="bg-slate-100 px-4 py-2 font-bold text-xs text-slate-800 border-b border-slate-200 flex justify-between">
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="bg-muted px-4 py-2 font-bold text-xs text-foreground border-b border-border flex justify-between">
                 <span>EARNINGS</span>
                 <span>EARNED AMOUNT</span>
               </div>
-              <div className="divide-y divide-slate-100 text-xs">
+              <div className="divide-y divide-border text-xs">
                 {earnings.map((e, idx) => (
                   <div key={idx} className="flex justify-between px-4 py-2 hover:bg-slate-50">
-                    <span className="text-slate-700">{e.component}</span>
-                    <span className="font-mono font-medium text-slate-900">{formatInr(e.earned)}</span>
+                    <span className="text-foreground">{e.component}</span>
+                    <span className="font-mono font-medium text-foreground">{formatInr(e.earned)}</span>
                   </div>
                 ))}
               </div>
-              <div className="bg-slate-50 border-t border-slate-200 px-4 py-2.5 flex justify-between text-xs font-bold">
+              <div className="bg-muted/50 border-t border-border px-4 py-2.5 flex justify-between text-xs font-bold">
                 <span>TOTAL GROSS EARNINGS</span>
                 <span className="font-mono text-emerald-700">{formatInr(payslip.grossSalary)}</span>
               </div>
             </div>
 
             {/* Deductions Table */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <div className="bg-slate-100 px-4 py-2 font-bold text-xs text-slate-800 border-b border-slate-200 flex justify-between">
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="bg-muted px-4 py-2 font-bold text-xs text-foreground border-b border-border flex justify-between">
                 <span>DEDUCTIONS</span>
                 <span>AMOUNT</span>
               </div>
-              <div className="divide-y divide-slate-100 text-xs">
+              <div className="divide-y divide-border text-xs">
                 {deductions.map((d, idx) => (
                   <div key={idx} className="flex justify-between px-4 py-2 hover:bg-slate-50">
-                    <span className="text-slate-700">{d.component}</span>
+                    <span className="text-foreground">{d.component}</span>
                     <span className="font-mono font-medium text-red-600">
                       {formatInr(d.earned || d.rate)}
                     </span>
                   </div>
                 ))}
               </div>
-              <div className="bg-slate-50 border-t border-slate-200 px-4 py-2.5 flex justify-between text-xs font-bold">
+              <div className="bg-muted/50 border-t border-border px-4 py-2.5 flex justify-between text-xs font-bold">
                 <span>TOTAL DEDUCTIONS</span>
                 <span className="font-mono text-red-600">{formatInr(payslip.totalDeductions)}</span>
               </div>
@@ -640,8 +640,8 @@ export default function PayslipModal({
 
           {/* Formula Transparency Callout */}
           {calc?.formulaBreakdown && (
-            <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50 text-[11px] text-slate-600 space-y-1">
-              <p className="font-bold text-slate-800 flex items-center gap-1.5">
+            <div className="p-3.5 rounded-lg border border-border bg-muted/50 text-xs text-muted-foreground space-y-1">
+              <p className="font-bold text-foreground flex items-center gap-1.5">
                 <ShieldCheck className="size-3.5 text-emerald-600" />
                 Transparent Computation Derivation:
               </p>
@@ -651,14 +651,14 @@ export default function PayslipModal({
           )}
 
           {/* Signatures Footer */}
-          <div className="pt-8 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+          <div className="pt-8 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
             <div>
-              <p className="font-bold text-slate-800">HR & Accounts Department</p>
-              <p className="text-[10px]">Digitally authenticated system payslip</p>
+              <p className="font-bold text-foreground">HR & Accounts Department</p>
+              <p className="text-xs">Digitally authenticated system payslip</p>
             </div>
             <div className="text-right">
-              <p className="font-bold text-slate-800">Authorized Signatory</p>
-              <p className="text-[10px]">{agencyName}</p>
+              <p className="font-bold text-foreground">Authorized Signatory</p>
+              <p className="text-xs">{agencyName}</p>
             </div>
           </div>
         </div>
@@ -683,7 +683,7 @@ export default function PayslipModal({
                 placeholder="employee@example.com"
                 className="h-9 text-xs"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Defaults to the employee&apos;s address on file. The PDF is attached.
               </p>
             </div>

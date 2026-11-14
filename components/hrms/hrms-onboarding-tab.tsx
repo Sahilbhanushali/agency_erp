@@ -325,7 +325,7 @@ export function HrmsOnboardingTab() {
 
                     <Badge
                       variant={isAlreadyConverted ? "default" : "outline"}
-                      className={`text-[10px] ${isAlreadyConverted ? "bg-emerald-600" : ""}`}
+                      className={`text-xs ${isAlreadyConverted ? "bg-emerald-600" : ""}`}
                     >
                       {isAlreadyConverted ? "Active Employee" : item.status}
                     </Badge>
@@ -378,7 +378,7 @@ export function HrmsOnboardingTab() {
                       value={item.assignedBuddy?.id ? String(item.assignedBuddy.id) : "NONE"}
                       onValueChange={(val) => handleAssignBuddy(item.id, val === "NONE" ? "" : val)}
                     >
-                      <SelectTrigger className="h-7 text-xs w-[160px]">
+                      <SelectTrigger aria-label="Assign buddy" className="h-7 text-xs w-[160px]">
                         <SelectValue placeholder="Assign buddy" />
                       </SelectTrigger>
                       <SelectContent>
@@ -421,7 +421,7 @@ export function HrmsOnboardingTab() {
                         <span>Convert to Employee User</span>
                       </Button>
                     ) : (
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                      <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
                         <CheckCircle2 className="size-3.5" />
                         <span>Employee Account #{item.convertedUserId}</span>
                       </div>
@@ -462,7 +462,7 @@ export function HrmsOnboardingTab() {
                   <div className={`text-xs font-semibold ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
                     {task.task}
                   </div>
-                  <Badge variant="outline" className="text-[9px] mt-1 font-normal">
+                  <Badge variant="outline" className="text-xs mt-1 font-normal">
                     {task.category}
                   </Badge>
                 </div>
@@ -550,7 +550,7 @@ export function HrmsOnboardingTab() {
                 value={convertModal.roleName}
                 onValueChange={(val) => setConvertModal((prev) => ({ ...prev, roleName: val }))}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label="ERP System Role" className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -563,7 +563,7 @@ export function HrmsOnboardingTab() {
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Temporary Password (Optional)</Label>
-              <Input
+              <Input aria-label="Temporary Password (Optional)"
                 type="text"
                 placeholder="Leave blank to generate temporary password automatically"
                 value={convertModal.temporaryPassword}
@@ -572,7 +572,7 @@ export function HrmsOnboardingTab() {
               />
             </div>
 
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               This action will populate their staff record in User Management, link the candidate's ID, and complete the onboarding status.
             </p>
           </div>

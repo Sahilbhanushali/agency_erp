@@ -80,7 +80,7 @@ export default function TaskStatsGrid({ stats, onViewStatus }: TaskStatsGridProp
       statusKey: "pending",
     },
     {
-      label: "I Approve",
+      label: "Approved",
       blurb: "Ready / Scheduled / Posted",
       count: stats.approved,
       bg: "border-success/20 bg-success/5",
@@ -90,7 +90,7 @@ export default function TaskStatsGrid({ stats, onViewStatus }: TaskStatsGridProp
       statusKey: "approved",
       extra:
         stats.approvedOnly !== undefined ? (
-          <div className="mt-2 flex gap-2 rounded border border-border bg-card px-2 py-1 text-[10px] font-medium text-muted-foreground">
+          <div className="mt-2 flex gap-2 rounded border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground">
             <span>{stats.approvedOnly} Apprv</span>
             <span>•</span>
             <span>{stats.postedOnly} Sched/Post</span>
@@ -98,7 +98,7 @@ export default function TaskStatsGrid({ stats, onViewStatus }: TaskStatsGridProp
         ) : null,
     },
     {
-      label: "Changes",
+      label: "Rejected",
       blurb: "Needs revision",
       count: stats.rejected || 0,
       bg: "border-border bg-muted",
@@ -132,7 +132,7 @@ export default function TaskStatsGrid({ stats, onViewStatus }: TaskStatsGridProp
           )}
 
           <div>
-            <p className={`text-[11px] font-semibold uppercase tracking-wider ${card.text}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${card.text}`}>
               {card.label}
             </p>
             <p className={`mt-1.5 text-xs leading-snug ${card.sub}`}>

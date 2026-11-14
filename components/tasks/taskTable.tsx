@@ -121,11 +121,11 @@ export default function TaskTable({
               >
                 <TableCell className="font-medium text-foreground max-w-[200px] truncate">{task.title}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-[10px] font-mono">{task.type}</Badge>
+                  <Badge variant="outline" className="text-xs font-mono">{task.type}</Badge>
                 </TableCell>
                 {showStatus && (
                   <TableCell>
-                    <Badge variant={getBadgeVariant(task.status)} dot className="text-[10px]">
+                    <Badge variant={getBadgeVariant(task.status)} dot className="text-xs">
                       {task.status}
                     </Badge>
                   </TableCell>
@@ -163,7 +163,7 @@ export default function TaskTable({
                 </TableCell>
                 <TableCell>
                   {task.feedback ? (
-                    <Badge variant="warning" className="text-[10px] gap-1">
+                    <Badge variant="warning" className="text-xs gap-1">
                       <MessageSquare className="size-3" /> Feedback
                     </Badge>
                   ) : (
@@ -178,7 +178,7 @@ export default function TaskTable({
                       buttonClassName="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground shadow-2xs hover:bg-primary/90 transition-colors"
                     />
                   ) : (
-                    <Badge variant="neutral" className="gap-1 text-[10px]">
+                    <Badge variant="neutral" className="gap-1 text-xs">
                       <Lock className="size-3" /> Content Pending
                     </Badge>
                   )}

@@ -352,18 +352,18 @@ export default function ClientIdPage() {
                       ? "warning"
                       : "neutral"
                   }
-                  className="text-[11px]"
+                  className="text-xs"
                 >
                   {client.status || "ACTIVE"}
                 </Badge>
                 {client.industry && (
-                  <Badge variant="outline" className="text-[11px]">
+                  <Badge variant="outline" className="text-xs">
                     {client.industry}
                   </Badge>
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Client ID: <span className="font-mono text-[11px]">{client.id}</span> · Registered {formatDate(client.createdAt)}
+                Client ID: <span className="font-mono text-xs">{client.id}</span> · Registered {formatDate(client.createdAt)}
               </p>
             </div>
           </div>
@@ -396,7 +396,7 @@ export default function ClientIdPage() {
               <FolderKanban className="size-4 text-primary" />
             </div>
             <div className="text-xl font-bold tracking-tight text-foreground">{projects.length}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {projects.filter((p) => p.isActive).length} active campaigns
             </p>
           </CardContent>
@@ -409,7 +409,7 @@ export default function ClientIdPage() {
               <FileText className="size-4 text-sky-600" />
             </div>
             <div className="text-xl font-bold tracking-tight text-foreground">{quotations.length}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Commercial proposals</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Commercial proposals</p>
           </CardContent>
         </Card>
 
@@ -420,7 +420,7 @@ export default function ClientIdPage() {
               <Receipt className="size-4 text-emerald-600" />
             </div>
             <div className="text-xl font-bold tracking-tight text-foreground">{invoices.length}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Billing invoices</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Billing invoices</p>
           </CardContent>
         </Card>
 
@@ -431,7 +431,7 @@ export default function ClientIdPage() {
               <Key className="size-4 text-amber-600" />
             </div>
             <div className="text-xl font-bold tracking-tight text-foreground">{credentials.length}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Stored credentials</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Stored credentials</p>
           </CardContent>
         </Card>
       </div>
@@ -656,13 +656,13 @@ export default function ClientIdPage() {
                               {proj.name}
                             </Link>
                             {proj.description && (
-                              <p className="text-[11px] text-muted-foreground line-clamp-1">
+                              <p className="text-xs text-muted-foreground line-clamp-1">
                                 {proj.description}
                               </p>
                             )}
                           </TableCell>
                           <TableCell className="text-xs">
-                            <Badge variant={proj.isActive ? "success" : "neutral"} className="text-[10px]">
+                            <Badge variant={proj.isActive ? "success" : "neutral"} className="text-xs">
                               {proj.isActive ? "Active" : "Archived"}
                             </Badge>
                           </TableCell>
@@ -733,7 +733,7 @@ export default function ClientIdPage() {
                           <TableCell className="text-xs font-mono font-medium">{q.quotationNumber}</TableCell>
                           <TableCell className="text-xs font-medium">{q.title}</TableCell>
                           <TableCell className="text-xs">
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="text-xs">
                               {q.status}
                             </Badge>
                           </TableCell>
@@ -784,7 +784,7 @@ export default function ClientIdPage() {
                           <TableCell className="text-xs font-mono font-medium">{inv.invoiceNumber}</TableCell>
                           <TableCell className="text-xs">{inv.title}</TableCell>
                           <TableCell className="text-xs">
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="text-xs">
                               {inv.status}
                             </Badge>
                           </TableCell>
@@ -876,10 +876,10 @@ export default function ClientIdPage() {
                           <TableRow key={cnt.id} className="hover:bg-muted/30">
                             <TableCell className="text-xs">
                               <div className="font-semibold text-foreground">{cnt.title}</div>
-                              <div className="text-[11px] text-muted-foreground font-mono">
+                              <div className="text-xs text-muted-foreground font-mono">
                                 {cnt.contractNumber || "—"}
                                 {cnt.project && (
-                                  <span className="ml-2 font-sans text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                  <span className="ml-2 font-sans text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                                     {cnt.project.name}
                                   </span>
                                 )}
@@ -888,10 +888,10 @@ export default function ClientIdPage() {
 
                             <TableCell className="text-xs">
                               <div className="flex flex-col gap-1 items-start">
-                                <Badge variant="outline" className="text-[10px] font-medium">
+                                <Badge variant="outline" className="text-xs font-medium">
                                   {cnt.type.replace(/_/g, " ")}
                                 </Badge>
-                                <span className="text-[10px] text-muted-foreground uppercase">
+                                <span className="text-xs text-muted-foreground uppercase">
                                   {cnt.billingCycle}
                                 </span>
                               </div>
@@ -900,7 +900,7 @@ export default function ClientIdPage() {
                             <TableCell className="text-xs text-right font-semibold tabular-nums">
                               ₹{Number(cnt.value || 0).toLocaleString("en-IN")}
                               {cnt.autoRenew && (
-                                <div className="text-[10px] text-muted-foreground font-normal">
+                                <div className="text-xs text-muted-foreground font-normal">
                                   Auto-renews
                                 </div>
                               )}
@@ -917,7 +917,7 @@ export default function ClientIdPage() {
                                   {Object.entries(cnt.deliverableQuota).map(([k, v]) => (
                                     <span
                                       key={k}
-                                      className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono"
+                                      className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono"
                                     >
                                       {k}: {String(v)}
                                     </span>
@@ -933,17 +933,17 @@ export default function ClientIdPage() {
                                 {formatDate(cnt.startDate)} {cnt.endDate ? `→ ${formatDate(cnt.endDate)}` : ""}
                               </div>
                               {isExpiringSoon && (
-                                <Badge variant="destructive" className="text-[9px] mt-1">
+                                <Badge variant="destructive" className="text-xs mt-1">
                                   Expires in {daysLeft}d
                                 </Badge>
                               )}
                               {cnt.status === "ACTIVE" && !isExpiringSoon && (
-                                <Badge variant="success" className="text-[9px] mt-1">
+                                <Badge variant="success" className="text-xs mt-1">
                                   Active
                                 </Badge>
                               )}
                               {cnt.status === "EXPIRED" && (
-                                <Badge variant="neutral" className="text-[9px] mt-1">
+                                <Badge variant="neutral" className="text-xs mt-1">
                                   Expired
                                 </Badge>
                               )}
@@ -955,12 +955,12 @@ export default function ClientIdPage() {
                                   href={getMediaUrl(cnt.documentUrl)}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                                 >
                                   <FileText className="size-3.5" /> SOW
                                 </a>
                               ) : (
-                                <span className="text-muted-foreground text-[11px]">—</span>
+                                <span className="text-muted-foreground text-xs">—</span>
                               )}
                             </TableCell>
 
@@ -968,7 +968,7 @@ export default function ClientIdPage() {
                               <div className="flex items-center justify-end gap-1">
                                 {canManageClients && (
                                   <>
-                                    <Button
+                                    <Button aria-label="Renew Agreement"
                                       size="icon"
                                       variant="ghost"
                                       className="size-7"
@@ -979,7 +979,7 @@ export default function ClientIdPage() {
                                       <RotateCw className="size-3.5" />
                                     </Button>
 
-                                    <Button
+                                    <Button aria-label="Send Renewal Reminder"
                                       size="icon"
                                       variant="ghost"
                                       className="size-7"
@@ -990,7 +990,7 @@ export default function ClientIdPage() {
                                       <Mail className="size-3.5" />
                                     </Button>
 
-                                    <Button
+                                    <Button aria-label="Edit Agreement"
                                       size="icon"
                                       variant="ghost"
                                       className="size-7"
@@ -1003,7 +1003,7 @@ export default function ClientIdPage() {
                                       <Edit className="size-3.5" />
                                     </Button>
 
-                                    <Button
+                                    <Button aria-label="Delete agreement"
                                       size="icon"
                                       variant="ghost"
                                       className="size-7 text-destructive hover:text-destructive"
@@ -1040,7 +1040,7 @@ export default function ClientIdPage() {
                 <div className="text-lg font-bold text-foreground">
                   ₹{Number(totalInvoiced).toLocaleString("en-IN")}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Commercial revenue</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Commercial revenue</p>
               </CardContent>
             </Card>
 
@@ -1053,7 +1053,7 @@ export default function ClientIdPage() {
                 <div className="text-lg font-bold text-foreground">
                   ₹{Number(totalExpenses).toLocaleString("en-IN")}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Freelancers, tools, shoots</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Freelancers, tools, shoots</p>
               </CardContent>
             </Card>
 
@@ -1074,7 +1074,7 @@ export default function ClientIdPage() {
                 >
                   ₹{Number(netMargin).toLocaleString("en-IN")}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Revenue minus direct costs</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Revenue minus direct costs</p>
               </CardContent>
             </Card>
 
@@ -1084,7 +1084,7 @@ export default function ClientIdPage() {
                   <span className="text-xs font-medium">Margin Ratio</span>
                   <Badge
                     variant={marginPercent >= 35 ? "success" : marginPercent >= 15 ? "outline" : "destructive"}
-                    className="text-[9px]"
+                    className="text-xs"
                   >
                     {marginPercent >= 35 ? "Healthy" : marginPercent >= 15 ? "Moderate" : "Low Margin"}
                   </Badge>
@@ -1092,7 +1092,7 @@ export default function ClientIdPage() {
                 <div className="text-lg font-bold text-foreground">
                   {marginPercent}%
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Commercial profitability</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Commercial profitability</p>
               </CardContent>
             </Card>
           </div>
@@ -1158,13 +1158,13 @@ export default function ClientIdPage() {
                           <TableCell className="text-xs font-medium">
                             <span className="font-semibold text-foreground block">{exp.title}</span>
                             {exp.isBillable && (
-                              <Badge variant="outline" className="text-[9px] font-normal mt-0.5">
+                              <Badge variant="outline" className="text-xs font-normal mt-0.5">
                                 Rebillable
                               </Badge>
                             )}
                           </TableCell>
                           <TableCell className="text-xs">
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="text-xs">
                               {exp.category.replace(/_/g, " ")}
                             </Badge>
                           </TableCell>
@@ -1180,17 +1180,17 @@ export default function ClientIdPage() {
                                 href={getMediaUrl(exp.receiptUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                               >
                                 <FileText className="size-3" /> Receipt
                               </a>
                             ) : (
-                              <span className="text-muted-foreground text-[11px]">—</span>
+                              <span className="text-muted-foreground text-xs">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-xs text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <Button
+                              <Button aria-label="Edit expense"
                                 size="icon"
                                 variant="ghost"
                                 className="size-7"
@@ -1202,7 +1202,7 @@ export default function ClientIdPage() {
                               >
                                 <Edit className="size-3.5" />
                               </Button>
-                              <Button
+                              <Button aria-label="Delete expense"
                                 size="icon"
                                 variant="ghost"
                                 className="size-7 text-destructive hover:text-destructive"
@@ -1266,13 +1266,13 @@ export default function ClientIdPage() {
                         <span className="text-xs font-semibold text-foreground">{cred.title}</span>
                         <Key className="size-3.5 text-muted-foreground" />
                       </div>
-                      <p className="text-[11px] text-muted-foreground font-mono">{cred.username}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{cred.username}</p>
                       {cred.url && (
                         <a
                           href={cred.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
                         >
                           Login URL <ExternalLink className="size-3" />
                         </a>

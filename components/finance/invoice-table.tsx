@@ -1,5 +1,6 @@
 "use client"
 
+import { jsonFetcher } from "@/lib/fetcher";
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
@@ -31,7 +32,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatMoney, toNumber } from "@/lib/finance"
 import { INVOICE_STATUS_LABELS, type InvoiceRow, type InvoiceStatus } from "@/types/finance"
 
-const fetcher = (url: string) => fetch(url).then((response) => response.json())
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 /** Colour carries meaning, so the label repeats it for anyone who cannot see the hue. */
 const STATUS_STYLES: Record<InvoiceStatus, string> = {

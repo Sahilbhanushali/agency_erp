@@ -372,13 +372,13 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
                     <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
                       {t.name}
                       {t.isDefault && (
-                        <Badge variant="default" className="gap-1 text-[10px]">
+                        <Badge variant="default" className="gap-1 text-xs">
                           <Star className="size-2.5" aria-hidden="true" />
                           Default
                         </Badge>
                       )}
                       {!t.isActive && (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-xs">
                           Inactive
                         </Badge>
                       )}
@@ -526,7 +526,7 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
                 placeholder="Printed under the company name on the payslip"
                 className="text-xs"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Left blank, no address is printed — nothing is invented.
               </p>
             </div>
@@ -574,7 +574,7 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
                     />
                     <span className="min-w-0">
                       <span className="block text-xs font-medium">{toggle.label}</span>
-                      <span className="block text-[11px] text-muted-foreground">{toggle.hint}</span>
+                      <span className="block text-xs text-muted-foreground">{toggle.hint}</span>
                     </span>
                   </label>
                 ))}
@@ -583,7 +583,7 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
 
             <fieldset className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
               <legend className="px-1 text-xs font-medium">Layout — section order</legend>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 The payslip prints these top to bottom. Untick to leave a section out; use
                 the arrows to reorder. The letterhead always stays at the top.
               </p>
@@ -593,7 +593,7 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
                     key={section.key}
                     className="flex items-center gap-2 rounded-md border border-border/60 bg-background p-1.5"
                   >
-                    <span className="w-5 text-center text-[11px] text-muted-foreground">
+                    <span className="w-5 text-center text-xs text-muted-foreground">
                       {index + 1}
                     </span>
                     <Checkbox
@@ -650,14 +650,14 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
                       className="h-9 w-12 cursor-pointer rounded-md border border-input bg-background p-1"
                       aria-label="Accent colour"
                     />
-                    <Input
+                    <Input aria-label="#0F172A"
                       value={form.accentColor}
                       onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
                       className="h-9 font-mono text-xs"
                       placeholder="#0F172A"
                     />
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Header bar, net-pay card and section rules.
                   </p>
                 </div>
@@ -700,7 +700,7 @@ export default function PayslipTemplatesTab({ canManage = false }: { canManage?:
             </div>
 
             {editingId !== "new" && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Upload a logo with the <strong>Logo</strong> button on the template above.
               </p>
             )}

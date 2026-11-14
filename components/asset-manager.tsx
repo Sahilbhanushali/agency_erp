@@ -299,7 +299,7 @@ export function AssetManager({ assets: initialAssets, isAdmin }: AssetManagerPro
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
+                <Input aria-label="Search assets"
                   placeholder="Search assets..."
                   className="pl-10"
                   value={searchTerm}

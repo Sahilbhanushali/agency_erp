@@ -412,7 +412,7 @@ export function ChatApp({ meId }: { meId: number }) {
                           <span className={`truncate text-sm ${c.unread ? "font-semibold text-foreground" : "font-medium text-foreground"}`}>
                             {c.name ?? "Conversation"}
                           </span>
-                          <span className={`shrink-0 text-[11px] tabular-nums ${c.unread ? "font-semibold text-primary" : "text-muted-foreground"}`}>
+                          <span className={`shrink-0 text-xs tabular-nums ${c.unread ? "font-semibold text-primary" : "text-muted-foreground"}`}>
                             {listTime(c.lastMessageAt)}
                           </span>
                         </span>
@@ -522,7 +522,7 @@ function SearchResultsList({
     )
   }
   const heading = (label: string, count?: number): ReactNode => (
-    <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <p className="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
       {label}
       {count !== undefined && <span className="ml-1 tabular-nums">({count}{results.hasMore ? "+" : ""})</span>}
     </p>
@@ -554,7 +554,7 @@ function SearchResultsList({
               </Avatar>
               <span className="min-w-0 flex-1">
                 <span className="block truncate"><Marked text={p.name} terms={terms} /></span>
-                {p.role && <span className="block truncate text-[11px] text-muted-foreground">{p.role}</span>}
+                {p.role && <span className="block truncate text-xs text-muted-foreground">{p.role}</span>}
               </span>
               <MessageSquarePlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             </button>
@@ -629,7 +629,7 @@ function NotificationSettings() {
           <Switch id="n-sound" checked={n.sound} onCheckedChange={n.setSound} />
         </div>
         <Button size="sm" variant="outline" className="w-full" onClick={n.test}>Send a test</Button>
-        <p className="text-[11px] text-muted-foreground">Muted conversations never notify. Mute one from its info panel.</p>
+        <p className="text-xs text-muted-foreground">Muted conversations never notify. Mute one from its info panel.</p>
       </PopoverContent>
     </Popover>
   )

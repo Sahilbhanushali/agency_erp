@@ -263,7 +263,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative w-64">
             <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-            <Input
+            <Input aria-label="Search job title, code, dept"
               placeholder="Search job title, code, dept..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -273,7 +273,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
           </div>
 
           <Select value={selectedDept} onValueChange={setSelectedDept}>
-            <SelectTrigger className="h-8 text-xs w-[160px]">
+            <SelectTrigger aria-label="All Departments" className="h-8 text-xs w-[160px]">
               <SelectValue placeholder="All Departments" />
             </SelectTrigger>
             <SelectContent>
@@ -287,7 +287,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
           </Select>
 
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="h-8 text-xs w-[140px]">
+            <SelectTrigger aria-label="All Statuses" className="h-8 text-xs w-[140px]">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -330,7 +330,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
               <CardHeader className="p-4 pb-2">
                 <div className="flex items-start justify-between gap-1">
                   <div>
-                    <Badge variant="outline" className="text-[10px] bg-muted/30 font-bold mb-1">
+                    <Badge variant="outline" className="text-xs bg-muted/30 font-bold mb-1">
                       {job.code}
                     </Badge>
                     <CardTitle className="text-sm font-bold text-foreground">{job.title}</CardTitle>
@@ -343,7 +343,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
                   <Badge
                     variant={job.status === "ACTIVE" ? "default" : "secondary"}
-                    className="text-[10px]"
+                    className="text-xs"
                   >
                     {job.status}
                   </Badge>
@@ -371,7 +371,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
                 </div>
 
                 {job.description && (
-                  <p className="text-[11px] text-muted-foreground line-clamp-2">
+                  <p className="text-xs text-muted-foreground line-clamp-2">
                     {job.description}
                   </p>
                 )}
@@ -400,7 +400,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
                     View Applicants
                   </Button>
                   <div className="flex items-center gap-1">
-                    <Button
+                    <Button aria-label="Edit job opening"
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => handleOpenEdit(job)}
@@ -408,7 +408,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
                     >
                       <Edit className="size-3.5 text-muted-foreground" />
                     </Button>
-                    <Button
+                    <Button aria-label="Archive job"
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => triggerDeleteJob(job)}
@@ -439,7 +439,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
             <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Job Title *</Label>
-                <Input
+                <Input aria-label="Job Title"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -450,7 +450,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1">
                 <Label className="text-xs">Job Code / ID *</Label>
-                <Input
+                <Input aria-label="Job Code / ID"
                   required
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
@@ -460,7 +460,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1">
                 <Label className="text-xs">Department *</Label>
-                <Input
+                <Input aria-label="Department"
                   required
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
@@ -471,7 +471,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1">
                 <Label className="text-xs">Work Location *</Label>
-                <Input
+                <Input aria-label="Work Location"
                   required
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -486,7 +486,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
                   value={formData.employmentType}
                   onValueChange={(val) => setFormData({ ...formData, employmentType: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Employment Type" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -500,7 +500,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1">
                 <Label className="text-xs">Total Openings Count</Label>
-                <Input
+                <Input aria-label="Total Openings Count"
                   type="number"
                   min="1"
                   value={formData.openingsCount}
@@ -517,7 +517,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
                   value={formData.status}
                   onValueChange={(val) => setFormData({ ...formData, status: val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger aria-label="Status" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -531,7 +531,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1">
                 <Label className="text-xs">Minimum Experience (Years)</Label>
-                <Input
+                <Input aria-label="Minimum Experience (Years)"
                   type="number"
                   value={formData.experienceMin}
                   onChange={(e) =>
@@ -543,7 +543,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1">
                 <Label className="text-xs">Maximum Experience (Years)</Label>
-                <Input
+                <Input aria-label="Maximum Experience (Years)"
                   type="number"
                   value={formData.experienceMax}
                   onChange={(e) =>
@@ -555,7 +555,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1">
                 <Label className="text-xs">Salary Min (Annual CTC in ₹)</Label>
-                <Input
+                <Input aria-label="Salary Min (Annual CTC in ₹)"
                   type="number"
                   value={formData.salaryMin}
                   onChange={(e) =>
@@ -567,7 +567,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1">
                 <Label className="text-xs">Salary Max (Annual CTC in ₹)</Label>
-                <Input
+                <Input aria-label="Salary Max (Annual CTC in ₹)"
                   type="number"
                   value={formData.salaryMax}
                   onChange={(e) =>
@@ -579,7 +579,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Job Description</Label>
-                <Textarea
+                <Textarea aria-label="Job Description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
@@ -589,7 +589,7 @@ export function HrmsJobsTab({ onSelectJobForCandidates }: HrmsJobsTabProps) {
 
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Role Requirements</Label>
-                <Textarea
+                <Textarea aria-label="Role Requirements"
                   value={formData.requirements}
                   onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
                   rows={2}

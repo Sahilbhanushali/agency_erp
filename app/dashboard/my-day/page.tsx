@@ -21,7 +21,7 @@ export default async function MyDayPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">My Day</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">My Day</h1>
         <p className="text-sm text-muted-foreground">
           What you plan to do today. Tasks assigned to you and due today appear here
           automatically; your manager gets a summary at 7pm.

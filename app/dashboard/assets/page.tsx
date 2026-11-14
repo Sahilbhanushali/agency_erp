@@ -139,7 +139,7 @@ export default function AssetsPage() {
     <div className="space-y-6 animate-in fade-in-50 duration-200">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Asset Library</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Asset Library</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Central repository for images, video reels, and client campaign files ({assets.length} total).
           </p>

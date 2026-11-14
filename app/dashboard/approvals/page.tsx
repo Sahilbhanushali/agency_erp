@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { jsonFetcher } from "@/lib/fetcher";
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -28,6 +29,7 @@ import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDia
 import useSWR, { mutate as globalMutate } from 'swr';
 import { useSession } from 'next-auth/react';
 import { getMediaUrl } from '@/lib/utils';
+import { STAGE_LABELS, stageOf, type WorkflowStatus } from '@/lib/posts/workflow-rules';
 import { projectCompanyName, projectLogo } from "@/lib/client-company";
 
 interface Asset {
@@ -86,16 +88,6 @@ const statusColors: Record<string, string> = {
   NEEDS_MINOR_CHANGE: "bg-amber-200/80 dark:bg-amber-900/30 text-amber-900 dark:text-amber-300 ring-amber-300/50 dark:ring-amber-800/50",
 };
 
-const typeIcons: Record<string, string> = {
-  PHOTO: "📷",
-  REEL: "🎬",
-  STORY: "📱",
-  CAROUSEL: "🎠",
-  BLOG: "📝",
-  VIDEO: "🎥",
-  CUSTOM: "✨",
-};
-
 interface StatusChangeDialogProps {
   statusChangeDialog: { postId: string; statusType?: "content" | "design" | "designerHead" } | null;
   setStatusChangeDialog: (value: { postId: string; statusType?: "content" | "design" | "designerHead" } | null) => void;
@@ -137,16 +129,16 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full p-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground"
             >
-              <option value="APPROVED">I Approve</option>
-              <option value="C_APPROVED">C Approve</option>
-              <option value="SCHEDULED">Schedule</option>
-              <option value="REJECTED">Changes</option>
-              <option value="NEEDS_MINOR_CHANGE">Needs Minor Change</option>
+              {/* Internal decisions only. Client approval is the client's (share link);
+                  scheduling lives in the post's Approval workflow panel. */}
+              <option value="APPROVED">Approve</option>
+              <option value="NEEDS_MINOR_CHANGE">Request changes</option>
+              <option value="REJECTED">Reject</option>
             </select>
           </div>
           <div>
             <label className="text-sm font-medium text-foreground block mb-2">Date & Time</label>
-            <input
+            <input aria-label="Date & Time"
               type="datetime-local"
               value={selectedDate && selectedDate.includes("T") ? selectedDate : format(new Date(), "yyyy-MM-dd'T'HH:mm")}
               onChange={(e) => setSelectedDate(e.target.value)}
@@ -172,18 +164,92 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({
   );
 };
 
-const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then(res => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
+
+type QueueKey = 'mine' | 'pending' | 'client' | 'approved' | 'rejected' | 'changes' | 'scheduled';
+
+interface QueueResponse {
+  // The rows feed dialogs typed against slightly different local Post shapes; kept as
+  // loosely typed as the untyped array this page consumed before.
+  items: any[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<QueueKey, number>;
+  canApprove: boolean;
+}
+
+/** The queues from the approval workflow, in the order a reviewer works through them. */
+const QUEUE_TABS: { key: QueueKey; label: string; hint: string; empty: string }[] = [
+  { key: 'mine', label: 'My pending approvals', hint: 'Waiting for your decision on projects you manage or belong to', empty: 'Nothing is waiting for your approval' },
+  { key: 'pending', label: 'All pending', hint: 'Every post waiting for internal approval that you can see', empty: 'No posts are waiting for approval' },
+  { key: 'client', label: 'Pending client approval', hint: 'Approved internally, waiting for the client', empty: 'Nothing is waiting on a client' },
+  { key: 'changes', label: 'Changes requested', hint: 'Sent back to the creator to edit and resubmit', empty: 'No posts have changes requested' },
+  { key: 'rejected', label: 'Rejected', hint: 'Rejected posts — they cannot be scheduled', empty: 'No rejected posts' },
+  { key: 'approved', label: 'Approved', hint: 'Every required approval is in — ready to schedule', empty: 'No approved posts waiting to be scheduled' },
+  { key: 'scheduled', label: 'Scheduled', hint: 'Scheduled for publishing', empty: 'Nothing is scheduled' },
+];
+
+const queueFetcher = async (url: string): Promise<QueueResponse> => {
+  const res = await fetch(url, { credentials: 'include' });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? 'Could not load approvals');
+  return body;
+};
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
 
 const ApprovalTab: React.FC = () => {
   const { data: session } = useSession();
-  const { data: approvalsData, error, isLoading, mutate } = useSWR('/api/design-approvals', fetcher, { 
-    revalidateOnFocus: true, 
-    revalidateIfStale: true 
-  });
+  // Queues, filters and paging all run on the server (/api/design-approvals?queue=…).
+  const [queue, setQueue] = useState<QueueKey>('mine');
+  const [page, setPage] = useState(1);
+  const [filterAssigned, setFilterAssigned] = useState<string>('ALL');
+  const [filterProject, setFilterProject] = useState<string>('ALL');
+  const [filterClient, setFilterClient] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const debouncedSearch = useDebouncedValue(searchTerm, 300);
 
-  const approvals = useMemo(() => {
-    return Array.isArray(approvalsData) ? approvalsData : approvalsData?.data || [];
-  }, [approvalsData]);
+  const queueQuery = new URLSearchParams({ queue, page: String(page), pageSize: '24' });
+  if (debouncedSearch.trim()) queueQuery.set('search', debouncedSearch.trim());
+  if (filterProject !== 'ALL') queueQuery.set('projectId', filterProject);
+  if (filterClient !== 'ALL') queueQuery.set('client', filterClient);
+  if (filterAssigned !== 'ALL') queueQuery.set('assignedToId', filterAssigned);
+
+  const { data: approvalsData, error, isLoading, mutate } = useSWR<QueueResponse>(
+    `/api/design-approvals?${queueQuery}`,
+    queueFetcher,
+    { revalidateOnFocus: true, keepPreviousData: true },
+  );
+  const approvals = useMemo(() => approvalsData?.items ?? [], [approvalsData]);
+  const counts = approvalsData?.counts;
+  const total = approvalsData?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / 24));
+
+  const { data: projectOptions } = useSWR<{ projects?: { id: string; name: string; client: string | null }[] }>(
+    '/api/projects?view=options',
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+  const { data: people } = useSWR<{ id: string; name: string | null; email: string }[] | { error: string }>(
+    '/api/users',
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+  const peopleList = Array.isArray(people) ? people : [];
+  /** Any filter change goes back to the first page. */
+  const resetting = <T,>(setter: (value: T) => void) => (value: T) => {
+    setter(value);
+    setPage(1);
+  };
 
   const [imageModal, setImageModal] = useState<{ src: string; alt: string; postId: string; assetId: string } | null>(null);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -193,11 +259,6 @@ const ApprovalTab: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('DRAFT');
   const [actionComment, setActionComment] = useState<string>('');
   const [statusRejectDialog, setStatusRejectDialog] = useState<{ postId: string; statusType: "designerHead" } | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [filterAssigned, setFilterAssigned] = useState<string>('ALL');
-  const [filterProject, setFilterProject] = useState<string>('ALL');
-  const [filterClient, setFilterClient] = useState<string>('ALL');
-  const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentAssetIndex, setCurrentAssetIndex] = useState<{ [key: string]: number }>({});
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -227,110 +288,13 @@ const ApprovalTab: React.FC = () => {
     }
   };
 
-  const uniqueAssigned = useMemo(() => {
-    const assignedSet = new Set<string>();
-    approvals.forEach((approval: ApprovalFlow) => {
-      if (approval.post.assignedTo?.name) {
-        assignedSet.add(approval.post.assignedTo.name);
-      }
-    });
-    return Array.from(assignedSet).sort();
-  }, [approvals]);
-
-  const uniqueProjects = useMemo(() => {
-    const projectSet = new Set<string>();
-    approvals.forEach((approval: ApprovalFlow) => {
-      if (approval.post.project?.name) {
-        projectSet.add(approval.post.project.name);
-      }
-    });
-    return Array.from(projectSet).sort();
-  }, [approvals]);
-
-  const uniqueClients = useMemo(() => {
-    const clientSet = new Set<string>();
-    approvals.forEach((approval: ApprovalFlow) => {
-      const clientName = projectCompanyName(approval.post.project) || approval.post.project?.client?.name;
-      if (clientName) {
-        clientSet.add(clientName);
-      }
-    });
-    return Array.from(clientSet).sort();
-  }, [approvals]);
-
-  const statusOrder: Record<string, number> = {
-    DRAFT: 0,
-    SUBMITTED: 1,
-    RESUBMITTED: 2,
-    REJECTED: 3,
-    APPROVED: 4,
-    C_APPROVED: 5,
-  };
-
-  const filteredApprovals = useMemo(() => {
-    // CRITICAL: Team Lead only sees posts where the design status is APPROVED
-    // This is a two-stage process:
-    // Stage 1: Design approval (post.status field) - must be APPROVED to reach Team Lead
-    // Stage 2: Team Lead approval (designerHeadApproval field) - what this tab manages
-    let filtered = approvals.filter((approval: ApprovalFlow) => {
-      const nonReferenceAssets = approval.post.assets?.filter((asset: Asset) => !asset.isReference && !asset.isEdited) || [];
-      return nonReferenceAssets.length > 0;
-    });
-    
-    // Apply additional filters (includes both designerHeadApproval and design status DRAFT posts)
-    if (filterStatus !== 'ALL') {
-      filtered = filtered.filter((approval: ApprovalFlow) => 
-        approval.post.status === filterStatus || approval.post.designerHeadApproval === filterStatus
-      );
-    } else {
-      // By default, hide posts that are already approved (internal or client), scheduled, or posted
-      filtered = filtered.filter((approval: ApprovalFlow) => {
-        const isApprovedOrPosted = 
-          ['APPROVED', 'C_APPROVED', 'POSTED', 'SCHEDULED'].includes(approval.post.status) || 
-          ['APPROVED', 'C_APPROVED'].includes(approval.post.designerHeadApproval);
-        return !isApprovedOrPosted;
-      });
-    }
-    if (filterAssigned !== 'ALL') {
-      filtered = filtered.filter((approval: ApprovalFlow) => approval.post.assignedTo?.name === filterAssigned);
-    }
-    if (filterProject !== 'ALL') {
-      filtered = filtered.filter((approval: ApprovalFlow) => approval.post.project?.name === filterProject);
-    }
-    if (filterClient !== 'ALL') {
-      filtered = filtered.filter(
-        (approval: ApprovalFlow) =>
-          projectCompanyName(approval.post.project) === filterClient ||
-          approval.post.project?.client?.name === filterClient
-      );
-    }
-    if (searchTerm) {
-      const query = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (approval: ApprovalFlow) =>
-          approval.post.title.toLowerCase().includes(query) ||
-          (approval.submittedBy?.name?.toLowerCase() || '').includes(query) ||
-          (approval.post.project?.name?.toLowerCase() || '').includes(query) ||
-          (approval.post.project?.client?.name?.toLowerCase() || '').includes(query) ||
-          (projectCompanyName(approval.post.project)?.toLowerCase() || '').includes(query)
-      );
-    }
-    // Sort by status order: DRAFT, SUBMITTED, RESUBMITTED, REJECTED, APPROVED
-    // Secondary sort by submittedAt descending within each status group
-    return filtered.sort((a: ApprovalFlow, b: ApprovalFlow) => {
-      const statusA = (a.post.designerHeadApproval || '').toUpperCase();
-      const statusB = (b.post.designerHeadApproval || '').toUpperCase();
-      const orderA = statusOrder[statusA] ?? 6;
-      const orderB = statusOrder[statusB] ?? 6;
-      if (orderA !== orderB) {
-        return orderA - orderB;
-      }
-      // Secondary sort: newer first
-      const dateA = new Date(a.submittedAt || 0);
-      const dateB = new Date(b.submittedAt || 0);
-      return dateB.getTime() - dateA.getTime();
-    });
-  }, [approvals, filterStatus, filterAssigned, filterProject, filterClient, searchTerm]);
+  const uniqueProjects = projectOptions?.projects ?? [];
+  const uniqueClients = useMemo(
+    () => Array.from(new Set(uniqueProjects.map((p) => p.client).filter((c): c is string => !!c))).sort(),
+    [uniqueProjects],
+  );
+  // Already filtered, ordered and paged by the server.
+  const filteredApprovals = approvals;
 
   const handleConfirmStatusChange = async (statusType: "content" | "design" | "designerHead") => {
     if (!statusChangeDialog || !selectedDate) return;
@@ -546,16 +510,50 @@ const ApprovalTab: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Design Approvals</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Approvals</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Review design submissions, mark approvals, and submit visual feedback.
+            Posts waiting for a decision, and where every post stands in its approval workflow.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs font-medium">
-            Showing {filteredApprovals.length} of {approvals.length} submissions
+          <Badge variant="outline" className="text-xs font-medium" aria-live="polite">
+            {total} {total === 1 ? "post" : "posts"} in this view
           </Badge>
         </div>
+      </div>
+
+      {/* Queues — each one a server-side view with a live count. */}
+      <div role="tablist" aria-label="Approval queues" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+        {QUEUE_TABS.filter((tab) => tab.key !== 'mine' || approvalsData?.canApprove !== false).map((tab) => {
+          const active = queue === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              title={tab.hint}
+              onClick={() => {
+                setQueue(tab.key);
+                setPage(1);
+              }}
+              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                active
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border/70 bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-xs tabular-nums ${
+                  active ? 'bg-primary-foreground/20' : 'bg-muted text-foreground'
+                }`}
+              >
+                {counts ? counts[tab.key] : '·'}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Filter Toolbar */}
@@ -564,45 +562,30 @@ const ApprovalTab: React.FC = () => {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search title, project, client..."
+            onChange={(e) => resetting(setSearchTerm)(e.target.value)}
+            aria-label="Search approvals"
+            placeholder="Search title, project, client, creator..."
             className="h-9 w-full bg-background pl-9 text-xs"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL" className="text-xs">All Statuses</SelectItem>
-              <SelectItem value="DRAFT" className="text-xs">Draft</SelectItem>
-              <SelectItem value="SUBMITTED" className="text-xs">Submitted</SelectItem>
-              <SelectItem value="RESUBMITTED" className="text-xs">Resubmitted</SelectItem>
-              <SelectItem value="APPROVED" className="text-xs">I Approve</SelectItem>
-              <SelectItem value="C_APPROVED" className="text-xs">C Approve</SelectItem>
-              <SelectItem value="REJECTED" className="text-xs">Changes</SelectItem>
-              <SelectItem value="NEEDS_MINOR_CHANGE" className="text-xs">Needs Minor Change</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={filterProject} onValueChange={setFilterProject}>
-            <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
+          <Select value={filterProject} onValueChange={resetting(setFilterProject)}>
+            <SelectTrigger aria-label="Filter by project" className="h-9 w-[150px] bg-background text-xs">
               <SelectValue placeholder="Project" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL" className="text-xs">All Projects</SelectItem>
-              {uniqueProjects.map((name) => (
-                <SelectItem key={name} value={name} className="text-xs">
-                  {name}
+              {uniqueProjects.map((project) => (
+                <SelectItem key={project.id} value={project.id} className="text-xs">
+                  {project.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={filterClient} onValueChange={setFilterClient}>
-            <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
+          <Select value={filterClient} onValueChange={resetting(setFilterClient)}>
+            <SelectTrigger aria-label="Filter by client" className="h-9 w-[150px] bg-background text-xs">
               <SelectValue placeholder="Client" />
             </SelectTrigger>
             <SelectContent>
@@ -615,27 +598,27 @@ const ApprovalTab: React.FC = () => {
             </SelectContent>
           </Select>
 
-          <Select value={filterAssigned} onValueChange={setFilterAssigned}>
-            <SelectTrigger className="h-9 w-[130px] bg-background text-xs">
+          <Select value={filterAssigned} onValueChange={resetting(setFilterAssigned)}>
+            <SelectTrigger aria-label="Filter by assignee" className="h-9 w-[150px] bg-background text-xs">
               <SelectValue placeholder="Assigned" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL" className="text-xs">All Designers</SelectItem>
-              {uniqueAssigned.map((name) => (
-                <SelectItem key={name} value={name} className="text-xs">
-                  {name}
+              <SelectItem value="ALL" className="text-xs">Anyone assigned</SelectItem>
+              {peopleList.map((person) => (
+                <SelectItem key={person.id} value={String(person.id)} className="text-xs">
+                  {person.name ?? person.email}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          {(searchTerm || filterStatus !== "ALL" || filterProject !== "ALL" || filterClient !== "ALL" || filterAssigned !== "ALL") && (
+          {(searchTerm || filterProject !== "ALL" || filterClient !== "ALL" || filterAssigned !== "ALL") && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
                 setSearchTerm("");
-                setFilterStatus("ALL");
+                setPage(1);
                 setFilterProject("ALL");
                 setFilterClient("ALL");
                 setFilterAssigned("ALL");
@@ -650,7 +633,25 @@ const ApprovalTab: React.FC = () => {
 
       {filteredApprovals.length === 0 ? (
         <div className="rounded-xl border border-border/70 bg-card p-12 text-center shadow-2xs">
-          <p className="text-sm text-muted-foreground">No matching design submissions to review.</p>
+          <FileCheck2 className="mx-auto mb-3 size-8 text-muted-foreground/60" aria-hidden="true" />
+          <p className="text-sm font-medium text-foreground">
+            {searchTerm || filterProject !== "ALL" || filterClient !== "ALL" || filterAssigned !== "ALL"
+              ? "No posts match these filters"
+              : QUEUE_TABS.find((t) => t.key === queue)?.empty}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {queue === "mine" ? (
+              <>
+                Nothing is waiting for your decision.{" "}
+                <button type="button" className="font-medium text-primary hover:underline" onClick={() => setQueue("pending")}>
+                  See all pending approvals
+                </button>
+                .
+              </>
+            ) : (
+              "Try another queue, or clear the filters."
+            )}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -729,11 +730,7 @@ const ApprovalTab: React.FC = () => {
                       <Badge 
                         className={`absolute top-3 left-3 ${statusColors[approval.post.status || approval.post.designerHeadApproval]} text-xs font-semibold px-3 py-1 rounded-full ring-1`}
                       >
-                        {(() => {
-                          const st = approval.post.status || approval.post.designerHeadApproval || "";
-                          const label = st === "REJECTED" ? "Changes" : st === "NEEDS_MINOR_CHANGE" ? "Needs Minor Change" : st === "RESUBMITTED" ? "ReSubmitted" : st === "APPROVED" ? "I Approve" : st === "C_APPROVED" ? "C Approve" : st.charAt(0) + st.slice(1).toLowerCase().replace(/_/g, " ");
-                          return `Design Status: ${label}`;
-                        })()}
+                        {STAGE_LABELS[stageOf({ status: approval.post.status as WorkflowStatus, requiresClientApproval: !!(approval.post as { requiresClientApproval?: boolean }).requiresClientApproval })]}
                       </Badge>
 
                     </>
@@ -838,39 +835,35 @@ const ApprovalTab: React.FC = () => {
 
                         <DropdownMenuSeparator />
 
-                        <DropdownMenuItem
-                          onClick={() => openStatusChange(approval, approval.post.status || approval.post.designerHeadApproval || 'DRAFT', 'designerHead')}
-                          className="cursor-pointer font-medium"
-                        >
-                          <SlidersHorizontal className="mr-2 h-4 w-4" />
-                          Change Status
-                        </DropdownMenuItem>
+                        {/* Decisions only for people who can approve, and only while the
+                            post is actually waiting for one. The server enforces both. */}
+                        {approvalsData?.canApprove && ['SUBMITTED', 'RESUBMITTED'].includes(approval.post.status) && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => openStatusChange(approval, 'APPROVED', 'designerHead')}
+                              className="text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950 cursor-pointer"
+                            >
+                              <Check className="mr-2 h-4 w-4" />
+                              Approve
+                            </DropdownMenuItem>
 
-                        <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => openStatusChange(approval, 'NEEDS_MINOR_CHANGE', 'designerHead')}
+                              className="text-amber-700 dark:text-amber-300 cursor-pointer"
+                            >
+                              <SlidersHorizontal className="mr-2 h-4 w-4" />
+                              Request changes
+                            </DropdownMenuItem>
 
-                        <DropdownMenuItem
-                          onClick={() => openStatusChange(approval, 'APPROVED', 'designerHead')}
-                          className="text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950 cursor-pointer"
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                         I Approve
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem
-                          onClick={() => openStatusChange(approval, 'C_APPROVED', 'designerHead')}
-                          className="text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950 cursor-pointer"
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                         C Approve
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem
-                          onClick={() => openStatusChange(approval, 'REJECTED', 'designerHead')}
-                          className="text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer"
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Give Changes
-                        </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => openStatusChange(approval, 'REJECTED', 'designerHead')}
+                              className="text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer"
+                            >
+                              <X className="mr-2 h-4 w-4" />
+                              Reject
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -881,6 +874,22 @@ const ApprovalTab: React.FC = () => {
         </div>
       )}
 
+      {pageCount > 1 && (
+        <nav aria-label="Approval pages" className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>
+            Page {page} of {pageCount}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <ChevronLeft className="size-4" aria-hidden="true" /> Previous
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))}>
+              Next <ChevronRight className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </nav>
+      )}
+
       <StatusChangeDialog
         statusChangeDialog={statusChangeDialog}
         setStatusChangeDialog={setStatusChangeDialog}
@@ -889,13 +898,13 @@ const ApprovalTab: React.FC = () => {
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
         handleConfirmStatusChange={handleConfirmStatusChange}
-        posts={approvals.map((approval: ApprovalFlow) => approval.post)}
+        posts={approvals.map((approval: any) => approval.post)}
       />
 
       <DesignerHeadApprovalRejectDialog
         statusRejectDialog={statusRejectDialog}
         setStatusRejectDialog={setStatusRejectDialog}
-        posts={approvals.map((approval: ApprovalFlow) => approval.post)}
+        posts={approvals.map((approval: any) => approval.post)}
         actionComment={actionComment}
         setActionComment={setActionComment}
         selectedDate={selectedDate}
@@ -908,7 +917,7 @@ const ApprovalTab: React.FC = () => {
       <AssetsDialog
         viewingAssets={viewingAssets}
         setViewingAssets={setViewingAssets}
-        posts={approvals.map((approval: ApprovalFlow) => approval.post)}
+        posts={approvals.map((approval: any) => approval.post)}
         handleVideoPlay={() => {}}
       />
 

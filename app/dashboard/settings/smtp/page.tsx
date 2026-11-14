@@ -239,17 +239,17 @@ export default function SmtpSettingsPage() {
                       {config.host}:{config.port}
                     </h3>
                     {config.isActive && (
-                      <Badge variant="success" className="text-[10px]">
+                      <Badge variant="success" className="text-xs">
                         Active Default
                       </Badge>
                     )}
                     {config.isVerified ? (
-                      <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 gap-1">
+                      <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300 gap-1">
                         <CheckCircle className="size-3 text-emerald-600" />
                         Verified
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 gap-1">
+                      <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 gap-1">
                         <AlertCircle className="size-3 text-amber-600" />
                         Unverified
                       </Badge>
@@ -284,7 +284,7 @@ export default function SmtpSettingsPage() {
                       Set Active
                     </Button>
                   )}
-                  <Button
+                  <Button aria-label="Test SMTP connection"
                     variant="ghost"
                     size="icon-xs"
                     onClick={() => testConnection(config)}
@@ -309,7 +309,7 @@ export default function SmtpSettingsPage() {
                   >
                     Edit
                   </Button>
-                  <Button
+                  <Button aria-label="Delete configuration"
                     variant="ghost"
                     size="icon-xs"
                     onClick={() =>

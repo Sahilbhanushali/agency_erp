@@ -1,3 +1,5 @@
+import { contentStatusLabel, statusLabel } from "@/lib/post-status";
+import { PostTypeIcon, typeLabel } from "@/components/posts/post-type-icon";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText,Calendar, Users } from "lucide-react";
@@ -25,7 +27,7 @@ interface PostGroupViewProps {
 }
 
 const statusColors: Record<PostStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-800",
+  DRAFT: "bg-muted text-foreground",
   SUBMITTED: "bg-blue-100 text-blue-800",
   APPROVED: "bg-green-100 dark:bg-green-950/60 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-800",
   REJECTED: "bg-red-100 text-red-800",
@@ -34,15 +36,6 @@ const statusColors: Record<PostStatus, string> = {
   NEEDS_MINOR_CHANGE: "bg-amber-100 text-amber-800",
   RESUBMITTED: "bg-blue-200 text-blue-900",
   C_APPROVED: "bg-emerald-100 text-emerald-800 border border-emerald-300",
-};
-
-const typeIcons: Record<string, string> = {
-  PHOTO: "📷",
-  REEL: "🎬",
-  STORY: "📱",
-  CAROUSEL: "🎠",
-  VIDEO: "🎥",
-  CUSTOM: "✨",
 };
 
 export default function PostGroupView({ posts, viewMode, handleVideoPlay }: PostGroupViewProps) {
@@ -70,12 +63,12 @@ export default function PostGroupView({ posts, viewMode, handleVideoPlay }: Post
                         onPlay={(assetId) => handleVideoPlay(post.id, assetId)}
                       />
                     ) : (
-                      <div className="flex items-center justify-center h-full bg-gray-100">
-                        <FileText className="h-8 w-8 text-gray-400" />
+                      <div className="flex items-center justify-center h-full bg-muted">
+                        <FileText className="h-8 w-8 text-muted-foreground" />
                       </div>
                     )}
                     <Badge className={`absolute top-2 left-2 ${statusColors[post.status]}`}>
-                      {post.status === "NEEDS_MINOR_CHANGE" ? "Needs Minor Change" : post.status === "REJECTED" ? "Changes" : post.status.charAt(0) + post.status.slice(1).toLowerCase()}
+                      {statusLabel(post.status)}
                     </Badge>
                   </div>
                   <CardContent className="p-3">
@@ -84,10 +77,10 @@ export default function PostGroupView({ posts, viewMode, handleVideoPlay }: Post
                         <h4 className="font-medium text-sm line-clamp-1 flex-1 min-w-0">{post.title}</h4>
                         <PostTimingBadge post={post} />
                       </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>{post.project?.name}</span>
                         <span className="flex items-center gap-1">
-                          {typeIcons[post.type]} {post.type.toLowerCase()}
+                          <PostTypeIcon type={post.type} className="size-3.5" /> {typeLabel(post.type)}
                         </span>
                       </div>
                     </div>
@@ -100,7 +93,7 @@ export default function PostGroupView({ posts, viewMode, handleVideoPlay }: Post
       ))}
       {Object.keys(posts).length === 0 && (
         <Card>
-          <CardContent className="text-center py-12 text-gray-500">
+          <CardContent className="text-center py-12 text-muted-foreground">
             No posts found matching your filters
           </CardContent>
         </Card>

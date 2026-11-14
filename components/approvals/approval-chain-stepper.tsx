@@ -147,7 +147,7 @@ export function ApprovalChainStepper({
           <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
             Approval Workflow Chain
           </h4>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {chain.isCompleted
               ? "All approval stages completed. Deliverable approved."
               : `Currently waiting on Stage ${chain.currentStageIndex + 1}: ${
@@ -218,32 +218,32 @@ export function ApprovalChainStepper({
                   {meta.title}
                 </span>
                 {step.status === "APPROVED" && (
-                  <Badge variant="success" className="text-[10px]">
+                  <Badge variant="success" className="text-xs">
                     Approved
                   </Badge>
                 )}
                 {step.status === "CHANGES_REQUESTED" && (
-                  <Badge variant="destructive" className="text-[10px]">
+                  <Badge variant="destructive" className="text-xs">
                     Changes Req.
                   </Badge>
                 )}
                 {step.status === "PENDING" && (
                   <Badge
                     variant={isCurrent ? "secondary" : "outline"}
-                    className="text-[10px]"
+                    className="text-xs"
                   >
                     {isCurrent ? "In Progress" : "Pending"}
                   </Badge>
                 )}
               </div>
 
-              <p className="text-[11px] text-muted-foreground leading-snug">
+              <p className="text-xs text-muted-foreground leading-snug">
                 {meta.subtitle}
               </p>
 
               {/* Decision Log if decided */}
               {step.decisionAt && (
-                <div className="pt-1.5 border-t border-border/40 text-[10px] space-y-0.5">
+                <div className="pt-1.5 border-t border-border/40 text-xs space-y-0.5">
                   <div className="text-foreground font-medium flex items-center justify-between">
                     <span>By: {step.decisionByName || "Reviewer"}</span>
                     <span className="text-muted-foreground">
@@ -316,7 +316,7 @@ export function ApprovalChainStepper({
                 : "Describe the required edits or revisions. The creative team will be notified immediately."}
             </p>
 
-            <Textarea
+            <Textarea aria-label="Decision note"
               placeholder={
                 decisionModal?.decision === "APPROVED"
                   ? "Optional note or congratulatory remark..."

@@ -1,5 +1,6 @@
 "use client";
 
+import { jsonFetcher } from "@/lib/fetcher";
 import React, { useState, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -41,7 +42,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 const CONTRACT_TYPES = [
   { value: "RETAINER", label: "Monthly / Recurring Retainer" },
@@ -289,7 +291,7 @@ export default function NewContractPage() {
                       value={formData.type}
                       onValueChange={(val) => setFormData({ ...formData, type: val })}
                     >
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger aria-label="Agreement Type" className="h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -308,7 +310,7 @@ export default function NewContractPage() {
                       value={formData.status}
                       onValueChange={(val) => setFormData({ ...formData, status: val })}
                     >
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger aria-label="Initial Status" className="h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -403,7 +405,7 @@ export default function NewContractPage() {
                       value={formData.currency}
                       onValueChange={(val) => setFormData({ ...formData, currency: val })}
                     >
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger aria-label="Currency" className="h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -422,7 +424,7 @@ export default function NewContractPage() {
                       value={formData.billingCycle}
                       onValueChange={(val) => setFormData({ ...formData, billingCycle: val })}
                     >
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger aria-label="Billing Frequency" className="h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -453,10 +455,10 @@ export default function NewContractPage() {
                 <CardContent className="pt-4 space-y-4">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="space-y-1.5 p-3 rounded-lg border border-border/60 bg-muted/20">
-                      <Label className="text-[11px] font-medium text-muted-foreground uppercase">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase">
                         Posts Quota
                       </Label>
-                      <Input
+                      <Input aria-label="Posts Quota"
                         type="number"
                         min="0"
                         value={quotaPosts}
@@ -466,10 +468,10 @@ export default function NewContractPage() {
                     </div>
 
                     <div className="space-y-1.5 p-3 rounded-lg border border-border/60 bg-muted/20">
-                      <Label className="text-[11px] font-medium text-muted-foreground uppercase">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase">
                         Reels Quota
                       </Label>
-                      <Input
+                      <Input aria-label="Reels Quota"
                         type="number"
                         min="0"
                         value={quotaReels}
@@ -479,10 +481,10 @@ export default function NewContractPage() {
                     </div>
 
                     <div className="space-y-1.5 p-3 rounded-lg border border-border/60 bg-muted/20">
-                      <Label className="text-[11px] font-medium text-muted-foreground uppercase">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase">
                         Stories Quota
                       </Label>
-                      <Input
+                      <Input aria-label="Stories Quota"
                         type="number"
                         min="0"
                         value={quotaStories}
@@ -492,10 +494,10 @@ export default function NewContractPage() {
                     </div>
 
                     <div className="space-y-1.5 p-3 rounded-lg border border-border/60 bg-muted/20">
-                      <Label className="text-[11px] font-medium text-muted-foreground uppercase">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase">
                         Retainer Hours
                       </Label>
-                      <Input
+                      <Input aria-label="Retainer Hours"
                         type="number"
                         min="0"
                         value={formData.retainerHours}
@@ -629,7 +631,7 @@ export default function NewContractPage() {
                         Attached Agreement File
                       </a>
                     </div>
-                    <Button
+                    <Button aria-label="Remove file"
                       type="button"
                       variant="ghost"
                       size="icon-xs"
@@ -649,7 +651,7 @@ export default function NewContractPage() {
                     <p className="text-xs font-medium text-foreground">
                       {isUploading ? "Uploading file..." : "Click to upload contract PDF"}
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       PDF or DOCX up to 15MB
                     </p>
                   </div>
@@ -666,7 +668,7 @@ export default function NewContractPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                <Textarea
+                <Textarea aria-label="Agreement notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Special milestones, termination conditions, or custom scope terms..."

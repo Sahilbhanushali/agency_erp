@@ -1,12 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import path from "path";
 import fs from "fs/promises";
 import { deleteLocalFile } from "@/lib/storage";
-import { can, requireCan } from "@/lib/api-auth";
+import { can, contentScope, requireCan, requireSession } from "@/lib/api-auth";
+import { logAuditAction } from "@/lib/audit";
+import { assertPostAccess, transitionPost, workflowErrorResponse } from "@/lib/posts/workflow";
+import { editInvalidatesApproval, isEditable, type WorkflowStatus } from "@/lib/posts/workflow-rules";
+import { PRESENTATION_MIME_TYPES, isPresentationFile } from "@/lib/posts/content-types";
 
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +17,11 @@ export const dynamic = 'force-dynamic';
 const updatePostSchema = z.object({
   title: z.string().min(1, "Title is required").optional(),
   caption: z.string().optional(),
-  type: z.enum(["PHOTO", "REEL", "STORY", "CAROUSEL", "VIDEO", "BLOG", "CUSTOM", "UNKNOWN"]).optional(),
-  status: z.enum(["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "SCHEDULED", "POSTED"]).optional(),
-  designerHeadApproval: z.enum(["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "SCHEDULED", "POSTED"]).optional(),
+  type: z.enum(["PHOTO", "REEL", "STORY", "CAROUSEL", "BLOG", "CUSTOM", "UNKNOWN", "PPT"]).optional(),
+  // No status, designerHeadApproval, approvedAt, rejectedAt or postedAt here: those
+  // change only through the workflow engine (POST /api/posts/[id]/workflow). Accepting
+  // them on a generic edit is what let any caller mark a post approved or published.
+  requiresClientApproval: z.union([z.boolean(), z.enum(["true", "false"]).transform((v) => v === "true")]).optional(),
   writeUp:z.string().optional(),
   keyword:z.string().optional(),
   notes: z.string().nullable().optional(),
@@ -31,9 +35,6 @@ const updatePostSchema = z.object({
     z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/), // datetime-local format
     z.string().regex(/^\d{4}-\d{2}-\d{2}$/) // date format
   ]).nullable().optional(),
-  approvedAt: z.string().datetime().optional(),
-  rejectedAt: z.string().datetime().optional(),
-  postedAt: z.string().datetime().optional(),
   projectId: z.string().optional(),
   assignedToId: z.union([
     z.number(), 
@@ -89,25 +90,17 @@ const updatePostSchema = z.object({
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-      const session = await getServerSession(authOptions);
-      // if (!session || !["ADMIN", "Manager", "Content Writer"].includes(session.user.role)) {
-      //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      // }
-  
-      // Debug: Log Prisma model availability
-      console.log('Prisma models:', {
-        Asset: typeof prisma.asset,
-        PostPlatform: typeof prisma.postPlatform,
-        Comment: typeof prisma.comment,
-        hasDeleteMany: {
-          Asset: typeof prisma.asset?.deleteMany,
-          PostPlatform: typeof prisma.postPlatform?.deleteMany,
-          Comment: typeof prisma.comment?.deleteMany,
-        },
-      });
-  
-      // Await params to resolve the id
+      // Was completely unauthenticated (the check was commented out): anyone could
+      // delete any post with one request.
+      const auth = await requireSession();
+      if (!auth.ok) return auth.response;
       const { id: postId } = await params;
+      try {
+        await assertPostAccess(auth.session, auth.userId, postId, "delete");
+      } catch (error) {
+        return workflowErrorResponse(error);
+      }
+      const doomed = await prisma.post.findUnique({ where: { id: postId }, select: { title: true, status: true, projectId: true } });
   
       // Use transaction to ensure all operations succeed or fail together
       await prisma.$transaction(async (tx: any) => {
@@ -202,6 +195,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         });
       });
   
+      await logAuditAction({
+        userId: String(auth.userId),
+        action: "DELETE",
+        entityType: "Post",
+        entityId: postId,
+        oldValues: JSON.stringify(doomed ?? {}),
+        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+        userAgent: request.headers.get("user-agent") || "unknown",
+      });
+
       return NextResponse.json({ message: "Post deleted successfully" }, { status: 200 });
     } catch (error: any) {
       console.error("Error deleting post:", {
@@ -233,12 +236,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getServerSession(authOptions);
-    // if (!session || !["ADMIN", "Manager", "Content Writer"].includes(session.user.role)) {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
-
+    // Was completely unauthenticated (the check was commented out), and wrote uploaded
+    // files to disk before validating anything. Authorize first, before reading a byte.
+    const auth = await requireSession();
+    if (!auth.ok) return auth.response;
     const { id: postId } = await params;
+    try {
+      await assertPostAccess(auth.session, auth.userId, postId, "update");
+    } catch (error) {
+      return workflowErrorResponse(error);
+    }
 
     let body: any = {};
     const assets: { filename: string; generatedName: string; type: string; size: number }[] = [];
@@ -249,11 +256,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const formData = await request.formData();
 
       for (const [key, value] of formData.entries()) {
-        console.log(`Processing form data key: ${key}, value: ${value}`); // Debug form data
         if (key === "assets" && value instanceof File) {
           const file = value;
           const maxSize = 500 * 1024 * 1024; // 100MB
-          const allowedTypes = ["image/", "video/", "application/pdf"];
+          const allowedTypes = ["image/", "video/", "application/pdf", ...PRESENTATION_MIME_TYPES];
 
           if (file.size > maxSize) {
             return NextResponse.json(
@@ -262,9 +268,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             );
           }
 
-          if (!allowedTypes.some((type) => file.type.startsWith(type))) {
+          if (!allowedTypes.some((type) => file.type.startsWith(type)) && !isPresentationFile(file)) {
             return NextResponse.json(
-              { error: `File ${file.name} has invalid type. Only images, videos, and PDFs are allowed.` },
+              { error: `File ${file.name} has invalid type. Only images, videos, PDFs and presentations (.ppt, .pptx) are allowed.` },
               { status: 400 }
             );
           }
@@ -366,9 +372,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Unsupported content type" }, { status: 400 });
     }
 
-    console.log("Parsed request body:", JSON.stringify(body, null, 2));
-    console.log("Removed assets:", removedAssets);
-    console.log("New assets:", assets);
+
+    const expectedVersion = Number(body.expectedVersion) || undefined;
+    const confirmReapproval = body.confirmReapproval === true || body.confirmReapproval === "true";
+    delete body.expectedVersion;
+    delete body.confirmReapproval;
 
     const validation = updatePostSchema.safeParse(body);
     if (!validation.success) {
@@ -376,7 +384,102 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Invalid input", details: validation.error.errors }, { status: 400 });
     }
 
-    const { platforms, ...postData } = validation.data;
+    const { platforms, requiresClientApproval, ...postData } = validation.data;
+
+    // ── Workflow consequences of this edit, decided before anything is written ──────
+    const current = await prisma.post.findUnique({
+      where: { id: postId },
+      select: {
+        status: true, version: true, requiresClientApproval: true, scheduledAt: true, projectId: true,
+        title: true, caption: true, type: true, writeUp: true, keyword: true,
+        platforms: { select: { platform: true } },
+      },
+    });
+    if (!current) return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    if (expectedVersion !== undefined && expectedVersion !== current.version) {
+      return NextResponse.json(
+        { error: "This post changed since you opened it. Reload to see the latest version.", code: "STALE" },
+        { status: 409 },
+      );
+    }
+    // Moving a post to another project needs agency-wide scope, or a scoped user could
+    // move work into (or out of) a client they are not attached to.
+    if (postData.projectId && postData.projectId !== current.projectId && (await contentScope(auth.session)) !== "all") {
+      return NextResponse.json({ error: "You cannot move this post to another project." }, { status: 403 });
+    }
+
+    const changed = <T,>(next: T | undefined, prev: T) => next !== undefined && (next ?? null) !== (prev ?? null);
+    const samePlatforms = (next?: string[]) =>
+      !next || [...next].sort().join(",") === current.platforms.map((p) => p.platform).sort().join(",");
+    /** What the approver actually signed off: copy, creative, type and where it goes. */
+    const materialChanges = [
+      changed(postData.title, current.title) && "title",
+      changed(postData.caption, current.caption) && "caption",
+      changed(postData.type, current.type) && "type",
+      changed(body.writeUp, current.writeUp) && "writeUp",
+      changed(body.keyword, current.keyword) && "keyword",
+      !samePlatforms(platforms) && "platforms",
+      (assets.length > 0 || removedAssets.length > 0) && "assets",
+    ].filter(Boolean) as string[];
+
+    const workflowState = { status: current.status as WorkflowStatus, requiresClientApproval: current.requiresClientApproval };
+    if (materialChanges.length > 0 && !isEditable(workflowState)) {
+      return NextResponse.json(
+        { error: "Published and cancelled posts cannot be edited.", code: "NOT_EDITABLE" },
+        { status: 409 },
+      );
+    }
+    if (materialChanges.length > 0 && editInvalidatesApproval(workflowState) && !confirmReapproval) {
+      return NextResponse.json(
+        {
+          error: "This post is already approved. Saving these changes sends it back for approval.",
+          code: "REAPPROVAL_REQUIRED",
+          changes: materialChanges,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Scheduled date: on a scheduled post that is a reschedule, which needs the
+    // scheduling permission; it is applied by the engine, not as a plain column write.
+    const nextScheduledAt = postData.scheduledAt !== undefined ? (postData.scheduledAt ? new Date(postData.scheduledAt) : null) : undefined;
+    // A date-only value (from a date input) on the same calendar day is the same
+    // schedule, not a request to move it to midnight.
+    const dateOnly = typeof body.scheduledAt === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.scheduledAt);
+    const sameDay =
+      dateOnly && current.scheduledAt && nextScheduledAt &&
+      current.scheduledAt.toISOString().slice(0, 10) === nextScheduledAt.toISOString().slice(0, 10);
+    if (sameDay) delete (postData as any).scheduledAt;
+    const reschedule =
+      !sameDay && current.status === "SCHEDULED" && nextScheduledAt !== undefined &&
+      (nextScheduledAt?.getTime() ?? null) !== (current.scheduledAt?.getTime() ?? null);
+    if (reschedule) delete (postData as any).scheduledAt;
+
+    const actor = { type: "USER" as const, session: auth.session, userId: auth.userId };
+    try {
+      if (requiresClientApproval !== undefined && requiresClientApproval !== current.requiresClientApproval) {
+        await transitionPost({
+          postId, action: "CLIENT_TOGGLE", actor, expectedVersion: current.version,
+          nextRequiresClientApproval: requiresClientApproval,
+        });
+      }
+      if (materialChanges.length > 0) {
+        await transitionPost({
+          postId, action: "EDIT_INVALIDATE", actor,
+          reason: `Edited: ${materialChanges.join(", ")}`,
+          metadata: { changes: materialChanges },
+        });
+      }
+      if (reschedule) {
+        if (!nextScheduledAt) {
+          await transitionPost({ postId, action: "UNSCHEDULE", actor });
+        } else {
+          await transitionPost({ postId, action: "RESCHEDULE", actor, scheduledAt: nextScheduledAt });
+        }
+      }
+    } catch (error) {
+      return workflowErrorResponse(error);
+    }
 
     // Explicitly ensure writeUp is included in the update data
     const finalPostData = {
@@ -386,7 +489,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       notes: body.notes !== undefined ? body.notes : postData.notes,
     };
 
-    console.log("Final update data:", JSON.stringify(finalPostData, null, 2)); // Debug final data
 
     const updatedPost = await prisma.$transaction(async (tx: any) => {
       const post = await tx.post.findUnique({
@@ -502,7 +604,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         }
       });
 
-      console.log("Final Prisma updateData:", JSON.stringify(updateData, null, 2));
 
       // Update post in the database
       return await tx.post.update({

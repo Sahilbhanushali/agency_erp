@@ -34,16 +34,16 @@ export function HrmsHeader({
   return (
     <div className="flex flex-col gap-4 border-b border-border/60 pb-5 pt-1 sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-1">
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Briefcase className="size-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
               Recruitment & HRMS
             </h1>
           </div>
-          <div className="flex items-center gap-1.5 ml-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <Badge variant="outline" className="text-xs bg-background/80 font-medium">
               {activeCandidatesCount} Candidates
             </Badge>

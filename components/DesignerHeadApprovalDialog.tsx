@@ -156,11 +156,11 @@ export default function DesignerHeadApprovalRejectDialog({
             <label className="text-sm font-semibold text-foreground block mb-2">
               Comment/Feedback {(isNeedsMinorChange || (!audioBlob && !isRecording)) && <span className="text-red-500">*</span>}
             </label>
-            <Textarea
+            <Textarea aria-label="Comment/Feedback"
               value={actionComment}
               onChange={(e) => setActionComment(e.target.value)}
               placeholder={isNeedsMinorChange ? "Specify what minor changes are required" : "Enter the reason for change"}
-              className="h-24 resize-none border-gray-300 focus:ring-2 focus:ring-blue-500 rounded-lg"
+              className="h-24 resize-none border-border focus:ring-2 focus:ring-blue-500 rounded-lg"
             />
           </div>
 

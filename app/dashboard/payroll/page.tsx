@@ -406,17 +406,17 @@ export default function PayrollPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "CALCULATED":
-        return <Badge variant="warning" className="text-[10px] py-0">Calculated</Badge>;
+        return <Badge variant="warning" className="text-xs py-0">Calculated</Badge>;
       case "UNDER_REVIEW":
-        return <Badge variant="info" className="text-[10px] py-0">Under Review</Badge>;
+        return <Badge variant="info" className="text-xs py-0">Under Review</Badge>;
       case "APPROVED":
-        return <Badge variant="success" className="text-[10px] py-0">Approved</Badge>;
+        return <Badge variant="success" className="text-xs py-0">Approved</Badge>;
       case "PAID":
-        return <Badge variant="success" className="text-[10px] py-0">Paid & Published</Badge>;
+        return <Badge variant="success" className="text-xs py-0">Paid & Published</Badge>;
       case "LOCKED":
-        return <Badge variant="neutral" className="text-[10px] py-0 gap-1"><Lock className="size-2.5" /> Locked</Badge>;
+        return <Badge variant="neutral" className="text-xs py-0 gap-1"><Lock className="size-2.5" /> Locked</Badge>;
       default:
-        return <Badge variant="neutral" className="text-[10px] py-0">{status}</Badge>;
+        return <Badge variant="neutral" className="text-xs py-0">{status}</Badge>;
     }
   };
 
@@ -425,7 +425,7 @@ export default function PayrollPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Banknote className="size-6 text-primary" />
             Payroll & Compensation
           </h1>
@@ -453,7 +453,7 @@ export default function PayrollPage() {
           <Card className="shadow-2xs">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Latest Net Payout
                 </p>
                 <h3 className="text-2xl font-black text-foreground mt-1">
@@ -469,7 +469,7 @@ export default function PayrollPage() {
           <Card className="shadow-2xs">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Employees Processed
                 </p>
                 <h3 className="text-2xl font-black text-foreground mt-1">
@@ -485,7 +485,7 @@ export default function PayrollPage() {
           <Card className="shadow-2xs">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Statutory Deductions
                 </p>
                 <h3 className="text-2xl font-black text-foreground mt-1 text-red-600">
@@ -501,7 +501,7 @@ export default function PayrollPage() {
           <Card className="shadow-2xs">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Payroll Cycle Status
                 </p>
                 <div className="mt-1">
@@ -609,7 +609,7 @@ export default function PayrollPage() {
 
                               {/* Export Toolbar */}
                               <a href={`/api/payroll/runs/${r.id}/export/bank-csv`} download>
-                                <Button variant="ghost" size="icon-xs" title="Download Bank Transfer CSV">
+                                <Button aria-label="Download Bank Transfer CSV" variant="ghost" size="icon-xs" title="Download Bank Transfer CSV">
                                   <Download className="size-3.5" />
                                 </Button>
                               </a>
@@ -730,7 +730,7 @@ export default function PayrollPage() {
                 <div>
                   <Label className="text-xs font-medium">Month</Label>
                   <Select value={runMonth} onValueChange={setRunMonth}>
-                    <SelectTrigger className="mt-1 h-8 text-xs">
+                    <SelectTrigger aria-label="Month" className="mt-1 h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -744,7 +744,7 @@ export default function PayrollPage() {
                 </div>
                 <div>
                   <Label className="text-xs font-medium">Year</Label>
-                  <Input
+                  <Input aria-label="Year"
                     type="number"
                     value={runYear}
                     onChange={(e) => setRunYear(e.target.value)}
@@ -755,7 +755,7 @@ export default function PayrollPage() {
                 <div>
                   <Label className="text-xs font-medium">Cycle Type</Label>
                   <Select value={runType} onValueChange={setRunType}>
-                    <SelectTrigger className="mt-1 h-8 text-xs">
+                    <SelectTrigger aria-label="Cycle Type" className="mt-1 h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -771,7 +771,7 @@ export default function PayrollPage() {
               {/* Pre-Flight Readiness Check */}
               <div className="space-y-2 pt-1 border-t border-border">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Pre-Flight Readiness Check
                   </span>
                   <Button
@@ -780,7 +780,7 @@ export default function PayrollPage() {
                     size="xs"
                     onClick={() => fetchReadiness(runMonth, runYear)}
                     loading={isLoadingReadiness}
-                    className="h-6 text-[11px] gap-1 text-primary hover:bg-primary/10"
+                    className="h-6 text-xs gap-1 text-primary hover:bg-primary/10"
                   >
                     <RefreshCw className="size-3" /> Check Readiness
                   </Button>
@@ -795,7 +795,7 @@ export default function PayrollPage() {
                           <span>{readinessReport.blockers.length} Blocker(s) Found</span>
                         </div>
                         {readinessReport.blockers.map((b: any, idx: number) => (
-                          <p key={idx} className="text-[11px] text-red-600/90 pl-5">
+                          <p key={idx} className="text-xs text-red-600/90 pl-5">
                             • {b.title}: {b.description}
                           </p>
                         ))}
@@ -809,7 +809,7 @@ export default function PayrollPage() {
                           <span>{readinessReport.warnings.length} Warning(s)</span>
                         </div>
                         {readinessReport.warnings.map((w: any, idx: number) => (
-                          <p key={idx} className="text-[11px] text-amber-700/90 pl-5">
+                          <p key={idx} className="text-xs text-amber-700/90 pl-5">
                             • {w.title}: {w.description}
                           </p>
                         ))}
@@ -865,7 +865,7 @@ export default function PayrollPage() {
             <form onSubmit={handleSaveSalary} className="space-y-3 py-2">
               <div>
                 <Label className="text-xs font-semibold">Monthly Gross Salary (₹)</Label>
-                <Input
+                <Input aria-label="Monthly Gross Salary (₹)"
                   type="number"
                   value={salaryGross}
                   onChange={(e) => {
@@ -883,8 +883,8 @@ export default function PayrollPage() {
 
               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border">
                 <div>
-                  <Label className="text-[11px] font-medium">Basic (50%)</Label>
-                  <Input
+                  <Label className="text-xs font-medium">Basic (50%)</Label>
+                  <Input aria-label="Basic (50%)"
                     type="number"
                     value={salaryBasic}
                     onChange={(e) => setSalaryBasic(parseFloat(e.target.value) || 0)}
@@ -892,8 +892,8 @@ export default function PayrollPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-[11px] font-medium">HRA (25%)</Label>
-                  <Input
+                  <Label className="text-xs font-medium">HRA (25%)</Label>
+                  <Input aria-label="HRA (25%)"
                     type="number"
                     value={salaryHra}
                     onChange={(e) => setSalaryHra(parseFloat(e.target.value) || 0)}
@@ -901,8 +901,8 @@ export default function PayrollPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-[11px] font-medium">Special (25%)</Label>
-                  <Input
+                  <Label className="text-xs font-medium">Special (25%)</Label>
+                  <Input aria-label="Special (25%)"
                     type="number"
                     value={salarySpecial}
                     onChange={(e) => setSalarySpecial(parseFloat(e.target.value) || 0)}
@@ -939,8 +939,8 @@ export default function PayrollPage() {
               </div>
 
               <div>
-                <Label className="text-[11px] font-medium">Monthly TDS Deduction (₹)</Label>
-                <Input
+                <Label className="text-xs font-medium">Monthly TDS Deduction (₹)</Label>
+                <Input aria-label="Monthly TDS Deduction (₹)"
                   type="number"
                   value={salaryTds}
                   onChange={(e) => setSalaryTds(parseFloat(e.target.value) || 0)}
@@ -983,7 +983,7 @@ export default function PayrollPage() {
               <div>
                 <Label className="text-xs font-medium">Employee</Label>
                 <Select value={adjUserId} onValueChange={setAdjUserId}>
-                  <SelectTrigger className="mt-1 h-8 text-xs">
+                  <SelectTrigger aria-label="Employee" className="mt-1 h-8 text-xs">
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1000,7 +1000,7 @@ export default function PayrollPage() {
                 <div>
                   <Label className="text-xs font-medium">Type</Label>
                   <Select value={adjType} onValueChange={setAdjType}>
-                    <SelectTrigger className="mt-1 h-8 text-xs">
+                    <SelectTrigger aria-label="Type" className="mt-1 h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1014,7 +1014,7 @@ export default function PayrollPage() {
                 </div>
                 <div>
                   <Label className="text-xs font-medium">Amount (₹)</Label>
-                  <Input
+                  <Input aria-label="Amount (₹)"
                     type="number"
                     value={adjAmount}
                     onChange={(e) => setAdjAmount(e.target.value)}
@@ -1027,7 +1027,7 @@ export default function PayrollPage() {
 
               <div>
                 <Label className="text-xs font-medium">Title *</Label>
-                <Input
+                <Input aria-label="Title"
                   value={adjTitle}
                   onChange={(e) => setAdjTitle(e.target.value)}
                   placeholder="e.g. Client Travel Allowance"
@@ -1038,7 +1038,7 @@ export default function PayrollPage() {
 
               <div>
                 <Label className="text-xs font-medium">Notes (Optional)</Label>
-                <Input
+                <Input aria-label="Notes (Optional)"
                   value={adjNotes}
                   onChange={(e) => setAdjNotes(e.target.value)}
                   placeholder="e.g. Approved by Director"

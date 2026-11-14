@@ -67,7 +67,7 @@ export default function MediaPopup({ isOpen, onClose, asset }: MediaPopupProps) 
               <Download className="w-6 h-6" />
             </a>
             <DialogClose asChild>
-              <Button
+              <Button aria-label="Close preview"
                 variant="ghost"
                 size="icon"
                 className="text-white hover:text-white hover:bg-gray-800"

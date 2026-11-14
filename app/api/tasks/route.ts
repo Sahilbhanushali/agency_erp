@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic"
 /**
  * List tasks. Filters: `?status=`, `?priority=`, `?assigneeId=`, `?postId=`,
  * `?projectId=`, `?clientId=`, `?search=`, `?mine=1` (assigned to me),
- * `?createdByMe=1` (assigned by me), `?overdue=1`,
+ * `?createdByMe=1` (assigned by me), `?overdue=1`, `?due=overdue|today|week|none`,
  * and `?standalone=1` for internal tasks with no linked record.
  * Paged with `?page=` and `?limit=` (max 200).
  *
@@ -29,8 +29,24 @@ export async function GET(request: NextRequest) {
     const priority = query.get("priority")
     const assigneeId = Number(query.get("assigneeId"))
     const search = query.get("search")?.trim()
+    const due = query.get("due")
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const endOfToday = new Date(startOfToday.getTime() + 86_400_000)
+    /** Due-date ranges, filtered in the database rather than in the browser. */
+    const dueFilter: Prisma.TaskWhereInput =
+      due === "overdue"
+        ? { dueDate: { lt: now }, status: { notIn: ["DONE", "CANCELLED"] } }
+        : due === "today"
+          ? { dueDate: { gte: startOfToday, lt: endOfToday } }
+          : due === "week"
+            ? { dueDate: { gte: startOfToday, lt: new Date(startOfToday.getTime() + 7 * 86_400_000) } }
+            : due === "none"
+              ? { dueDate: null }
+              : {}
 
     const where: Prisma.TaskWhereInput = {
+      ...dueFilter,
       ...(status && TASK_STATUSES.includes(status as (typeof TASK_STATUSES)[number])
         ? { status: status as (typeof TASK_STATUSES)[number] }
         : {}),

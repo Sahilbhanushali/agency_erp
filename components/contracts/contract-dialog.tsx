@@ -1,5 +1,6 @@
 "use client";
 
+import { jsonFetcher } from "@/lib/fetcher";
 import React, { useState, useEffect, useRef } from "react";
 import useSWR from "swr";
 import toast from "react-hot-toast";
@@ -81,7 +82,8 @@ interface ContractDialogProps {
   onSaved?: () => void;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on non-2xx, so a failed load is an error state, not an empty list.
+const fetcher = (url: string) => jsonFetcher(url);
 
 const CONTRACT_TYPES = [
   { value: "RETAINER", label: "Monthly / Recurring Retainer" },
@@ -391,7 +393,7 @@ export function ContractDialog({
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Agreement Title *</Label>
-                  <Input
+                  <Input aria-label="Agreement Title"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="e.g. Monthly Social Media Retainer & Brand Management"
@@ -405,7 +407,7 @@ export function ContractDialog({
                     <Label className="text-xs font-semibold">Contract Reference #</Label>
                     <div className="relative">
                       <Hash className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                      <Input
+                      <Input aria-label="Contract Reference #"
                         value={formData.contractNumber || ""}
                         onChange={(e) => setFormData({ ...formData, contractNumber: e.target.value })}
                         placeholder="e.g. CNT-2026-001"
@@ -420,7 +422,7 @@ export function ContractDialog({
                       value={formData.type}
                       onValueChange={(val) => setFormData({ ...formData, type: val })}
                     >
-                      <SelectTrigger className="h-10 text-xs">
+                      <SelectTrigger aria-label="Agreement Type" className="h-10 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -439,7 +441,7 @@ export function ContractDialog({
                       value={formData.status}
                       onValueChange={(val) => setFormData({ ...formData, status: val })}
                     >
-                      <SelectTrigger className="h-10 text-xs">
+                      <SelectTrigger aria-label="Contract Status" className="h-10 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -469,7 +471,7 @@ export function ContractDialog({
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
                           ₹
                         </span>
-                        <Input
+                        <Input aria-label="Contract Value (INR)"
                           type="number"
                           min="0"
                           step="0.01"
@@ -488,7 +490,7 @@ export function ContractDialog({
                         value={formData.billingCycle}
                         onValueChange={(val) => setFormData({ ...formData, billingCycle: val })}
                       >
-                        <SelectTrigger className="h-10 text-xs">
+                        <SelectTrigger aria-label="Billing Cadence" className="h-10 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -505,7 +507,7 @@ export function ContractDialog({
                       <Label className="text-xs font-semibold">Allocated Hours / Cycle</Label>
                       <div className="relative">
                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                        <Input
+                        <Input aria-label="Allocated Hours / Cycle"
                           type="number"
                           min="0"
                           value={formData.retainerHours || ""}
@@ -526,11 +528,11 @@ export function ContractDialog({
                       <span>Monthly Scope & Content Deliverables Allowance</span>
                     </div>
                     {formData.type === "RETAINER" ? (
-                      <Badge variant="success" className="text-[10px]">
+                      <Badge variant="success" className="text-xs">
                         Included in Retainer
                       </Badge>
                     ) : (
-                      <Badge variant="neutral" className="text-[10px]">
+                      <Badge variant="neutral" className="text-xs">
                         Fixed Milestone
                       </Badge>
                     )}
@@ -538,10 +540,10 @@ export function ContractDialog({
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
                     <div className="p-3 rounded-lg border border-border/60 bg-muted/10 space-y-1.5">
-                      <Label className="text-[11px] font-semibold text-muted-foreground">
+                      <Label className="text-xs font-semibold text-muted-foreground">
                         Static Image Posts / Carousels
                       </Label>
-                      <Input
+                      <Input aria-label="Static Image Posts / Carousels"
                         type="number"
                         min="0"
                         value={quotaPosts}
@@ -551,10 +553,10 @@ export function ContractDialog({
                     </div>
 
                     <div className="p-3 rounded-lg border border-border/60 bg-muted/10 space-y-1.5">
-                      <Label className="text-[11px] font-semibold text-muted-foreground">
+                      <Label className="text-xs font-semibold text-muted-foreground">
                         Video Reels & Motion Shorts
                       </Label>
-                      <Input
+                      <Input aria-label="Video Reels & Motion Shorts"
                         type="number"
                         min="0"
                         value={quotaReels}
@@ -564,10 +566,10 @@ export function ContractDialog({
                     </div>
 
                     <div className="p-3 rounded-lg border border-border/60 bg-muted/10 space-y-1.5">
-                      <Label className="text-[11px] font-semibold text-muted-foreground">
+                      <Label className="text-xs font-semibold text-muted-foreground">
                         Stories & Micro-Updates
                       </Label>
-                      <Input
+                      <Input aria-label="Stories & Micro-Updates"
                         type="number"
                         min="0"
                         value={quotaStories}
@@ -590,7 +592,7 @@ export function ContractDialog({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold">Effective Start Date *</Label>
-                      <Input
+                      <Input aria-label="Effective Start Date"
                         type="date"
                         value={formData.startDate}
                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
@@ -601,7 +603,7 @@ export function ContractDialog({
 
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold">Contract End Date</Label>
-                      <Input
+                      <Input aria-label="Contract End Date"
                         type="date"
                         value={formData.endDate || ""}
                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
@@ -611,7 +613,7 @@ export function ContractDialog({
 
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold">Renewal Review Date</Label>
-                      <Input
+                      <Input aria-label="Renewal Review Date"
                         type="date"
                         value={formData.renewalDate || ""}
                         onChange={(e) => setFormData({ ...formData, renewalDate: e.target.value })}
@@ -626,7 +628,7 @@ export function ContractDialog({
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <div className="text-xs font-bold text-foreground">Auto-Renewal Clause</div>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Automatically renew the contract upon reaching the end date unless notice is served.
                       </p>
                     </div>
@@ -639,12 +641,12 @@ export function ContractDialog({
                   <div className="pt-3 border-t border-border/60 flex items-center justify-between">
                     <div>
                       <Label className="text-xs font-semibold">Cancellation Notice Period</Label>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Days prior to renewal where notice must be submitted.
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Input
+                      <Input aria-label="Cancellation Notice Period"
                         type="number"
                         min="0"
                         value={formData.noticePeriodDays}
@@ -686,7 +688,7 @@ export function ContractDialog({
                             href={formData.documentUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-[11px] text-primary hover:underline font-medium flex items-center gap-1 mt-0.5"
+                            className="text-xs text-primary hover:underline font-medium flex items-center gap-1 mt-0.5"
                           >
                             <Eye className="size-3" />
                             View Attached SOW
@@ -704,7 +706,7 @@ export function ContractDialog({
                         >
                           Replace File
                         </Button>
-                        <Button
+                        <Button aria-label="Remove file"
                           type="button"
                           variant="ghost"
                           size="icon"
@@ -726,7 +728,7 @@ export function ContractDialog({
                       <p className="text-xs font-bold text-foreground">
                         {isUploading ? "Uploading agreement..." : "Click to upload signed SOW or Contract PDF"}
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Supports PDF, Word Documents (.docx), scans up to 15MB
                       </p>
                     </div>
@@ -735,7 +737,7 @@ export function ContractDialog({
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Internal Notes & Special Terms</Label>
-                  <Textarea
+                  <Textarea aria-label="Internal Notes & Special Terms"
                     value={formData.notes || ""}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Record custom SLA commitments, penalty clauses, or contract renewal notes..."
@@ -748,7 +750,7 @@ export function ContractDialog({
 
           {/* Sticky Footer */}
           <DialogFooter className="p-4 px-6 border-t border-border/60 bg-muted/20 flex items-center justify-between">
-            <div className="text-[11px] text-muted-foreground hidden sm:block">
+            <div className="text-xs text-muted-foreground hidden sm:block">
               {formData.clientId ? `Client: ${clients.find((c: any) => c.id === formData.clientId)?.name || "Selected"}` : "Select client"}
             </div>
             <div className="flex items-center gap-2">

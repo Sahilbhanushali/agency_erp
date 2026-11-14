@@ -90,7 +90,7 @@ export function MessageInfoDialog({ message, onClose }: { message: ChatMessage |
             <p className="line-clamp-4 whitespace-pre-wrap break-words text-sm">
               {message.body ?? (message.attachments[0] ? `📎 ${message.attachments[0].name}` : "")}
             </p>
-            <p className="mt-1 text-right text-[11px] text-muted-foreground">
+            <p className="mt-1 text-right text-xs text-muted-foreground">
               Sent {when(info?.sentAt ?? message.createdAt)}
               {info?.editedAt && ` · edited ${when(info.editedAt)}`}
             </p>

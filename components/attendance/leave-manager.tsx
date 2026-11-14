@@ -289,7 +289,7 @@ export function LeaveManager({ canAdjust, canRecord }: { canAdjust: boolean; can
                           <TableRow key={b.id}>
                             <TableCell className="text-xs font-medium">
                               {b.leaveType.name}
-                              <Badge variant={b.leaveType.isPaid ? "success" : "neutral"} className="ml-2 py-0 text-[10px]">
+                              <Badge variant={b.leaveType.isPaid ? "success" : "neutral"} className="ml-2 py-0 text-xs">
                                 {b.leaveType.isPaid ? "Paid" : "Unpaid"}
                               </Badge>
                             </TableCell>
@@ -360,7 +360,7 @@ export function LeaveManager({ canAdjust, canRecord }: { canAdjust: boolean; can
                           {ENTRY_LABEL[e.entryType] ?? e.entryType} · {e.leaveType.name}
                         </p>
                         {e.notes && <p className="text-muted-foreground">{e.notes}</p>}
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {format(new Date(e.createdAt), "d MMM yyyy, HH:mm")}
                           {e.by && ` · by ${e.by}`} · balance after: {e.balanceAfter}
                         </p>

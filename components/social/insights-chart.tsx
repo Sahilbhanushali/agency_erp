@@ -117,7 +117,7 @@ export function InsightsChart({ points, label }: { points: TrendPoint[]; label: 
                   x={PAD.left - 8}
                   y={yy + 4}
                   textAnchor="end"
-                  className="fill-muted-foreground text-[10px] tabular-nums"
+                  className="fill-muted-foreground text-xs tabular-nums"
                 >
                   {compact.format(Math.round(chart.max * t))}
                 </text>
@@ -144,7 +144,7 @@ export function InsightsChart({ points, label }: { points: TrendPoint[]; label: 
                 x={chart.x(i)}
                 y={HEIGHT - 6}
                 textAnchor={i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"}
-                className="fill-muted-foreground text-[10px]"
+                className="fill-muted-foreground text-xs"
               >
                 {format(new Date(points[i].date), "d MMM")}
               </text>
@@ -183,7 +183,7 @@ export function InsightsChart({ points, label }: { points: TrendPoint[]; label: 
             <span className="block font-medium tabular-nums text-popover-foreground">
               {full.format(active.value ?? 0)}
             </span>
-            <span className="block text-[10px] text-muted-foreground">
+            <span className="block text-xs text-muted-foreground">
               {format(new Date(active.date), "EEE d MMM")}
             </span>
           </div>
