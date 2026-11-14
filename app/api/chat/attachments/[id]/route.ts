@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
-import { requireCan } from "@/lib/api-auth"
+import { can, requireSession } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { memberAccess } from "@/lib/chat/service"
 import { readFileForKey } from "@/lib/chat/storage"
@@ -22,7 +22,7 @@ const INLINE = /^(image\/(jpeg|png|gif|webp)|video\/(mp4|quicktime|webm)|applica
 const notFound = () => NextResponse.json({ error: "Not found" }, { status: 404 })
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requireCan("chat", "read")
+  const auth = await requireSession()
   if (!auth.ok) return auth.response
   const { id } = await context.params
 
@@ -32,10 +32,15 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       storageKey: true,
       originalName: true,
       mimeType: true,
-      message: { select: { conversationId: true, seq: true, deletedAt: true } },
+      message: { select: { conversationId: true, seq: true, deletedAt: true, conversation: { select: { type: true } } } },
     },
   })
   if (!att || att.message.deletedAt) return notFound()
+  // Chat files need chat:read; files in an approval discussion follow the post instead,
+  // which memberAccess re-checks below.
+  if (att.message.conversation.type !== "APPROVAL" && !(await can(auth.session, "chat", "read"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const access = await memberAccess(att.message.conversationId, auth.userId)
   if (!access) return notFound()

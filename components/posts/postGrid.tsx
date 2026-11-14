@@ -1,6 +1,7 @@
 "use client";
 
 import { contentStatusLabel, statusLabel } from "@/lib/post-status";
+import { UnreadDiscussionBadge } from "@/components/posts/unread-discussion-badge";
 import { PostTypeIcon, typeLabel } from "@/components/posts/post-type-icon";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,6 +56,8 @@ interface Post {
 interface PostGridProps {
   posts: Post[];
   permissions: string[];
+  /** Unread approval-discussion messages per post id. */
+  unreadDiscussions?: Record<string, number>;
   selectedPosts: string[];
   handleSelectAll: (checked: boolean) => void;
   handleSelectPost: (postId: string, checked: boolean) => void;
@@ -125,6 +128,7 @@ const getPlatformIcon = (platformName: string, isSelected: boolean = false) => {
 export default function PostGrid({
   posts,
   permissions,
+  unreadDiscussions,
   selectedPosts,
   handleSelectAll,
   handleSelectPost,
@@ -292,6 +296,7 @@ export default function PostGrid({
                       <h3 className="font-semibold text-sm line-clamp-1 text-foreground flex-1 min-w-0" title={post.title}>
                         {post.title}
                       </h3>
+                      <UnreadDiscussionBadge postId={post.id} count={unreadDiscussions?.[post.id]} />
                       <PostTimingBadge post={post} />
                     </div>
                     {post.caption && (

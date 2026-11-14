@@ -35,6 +35,7 @@ import { ProjectTimingBadge } from "@/components/posts/postTimingBadge";
 import { ExportLinkDialog } from "@/components/projects/export-link-dialog";
 import { Share2 } from "lucide-react";
 import { projectCompanyName } from "@/lib/client-company";
+import { useDiscussionUnread } from "@/hooks/use-discussion-unread";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "SCHEDULED" | "POSTED";
 
@@ -194,7 +195,6 @@ export default function PostsPage() {
   const [uploadingFiles, setUploadingFiles] = useState<{ [key: string]: boolean }>({});
   const [viewingAssets, setViewingAssets] = useState<string | null>(null);
   const [commentingPost, setCommentingPost] = useState<string | null>(null);
-  const [newComment, setNewComment] = useState("");
   const [postComments, setPostComments] = useState<{ [key: string]: any[] }>({});
   const [statusChangeDialog, setStatusChangeDialog] = useState<{ postId: string } | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<PostStatus>("APPROVED" as PostStatus);
@@ -489,6 +489,7 @@ export default function PostsPage() {
       return dateA - dateB;
     });
   }, [postsData, searchTerm, statusFilter, typeFilter, projectFilter, yearFilter, monthFilter, permissionsData, session?.user?.name, urlProjectId]);
+  const unreadDiscussions = useDiscussionUnread(filteredPosts.map((p) => p.id));
   const groupedPosts = useMemo(() => {
     if (viewMode === "date") {
       const groups: { [key: string]: Post[] } = {};
@@ -625,23 +626,6 @@ export default function PostsPage() {
       console.error("Error uploading files:", err);
     } finally {
       setUploadingFiles((prev) => ({ ...prev, [postId]: false }));
-    }
-  };
-
-  const handleAddComment = async (postId: string) => {
-    if (!newComment.trim()) return;
-    try {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newComment }),
-      });
-      if (response.ok) {
-        setNewComment("");
-        await fetchComments(postId);
-      }
-    } catch (err) {
-      console.error("Error adding comment:", err);
     }
   };
 
@@ -1343,6 +1327,7 @@ export default function PostsPage() {
         <PostTable
           posts={filteredPosts as any[]}
           permissions={permissionsData}
+          unreadDiscussions={unreadDiscussions}
           selectedPosts={selectedPosts}
           handleSelectAll={handleSelectAll}
           handleSelectPost={handleSelectPost}
@@ -1359,6 +1344,7 @@ export default function PostsPage() {
         <PostGrid
           posts={filteredPosts as any[]}
           permissions={permissionsData}
+          unreadDiscussions={unreadDiscussions}
           selectedPosts={selectedPosts}
           handleSelectPost={handleSelectPost}
           handleSelectAll={handleSelectAll}
@@ -1435,9 +1421,6 @@ export default function PostsPage() {
         commentingPost={commentingPost}
         setCommentingPost={setCommentingPost}
         postComments={postComments}
-        newComment={newComment}
-        setNewComment={setNewComment}
-        handleAddComment={handleAddComment}
         posts={postsData}
         onRefreshComments={fetchComments}
       />

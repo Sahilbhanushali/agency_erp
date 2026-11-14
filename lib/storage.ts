@@ -113,3 +113,26 @@ export function safeExtension(original: string | null | undefined, fallback: str
   const ext = (original ?? "").split(".").pop() ?? ""
   return /^[a-zA-Z0-9]{1,5}$/.test(ext) ? ext.toLowerCase() : fallback
 }
+
+/**
+ * Absolute path of a stored upload, or null when it is missing, remote, or would
+ * resolve outside public/uploads (symlinks included). For reading files server-side.
+ */
+export async function resolveUploadFile(fileUrl: string | null | undefined): Promise<string | null> {
+  if (!fileUrl || /^https?:\/\//i.test(fileUrl)) return null;
+  const root = path.join(process.cwd(), "public", "uploads");
+  const relative = fileUrl
+    .split("?")[0]
+    .split("#")[0]
+    .replace(/^\/?api\/uploads\//i, "")
+    .replace(/^\/?public\/uploads\//i, "")
+    .replace(/^\/?uploads\//i, "");
+  const candidate = path.resolve(root, relative);
+  if (!candidate.startsWith(root + path.sep)) return null;
+  try {
+    const [realRoot, real] = await Promise.all([fs.realpath(root), fs.realpath(candidate)]);
+    return real.startsWith(realRoot + path.sep) ? real : null;
+  } catch {
+    return null;
+  }
+}

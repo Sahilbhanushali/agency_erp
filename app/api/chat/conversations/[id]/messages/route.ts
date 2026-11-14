@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { z } from "zod"
 import { can, requireCan } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { rateLimited } from "@/lib/realtime/hub"
@@ -11,19 +10,15 @@ import {
   sendMessage,
   toWire,
   tooFast,
-  type NewAttachment,
 } from "@/lib/chat/service"
-import { AttachmentRuleError, MAX_BYTES, safeDisplayName, validateAttachment } from "@/lib/chat/file-rules"
-import { deleteFileForKey, newStorageKey, saveFile } from "@/lib/chat/storage"
+import { deleteFileForKey } from "@/lib/chat/storage"
+import { readOutgoingMessage } from "@/lib/chat/send-request"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
 const PAGE = 50
 const CATCH_UP_MAX = 200
-const MAX_BODY = 4000
-/** Ceiling checked before the file is read, so a huge upload is refused cheaply. */
-const HARD_MAX_BYTES = Math.max(...Object.values(MAX_BYTES))
 
 /**
  * Message history.
@@ -107,12 +102,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   })
 }
 
-const textSchema = z.object({
-  body: z.string().max(MAX_BODY, `Keep messages under ${MAX_BODY} characters`).optional().default(""),
-  clientId: z.string().trim().min(8).max(64).optional(),
-  replyToId: z.string().trim().max(40).optional().nullable(),
-})
-
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireCan("chat", "read")
   if (!auth.ok) return auth.response
@@ -126,72 +115,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   if (rateLimited(me, "chat:send", 30, 10_000)) return tooFast()
 
   const isMultipart = (request.headers.get("content-type") ?? "").includes("multipart/form-data")
-
-  let fields: z.infer<typeof textSchema>
-  let file: File | null = null
-
-  if (isMultipart) {
-    if (!(await can(auth.session, "chat", "share"))) {
-      return NextResponse.json({ error: "You cannot send attachments" }, { status: 403 })
-    }
-    if (rateLimited(me, "chat:upload", 10, 60_000)) return tooFast()
-
-    const form = await request.formData().catch(() => null)
-    if (!form) return NextResponse.json({ error: "Could not read the upload" }, { status: 400 })
-    const f = form.get("file")
-    if (!(f instanceof File)) return NextResponse.json({ error: "No file was attached" }, { status: 422 })
-    file = f
-    const parsed = textSchema.safeParse({
-      body: form.get("body") ?? "",
-      clientId: form.get("clientId") ?? undefined,
-      replyToId: form.get("replyToId") || null,
-    })
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 422 })
-    fields = parsed.data
-  } else {
-    const parsed = textSchema.safeParse(await request.json().catch(() => null))
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 422 })
-    fields = parsed.data
-  }
-
-  const body = fields.body.trim()
-  if (!body && !file) return NextResponse.json({ error: "Type a message or attach a file" }, { status: 422 })
-
-  // A reply must point at a message in this same conversation that the sender can see.
-  if (fields.replyToId) {
-    const target = await prisma.chatMessage.findFirst({
-      where: { id: fields.replyToId, conversationId: id },
-      select: { id: true },
-    })
-    if (!target) return NextResponse.json({ error: "The message you replied to is not in this conversation" }, { status: 422 })
-  }
-
-  let attachment: NewAttachment | undefined
-  if (file) {
-    if (file.size > HARD_MAX_BYTES) {
-      return NextResponse.json({ error: `Files are limited to ${HARD_MAX_BYTES / 1024 / 1024} MB` }, { status: 413 })
-    }
-    try {
-      // The type comes from the bytes; file.type (the client's claim) is never read.
-      const head = new Uint8Array(await file.slice(0, 4100).arrayBuffer())
-      const type = validateAttachment(head, file.name, file.size)
-      const key = newStorageKey(type.ext)
-      await saveFile(key, new Uint8Array(await file.arrayBuffer()))
-      attachment = {
-        storageKey: key,
-        originalName: safeDisplayName(file.name),
-        mimeType: type.mime,
-        size: file.size,
-        kind: type.kind,
-      }
-    } catch (error) {
-      if (error instanceof AttachmentRuleError) {
-        return NextResponse.json({ error: error.message }, { status: error.status })
-      }
-      console.error("[chat] upload failed:", error)
-      return NextResponse.json({ error: "Could not store the file" }, { status: 500 })
-    }
-  }
+  const read = await readOutgoingMessage(request, {
+    conversationId: id,
+    senderId: me,
+    mayAttach: !isMultipart || (await can(auth.session, "chat", "share")),
+  })
+  if (!read.ok) return read.response
+  const { body, attachment, replyToId, clientId } = read.message
 
   try {
     const { message, duplicate } = await sendMessage({
@@ -199,8 +129,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       senderId: me,
       type: attachment ? "ATTACHMENT" : "TEXT",
       body: body || null,
-      replyToId: fields.replyToId ?? null,
-      clientId: fields.clientId ?? null,
+      replyToId,
+      clientId,
       attachments: attachment ? [attachment] : undefined,
     })
     // A retried upload stored a second copy of the file that nothing points to.

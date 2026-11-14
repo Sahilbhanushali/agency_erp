@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 const breadcrumbCache: Record<string, string> = {
   dashboard: "Workspace",
   projects: "Projects",
+  canvas: "Canvas & Mood Boards",
   quotations: "Quotations",
   invoices: "Invoices",
   companies: "Companies",
@@ -77,6 +78,8 @@ export function getBreadcrumbTitle(segment: string, parentSegment?: string): str
         return "Task Details";
       case "companies":
         return "Company Details";
+      case "canvas":
+        return "Board";
       case "users":
         return "Employee Details";
       default:

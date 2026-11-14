@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { statusLabel } from "@/lib/post-status"
+import { getMediaUrl } from "@/lib/utils"
 import type { WorkflowAction, WorkflowStage } from "@/lib/posts/workflow-rules"
 
 interface TimelineEntry {
@@ -146,8 +147,19 @@ const ACTION_VERB: Record<string, string> = {
   PUBLISH: "Published",
   CANCEL: "Cancelled",
   REOPEN: "Reopened",
-  EDIT_INVALIDATE: "Edited",
+  EDIT_INVALIDATE: "Edited — approval needed again",
+  EDIT: "Edited",
   CLIENT_TOGGLE: "Changed client approval",
+}
+
+/** Files an edit replaced; kept so the version that was reviewed can still be opened. */
+const replacedFiles = (metadata: Record<string, unknown> | null) => {
+  const list = metadata?.replacedAssets
+  if (!Array.isArray(list)) return []
+  return list.filter(
+    (f): f is { filename: string; url: string } =>
+      typeof f === "object" && f !== null && typeof f.filename === "string" && typeof f.url === "string",
+  )
 }
 
 const toLocalInput = (iso: string | null) => {
@@ -365,6 +377,21 @@ export function PostWorkflowPanel({ postId, onChanged }: { postId: string; onCha
                     {entry.actorType === "CLIENT" && " (client)"} · {when(entry.createdAt)} · v{entry.version}
                   </p>
                   {entry.reason && <p className="mt-1 rounded-md bg-muted/60 px-2 py-1 text-foreground">{entry.reason}</p>}
+                  {replacedFiles(entry.metadata).length > 0 && (
+                    <ul className="mt-1 space-y-0.5" aria-label="Previous versions of replaced files">
+                      {replacedFiles(entry.metadata).map((file) => (
+                        <li key={file.url}>
+                          <a
+                            href={getMediaUrl(file.url)}
+                            download={file.filename}
+                            className="text-primary underline-offset-2 hover:underline"
+                          >
+                            Previous version: {file.filename}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ol>

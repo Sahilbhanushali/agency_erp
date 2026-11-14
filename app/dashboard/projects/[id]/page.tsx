@@ -41,6 +41,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import TaskPanel from "@/components/tasks/task-panel";
 import { projectCompanyName, projectLogo } from "@/lib/client-company";
+import { LinkedBoards } from "@/components/canvas/linked-boards";
 
 type Post = {
   id: string;
@@ -595,6 +596,8 @@ export default function ProjectDetailsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <LinkedBoards projectId={id} />
 
       {/* Post Types Targets Breakdown */}
       <Card className="shadow-2xs">

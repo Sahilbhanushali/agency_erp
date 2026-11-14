@@ -31,6 +31,8 @@ import { getMediaUrl } from '@/lib/utils';
 import { STAGE_LABELS, stageOf, type WorkflowStatus } from '@/lib/posts/workflow-rules';
 import { projectCompanyName, projectLogo } from "@/lib/client-company";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useDiscussionUnread } from "@/hooks/use-discussion-unread";
+import { UnreadDiscussionBadge } from "@/components/posts/unread-discussion-badge";
 
 interface Asset {
   id: string;
@@ -295,6 +297,7 @@ const ApprovalTab: React.FC = () => {
   );
   // Already filtered, ordered and paged by the server.
   const filteredApprovals = approvals;
+  const unreadDiscussions = useDiscussionUnread(approvals.map((a) => a.post.id));
 
   const handleConfirmStatusChange = async (statusType: "content" | "design" | "designerHead") => {
     if (!statusChangeDialog || !selectedDate) return;
@@ -743,7 +746,10 @@ const ApprovalTab: React.FC = () => {
 
                 <CardContent className="p-4">
                   <div className="space-y-3">
-                    <h3 className="font-semibold text-lg text-foreground line-clamp-1">{approval.post.title}</h3>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="min-w-0 font-semibold text-lg text-foreground line-clamp-1">{approval.post.title}</h3>
+                      <UnreadDiscussionBadge postId={approval.post.id} count={unreadDiscussions[approval.post.id]} />
+                    </div>
                     {approval.post.caption && (
                       <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{approval.post.caption}</p>
                     )}

@@ -13,6 +13,34 @@ import { PRESENTATION_MIME_TYPES, isPresentationFile } from "@/lib/posts/content
 export const dynamic = 'force-dynamic';
 
 
+const sameInstant = (next: unknown, prev: Date | null) => {
+  if (next === undefined) return true;
+  if (next === null || next === "") return prev === null;
+  const time = new Date(String(next)).getTime();
+  return prev !== null && !Number.isNaN(time) && time === prev.getTime();
+};
+
+/** Edited fields that do not invalidate an approval but still belong in the history. */
+function describeSecondaryEdits(
+  post: { notes: string | null; designDueDate: Date | null; scheduledAt: Date | null; assignedToId: number | null; festivalId: number | null; customData: unknown; projectId: string },
+  next: Record<string, unknown>,
+  body: Record<string, unknown>,
+): string[] {
+  const fields: string[] = [];
+  if (next.notes !== undefined && (next.notes ?? null) !== (post.notes ?? null)) fields.push("notes");
+  if (!sameInstant(next.designDueDate, post.designDueDate)) fields.push("design due date");
+  if (!sameInstant(body.scheduledAt, post.scheduledAt)) fields.push("schedule");
+  if (next.projectId !== undefined && next.projectId !== post.projectId) fields.push("project");
+  if (next.festivalId !== undefined && (next.festivalId ?? null) !== post.festivalId) fields.push("festival");
+  const assignees = next.assignedToIds as number[] | undefined;
+  const primary = assignees ? (assignees[0] ?? null) : (next.assignedToId as number | null | undefined);
+  if (primary !== undefined && primary !== post.assignedToId) fields.push("assignees");
+  if (next.customData !== undefined && JSON.stringify(next.customData) !== JSON.stringify(post.customData ?? null)) {
+    fields.push("details");
+  }
+  return fields;
+}
+
 // Define schema for validating PUT request body
 const updatePostSchema = z.object({
   title: z.string().min(1, "Title is required").optional(),
@@ -147,6 +175,18 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         });
         for (const a of assetsToDelete) {
           await deleteLocalFile(a.url);
+        }
+
+        // Earlier versions kept by edits (see PUT) are referenced only from the history.
+        const edits = await tx.postStatusChange.findMany({
+          where: { postId, action: "EDIT" },
+          select: { metadata: true },
+        });
+        for (const edit of edits) {
+          const replaced = (edit.metadata as { replacedAssets?: { url?: unknown }[] } | null)?.replacedAssets ?? [];
+          for (const old of replaced) {
+            if (typeof old.url === "string") await deleteLocalFile(old.url);
+          }
         }
 
         // Clean up approval attachments
@@ -500,13 +540,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         throw new Error("Post not found");
       }
 
-      // Handle removed assets
+      // Removed assets leave the post but their files stay on disk: the EDIT history row
+      // below records them as the previous version, so reviewers can still open what they
+      // reviewed. The files go when the post itself is deleted.
+      let replacedAssets: { filename: string; url: string; type: string | null; size: number | null }[] = [];
       if (removedAssets.length > 0) {
-        const assetsToRemove = await tx.asset.findMany({
-          where: {
-            id: { in: removedAssets },
-            postId: postId,
-          },
+        replacedAssets = await tx.asset.findMany({
+          where: { id: { in: removedAssets }, postId },
+          select: { filename: true, url: true, type: true, size: true },
         });
 
         await tx.asset.deleteMany({
@@ -515,10 +556,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             postId: postId,
           },
         });
-
-        for (const asset of assetsToRemove) {
-          await deleteLocalFile(asset.url);
-        }
       }
 
       // Add new assets
@@ -605,8 +642,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       });
 
 
+      const editedFields = [
+        ...materialChanges,
+        ...describeSecondaryEdits(post, finalPostData, body),
+      ];
+
       // Update post in the database
-      return await tx.post.update({
+      const saved = await tx.post.update({
         where: { id: postId },
         data: updateData,
         include: {
@@ -621,6 +663,31 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           platforms: true,
         },
       });
+
+      // Edit history: one row per save, on the same timeline as approvals, so "who changed
+      // what, when" sits next to the decisions it affected.
+      if (editedFields.length > 0) {
+        await tx.postStatusChange.create({
+          data: {
+            postId,
+            action: "EDIT",
+            fromStatus: saved.status,
+            toStatus: saved.status,
+            version: saved.version,
+            reason: `Edited: ${editedFields.join(", ")}`,
+            actorId: auth.userId,
+            actorName: auth.session.user?.name ?? null,
+            actorEmail: auth.session.user?.email ?? null,
+            actorType: "USER",
+            metadata: {
+              changes: editedFields,
+              ...(replacedAssets.length > 0 && { replacedAssets }),
+              ...(assets.length > 0 && { addedAssets: assets.map((a) => a.filename) }),
+            },
+          },
+        });
+      }
+      return saved;
     });
 
     return NextResponse.json(updatedPost, { status: 200 });
