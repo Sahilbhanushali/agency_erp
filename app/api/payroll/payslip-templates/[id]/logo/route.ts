@@ -6,6 +6,7 @@ import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { imageDimensions } from "@/lib/images"
 import { deleteLocalFile } from "@/lib/storage"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       entityType: "PayslipTemplate",
       entityId: id,
       newValues: JSON.stringify({ logoUrl }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

@@ -4,6 +4,7 @@ import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { companyUpdateSchema } from "@/lib/validation/company"
 import { deleteLocalFile } from "@/lib/storage"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -93,7 +94,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       entityId: company.id,
       oldValues: JSON.stringify({ name: existing.name, isActive: existing.isActive }),
       newValues: JSON.stringify({ name: company.name, isActive: company.isActive }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
@@ -146,7 +147,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       entityType: "Company",
       entityId: id,
       oldValues: JSON.stringify({ name: company.name }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

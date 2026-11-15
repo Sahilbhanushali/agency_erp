@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { generateSecureToken, getConfirmBaseUrl } from "@/lib/export-link"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       entityType: "Quotation",
       entityId: id,
       newValues: JSON.stringify({ number: existing.number, days }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
@@ -83,7 +84,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       entityType: "Quotation",
       entityId: id,
       oldValues: JSON.stringify({ number: existing.number }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

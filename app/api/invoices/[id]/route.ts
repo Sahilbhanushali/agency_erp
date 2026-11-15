@@ -12,6 +12,7 @@ import {
   toNumber,
 } from "@/lib/finance"
 import { invoiceUpdateSchema } from "@/lib/validation/invoice"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -222,7 +223,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       entityId: id,
       oldValues: JSON.stringify({ status: existing.status, total: toNumber(existing.totalAmount) }),
       newValues: JSON.stringify({ status: invoice.status, total: totals.totalAmount }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
@@ -287,7 +288,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       entityType: "Invoice",
       entityId: id,
       oldValues: JSON.stringify({ number: invoice.number, status: invoice.status }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

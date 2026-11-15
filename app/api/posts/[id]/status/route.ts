@@ -7,7 +7,6 @@ import { z } from "zod";
 import nodemailer from "nodemailer";
 import fs from "fs/promises";
 import path from "path";
-import CryptoJS from "crypto-js";
 import { requireSession } from "@/lib/api-auth";
 import { transitionPost, workflowErrorResponse } from "@/lib/posts/workflow";
 import type { WorkflowAction } from "@/lib/posts/workflow-rules";
@@ -26,6 +25,8 @@ const STATUS_TO_ACTION: Partial<Record<PostStatus, WorkflowAction>> = {
 };
 import { APP_BASE_URL } from "@/lib/utils"
 import { formatFrom, htmlToText } from "@/lib/smtp"
+import { clientIp } from "@/lib/rate-limit"
+import { decryptSmtpPassword } from "@/lib/smtp";
 // Load the email template
 const emailTemplatePath = path.join(
   process.cwd(),
@@ -331,7 +332,7 @@ export async function PATCH(
       newValues: { status },
       feedback: feedback || null,
       ipAddress:
-        request.headers.get("x-forwarded-for") || null,
+        clientIp(request.headers) || null,
       userAgent: request.headers.get("user-agent") || null,
       postId: id,
       userId: userId,
@@ -362,7 +363,7 @@ export async function PATCH(
         feedback: feedback || null,
       },
       ipAddress:
-        request.headers.get("x-forwarded-for") || null,
+        clientIp(request.headers) || null,
       userAgent: request.headers.get("user-agent") || null,
       createdAt: currentTime,
       userId: userId,
@@ -612,7 +613,7 @@ export async function PATCH(
                 filename: a.filename,
               })),
             },
-            ipAddress: request.headers.get("x-forwarded-for") || null,
+            ipAddress: clientIp(request.headers) || null,
             userAgent: request.headers.get("user-agent") || null,
             createdAt: currentTime,
             userId: userId,
@@ -676,25 +677,14 @@ export async function PATCH(
             isVerified: true,
           },
         });
-        const encryptionKey = process.env.SMTP_PASSWORD_ENCRYPTION_KEY;
-        if (!encryptionKey) {
-          console.error('SMTP password encryption key not found in environment variables');
-          return NextResponse.json({ error: 'SMTP password encryption key not configured' }, { status: 500 });
-        }
-
+        // lib/smtp.ts reads every stored format (vault, older crypto-js AES, legacy) in one place.
         let decryptedPassword: string;
         try {
-          const bytes = CryptoJS.AES.decrypt(smtpDetails.password, encryptionKey);
-          decryptedPassword = bytes.toString(CryptoJS.enc.Utf8);
-          if (!decryptedPassword) {
-            throw new Error('Decryption failed: Invalid key or corrupted data');
-          }
-        } catch (decryptError: any) {
-          console.error('Failed to decrypt SMTP password:', decryptError.message);
-          return NextResponse.json(
-            { error: 'Failed to decrypt SMTP password', details: decryptError.message },
-            { status: 500 }
-          );
+          decryptedPassword = decryptSmtpPassword(smtpDetails?.password ?? '');
+          if (!decryptedPassword) throw new Error('No SMTP password is stored');
+        } catch (decryptError) {
+          console.error('Failed to decrypt SMTP password:', decryptError instanceof Error ? decryptError.message : decryptError);
+          return NextResponse.json({ error: 'Failed to decrypt SMTP password' }, { status: 500 });
         }
 
         if (!smtpDetails || !smtpDetails.isVerified) {

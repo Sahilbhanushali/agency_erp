@@ -78,7 +78,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
           host: existingConfig.host,
           port: existingConfig.port,
           username: existingConfig.username,
-          password: existingConfig.password || '',
+          password: '', // never sent by the API; blank keeps the stored password
           encryption: existingConfig.encryption,
           userId: formData.userId,
         });
@@ -108,7 +108,7 @@ export default function SmtpConfigForm({ users, initialData, onSuccess, onCancel
   };
 
   const handleTestConnection = async () => {
-    if (!formData.host || !formData.username || !formData.password || !formData.userId) {
+    if (!formData.host || !formData.username || (!hasExistingConfig && !formData.password) || !formData.userId) {
       setMessage({ type: 'error', text: 'Please fill in all required fields, including user selection' });
       return;
     }

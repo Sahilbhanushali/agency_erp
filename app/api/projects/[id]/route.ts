@@ -8,6 +8,7 @@ import fs from "fs/promises"
 import path from "path"
 import { deleteLocalFile, safeUploadName } from "@/lib/storage";
 import { requireCan } from "@/lib/api-auth";
+import { clientIp } from "@/lib/rate-limit"
 
 // Interface for postTypes JSON object
 interface PostTypeCount {
@@ -292,7 +293,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
         description: `Project "${name}" updated`,
         userId: parseInt(session.user.id),
         projectId: project.id,
-        ipAddress: request.headers.get("x-forwarded-for") || null,
+        ipAddress: clientIp(request.headers) || null,
         userAgent: request.headers.get("user-agent") || null,
       },
     });

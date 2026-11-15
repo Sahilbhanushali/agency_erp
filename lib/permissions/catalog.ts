@@ -150,7 +150,8 @@ export const MODULES: PermissionModule[] = [
       { action: "read", label: "Read", legacy: ["Manage-approvals"] },
       { action: "approve", label: "Approve", legacy: ["Manage-approvals"] },
     ] },
-  { key: "assets", label: "Assets", href: "/dashboard/assets", group: "Delivery",
+  // Post files (upload, replace, delete on a post). The standalone Asset Library page was removed.
+  { key: "assets", label: "Post Files", group: "Delivery",
     actions: [
       { action: "read", label: "Read", legacy: ["View-assets"] },
       { action: "create", label: "Upload", legacy: ["Manage-assets"] },

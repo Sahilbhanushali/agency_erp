@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Platform } from "@prisma/client";
 import * as XLSX from 'xlsx';
 import { requireCan } from "@/lib/api-auth";
+import { clientIp } from "@/lib/rate-limit"
 
 type PostType = 'PHOTO' | 'REEL' | 'STORY' | 'CAROUSEL' | 'CUSTOM' | 'UNKNOWN';
 type PostStatus = 'DRAFT' | 'POSTED';
@@ -419,7 +420,7 @@ const designers = await prisma.user.findMany({
           newValues: JSON.parse(JSON.stringify(newPost)),
           postId: newPost.id,
           userId: parseInt(session.user.id, 10),
-          ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || null,
+          ipAddress: clientIp(request.headers) || null,
           userAgent: request.headers.get('user-agent') || null,
         },
       });

@@ -5,6 +5,7 @@ import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { notifyTaskAssignees, taskSelect, validateTaskLinks } from "@/lib/tasks"
 import { TASK_PRIORITIES, TASK_STATUSES, taskSchema } from "@/lib/validation/task"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
       entityType: "Task",
       entityId: task.id,
       newValues: JSON.stringify({ title: task.title, assignees: input.assigneeIds }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

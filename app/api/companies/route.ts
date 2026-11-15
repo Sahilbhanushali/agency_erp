@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { companySchema } from "@/lib/validation/company"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       entityType: "Company",
       entityId: company.id,
       newValues: JSON.stringify({ name: company.name, gstNumber: company.gstNumber }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

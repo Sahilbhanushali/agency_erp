@@ -7,6 +7,7 @@ import { logAuditAction } from "@/lib/audit"
 import { computeTotals } from "@/lib/finance"
 import { nextDocumentNumber, withNumberRetry } from "@/lib/document-number"
 import { quotationSchema } from "@/lib/validation/quotation"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
       entityType: "Quotation",
       entityId: quotation.id,
       newValues: JSON.stringify({ number: quotation.number, total: totals.totalAmount }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

@@ -6,6 +6,7 @@ import { PayrollService } from "@/lib/payroll/payroll-service";
 import { PayrollRunStatus } from "@prisma/client";
 import { requireCan } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
+import { clientIp } from "@/lib/rate-limit"
 
 export async function GET(
   request: NextRequest,
@@ -103,7 +104,7 @@ export async function PATCH(
         entityType: "PayrollRun",
         entityId: id,
         newValues: JSON.stringify({ payslipTemplate: run.payslipTemplate?.name ?? null }),
-        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+        ipAddress: clientIp(request.headers) || "unknown",
         userAgent: request.headers.get("user-agent") || "unknown",
       });
 
@@ -168,7 +169,7 @@ export async function DELETE(
       entityType: "PayrollRun",
       entityId: id,
       oldValues: JSON.stringify({ ...run, linkedExpensesDeleted: removed.expenses }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 

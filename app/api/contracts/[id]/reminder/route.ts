@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireCan } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
 import { sendMail } from "@/lib/smtp";
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic";
 
@@ -136,7 +137,7 @@ export async function POST(
         recipient: contract.client.email,
         daysLeft,
       }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 

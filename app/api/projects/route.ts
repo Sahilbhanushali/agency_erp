@@ -8,6 +8,7 @@ import { resolveClientCompanyId } from "@/lib/client-company-server";
 import fs from "fs/promises";
 import path from "path";
 import { can, requireCan } from "@/lib/api-auth";
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic";
 
@@ -289,7 +290,7 @@ export async function POST(request: NextRequest) {
         description: `Project "${name}" created`,
         userId: parseInt(session.user.id),
         projectId: project.id,
-        ipAddress: request.headers.get("x-forwarded-for") || null,
+        ipAddress: clientIp(request.headers) || null,
         userAgent: request.headers.get("user-agent") || null,
       },
     });
@@ -379,7 +380,7 @@ export async function PUT(request: NextRequest) {
         description: `Project "${name}" updated`,
         userId: parseInt(session.user.id),
         projectId: project.id,
-        ipAddress: request.headers.get("x-forwarded-for") || null,
+        ipAddress: clientIp(request.headers) || null,
         userAgent: request.headers.get("user-agent") || null,
       },
     });

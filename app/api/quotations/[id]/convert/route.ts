@@ -5,6 +5,7 @@ import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { invoiceDetailSelect, toNumber } from "@/lib/finance"
 import { nextDocumentNumber, withNumberRetry } from "@/lib/document-number"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         invoice: invoice.number,
         total: toNumber(invoice.totalAmount),
       }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import nodemailer from 'nodemailer';
-import CryptoJS from 'crypto-js';
 import { can, requireCan } from "@/lib/api-auth";
-import { decryptSmtpPassword } from "@/lib/smtp";
+import { decryptSmtpPassword, sealSmtpPassword } from "@/lib/smtp";
 
-const prisma = new PrismaClient();
+// Stored SMTP passwords are sealed by lib/credentials/vault.ts (see lib/smtp.ts), and
+// never sent to the browser: the form leaves the password blank to keep the stored one.
+const MAX_SMTP_PASSWORD = 100;
 
-// Encryption key (store securely in environment variables in production)
-const ENCRYPTION_KEY = process.env.SMTP_PASSWORD_ENCRYPTION_KEY || 'your-32-byte-long-secret-key-here'; // Must be a secure, 32-byte key
-
-// Encrypt password using crypto-js
-function encryptPassword(password: string): string {
-  return CryptoJS.AES.encrypt(password, ENCRYPTION_KEY).toString();
-}
-
-// Stored SMTP passwords exist in two encryption formats across this database's
-// history. decryptSmtpPassword understands both and falls back to plaintext, so a row
-// written by lib/encryption.ts no longer throws "Malformed UTF-8 data" here.
 function decryptPassword(encryptedPassword: string): string {
   return decryptSmtpPassword(encryptedPassword);
 }
@@ -39,7 +29,7 @@ export async function GET(request: NextRequest) {
         port: true,
         username: true,
         encryption: true,
-        password:true,
+        password: true,
         isActive: true,
         isVerified: true,
         createdAt: true,
@@ -60,7 +50,8 @@ export async function GET(request: NextRequest) {
       port: config.port,
       username: config.username,
       encryption: config.encryption,
-      password:decryptPassword(config.password),
+      // Whether one is set — never the password itself, not even encrypted.
+      hasPassword: !!config.password,
       isActive: config.isActive,
       isVerified: config.isVerified,
       createdAt: config.createdAt,
@@ -87,6 +78,12 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { host, port, username, password, encryption, userId } = body;
+
+    // Sealed values must fit smtp_details.password (VARCHAR 191); real SMTP and app
+    // passwords are far shorter than this.
+    if (typeof password === "string" && password.length > MAX_SMTP_PASSWORD) {
+      return NextResponse.json({ error: `SMTP passwords are limited to ${MAX_SMTP_PASSWORD} characters` }, { status: 422 });
+    }
 
     // Validate required fields
     if (!host || !port || !username || !password || !encryption || !userId) {
@@ -117,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Encrypt the password
-    const encryptedPassword = encryptPassword(password);
+    const encryptedPassword = sealSmtpPassword(password);
 
     // Create new SMTP configuration
     const smtpDetails = await prisma.smtpDetails.create({
@@ -192,6 +189,12 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { userId, host, port, username, password, encryption, testConnection } = body;
 
+    // Sealed values must fit smtp_details.password (VARCHAR 191); real SMTP and app
+    // passwords are far shorter than this.
+    if (typeof password === "string" && password.length > MAX_SMTP_PASSWORD) {
+      return NextResponse.json({ error: `SMTP passwords are limited to ${MAX_SMTP_PASSWORD} characters` }, { status: 422 });
+    }
+
     if (testConnection) {
       // Test SMTP connection
       const smtpDetails = await prisma.smtpDetails.findUnique({
@@ -255,9 +258,11 @@ export async function PUT(request: NextRequest) {
       });
     } else {
       // Update SMTP configuration
-      if (!userId || !host || !port || !username || !password || !encryption) {
+      // The password is optional here: blank keeps the stored one (it is never sent to
+      // the browser, so the form cannot re-submit it).
+      if (!userId || !host || !port || !username || !encryption) {
         return NextResponse.json(
-          { error: "All fields (id, host, port, username, password, encryption) are required" },
+          { error: "All fields (id, host, port, username, encryption) are required" },
           { status: 400 }
         );
       }
@@ -281,8 +286,6 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      // Encrypt the new password
-      const encryptedPassword = encryptPassword(password);
 
       const smtpDetails = await prisma.smtpDetails.update({
         where: { userId }, // Remove userId check for admins, or keep it if needed
@@ -290,7 +293,7 @@ export async function PUT(request: NextRequest) {
           host,
           port: parseInt(port),
           username,
-          password: encryptedPassword,
+          ...(password ? { password: sealSmtpPassword(password) } : {}),
           encryption,
           updatedAt: new Date(),
           isVerified: false, // Reset verification on update

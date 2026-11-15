@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { setDefaultTemplate } from "@/lib/payroll/payslip-template"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
       entityType: "PayslipTemplate",
       entityId: template.id,
       newValues: JSON.stringify({ name: template.name, isDefault: template.isDefault }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

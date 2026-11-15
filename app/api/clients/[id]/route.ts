@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { requireCan } from "@/lib/api-auth";
+import { can, requireCan } from "@/lib/api-auth";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { deleteLocalFile } from "@/lib/storage";
@@ -39,16 +39,15 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
           orderBy: { createdAt: "desc" },
           take: 10,
         },
-        credentials: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            location: true,
-            platform: true,
-            userId: true,
-            createdAt: true,
-          },
-        },
+        // Which logins a client has is credentials data: only for people who may see it.
+        ...((await can(session, "credentials", "read"))
+          ? {
+              credentials: {
+                orderBy: { createdAt: "desc" as const },
+                select: { id: true, location: true, platform: true, userId: true, createdAt: true },
+              },
+            }
+          : {}),
         contracts: {
           orderBy: { createdAt: "desc" },
           include: {

@@ -2,27 +2,14 @@ import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
-import { encrypt } from "@/lib/encryption"
+import { sealSecret } from "@/lib/credentials/vault"
+import { CREDENTIAL_SELECT, withoutNotes } from "@/lib/credentials/shape"
 import { credentialUpdateSchema } from "@/lib/validation/credential"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
-const select = {
-  id: true,
-  label: true,
-  category: true,
-  clientId: true,
-  projectId: true,
-  location: true,
-  platform: true,
-  userId: true,
-  url: true,
-  notes: true,
-  createdAt: true,
-  updatedAt: true,
-  client: { select: { id: true, name: true, company: true, phone: true } },
-  project: { select: { id: true, name: true } },
-}
+const select = CREDENTIAL_SELECT
 
 /** Everything except the password, which comes from the audited reveal endpoint. */
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -33,7 +20,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const { id } = await context.params
     const credential = await prisma.credential.findUnique({ where: { id }, select })
     if (!credential) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json({ credential })
+    return NextResponse.json({ credential: withoutNotes(credential) })
   } catch (error) {
     console.error("[credentials] read failed:", error)
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
@@ -102,10 +89,12 @@ async function update(request: NextRequest, context: { params: Promise<{ id: str
         ...(input.platform !== undefined ? { platform: input.platform } : {}),
         ...(input.userId !== undefined ? { userId: input.userId } : {}),
         ...(input.url !== undefined ? { url: input.url } : {}),
-        ...(input.notes !== undefined ? { notes: input.notes } : {}),
+        // Sealed. Omitted or blank leaves the stored notes alone: the edit form never
+        // receives them (they come only from reveal), so it must not wipe them.
+        ...(input.notes !== undefined ? { notes: input.notes ? sealSecret(input.notes, "notes") : null } : {}),
         // An omitted password leaves the stored one alone, so editing a label does not
         // require retyping the secret.
-        ...(input.password ? { password: encrypt(input.password) } : {}),
+        ...(input.password ? { password: sealSecret(input.password, "password") } : {}),
       },
       select,
     })
@@ -117,11 +106,11 @@ async function update(request: NextRequest, context: { params: Promise<{ id: str
       entityId: id,
       oldValues: JSON.stringify({ label: existing.label, platform: existing.platform }),
       newValues: JSON.stringify({ label: credential.label, platform: credential.platform }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
-    return NextResponse.json({ credential })
+    return NextResponse.json({ credential: withoutNotes(credential) })
   } catch (error) {
     console.error("[credentials] update failed:", error)
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
@@ -152,7 +141,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
         platform: credential.platform,
         userId: credential.userId,
       }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

@@ -7,7 +7,6 @@ import { promises as fs } from "fs";
 import path from "path";
 import { z } from "zod";
 import nodemailer from "nodemailer";
-import CryptoJS from "crypto-js"; // Import crypto-js
 import { can, requireCan, requireSession } from "@/lib/api-auth";
 import { transitionPost, workflowErrorResponse } from "@/lib/posts/workflow";
 import { decide, editInvalidatesApproval, isEditable, type WorkflowAction, type WorkflowStatus } from "@/lib/posts/workflow-rules";
@@ -15,6 +14,8 @@ import { isPresentationFile } from "@/lib/posts/content-types";
 import { deleteLocalFile } from "@/lib/storage";
 import { APP_BASE_URL } from "@/lib/utils"
 import { formatFrom, htmlToText } from "@/lib/smtp"
+import { clientIp } from "@/lib/rate-limit"
+import { decryptSmtpPassword } from "@/lib/smtp";
 
 // Load email templates
 const rejectionEmailTemplatePath = path.join(process.cwd(), "public/templates", "rejection-email-template.html");
@@ -240,7 +241,7 @@ console.log(JSON.stringify(projectManager, null, 2));
       oldValues: { status: post.status, assetCount: 0 },
       newValues: { status: newStatus || post.status, assetCount: files.length },
       feedback: feedback || null,
-      ipAddress: request.headers.get("x-forwarded-for") || null,
+      ipAddress: clientIp(request.headers) || null,
       userAgent: request.headers.get("user-agent") || null,
       postId: params.id,
       userId: userId,
@@ -259,7 +260,7 @@ console.log(JSON.stringify(projectManager, null, 2));
         newStatus: newStatus || post.status,
         workflowStage: newWorkflowStage,
       },
-      ipAddress: request.headers.get("x-forwarded-for") || null,
+      ipAddress: clientIp(request.headers) || null,
       userAgent: request.headers.get("user-agent") || null,
       userId: userId,
       projectId: post.projectId,
@@ -371,7 +372,7 @@ console.log(JSON.stringify(projectManager, null, 2));
           entityId: params.id,
           description: `${files.length} asset(s) uploaded for post: ${post.title}`,
           metadata: { assetCount: files.length, assetTypes: savedFiles.map((f) => f.type) },
-          ipAddress: request.headers.get("x-forwarded-for") || null,
+          ipAddress: clientIp(request.headers) || null,
           userAgent: request.headers.get("user-agent") || null,
           userId: userId,
           projectId: post.projectId,
@@ -395,7 +396,7 @@ console.log(JSON.stringify(projectManager, null, 2));
             entityId: params.id,
             description: `Comment added during design resubmission for post: ${post.title}`,
             metadata: { comment: feedback, status: newStatus },
-            ipAddress: request.headers.get("x-forwarded-for") || null,
+            ipAddress: clientIp(request.headers) || null,
             userAgent: request.headers.get("user-agent") || null,
             userId: userId,
             projectId: post.projectId,
@@ -464,21 +465,13 @@ if (newStatus && (newStatus === PostStatus.SUBMITTED || newStatus === PostStatus
         select: { host: true, port: true, username: true, password: true, encryption: true, isVerified: true },
       });
 
-      const encryptionKey = process.env.SMTP_PASSWORD_ENCRYPTION_KEY;
-      if (!encryptionKey) {
-        console.error('SMTP password encryption key not found in environment variables');
-        return;
-      }
-
+      // lib/smtp.ts reads every stored format (vault, older crypto-js AES, legacy) in one place.
       let decryptedPassword: string;
       try {
-        const bytes = CryptoJS.AES.decrypt(smtpDetails.password, encryptionKey);
-        decryptedPassword = bytes.toString(CryptoJS.enc.Utf8);
-        if (!decryptedPassword) {
-          throw new Error('Decryption failed: Invalid key or corrupted data');
-        }
-      } catch (decryptError: any) {
-        console.error('Failed to decrypt SMTP password:', decryptError.message);
+        decryptedPassword = decryptSmtpPassword(smtpDetails?.password ?? '');
+        if (!decryptedPassword) throw new Error('No SMTP password is stored');
+      } catch (decryptError) {
+        console.error('Failed to decrypt SMTP password:', decryptError instanceof Error ? decryptError.message : decryptError);
         return;
       }
 

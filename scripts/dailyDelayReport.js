@@ -326,15 +326,9 @@ async function sendDailyDelayReport(recipients = []) {
       </div>
     `;
 
-    const CryptoJS = require('crypto-js');
-    const ENCRYPTION_KEY = process.env.SMTP_PASSWORD_ENCRYPTION_KEY || 'your-32-byte-long-secret-key-here';
-    
-    function decryptPassword(encryptedPassword) {
-      const bytes = CryptoJS.AES.decrypt(encryptedPassword, ENCRYPTION_KEY);
-      return bytes.toString(CryptoJS.enc.Utf8);
-    }
-
-    const decryptedPassword = decryptPassword(adminUser.smtpDetails.password);
+    // Same formats as lib/smtp.ts; see scripts/smtp-password.js.
+    const { openSmtpPassword } = require('./smtp-password');
+    const decryptedPassword = openSmtpPassword(adminUser.smtpDetails.password);
 
     const transporter = nodemailer.createTransport({
       host: adminUser.smtpDetails.host,

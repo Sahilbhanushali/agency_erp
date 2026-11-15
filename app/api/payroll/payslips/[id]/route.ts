@@ -6,6 +6,7 @@ import { PayrollService, maskPan, maskBankAccount } from "@/lib/payroll/payroll-
 import { can, hasPermission, requireCan } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
 import { z } from "zod";
+import { clientIp } from "@/lib/rate-limit"
 
 /** One line on a payslip. Amounts are minor units (paise), like the rest of payroll. */
 const PayslipLineEdit = z.object({
@@ -261,7 +262,7 @@ export async function PATCH(
           lines: edit.lines?.length ?? "unchanged",
           reason: edit.reason ?? null,
         }),
-        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+        ipAddress: clientIp(request.headers) || "unknown",
         userAgent: request.headers.get("user-agent") || "unknown",
       });
 
@@ -330,7 +331,7 @@ export async function DELETE(
         period: `${payslip.month}/${payslip.year}`,
         netSalary: payslip.netSalary,
       }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 

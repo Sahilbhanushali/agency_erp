@@ -30,11 +30,19 @@ export function isRateLimited(key: string, limit: number, windowMs: number): boo
   return w.count > limit
 }
 
-/** Best-effort client IP. Only trustworthy behind a proxy that overwrites X-Forwarded-For. */
+/**
+ * The client IP as seen by our own reverse proxy.
+ *
+ * X-Forwarded-For is a list each proxy APPENDS to, so everything left of the last entry
+ * is whatever the client chose to send. The old version read the first entry, which let
+ * anyone forge the IP in audit logs and dodge per-IP rate limits by changing a header.
+ * The last entry is the address our proxy actually saw.
+ *
+ * shortcut: assumes exactly one proxy in front of the app (nginx or a platform edge);
+ * behind two (e.g. a CDN in front of nginx), take the entry that many hops from the right.
+ */
 export function clientIp(headers: Headers): string {
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headers.get("x-real-ip")?.trim() ||
-    "unknown"
-  )
+  const forwarded = headers.get("x-forwarded-for")
+  const lastHop = forwarded?.split(",").map((part) => part.trim()).filter(Boolean).pop()
+  return lastHop || headers.get("x-real-ip")?.trim() || "unknown"
 }

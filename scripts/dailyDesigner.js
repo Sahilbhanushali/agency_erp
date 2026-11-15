@@ -110,15 +110,9 @@ async function sendDailyDesignerReport(recipients = []) {
 
     console.log('Preparing to send email to:', designerHead.email);
 
-    const CryptoJS = require('crypto-js');
-    const ENCRYPTION_KEY = process.env.SMTP_PASSWORD_ENCRYPTION_KEY || 'your-32-byte-long-secret-key-here';
-    
-    function decryptPassword(encryptedPassword) {
-      const bytes = CryptoJS.AES.decrypt(encryptedPassword, ENCRYPTION_KEY);
-      return bytes.toString(CryptoJS.enc.Utf8);
-    }
-
-    const decryptedPassword = decryptPassword(designerHead.smtpDetails.password);
+    // Same formats as lib/smtp.ts; see scripts/smtp-password.js.
+    const { openSmtpPassword } = require('./smtp-password');
+    const decryptedPassword = openSmtpPassword(designerHead.smtpDetails.password);
 
     // Set up nodemailer transporter
     const transporter = nodemailer.createTransport({

@@ -16,7 +16,6 @@ import {
   FileSignature,
   FileText,
   FolderOpen,
-  ImageIcon,
   Key,
   LayoutDashboard,
   Loader2,
@@ -98,7 +97,6 @@ const navigation: NavigationItem[] = [
   { name: "Canvas & Mood Boards", href: "/dashboard/canvas", module: "canvas", icon: Palette },
   { name: "Calendar", href: "/dashboard/calendar", module: "calendar", icon: Calendar, permissions: ["View-calender"] },
   { name: "Pending Approvals", href: "/dashboard/approvals", module: "approvals", icon: FileClock, permissions: ["Manage-approvals"] },
-  { name: "Assets", href: "/dashboard/assets", module: "assets", icon: ImageIcon, permissions: ["View-assets"] },
   { name: "Reports", href: "/dashboard/reports", module: "reports", icon: BarChart3, permissions: ["View-reports"] },
   { name: "Social Accounts", href: "/dashboard/social/accounts", module: "social_accounts", icon: Share2 },
   { name: "Social Insights", href: "/dashboard/social/insights", module: "social_accounts", icon: TrendingUp },
@@ -121,7 +119,7 @@ const navigation: NavigationItem[] = [
 
 const navigationGroups = [
   { label: "Overview", names: ["Dashboard"] },
-  { label: "Delivery", names: ["My Tasks", "My Day", "Chat", "Projects", "Canvas & Mood Boards", "Calendar", "Pending Approvals", "Assets", "Reports", "Social Accounts", "Social Insights"] },
+  { label: "Delivery", names: ["My Tasks", "My Day", "Chat", "Projects", "Canvas & Mood Boards", "Calendar", "Pending Approvals", "Reports", "Social Accounts", "Social Insights"] },
   { label: "Agency", names: ["Leads Pipeline", "Clients", "Contracts & SOW", "Expenses & Margins", "Companies", "Quotations", "Invoices", "User Management", "Document Verification", "Recruitment & HRMS", "Attendance & Leaves", "Payroll", "Utilities", "Credentials"] },
   { label: "Preferences", names: ["Settings"] },
 ]
