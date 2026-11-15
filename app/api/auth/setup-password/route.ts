@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { logAuditAction } from "@/lib/audit";
 import { sendWelcomeEmail } from "@/lib/email";
 import { findValidPasswordToken, setPasswordAndRevoke } from "@/lib/password-token";
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       entityId: String(user.id),
       oldValues: JSON.stringify({ action: "onboarding_invite_pending" }),
       newValues: JSON.stringify({ action: "password_configured_and_activated" }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 

@@ -13,6 +13,7 @@ import path from "path";
 import { PostStatus, Platform, PostType, ContentStatus } from '@prisma/client';
 import { can, contentScope, isClientContact, requireCan } from "@/lib/api-auth";
 import { namesSatisfying } from "@/lib/permissions/catalog";
+import { clientIp } from "@/lib/rate-limit"
 
 export async function POST(request: NextRequest) {
   try {
@@ -348,7 +349,7 @@ export async function POST(request: NextRequest) {
         newValues: JSON.parse(JSON.stringify(post)),
         postId: post.id,
         userId: parseInt(session.user.id, 10),
-        ipAddress: request.headers.get('x-forwarded-for') ?? null,
+        ipAddress: clientIp(request.headers) ?? null,
         userAgent: request.headers.get('user-agent') ?? null,
       },
     });
@@ -399,7 +400,7 @@ export async function POST(request: NextRequest) {
             },
             userId: parseInt(session.user.id, 10),
             projectId,
-            ipAddress: request.headers.get('x-forwarded-for') || null,
+            ipAddress: clientIp(request.headers) || null,
             userAgent: request.headers.get('user-agent') || null,
           },
         })
@@ -413,7 +414,7 @@ export async function POST(request: NextRequest) {
           feedback: 'Initial assignment to designers',
           postId: post.id,
           userId: parseInt(session.user.id, 10),
-          ipAddress: request.headers.get('x-forwarded-for') ?? null,
+          ipAddress: clientIp(request.headers) ?? null,
           userAgent: request.headers.get('user-agent') ?? null,
         },
       });

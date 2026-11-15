@@ -3,6 +3,7 @@ import type { Transporter } from "nodemailer"
 import CryptoJS from "crypto-js"
 import { prisma } from "@/lib/prisma"
 import { decrypt } from "@/lib/encryption"
+import { needsReseal, openSecret, sealSecret } from "@/lib/credentials/vault"
 
 /**
  * One place that decides how this app sends mail.
@@ -20,13 +21,28 @@ import { decrypt } from "@/lib/encryption"
  */
 
 /**
- * Stored SMTP passwords exist in three shapes across this database's history:
+ * The key app/api/smtp-config used when SMTP_PASSWORD_ENCRYPTION_KEY was unset. It is
+ * public (it was in the source), so rows sealed under it were never protected. Kept
+ * only to READ such rows so they can be re-sealed; nothing is ever written with it.
+ */
+const PUBLISHED_LEGACY_KEY = "your-32-byte-long-secret-key-here"
+
+/** How SMTP passwords are stored from now on: the AES-256-GCM vault. */
+export const sealSmtpPassword = (plain: string) => sealSecret(plain, "smtp")
+
+/** True when a stored SMTP password is in an older format and should be re-sealed. */
+export const smtpPasswordNeedsReseal = (stored: string) => !!stored && needsReseal(stored)
+
+/**
+ * Current rows are sealed by lib/credentials/vault.ts and throw if tampered with.
+ * Older SMTP passwords exist in three shapes across this database's history:
  * `lib/encryption.ts`'s `iv:ciphertext` hex, CryptoJS AES base64 (written by
  * app/api/smtp-config), and bare plaintext from before either existed. Read all three
  * rather than forcing a migration that would lock people out of their own mail.
  */
 export function decryptSmtpPassword(stored: string): string {
   if (!stored) return stored
+  if (!needsReseal(stored)) return openSecret(stored, "smtp")
 
   // lib/encryption.ts — 32 hex chars of IV, a colon, then the ciphertext.
   if (/^[0-9a-f]{32}:/i.test(stored)) {
@@ -37,13 +53,14 @@ export function decryptSmtpPassword(stored: string): string {
 
   // app/api/smtp-config/route.ts — CryptoJS AES, which always base64s this prefix.
   if (stored.startsWith("U2FsdGVkX1")) {
-    try {
-      const key =
-        process.env.SMTP_PASSWORD_ENCRYPTION_KEY || "your-32-byte-long-secret-key-here"
-      const plain = CryptoJS.AES.decrypt(stored, key).toString(CryptoJS.enc.Utf8)
-      if (plain) return plain
-    } catch {
-      // fall through to treating it as plaintext
+    const keys = [process.env.SMTP_PASSWORD_ENCRYPTION_KEY, PUBLISHED_LEGACY_KEY].filter((k): k is string => !!k)
+    for (const key of keys) {
+      try {
+        const plain = CryptoJS.AES.decrypt(stored, key).toString(CryptoJS.enc.Utf8)
+        if (plain) return plain
+      } catch {
+        // wrong key: try the next one, then treat it as plaintext
+      }
     }
   }
 

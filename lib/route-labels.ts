@@ -15,7 +15,6 @@ const breadcrumbCache: Record<string, string> = {
   users: "Team & HR",
   documents: "Document Verification",
   clients: "Clients",
-  assets: "Asset Library",
   calendar: "Calendar",
   festivals: "Festival Posts",
   reports: "Reports & Analytics",

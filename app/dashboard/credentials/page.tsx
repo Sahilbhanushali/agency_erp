@@ -3,7 +3,7 @@
 import { useLiveRefresh } from "@/hooks/use-live-refresh"
 import toast from "react-hot-toast";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { CredentialFormDialog } from "@/components/credentials/credential-form-dialog"
 import {
   Table,
@@ -25,6 +25,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Copy, Download, Edit, Eye, EyeOff, Loader2, Plus, Search, Trash2, Upload } from "lucide-react"
 import DeleteConfirmationDialog from "@/components/dialogs/DeleteConfirmationDialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { CLIPBOARD_CLEAR_SECONDS, copySecret } from "@/lib/clipboard"
+
+/** Revealed secrets disappear from the screen (and memory) after this long. */
+const REVEAL_SECONDS = 30
+const isWebLink = (url: unknown): url is string => typeof url === "string" && /^https?:\/\//i.test(url)
 
 export default function CredentialsPage() {
   const [credentials, setCredentials] = useState<any[]>([])
@@ -37,6 +44,13 @@ export default function CredentialsPage() {
   // from the audited reveal endpoint and held only for this page view.
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [revealing, setRevealing] = useState<string | null>(null)
+  const [revealedNotes, setRevealedNotes] = useState<Record<string, string | null>>({})
+  // Revealing needs a recent re-entry of your own password (server-enforced).
+  const [unlockFor, setUnlockFor] = useState<string | null>(null)
+  const [unlockPassword, setUnlockPassword] = useState("")
+  const [unlockError, setUnlockError] = useState<string | null>(null)
+  const [unlocking, setUnlocking] = useState(false)
+  const hideTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editData, setEditData] = useState<any>(null)
   const [credentialToDelete, setCredentialToDelete] = useState<{ id: string; name: string } | null>(null)
@@ -223,29 +237,89 @@ export default function CredentialsPage() {
   }
 
 
+  const forget = (id: string) => {
+    clearTimeout(hideTimers.current[id])
+    delete hideTimers.current[id]
+    setVisiblePasswords((prev) => ({ ...prev, [id]: false }))
+    setRevealed((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setRevealedNotes((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  useEffect(() => {
+    const timers = hideTimers.current
+    return () => Object.values(timers).forEach(clearTimeout)
+  }, [])
+
+  // Every reveal is a fresh, audited request: nothing is kept once it is hidden.
+  const reveal = async (id: string) => {
+    setRevealing(id)
+    try {
+      const res = await fetch(`/api/credentials/${id}/reveal`, { cache: "no-store" })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 403 && data.code === "LOCKED") {
+        setUnlockFor(id)
+        return
+      }
+      if (!res.ok) {
+        toast.error(data.error ?? "Could not reveal this password")
+        return
+      }
+      setRevealed((prev) => ({ ...prev, [id]: data.password }))
+      setRevealedNotes((prev) => ({ ...prev, [id]: data.notes ?? null }))
+      setVisiblePasswords((prev) => ({ ...prev, [id]: true }))
+      clearTimeout(hideTimers.current[id])
+      hideTimers.current[id] = setTimeout(() => forget(id), REVEAL_SECONDS * 1000)
+    } catch {
+      toast.error("Network error — please try again")
+    } finally {
+      setRevealing(null)
+    }
+  }
+
   const togglePasswordVisibility = async (id: string) => {
     if (visiblePasswords[id]) {
-      setVisiblePasswords((prev) => ({ ...prev, [id]: false }))
+      forget(id)
       return
     }
-    if (!revealed[id]) {
-      setRevealing(id)
-      try {
-        const res = await fetch(`/api/credentials/${id}/reveal`)
-        const data = await res.json()
-        if (!res.ok) {
-          toast.error(data.error ?? "Could not reveal this password")
-          return
-        }
-        setRevealed((prev) => ({ ...prev, [id]: data.password }))
-      } catch {
-        toast.error("Network error — please try again")
-        return
-      } finally {
-        setRevealing(null)
-      }
+    await reveal(id)
+  }
+
+  const submitUnlock = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!unlockPassword) {
+      setUnlockError("Enter your password.")
+      return
     }
-    setVisiblePasswords((prev) => ({ ...prev, [id]: true }))
+    setUnlocking(true)
+    setUnlockError(null)
+    try {
+      const res = await fetch("/api/credentials/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: unlockPassword }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setUnlockError(data.error ?? "Could not confirm your password")
+        return
+      }
+      const pending = unlockFor
+      setUnlockFor(null)
+      setUnlockPassword("")
+      if (pending) await reveal(pending)
+    } catch {
+      setUnlockError("Network error — please try again")
+    } finally {
+      setUnlocking(false)
+    }
   }
 
 
@@ -338,7 +412,7 @@ export default function CredentialsPage() {
                     <TableRow key={c.id} className="border-border hover:bg-muted/20">
                       <TableCell className="py-3 font-medium">
                         {c.label || c.platform}
-                        {c.url && (
+                        {isWebLink(c.url) && (
                           <a
                             href={c.url}
                             target="_blank"
@@ -348,10 +422,14 @@ export default function CredentialsPage() {
                             {c.url}
                           </a>
                         )}
-                        {c.notes && (
-                          <p className="max-w-[28ch] truncate text-xs font-normal text-muted-foreground">
-                            {c.notes}
+                        {revealedNotes[c.id] ? (
+                          <p className="mt-1 max-w-[36ch] whitespace-pre-wrap break-words rounded bg-muted/60 px-1.5 py-1 text-xs font-normal text-foreground">
+                            {revealedNotes[c.id]}
                           </p>
+                        ) : (
+                          c.hasNotes && (
+                            <p className="text-xs font-normal text-muted-foreground">Has a secure note — reveal to read</p>
+                          )
                         )}
                       </TableCell>
 
@@ -410,8 +488,8 @@ export default function CredentialsPage() {
                               aria-label={`Copy password for ${c.label || c.platform}`}
                               onClick={async () => {
                                 try {
-                                  await navigator.clipboard.writeText(revealed[c.id])
-                                  toast.success("Password copied")
+                                  await copySecret(revealed[c.id])
+                                  toast.success(`Password copied — the clipboard clears in ${CLIPBOARD_CLEAR_SECONDS}s`)
                                 } catch {
                                   toast.error("Could not reach the clipboard")
                                 }
@@ -494,6 +572,52 @@ export default function CredentialsPage() {
         onSave={handleSave}
         editData={editData}
       />
+
+      <Dialog
+        open={!!unlockFor}
+        onOpenChange={(open) => {
+          if (!open && !unlocking) {
+            setUnlockFor(null)
+            setUnlockPassword("")
+            setUnlockError(null)
+          }
+        }}
+      >
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-sm">
+          <form onSubmit={submitUnlock} noValidate>
+            <DialogHeader>
+              <DialogTitle>Confirm it&apos;s you</DialogTitle>
+              <DialogDescription>
+                Enter your account password to reveal credentials for the next 10 minutes. Every reveal is logged.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1.5 py-4">
+              <Label htmlFor="unlock-password">Your password</Label>
+              <Input
+                id="unlock-password"
+                type="password"
+                autoComplete="current-password"
+                autoFocus
+                value={unlockPassword}
+                onChange={(e) => setUnlockPassword(e.target.value)}
+                aria-invalid={!!unlockError}
+                aria-describedby={unlockError ? "unlock-error" : undefined}
+                className="min-h-11"
+              />
+              {unlockError && <p id="unlock-error" role="alert" className="text-xs text-destructive">{unlockError}</p>}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setUnlockFor(null)} disabled={unlocking} className="min-h-11">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={unlocking} className="min-h-11">
+                {unlocking && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                Confirm
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <DeleteConfirmationDialog
         isOpen={!!credentialToDelete}

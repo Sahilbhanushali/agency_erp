@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { taskReorderSchema } from "@/lib/validation/task"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -87,7 +88,7 @@ export async function PATCH(request: NextRequest) {
         entityId: moved.map((task) => task.id).join(","),
         oldValues: JSON.stringify(moved.map((task) => ({ id: task.id, status: task.status }))),
         newValues: JSON.stringify({ status }),
-        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+        ipAddress: clientIp(request.headers) || "unknown",
         userAgent: request.headers.get("user-agent") || "unknown",
       })
     }

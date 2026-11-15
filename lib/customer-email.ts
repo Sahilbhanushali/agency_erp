@@ -3,10 +3,10 @@ import nodemailer from "nodemailer"
 import type { Transporter } from "nodemailer"
 import { prisma } from "@/lib/prisma"
 // @ts-ignore
-import CryptoJS from "crypto-js"
 
 import { formatReadableDate } from "./export-link"
 import { fromEmailAddress, formatFrom } from "@/lib/smtp"
+import { decryptSmtpPassword } from "@/lib/smtp"
 
 interface SendConfirmationEmailParams {
   clientEmail: string
@@ -87,11 +87,10 @@ export async function sendConfirmationLinkEmail({
     let transporter: Transporter | null = null
 
     if (smtpDetails && smtpDetails.password && smtpDetails.isVerified) {
-      const encryptionKey = process.env.SMTP_PASSWORD_ENCRYPTION_KEY
-      if (encryptionKey) {
+      {
         try {
-          const bytes = CryptoJS.AES.decrypt(smtpDetails.password, encryptionKey)
-          const decryptedPassword = bytes.toString(CryptoJS.enc.Utf8)
+          // lib/smtp.ts reads every stored format (vault, older crypto-js AES, legacy).
+          const decryptedPassword = decryptSmtpPassword(smtpDetails.password)
           if (decryptedPassword) {
             transporter = nodemailer.createTransport({
               host: smtpDetails.host,

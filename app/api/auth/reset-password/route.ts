@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { logAuditAction } from "@/lib/audit"
 import { findValidPasswordToken, setPasswordAndRevoke } from "@/lib/password-token"
+import { clientIp } from "@/lib/rate-limit"
 
 const schema = z.object({
   token: z.string().min(1).max(128),
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
       entityId: String(user.id),
       oldValues: JSON.stringify({ action: "password_reset_used" }),
       newValues: JSON.stringify({ action: "password_reset_completed" }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

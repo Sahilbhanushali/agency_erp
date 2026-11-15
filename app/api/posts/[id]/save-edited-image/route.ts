@@ -7,6 +7,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { requireCan } from "@/lib/api-auth";
 import { deleteLocalFile } from "@/lib/storage";
+import { clientIp } from "@/lib/rate-limit"
 
 export async function POST(
   request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -97,7 +98,7 @@ export async function POST(
       oldValues: { originalAssetId },
       newValues: { editedAssetId: "pending" }, // Will be updated after asset creation
       feedback: `Image edited: ${sanitizedFilename}`,
-      ipAddress: request.headers.get("x-forwarded-for") || null,
+      ipAddress: clientIp(request.headers) || null,
       userAgent: request.headers.get("user-agent") || null,
       postId: params.id,
       userId: parseInt(session.user.id, 10),

@@ -4,6 +4,7 @@ import { requireCan } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
 import { contractUpdateSchema } from "@/lib/validation/contract";
 import { deleteLocalFile } from "@/lib/storage";
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +107,7 @@ export async function PATCH(
         value: updated.value,
         renewalDate: updated.renewalDate,
       }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 
@@ -143,7 +144,7 @@ export async function DELETE(
       entityType: "Contract",
       entityId: id,
       oldValues: JSON.stringify({ title: existing.title, client: existing.clientId }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 

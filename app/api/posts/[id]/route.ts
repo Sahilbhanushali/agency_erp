@@ -9,6 +9,7 @@ import { logAuditAction } from "@/lib/audit";
 import { assertPostAccess, transitionPost, workflowErrorResponse } from "@/lib/posts/workflow";
 import { editInvalidatesApproval, isEditable, type WorkflowStatus } from "@/lib/posts/workflow-rules";
 import { PRESENTATION_MIME_TYPES, isPresentationFile } from "@/lib/posts/content-types";
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = 'force-dynamic';
 
@@ -241,7 +242,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         entityType: "Post",
         entityId: postId,
         oldValues: JSON.stringify(doomed ?? {}),
-        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+        ipAddress: clientIp(request.headers) || "unknown",
         userAgent: request.headers.get("user-agent") || "unknown",
       });
 

@@ -5,10 +5,10 @@ import { prisma } from "@/lib/prisma"
 import nodemailer from "nodemailer"
 import fs from "fs/promises"
 import path from "path"
-import CryptoJS from "crypto-js"
 import { requireCan } from "@/lib/api-auth";
 import { APP_BASE_URL } from "@/lib/utils"
 import { formatFrom, htmlToText } from "@/lib/smtp"
+import { decryptSmtpPassword } from "@/lib/smtp"
 
 // Load the comment email template
 const commentEmailTemplatePath = path.join(
@@ -159,24 +159,23 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         });
       }
 
-      const encryptionKey = process.env.SMTP_PASSWORD_ENCRYPTION_KEY
-      if (!encryptionKey) {
-        console.error("[Comment API] SMTP password encryption key not found")
-      } else if (!smtpDetails || !smtpDetails.isVerified) {
+      // lib/smtp.ts reads every stored format (vault, older crypto-js AES, legacy) in one place.
+      let decryptedPassword = ""
+      if (smtpDetails?.isVerified) {
+        try {
+          decryptedPassword = decryptSmtpPassword(smtpDetails.password)
+        } catch (decryptError) {
+          console.error("[Comment API] Failed to decrypt SMTP password:", decryptError instanceof Error ? decryptError.message : decryptError)
+        }
+      }
+      if (!smtpDetails || !smtpDetails.isVerified) {
         console.error(
           `[Comment API] No verified SMTP configuration found to send comment emails.`
         )
+      } else if (!decryptedPassword) {
+        // Sending with an empty password only produced a confusing auth failure.
+        console.error("[Comment API] SMTP password unavailable; comment emails not sent.")
       } else {
-        let decryptedPassword = "";
-        try {
-          const bytes = CryptoJS.AES.decrypt(smtpDetails.password, encryptionKey)
-          decryptedPassword = bytes.toString(CryptoJS.enc.Utf8)
-          if (!decryptedPassword) {
-            throw new Error("Decryption failed: Invalid key or corrupted data")
-          }
-        } catch (decryptError: any) {
-          console.error("[Comment API] Failed to decrypt SMTP password:", decryptError.message)
-        }
 
         const transporter = nodemailer.createTransport({
           host: smtpDetails.host,

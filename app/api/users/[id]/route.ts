@@ -6,6 +6,7 @@ import { logAuditAction } from "@/lib/audit";
 import { can, hasPermission } from "@/lib/api-auth";
 import { PayrollService } from "@/lib/payroll/payroll-service";
 import { deleteLocalFile } from "@/lib/storage";
+import { clientIp } from "@/lib/rate-limit"
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
@@ -243,7 +244,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       entityType: "User",
       entityId: params.id,
       newValues: JSON.stringify({ name, email, role: role || user.role?.name, designation, currentSalary }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 
@@ -294,7 +295,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       entityType: "User",
       entityId: params.id,
       newValues: JSON.stringify({ role: roleObj.name }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 
@@ -379,7 +380,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
         email: user.email,
         role: user.role?.name,
       }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 
@@ -433,7 +434,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       entityId: params.id,
       oldValues: JSON.stringify({ isActive: false }),
       newValues: JSON.stringify({ isActive: true, name: user.name }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logAuditAction } from "@/lib/audit"
 import { deleteLocalFile } from "@/lib/storage"
+import { clientIp } from "@/lib/rate-limit"
 
 export async function GET(request: NextRequest) {
   try {
@@ -105,7 +106,7 @@ export async function PUT(request: NextRequest) {
       entityId: userId.toString(),
       oldValues: JSON.stringify({ name: currentUser.name, email: currentUser.email, avatar: currentUser.avatar }),
       newValues: JSON.stringify({ name, email, avatar: updatedUser.avatar }),
-      ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

@@ -3,6 +3,7 @@ import { requireCan } from "@/lib/api-auth";
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { logAuditAction } from "@/lib/audit"
+import { clientIp } from "@/lib/rate-limit"
 
 /**
  * Creates a staff account. Administrators only — this is not self-service signup:
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
       entityType: "User",
       entityId: String(user.id),
       newValues: JSON.stringify({ name, email, roleId: role.id, role: role.name }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

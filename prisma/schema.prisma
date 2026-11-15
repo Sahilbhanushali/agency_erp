@@ -988,9 +988,11 @@ model Credential {
   location String
   platform String
   userId   String
-  /// AES-encrypted at rest via lib/encryption.ts. Never returned by the list endpoint.
-  password String
+  /// Sealed with AES-256-GCM by lib/credentials/vault.ts under CREDENTIALS_ENCRYPTION_KEY.
+  /// Never returned by the list endpoint; read one at a time through the audited reveal.
+  password String  @db.Text
   url      String?
+  /// Sealed like the password (people keep recovery codes here); revealed with it.
   notes    String? @db.Text
 
   createdAt DateTime @default(now())

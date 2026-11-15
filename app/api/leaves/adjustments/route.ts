@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireCan } from "@/lib/api-auth";
 import { logAuditAction } from "@/lib/audit";
 import { LeaveRuleError, LeaveService } from "@/lib/payroll/leave-service";
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
       entityType: "LeaveBalance",
       entityId: balance.id,
       newValues: JSON.stringify({ employee: employee.name, leaveType: balance.leaveType.name, year: input.year, days: input.days, reason: input.reason, remaining: balance.remainingDays }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 

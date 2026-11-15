@@ -6,6 +6,7 @@ import { logAuditAction } from "@/lib/audit";
 import { can, hasPermission } from "@/lib/api-auth";
 import { sendOnboardingInviteEmail } from "@/lib/email";
 import { issuePasswordToken } from "@/lib/password-token";
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export async function POST(
       entityId: String(user.id),
       oldValues: JSON.stringify({ action: "prior_invite_invalidated" }),
       newValues: JSON.stringify({ action: "onboarding_invite_resent", recipient: user.email }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     });
 

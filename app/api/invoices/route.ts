@@ -7,6 +7,7 @@ import { logAuditAction } from "@/lib/audit"
 import { computeTotals, paymentSummary, toNumber } from "@/lib/finance"
 import { nextDocumentNumber, withNumberRetry } from "@/lib/document-number"
 import { invoiceSchema } from "@/lib/validation/invoice"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
       entityType: "Invoice",
       entityId: invoice.id,
       newValues: JSON.stringify({ number: invoice.number, total: totals.totalAmount }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

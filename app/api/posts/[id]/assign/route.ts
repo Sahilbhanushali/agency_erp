@@ -3,6 +3,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { requireCan, requirePermission } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -71,7 +72,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       entityId: id,
       oldValues: JSON.stringify({ assignedToId: existing.assignedToId }),
       newValues: JSON.stringify({ assignedToId }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

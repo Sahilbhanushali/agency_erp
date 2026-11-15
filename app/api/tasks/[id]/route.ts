@@ -10,6 +10,7 @@ import {
   validateTaskLinks,
 } from "@/lib/tasks"
 import { taskSelfUpdateSchema, taskUpdateSchema } from "@/lib/validation/task"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -129,7 +130,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         entityId: id,
         oldValues: JSON.stringify({ status: existing.status }),
         newValues: JSON.stringify({ status: task.status }),
-        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+        ipAddress: clientIp(request.headers) || "unknown",
         userAgent: request.headers.get("user-agent") || "unknown",
       })
       return NextResponse.json({ task })
@@ -207,7 +208,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       entityId: id,
       oldValues: JSON.stringify({ title: existing.title, status: existing.status }),
       newValues: JSON.stringify({ title: task.title, status: task.status }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
@@ -238,7 +239,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       entityType: "Task",
       entityId: id,
       oldValues: JSON.stringify({ title: task.title, status: task.status }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

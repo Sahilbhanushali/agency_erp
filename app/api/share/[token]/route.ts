@@ -12,6 +12,7 @@ import {
 import { promises as fs } from "fs"
 import path from "path"
 import { deleteLocalFile } from "@/lib/storage"
+import { clientIp as requestIp } from "@/lib/rate-limit"
 
 interface RouteParams {
   params: Promise<{ token: string }>
@@ -368,7 +369,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "This confirmation link has expired." }, { status: 410 })
     }
 
-    const clientIp = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null
+    const clientIp = requestIp(request.headers)
     const userAgent = request.headers.get("user-agent") || null
 
     // ==========================================

@@ -9,6 +9,7 @@ import { renderPostAssignedEmail } from '@/lib/renderEmail';
 import { promises as fs } from "fs";
 import path from "path";
 import { requireCan } from "@/lib/api-auth";
+import { clientIp } from "@/lib/rate-limit"
 
 type PostStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED';
 type PostType = 'PHOTO' | 'REEL' | 'STORY' | 'CAROUSEL' | 'CUSTOM';
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
         newValues: JSON.parse(JSON.stringify(post)),
         postId: post.id,
         userId: parseInt(createdById, 10),
-        ipAddress: request.headers.get('x-forwarded-for') ?? null,
+        ipAddress: clientIp(request.headers) ?? null,
         userAgent: request.headers.get('user-agent') ?? null,
       },
     });
@@ -232,7 +233,7 @@ export async function POST(request: NextRequest) {
           },
           userId: parseInt(createdById, 10),
           projectId,
-          ipAddress: request.headers.get('x-forwarded-for') || null,
+          ipAddress: clientIp(request.headers) || null,
           userAgent: request.headers.get('user-agent') || null,
         },
       });
@@ -245,7 +246,7 @@ export async function POST(request: NextRequest) {
           feedback: 'Initial assignment to designer',
           postId: post.id,
           userId: parseInt(createdById, 10),
-          ipAddress: request.headers.get('x-forwarded-for') ?? null,
+          ipAddress: clientIp(request.headers) ?? null,
           userAgent: request.headers.get('user-agent') ?? null,
         },
       });

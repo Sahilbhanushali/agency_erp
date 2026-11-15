@@ -5,6 +5,7 @@ import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
 import { MODULES, allPermissions, permissionName } from "@/lib/permissions/catalog"
 import { ensurePermissionIds } from "@/lib/permissions/store"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -236,7 +237,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ rol
       entityId: String(role.id),
       oldValues: JSON.stringify({ role: role.name, count: before.length }),
       newValues: JSON.stringify({ role: role.name, granted: Array.from(wanted).sort() }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

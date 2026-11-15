@@ -3,8 +3,10 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { requireCan } from "@/lib/api-auth"
 import { logAuditAction } from "@/lib/audit"
-import { encrypt } from "@/lib/encryption"
+import { sealSecret } from "@/lib/credentials/vault"
+import { CREDENTIAL_SELECT, withoutNotes } from "@/lib/credentials/shape"
 import { credentialSchema } from "@/lib/validation/credential"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -16,22 +18,7 @@ export const dynamic = "force-dynamic"
  * password in the table and hand them to anyone with a session. Reveal one at a time
  * through GET /api/credentials/[id]/reveal, which audits who looked.
  */
-const listSelect = {
-  id: true,
-  label: true,
-  category: true,
-  clientId: true,
-  projectId: true,
-  location: true,
-  platform: true,
-  userId: true,
-  url: true,
-  notes: true,
-  createdAt: true,
-  updatedAt: true,
-  client: { select: { id: true, name: true, company: true, phone: true } },
-  project: { select: { id: true, name: true } },
-} satisfies Prisma.CredentialSelect
+const listSelect = CREDENTIAL_SELECT
 
 /**
  * Filters: `?scope=internal` (no client), `?scope=client` (has one), `?clientId=`,
@@ -82,7 +69,7 @@ export async function GET(request: NextRequest) {
     ])
 
     return NextResponse.json({
-      credentials,
+      credentials: credentials.map(withoutNotes),
       categories: categories.map((row) => row.category).filter(Boolean),
     })
   } catch (error) {
@@ -159,7 +146,11 @@ export async function POST(request: NextRequest) {
     const created = await prisma.$transaction(
       inputs.map((input) =>
         prisma.credential.create({
-          data: { ...input, password: encrypt(input.password) },
+          data: {
+            ...input,
+            password: sealSecret(input.password, "password"),
+            notes: input.notes ? sealSecret(input.notes, "notes") : null,
+          },
           select: listSelect,
         }),
       ),
@@ -174,11 +165,11 @@ export async function POST(request: NextRequest) {
       newValues: JSON.stringify(
         created.map((c) => ({ label: c.label, platform: c.platform, clientId: c.clientId })),
       ),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
-    return NextResponse.json({ credentials: created }, { status: 201 })
+    return NextResponse.json({ credentials: created.map(withoutNotes) }, { status: 201 })
   } catch (error) {
     console.error("[credentials] create failed:", error)
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })

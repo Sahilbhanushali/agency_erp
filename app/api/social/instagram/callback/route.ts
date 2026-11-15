@@ -8,6 +8,7 @@ import {
 } from "@/lib/instagram/client"
 import { redactSecrets, sealToken } from "@/lib/instagram/token-vault"
 import { prisma } from "@/lib/prisma"
+import { clientIp } from "@/lib/rate-limit"
 
 /**
  * Instagram redirects the browser here after the user accepts or declines.
@@ -129,7 +130,7 @@ export async function GET(request: Request) {
       entityId: account.id,
       // Never the token, and never the code — only what happened.
       newValues: JSON.stringify({ platform: "INSTAGRAM", username: account.username, clientId: targetClientId }),
-      ipAddress: request.headers.get("x-forwarded-for") ?? undefined,
+      ipAddress: clientIp(request.headers) ?? undefined,
       userAgent: request.headers.get("user-agent") ?? undefined,
     })
 

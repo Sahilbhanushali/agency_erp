@@ -7,6 +7,7 @@ import { can, hasPermission, requireCan, requireSession } from "@/lib/api-auth"
 import { sendOnboardingInviteEmail } from "@/lib/email"
 import bcrypt from "bcryptjs"
 import { issuePasswordToken } from "@/lib/password-token"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -196,7 +197,7 @@ export async function POST(request: NextRequest) {
         inviteSent,
         hasPassword: !!hashedPassword,
       }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

@@ -10,6 +10,7 @@ import {
   toNumber,
 } from "@/lib/finance"
 import { quotationUpdateSchema } from "@/lib/validation/quotation"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -189,7 +190,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       entityId: id,
       oldValues: JSON.stringify({ status: existing.status, total: toNumber(existing.totalAmount) }),
       newValues: JSON.stringify({ status: quotation.status, total: totals.totalAmount }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
@@ -230,7 +231,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       entityType: "Quotation",
       entityId: id,
       oldValues: JSON.stringify({ number: quotation.number, status: quotation.status }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

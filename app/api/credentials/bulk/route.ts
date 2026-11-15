@@ -1,105 +1,105 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { encrypt } from "@/lib/encryption";
-import { requireCan } from "@/lib/api-auth";
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { requireCan } from "@/lib/api-auth"
+import { logAuditAction } from "@/lib/audit"
+import { sealSecret } from "@/lib/credentials/vault"
+import { credentialSchema } from "@/lib/validation/credential"
+import { clientIp } from "@/lib/rate-limit"
 
+export const dynamic = "force-dynamic"
+
+const MAX_ROWS = 500
+
+/** Case, spacing and punctuation do not matter; the name itself must match exactly. */
+const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "")
+
+/**
+ * POST [{ "Client Name", "Project Name", "Location", "Platform", "User Id", "Password" }]
+ *
+ * Spreadsheet import. Rows are validated like single creates and sealed the same way.
+ * Clients and projects match on their exact (normalized) name only — the old substring
+ * match filed credentials under whichever client happened to contain the text. A row
+ * that does not match is reported by row number, and never echoed back: the response
+ * must not carry the passwords it was sent.
+ */
 export async function POST(request: NextRequest) {
+  const auth = await requireCan("credentials", "create")
+  if (!auth.ok) return auth.response
+
+  const rows: unknown = await request.json().catch(() => null)
+  if (!Array.isArray(rows)) {
+    return NextResponse.json({ error: "Expected a list of rows." }, { status: 400 })
+  }
+  if (rows.length === 0 || rows.length > MAX_ROWS) {
+    return NextResponse.json({ error: `Import between 1 and ${MAX_ROWS} rows at a time.` }, { status: 422 })
+  }
+
   try {
-    const auth = await requireCan("credentials", "create");
-    if (!auth.ok) return auth.response;
-    const session = auth.session as any;
-    const data = await request.json();
+    const clients = await prisma.client.findMany({
+      select: { id: true, name: true, projects: { select: { id: true, name: true } } },
+    })
+    const clientByName = new Map(clients.map((c) => [normalize(c.name), c]))
 
-    if (!Array.isArray(data)) {
-      return NextResponse.json({ error: "Invalid data format. Expected an array." }, { status: 400 });
-    }
+    const errors: string[] = []
+    const ready: { clientId: string; projectId: string; data: ReturnType<typeof credentialSchema.parse> }[] = []
 
-    const createdCredentials = [];
-    const errors = [];
+    rows.forEach((raw, index) => {
+      const rowNo = index + 2 // header is row 1 in the sheet
+      const row = (raw ?? {}) as Record<string, unknown>
+      const text = (key: string) => (row[key] === undefined || row[key] === null ? "" : String(row[key]))
+      const clientName = text("Client Name")
+      const projectName = text("Project Name")
 
-    // Fetch all clients and projects into memory for fuzzy matching
-    const allClients = await prisma.client.findMany({
-      include: { projects: true }
-    });
-
-    const normalizeString = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    const fuzzyMatchClient = (name: string) => {
-      const norm = normalizeString(name);
-      // 1. Exact case-insensitive match
-      let match = allClients.find((c: any) => c.name.toLowerCase() === name.toLowerCase());
-      if (match) return match;
-      // 2. Normalized match (ignore spaces/special chars)
-      match = allClients.find((c: any) => normalizeString(c.name) === norm);
-      if (match) return match;
-      // 3. Substring match
-      match = allClients.find((c: any) => normalizeString(c.name).includes(norm) || norm.includes(normalizeString(c.name)));
-      return match;
-    };
-
-    const fuzzyMatchProject = (client: any, name: string) => {
-      const norm = normalizeString(name);
-      const projects = client.projects;
-      let match = projects.find((p: any) => p.name.toLowerCase() === name.toLowerCase());
-      if (match) return match;
-      match = projects.find((p: any) => normalizeString(p.name) === norm);
-      if (match) return match;
-      match = projects.find((p: any) => normalizeString(p.name).includes(norm) || norm.includes(normalizeString(p.name)));
-      return match;
-    };
-
-    // The data should contain: Client Name, Project Name, Location, Contact Number, Platform, User Id, Password
-    for (const row of data) {
-      const clientName = row["Client Name"];
-      const projectName = row["Project Name"];
-      const location = row["Location"] || "";
-      const platform = row["Platform"];
-      const userId = row["User Id"] || row["User ID"];
-      const password = row["Password"];
-
-      if (!clientName || !projectName || !platform || !userId || !password) {
-        errors.push(`Row skipped: Missing required fields (Client Name, Project Name, Platform, User Id, Password). Received: ${JSON.stringify(row)}`);
-        continue;
+      const client = clientByName.get(normalize(clientName))
+      if (!clientName || !client) return void errors.push(`Row ${rowNo}: no client named “${clientName.slice(0, 80)}”.`)
+      const project = client.projects.find((p) => normalize(p.name) === normalize(projectName))
+      if (!projectName || !project) {
+        return void errors.push(`Row ${rowNo}: client “${client.name}” has no project named “${projectName.slice(0, 80)}”.`)
       }
 
-      // Look up Client ID with fuzzy matching
-      const client = fuzzyMatchClient(clientName.toString());
-      if (!client) {
-        errors.push(`Row skipped: Could not find client matching '${clientName}'`);
-        continue;
+      const parsed = credentialSchema.safeParse({
+        label: text("Label") || text("Platform"),
+        clientId: client.id,
+        projectId: project.id,
+        location: text("Location"),
+        platform: text("Platform"),
+        userId: text("User Id") || text("User ID"),
+        password: text("Password"),
+      })
+      if (!parsed.success) {
+        // Field names only: messages never include the submitted values.
+        const fields = Object.keys(parsed.error.flatten().fieldErrors).join(", ")
+        return void errors.push(`Row ${rowNo}: missing or invalid ${fields}.`)
       }
+      ready.push({ clientId: client.id, projectId: project.id, data: parsed.data })
+    })
 
-      // Look up Project ID with fuzzy matching
-      const project = fuzzyMatchProject(client, projectName.toString());
-      if (!project) {
-        errors.push(`Row skipped: Could not find project matching '${projectName}' for client '${client.name}'`);
-        continue;
-      }
-
-      // We can upsert or create. Let's just create since it's a bulk import.
-      const cred = await prisma.credential.create({
-        data: {
-          clientId: client.id,
-          projectId: project.id,
-          location: location.toString(),
-          platform: platform.toString(),
-          userId: userId.toString(),
-          password: encrypt(password.toString()),
-        }
-      });
-      
-      createdCredentials.push(cred);
+    if (ready.length === 0) {
+      return NextResponse.json({ error: "No rows could be imported.", details: errors }, { status: 422 })
     }
 
-    if (createdCredentials.length === 0 && errors.length > 0) {
-      return NextResponse.json({ error: "Failed to import any credentials", details: errors }, { status: 400 });
-    }
+    const created = await prisma.$transaction(
+      ready.map(({ data }) =>
+        prisma.credential.create({
+          data: { ...data, password: sealSecret(data.password, "password"), notes: null },
+          select: { id: true, label: true, platform: true, clientId: true },
+        }),
+      ),
+    )
 
-    return NextResponse.json({ success: true, count: createdCredentials.length, errors }, { status: 201 });
-  } catch (error: any) {
-    console.error("Error in bulk import credentials:", error);
-    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
+    await logAuditAction({
+      userId: String(auth.userId),
+      action: "BULK_IMPORT",
+      entityType: "Credential",
+      entityId: created.map((c) => c.id).join(",").slice(0, 2000),
+      newValues: JSON.stringify({ imported: created.length, skipped: errors.length }),
+      ipAddress: clientIp(request.headers) || "unknown",
+      userAgent: request.headers.get("user-agent") || "unknown",
+    })
+
+    return NextResponse.json({ success: true, count: created.length, errors }, { status: 201 })
+  } catch (error) {
+    console.error("[credentials] bulk import failed:", error instanceof Error ? error.message : "unknown error")
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
   }
 }

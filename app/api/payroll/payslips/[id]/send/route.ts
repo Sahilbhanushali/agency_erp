@@ -7,6 +7,7 @@ import { sendMail } from "@/lib/smtp"
 import { PayrollService } from "@/lib/payroll/payroll-service"
 import { PayrollPdfGenerator } from "@/lib/payroll/pdf-generator"
 import { resolveTemplateForPayslip } from "@/lib/payroll/payslip-template"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       entityType: "Payslip",
       entityId: id,
       newValues: JSON.stringify({ emailedTo: to, cc: parsed.data.cc ?? [], period }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 

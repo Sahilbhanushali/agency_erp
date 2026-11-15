@@ -6,6 +6,7 @@ import { logAuditAction } from "@/lib/audit"
 import { setDefaultTemplate } from "@/lib/payroll/payslip-template"
 import { deleteLocalFile } from "@/lib/storage"
 import { templateFields } from "../route"
+import { clientIp } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -75,7 +76,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       entityId: id,
       oldValues: JSON.stringify({ name: before.name }),
       newValues: JSON.stringify({ ...patch }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
@@ -134,7 +135,7 @@ export async function DELETE(
       entityType: "PayslipTemplate",
       entityId: id,
       oldValues: JSON.stringify({ name: template.name }),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
+      ipAddress: clientIp(request.headers) || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
     })
 
