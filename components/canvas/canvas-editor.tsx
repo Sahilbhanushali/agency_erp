@@ -7,8 +7,8 @@ import { useSession } from "next-auth/react"
 import useSWR from "swr"
 import toast from "react-hot-toast"
 import {
-  AlertCircle, ArrowLeft, Check, CloudOff, Copy, Heading1, Image as ImageIcon, Link2, Loader2, Maximize,
-  Minus, Palette, Plus, SquareDashed, StickyNote, Trash2, Type,
+  AlertCircle, ArrowLeft, Check, CloudOff, Copy, Expand, Heading1, Image as ImageIcon, Link2, Loader2, Maximize,
+  Minus, Palette, PanelRightClose, PanelRightOpen, Plus, Shrink, SquareDashed, StickyNote, Trash2, Type,
 } from "lucide-react"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -97,6 +97,8 @@ export function CanvasEditor({ canvasId }: { canvasId: string }) {
   const [adding, setAdding] = useState<"IMAGE" | "LINK" | null>(null)
   const [confirm, setConfirm] = useState<{ kind: "element"; element: CanvasElementData } | { kind: "board" } | null>(null)
   const [title, setTitle] = useState("")
+  const [isPanelOpen, setIsPanelOpen] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const viewportRef = useRef<HTMLDivElement>(null)
   const gesture = useRef<Gesture | null>(null)
@@ -212,7 +214,12 @@ export function CanvasEditor({ canvasId }: { canvasId: string }) {
 
   // ---- view -------------------------------------------------------------------------
 
-  const fitToContent = useCallback(() => {
+  /**
+   * "all" fits the whole board on screen (the Fit button). "width" fits only its width and
+   * starts at the top: fitting a tall board's height too (a mood board is 3 rows of
+   * sections) opened it at ~30% where nothing was readable. The rest is a pan away.
+   */
+  const fitToContent = useCallback((mode: "all" | "width" = "all") => {
     const el = viewportRef.current
     const items = Object.values(elements)
     if (!el) return
@@ -225,16 +232,35 @@ export function CanvasEditor({ canvasId }: { canvasId: string }) {
     const maxX = Math.max(...items.map((i) => i.x + i.width))
     const maxY = Math.max(...items.map((i) => i.y + i.height))
     const pad = 40
-    const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min((el.clientWidth - pad * 2) / (maxX - minX || 1), (el.clientHeight - pad * 2) / (maxY - minY || 1), 1)))
+    const fitWidth = (el.clientWidth - pad * 2) / (maxX - minX || 1)
+    const fitHeight = (el.clientHeight - pad * 2) / (maxY - minY || 1)
+    const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(mode === "all" ? Math.min(fitWidth, fitHeight) : fitWidth, 1)))
     setView({ scale, x: pad - minX * scale + (el.clientWidth - pad * 2 - (maxX - minX) * scale) / 2, y: pad - minY * scale })
   }, [elements])
 
   useEffect(() => {
     if (!fitted.current && data && Object.keys(elements).length === data.canvas.elements.length) {
       fitted.current = true
-      fitToContent()
+      fitToContent("width")
     }
   }, [data, elements, fitToContent])
+
+  // Full screen: Esc leaves it (unless a field or dialog has focus), and the page behind
+  // must not scroll under the overlay.
+  useEffect(() => {
+    if (!isFullscreen) return
+    const onKey = (e: KeyboardEvent) => {
+      const active = document.activeElement
+      if (e.key === "Escape" && (!active || active === document.body || active === viewportRef.current)) setIsFullscreen(false)
+    }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", onKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener("keydown", onKey)
+    }
+  }, [isFullscreen])
 
   const zoomAt = useCallback((factor: number, clientX?: number, clientY?: number) => {
     const el = viewportRef.current
@@ -458,7 +484,13 @@ export function CanvasEditor({ canvasId }: { canvasId: string }) {
   const saving = pending > 0 || pendingData.current.size > 0
 
   return (
-    <div className="flex min-h-[calc(100dvh-8rem)] flex-col gap-3">
+    <div
+      className={
+        isFullscreen
+          ? "fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto bg-background p-3 sm:p-4"
+          : "flex min-h-[calc(100dvh-8rem)] flex-col gap-3"
+      }
+    >
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
@@ -550,7 +582,32 @@ export function CanvasEditor({ canvasId }: { canvasId: string }) {
           <Button type="button" variant="ghost" size="icon" onClick={() => zoomAt(1 / 1.2)} className="size-10" aria-label="Zoom out"><Minus className="size-4" aria-hidden="true" /></Button>
           <span className="w-12 text-center text-xs tabular-nums" aria-live="polite">{Math.round(view.scale * 100)}%</span>
           <Button type="button" variant="ghost" size="icon" onClick={() => zoomAt(1.2)} className="size-10" aria-label="Zoom in"><Plus className="size-4" aria-hidden="true" /></Button>
-          <Button type="button" variant="ghost" size="icon" onClick={fitToContent} className="size-10" aria-label="Fit board to screen"><Maximize className="size-4" aria-hidden="true" /></Button>
+          <Button type="button" variant="ghost" size="icon" onClick={() => fitToContent("all")} className="size-10" aria-label="Fit board to screen" title="Fit board to screen"><Maximize className="size-4" aria-hidden="true" /></Button>
+          <span className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsPanelOpen((open) => !open)}
+            className="size-10"
+            aria-label={isPanelOpen ? "Hide side panel" : "Show side panel"}
+            aria-pressed={!isPanelOpen}
+            title={isPanelOpen ? "Hide side panel" : "Show side panel"}
+          >
+            {isPanelOpen ? <PanelRightClose className="size-4" aria-hidden="true" /> : <PanelRightOpen className="size-4" aria-hidden="true" />}
+          </Button>
+          <Button
+            type="button"
+            variant={isFullscreen ? "secondary" : "ghost"}
+            size="icon"
+            onClick={() => setIsFullscreen((on) => !on)}
+            className="size-10"
+            aria-label={isFullscreen ? "Exit full screen" : "Full screen board"}
+            aria-pressed={isFullscreen}
+            title={isFullscreen ? "Exit full screen (Esc)" : "Full screen board"}
+          >
+            {isFullscreen ? <Shrink className="size-4" aria-hidden="true" /> : <Expand className="size-4" aria-hidden="true" />}
+          </Button>
         </div>
       </div>
 
@@ -558,7 +615,9 @@ export function CanvasEditor({ canvasId }: { canvasId: string }) {
         {/* Board */}
         <div
           ref={viewportRef}
-          className="relative h-[60vh] min-h-[360px] flex-1 cursor-grab touch-none select-none overflow-hidden rounded-xl border border-border active:cursor-grabbing lg:h-auto"
+          className={`relative flex-1 cursor-grab touch-none select-none overflow-hidden rounded-xl border border-border active:cursor-grabbing ${
+            isFullscreen ? "min-h-[60dvh] lg:min-h-0" : "h-[75dvh] min-h-[420px] lg:h-auto lg:min-h-[calc(100dvh-14rem)]"
+          }`}
           style={{
             backgroundColor: canvas.background,
             backgroundImage: "radial-gradient(circle, rgba(100,116,139,0.25) 1px, transparent 1px)",
@@ -587,6 +646,7 @@ export function CanvasEditor({ canvasId }: { canvasId: string }) {
                   onFocus={() => setSelectedId(el.id)}
                   onKeyDown={(e) => onElementKeyDown(e, el)}
                   onDoubleClick={() => {
+                    setIsPanelOpen(true)
                     setTab("item")
                     setTimeout(() => document.getElementById(`inspector-${el.id}-text`)?.focus() ?? document.getElementById(`inspector-${el.id}-title`)?.focus(), 0)
                   }}
@@ -622,7 +682,10 @@ export function CanvasEditor({ canvasId }: { canvasId: string }) {
         </div>
 
         {/* Side panel */}
-        <aside className="flex max-h-[80vh] flex-col rounded-xl border border-border bg-card lg:max-h-none lg:w-80 lg:flex-shrink-0" aria-label="Board details">
+        <aside
+          className={`${isPanelOpen ? "flex" : "hidden"} max-h-[80vh] flex-col rounded-xl border border-border bg-card lg:max-h-none lg:w-80 lg:flex-shrink-0`}
+          aria-label="Board details"
+        >
           <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
             <TabsList className="m-2 grid grid-cols-5">
               <TabsTrigger value="item" className="text-xs">Item</TabsTrigger>
